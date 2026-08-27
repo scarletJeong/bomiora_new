@@ -4,18 +4,24 @@ import '../../../../core/network/api_endpoints.dart';
 import '../../../models/health/blood_pressure/blood_pressure_record_model.dart';
 
 class BloodPressureRepository {
-  static Future<List<BloodPressureRecord>> getBloodPressureRecords(String userId) async {
+  static Future<List<BloodPressureRecord>> getBloodPressureRecords(
+      String userId) async {
     try {
-      final response = await ApiClient.get('${ApiEndpoints.bloodPressureRecords}?mb_id=$userId');
+      final response = await ApiClient.get(
+          '${ApiEndpoints.bloodPressureRecords}?mb_id=$userId');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
 
         if (data['success'] == true && data['data'] != null) {
           final List<dynamic> records = data['data'];
-          return records.map((json) => BloodPressureRecord.fromJson(json)).toList();
+          return records
+              .map((json) => BloodPressureRecord.fromJson(json))
+              .toList();
         } else if (data is List) {
-          return data.map((json) => BloodPressureRecord.fromJson(json)).toList();
+          return data
+              .map((json) => BloodPressureRecord.fromJson(json))
+              .toList();
         }
       }
 
@@ -25,9 +31,11 @@ class BloodPressureRepository {
     }
   }
 
-  static Future<BloodPressureRecord?> getLatestBloodPressureRecord(String userId) async {
+  static Future<BloodPressureRecord?> getLatestBloodPressureRecord(
+      String userId) async {
     try {
-      final response = await ApiClient.get('${ApiEndpoints.bloodPressureRecords}/latest?mb_id=$userId');
+      final response = await ApiClient.get(
+          '${ApiEndpoints.bloodPressureRecords}/latest?mb_id=$userId');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -61,7 +69,8 @@ class BloodPressureRepository {
     }
   }
 
-  static Future<bool> updateBloodPressureRecord(BloodPressureRecord record) async {
+  static Future<bool> updateBloodPressureRecord(
+      BloodPressureRecord record) async {
     try {
       if (record.id == null) {
         throw Exception('수정할 기록의 ID가 없습니다');
@@ -83,10 +92,15 @@ class BloodPressureRepository {
     }
   }
 
-  static Future<bool> deleteBloodPressureRecord(int recordId) async {
+  static Future<bool> deleteBloodPressureRecord(
+    int recordId, {
+    String? mbId,
+  }) async {
     try {
+      final id = mbId?.trim() ?? '';
+      final query = id.isEmpty ? '' : '?mb_id=${Uri.encodeQueryComponent(id)}';
       final response = await ApiClient.delete(
-        '${ApiEndpoints.bloodPressureRecords}/$recordId',
+        '${ApiEndpoints.bloodPressureRecords}/$recordId$query',
       );
 
       if (response.statusCode == 200) {
@@ -115,7 +129,9 @@ class BloodPressureRepository {
 
         if (data['success'] == true && data['data'] != null) {
           final List<dynamic> records = data['data'];
-          return records.map((json) => BloodPressureRecord.fromJson(json)).toList();
+          return records
+              .map((json) => BloodPressureRecord.fromJson(json))
+              .toList();
         }
       }
 

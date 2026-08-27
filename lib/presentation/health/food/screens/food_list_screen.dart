@@ -8,6 +8,8 @@ import '../../../../core/utils/image_url_helper.dart';
 import '../../../../data/models/user/user_model.dart';
 import '../../../../data/repositories/health/food/food_repository.dart';
 import '../../../../data/services/auth_service.dart';
+import '../../../../core/health/health_refresh_bus.dart';
+import '../../../../core/health/health_refresh_listener.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../health_common/health_responsive_scale.dart';
 import '../../health_common/widgets/health_app_bar.dart';
@@ -25,7 +27,8 @@ class TodayDietScreen extends StatefulWidget {
   State<TodayDietScreen> createState() => _TodayDietScreenState();
 }
 
-class _TodayDietScreenState extends State<TodayDietScreen> {
+class _TodayDietScreenState extends State<TodayDietScreen>
+    with HealthRefreshListener {
   late DateTime selectedDate;
   /// 열린 칼로리 검색 블록의 식사 타입 ('아침' | '점심' | '저녁' | '간식'), null이면 모두 닫힘
   String? _expandedMealKey;
@@ -84,6 +87,12 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
 
   /// 음식 추가 후: 목록 새로고침 (검색 블록은 열린 채로 두어 추가된 음식 리스트가 바로 보이게)
   void _onFoodItemAdded() {
+    _loadMealData();
+    notifyHealthDataChanged();
+  }
+
+  @override
+  void onHealthDataChanged() {
     _loadMealData();
   }
 

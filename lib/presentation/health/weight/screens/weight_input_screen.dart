@@ -14,7 +14,10 @@ import '../../health_common/widgets/health_date_selector.dart';
 import '../../../../data/models/health/weight/weight_record_model.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/repositories/health/weight/weight_repository.dart';
+import '../../../../data/repositories/health/dashboard/health_dashboard_repository.dart';
 import '../../../../core/utils/image_picker_utils.dart';
+import '../../../../core/health/health_refresh_bus.dart';
+import '../../../../core/utils/image_url_helper.dart';
 
 class WeightInputScreen extends StatefulWidget {
   final WeightRecord? record; // null이면 새 기록, 있으면 수정
@@ -202,6 +205,8 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
 
       if (mounted) {
         if (success) {
+          HealthDashboardRepository.invalidate(user.id);
+          notifyHealthDataChanged();
           Navigator.pop(context, true); // 성공
         }
       }
@@ -244,11 +249,15 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
     setState(() => _isSaving = true);
 
     try {
-      final success =
-          await WeightRepository.deleteWeightRecord(widget.record!.id!);
+      final success = await WeightRepository.deleteWeightRecord(
+        widget.record!.id!,
+        mbId: widget.record!.mbId,
+      );
 
       if (mounted) {
         if (success) {
+          HealthDashboardRepository.invalidate(widget.record!.mbId);
+          notifyHealthDataChanged();
           Navigator.pop(context, true); // 성공
         }
       }
@@ -276,8 +285,7 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
       primaryTextTheme:
           baseTheme.primaryTextTheme.apply(fontFamily: 'Gmarket Sans TTF'),
     );
-    final textScale =
-        healthTextScaleByWidth(MediaQuery.of(context).size.width);
+    final textScale = healthTextScaleByWidth(MediaQuery.of(context).size.width);
 
     return Theme(
       data: gmarketTheme,
@@ -447,6 +455,7 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
         _buildNumberInput(
           controller: _weightController,
           hintText: '예: 65.5',
+          compactHint: true,
           suffixText: 'kg',
           validator: (value) {
             if (value == null || value.isEmpty) {
@@ -486,7 +495,7 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
                   child: _buildImageContainer(
                     '정면사진',
                     _frontImagePath,
-                    () => _selectImage('front'),
+                    (anchorContext) => _selectImage('front', anchorContext),
                   ),
                 ),
                 SizedBox(width: gap),
@@ -496,7 +505,7 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
                   child: _buildImageContainer(
                     '측면사진',
                     _sideImagePath,
-                    () => _selectImage('side'),
+                    (anchorContext) => _selectImage('side', anchorContext),
                   ),
                 ),
               ],
@@ -568,6 +577,7 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
     required String hintText,
     required String? Function(String?) validator,
     String? suffixText,
+    bool compactHint = false,
   }) {
     return _buildFixedHeightFieldBox(
       child: TextFormField(
@@ -587,12 +597,13 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
         ),
         decoration: InputDecoration(
           hintText: hintText,
-          hintStyle: const TextStyle(
-            color: Color(0xFF1A1A1A),
-            fontSize: 16,
+          hintStyle: TextStyle(
+            color:
+                compactHint ? const Color(0xFFB7B7B7) : const Color(0xFF1A1A1A),
+            fontSize: compactHint ? 12 : 16,
             height: 1.0,
             fontFamily: 'Gmarket Sans TTF',
-            fontWeight: FontWeight.w500,
+            fontWeight: compactHint ? FontWeight.w300 : FontWeight.w500,
           ),
           suffixText: suffixText,
           suffixStyle: const TextStyle(
@@ -687,74 +698,92 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
 
   // 이미지 컨테이너 위젯
   Widget _buildImageContainer(
-      String label, String? imagePath, VoidCallback onTap) {
-    final hasImage = imagePath != null &&
-        imagePath.isNotEmpty &&
-        ImagePickerUtils.isImageFileExists(imagePath);
+      String label, String? imagePath, void Function(BuildContext) onTap) {
+    final raw = imagePath?.trim();
+    final networkUrl = (raw != null &&
+            raw.isNotEmpty &&
+            (ImageUrlHelper.isRemoteImageUrl(raw) ||
+                raw.startsWith('/api/') ||
+                raw.contains('weight_images') ||
+                raw.contains('data/weight')))
+        ? ImageUrlHelper.getImageUrl(raw)
+        : null;
+    final localPath = (!kIsWeb &&
+            raw != null &&
+            raw.isNotEmpty &&
+            networkUrl == null &&
+            ImagePickerUtils.isImageFileExists(raw))
+        ? raw
+        : null;
+    final blobUrl =
+        kIsWeb && raw != null && raw.startsWith('blob:') ? raw : null;
+    final hasImage = networkUrl != null || localPath != null || blobUrl != null;
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: BoxDecoration(
-          color: hasImage ? Colors.grey[100] : const Color(0xFFD9D9D9),
-          borderRadius: BorderRadius.circular(healthDp(context, 12)),
-          border: Border.all(
-            color: hasImage ? Colors.grey[300]! : const Color(0xFFD9D9D9),
-            width: healthDp(context, 1),
+    return Builder(
+      builder: (anchorContext) => GestureDetector(
+        onTap: () => onTap(anchorContext),
+        child: Container(
+          width: double.infinity,
+          height: double.infinity,
+          decoration: BoxDecoration(
+            color: hasImage ? Colors.grey[100] : const Color(0xFFD9D9D9),
+            borderRadius: BorderRadius.circular(healthDp(context, 12)),
+            border: Border.all(
+              color: hasImage ? Colors.grey[300]! : const Color(0xFFD9D9D9),
+              width: healthDp(context, 1),
+            ),
           ),
-        ),
-        child: hasImage
-            ? Stack(
-                children: [
-                  // 이미지 표시
-                  ClipRRect(
-                    borderRadius:
-                        BorderRadius.circular(healthDp(context, 12)),
-                    child: kIsWeb
-                        ? Image.network(
-                            imagePath,
-                            width: double.infinity,
-                            height: double.infinity,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return _buildImagePlaceholder(label);
-                            },
-                          )
-                        : Image.file(
-                            File(imagePath),
-                            width: double.infinity,
-                            height: double.infinity,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return _buildImagePlaceholder(label);
-                            },
+          child: hasImage
+              ? Stack(
+                  children: [
+                    // 이미지 표시
+                    ClipRRect(
+                      borderRadius:
+                          BorderRadius.circular(healthDp(context, 12)),
+                      child: (networkUrl != null || blobUrl != null)
+                          ? Image.network(
+                              networkUrl ?? blobUrl!,
+                              width: double.infinity,
+                              height: double.infinity,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return _buildImagePlaceholder(label);
+                              },
+                            )
+                          : Image.file(
+                              File(localPath!),
+                              width: double.infinity,
+                              height: double.infinity,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return _buildImagePlaceholder(label);
+                              },
+                            ),
+                    ),
+                    // 삭제 버튼
+                    Positioned(
+                      top: healthDp(context, 4),
+                      right: healthDp(context, 4),
+                      child: GestureDetector(
+                        onTap: () => _deleteImage(raw!),
+                        child: Container(
+                          padding: EdgeInsets.all(healthDp(context, 4)),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.6),
+                            shape: BoxShape.circle,
                           ),
-                  ),
-                  // 삭제 버튼
-                  Positioned(
-                    top: healthDp(context, 4),
-                    right: healthDp(context, 4),
-                    child: GestureDetector(
-                      onTap: () => _deleteImage(imagePath),
-                      child: Container(
-                        padding: EdgeInsets.all(healthDp(context, 4)),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.6),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.close,
-                          color: Colors.white,
-                          size: healthDp(context, 16),
+                          child: Icon(
+                            Icons.close,
+                            color: Colors.white,
+                            size: healthDp(context, 16),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ],
-              )
-            : _buildImagePlaceholder(label),
+                  ],
+                )
+              : _buildImagePlaceholder(label),
+        ),
       ),
     );
   }
@@ -784,47 +813,49 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
   }
 
   // 이미지 선택
-  Future<void> _selectImage(String type) async {
+  void _selectImage(String type, BuildContext anchorContext) {
     try {
-      await ImagePickerUtils.showImageSourceDialog(context,
-          (XFile? image) async {
-        if (image != null) {
-          String? imagePath;
+      ImagePickerUtils.showPhotoSourceDropdown(
+        context: context,
+        anchorContext: anchorContext,
+        onImageSelected: (XFile? image) async {
+          if (image != null) {
+            String? imagePath;
 
-          if (kIsWeb) {
-            // 웹에서는 XFile을 직접 전달
-            try {
-              imagePath = await WeightRepository.uploadImage(image);
-            } catch (e) {
-              // 업로드 실패 시 blob URL 사용 (임시)
-              imagePath = image.path;
-            }
-          } else {
-            // 모바일에서는 실제 서버 업로드
-            final File imageFile = File(image.path);
-            imagePath = await WeightRepository.uploadImage(imageFile);
-          }
-
-          if (imagePath != null) {
-            // 기존 이미지가 있으면 삭제
-            if (type == 'front' && _frontImagePath != null) {
-              await ImagePickerUtils.deleteImageFile(_frontImagePath);
-            } else if (type == 'side' && _sideImagePath != null) {
-              await ImagePickerUtils.deleteImageFile(_sideImagePath);
-            }
-
-            setState(() {
-              if (type == 'front') {
-                _frontImagePath = imagePath;
-              } else {
-                _sideImagePath = imagePath;
+            if (kIsWeb) {
+              // 웹에서는 XFile을 직접 전달
+              try {
+                imagePath = await WeightRepository.uploadImage(image);
+              } catch (e) {
+                // 업로드 실패 시 blob URL 사용 (임시)
+                imagePath = image.path;
               }
-            });
+            } else {
+              // 모바일에서는 실제 서버 업로드
+              final File imageFile = File(image.path);
+              imagePath = await WeightRepository.uploadImage(imageFile);
+            }
+
+            if (imagePath != null) {
+              // 기존 이미지가 있으면 삭제
+              if (type == 'front' && _frontImagePath != null) {
+                await ImagePickerUtils.deleteImageFile(_frontImagePath);
+              } else if (type == 'side' && _sideImagePath != null) {
+                await ImagePickerUtils.deleteImageFile(_sideImagePath);
+              }
+
+              setState(() {
+                if (type == 'front') {
+                  _frontImagePath = imagePath;
+                } else {
+                  _sideImagePath = imagePath;
+                }
+              });
+            }
           }
-        }
-      });
-    } catch (e) {
-    }
+        },
+      );
+    } catch (e) {}
   }
 
   // 이미지 삭제
@@ -860,10 +891,8 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
             _sideImagePath = null;
           }
         });
-
       }
-    } catch (e) {
-    }
+    } catch (e) {}
   }
 
   Color _getBmiColor(double? bmi) {

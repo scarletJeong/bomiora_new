@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_endpoints.dart';
@@ -49,6 +48,7 @@ class FoodSearchItem {
   final num? carbohydrates;
   final num? protein;
   final num? fat;
+
   /// 탄·단·지 제외, DB에 있는 g 단위 성분 합(수분·회분·지방산(g)·당(g)等). kcal/mg/μg 미포함.
   final num? otherGrams;
   final String? representativeFoodName;
@@ -72,26 +72,34 @@ class FoodSearchItem {
       foodCode: _bufferFieldToString(json['food_code']),
       foodName: _bufferFieldToString(json['food_name']),
       manufacturerName: _bufferFieldToString(json['manufacturer_name']),
-      energy: json['energy'] != null ? num.tryParse(json['energy'].toString()) : null,
+      energy: json['energy'] != null
+          ? num.tryParse(json['energy'].toString())
+          : null,
       carbohydrates: json['carbohydrates'] != null
           ? num.tryParse(json['carbohydrates'].toString())
           : null,
-      protein: json['protein'] != null ? num.tryParse(json['protein'].toString()) : null,
+      protein: json['protein'] != null
+          ? num.tryParse(json['protein'].toString())
+          : null,
       fat: json['fat'] != null ? num.tryParse(json['fat'].toString()) : null,
-      otherGrams:
-          json['other_grams'] != null ? num.tryParse(json['other_grams'].toString()) : null,
-      representativeFoodName: _bufferFieldToString(json['representative_food_name']).isNotEmpty
-          ? _bufferFieldToString(json['representative_food_name'])
+      otherGrams: json['other_grams'] != null
+          ? num.tryParse(json['other_grams'].toString())
           : null,
-      nutrientBaseQuantity: _bufferFieldToString(json['nutrient_base_quantity']).isNotEmpty
-          ? _bufferFieldToString(json['nutrient_base_quantity'])
-          : null,
+      representativeFoodName:
+          _bufferFieldToString(json['representative_food_name']).isNotEmpty
+              ? _bufferFieldToString(json['representative_food_name'])
+              : null,
+      nutrientBaseQuantity:
+          _bufferFieldToString(json['nutrient_base_quantity']).isNotEmpty
+              ? _bufferFieldToString(json['nutrient_base_quantity'])
+              : null,
     );
   }
 
   String get desc {
     final parts = <String>[];
-    if (carbohydrates != null) parts.add('탄수화물 ${carbohydrates!.toStringAsFixed(1)}g');
+    if (carbohydrates != null)
+      parts.add('탄수화물 ${carbohydrates!.toStringAsFixed(1)}g');
     if (protein != null) parts.add('단백질 ${protein!.toStringAsFixed(1)}g');
     if (fat != null) parts.add('지방 ${fat!.toStringAsFixed(1)}g');
     if (otherGrams != null && otherGrams != 0) {
@@ -126,16 +134,22 @@ class FoodRecordItemSummary {
       itemId: json['item_id']?.toString() ?? '',
       foodName: _bufferFieldToString(json['food_name']),
       kcal: json['kcal'] != null ? num.tryParse(json['kcal'].toString()) : null,
-      carbohydrate: json['carbohydrate'] != null ? num.tryParse(json['carbohydrate'].toString()) : null,
-      protein: json['protein'] != null ? num.tryParse(json['protein'].toString()) : null,
+      carbohydrate: json['carbohydrate'] != null
+          ? num.tryParse(json['carbohydrate'].toString())
+          : null,
+      protein: json['protein'] != null
+          ? num.tryParse(json['protein'].toString())
+          : null,
       fat: json['fat'] != null ? num.tryParse(json['fat'].toString()) : null,
-      other: json['other'] != null ? num.tryParse(json['other'].toString()) : null,
+      other:
+          json['other'] != null ? num.tryParse(json['other'].toString()) : null,
     );
   }
 
   String get desc {
     final parts = <String>[];
-    if (carbohydrate != null) parts.add('탄수화물 ${carbohydrate!.toStringAsFixed(1)}g');
+    if (carbohydrate != null)
+      parts.add('탄수화물 ${carbohydrate!.toStringAsFixed(1)}g');
     if (protein != null) parts.add('단백질 ${protein!.toStringAsFixed(1)}g');
     if (fat != null) parts.add('지방 ${fat!.toStringAsFixed(1)}g');
     if (other != null) parts.add('기타 ${other!.toStringAsFixed(1)}g');
@@ -157,8 +171,7 @@ class FoodRecordSummary {
   final List<FoodRecordItemSummary> items;
 
   /// 대표 사진(목록 첫 번째)
-  String? get imagePath =>
-      imagePaths.isNotEmpty ? imagePaths.first : null;
+  String? get imagePath => imagePaths.isNotEmpty ? imagePaths.first : null;
 
   FoodRecordSummary({
     required this.id,
@@ -201,10 +214,14 @@ class FoodRecordSummary {
       recordDate: json['record_date']?.toString() ?? '',
       foodTime: (json['food_time']?.toString() ?? '').toLowerCase(),
       calories: calories,
-      protein: json['protein'] != null ? num.tryParse(json['protein'].toString()) : null,
-      carbs: json['carbs'] != null ? num.tryParse(json['carbs'].toString()) : null,
+      protein: json['protein'] != null
+          ? num.tryParse(json['protein'].toString())
+          : null,
+      carbs:
+          json['carbs'] != null ? num.tryParse(json['carbs'].toString()) : null,
       fat: json['fat'] != null ? num.tryParse(json['fat'].toString()) : null,
-      other: json['other'] != null ? num.tryParse(json['other'].toString()) : null,
+      other:
+          json['other'] != null ? num.tryParse(json['other'].toString()) : null,
       imagePaths: _safeParseImagePaths(json),
       items: items,
     );
@@ -252,9 +269,7 @@ List<String> _coerceToPathList(dynamic raw) {
     }
     return out;
   }
-  if (raw is Map &&
-      raw['type'] == 'Buffer' &&
-      raw['data'] is List) {
+  if (raw is Map && raw['type'] == 'Buffer' && raw['data'] is List) {
     return _coerceToPathList(_bufferFieldToString(raw));
   }
   final str = _bufferFieldToString(raw).trim();
@@ -278,14 +293,12 @@ Map<String, dynamic> _normalizeFoodRecordJson(Map<String, dynamic> json) {
   json.forEach((key, value) {
     final unwrapped = _unwrapBuffer(value);
     if (key == 'items' && unwrapped is List) {
-      out[key] = unwrapped
-          .map((item) {
-            if (item is Map) {
-              return _normalizeFoodRecordJson(Map<String, dynamic>.from(item));
-            }
-            return _unwrapBuffer(item);
-          })
-          .toList();
+      out[key] = unwrapped.map((item) {
+        if (item is Map) {
+          return _normalizeFoodRecordJson(Map<String, dynamic>.from(item));
+        }
+        return _unwrapBuffer(item);
+      }).toList();
       return;
     }
     if (unwrapped is Map &&
@@ -356,9 +369,41 @@ List<String> _parseImagePaths(Map<String, dynamic> json) {
 /// API 저장용 상대 경로 (체중 기록과 동일하게 경로 문자열만 전달)
 String _imagePathForApi(String imageUrl) {
   var path = imageUrl.trim();
+  if (path.isEmpty) return path;
+
+  while (path.startsWith('/http://') || path.startsWith('/https://')) {
+    path = path.substring(1);
+  }
+
+  if (path.startsWith('http://') || path.startsWith('https://')) {
+    final uri = Uri.tryParse(path);
+    if (uri != null && uri.path.isNotEmpty) {
+      final match = RegExp(
+        r'/(?:data/food_images|api/health/food/images)/([^/?#]+)',
+        caseSensitive: false,
+      ).firstMatch(uri.path);
+      if (match != null) {
+        return '/api/health/food/images/${Uri.decodeComponent(match.group(1)!)}';
+      }
+      return uri.path.startsWith('/') ? uri.path : '/${uri.path}';
+    }
+  }
+
   final base = ApiClient.baseUrl;
   if (path.startsWith(base)) {
     path = path.substring(base.length);
+  }
+  final corruptedPrefix = RegExp(
+    r'^/data/item/https?://[^/]+',
+    caseSensitive: false,
+  );
+  path = path.replaceFirst(corruptedPrefix, '');
+  final foodMatch = RegExp(
+    r'/(?:data/food_images|api/health/food/images)/([^/?#]+)',
+    caseSensitive: false,
+  ).firstMatch(path);
+  if (foodMatch != null) {
+    return '/api/health/food/images/${Uri.decodeComponent(foodMatch.group(1)!)}';
   }
   if (!path.startsWith('/')) path = '/$path';
   return path;
@@ -389,7 +434,8 @@ class FoodRepository {
 
   static bool _matchesAllTokens(FoodSearchItem item, List<String> tokens) {
     if (tokens.isEmpty) return true;
-    final searchable = '${item.manufacturerName} ${item.foodName}'.toLowerCase();
+    final searchable =
+        '${item.manufacturerName} ${item.foodName}'.toLowerCase();
     for (final token in tokens) {
       if (!searchable.contains(token)) return false;
     }
@@ -456,7 +502,8 @@ class FoodRepository {
       final neededCount = offset + limit;
       for (final query in queries) {
         final fetchLimit = query == q ? neededCount : (neededCount * 2);
-        final list = await _fetchFoodSearchRaw(query, limit: fetchLimit, offset: 0);
+        final list =
+            await _fetchFoodSearchRaw(query, limit: fetchLimit, offset: 0);
         for (final item in list) {
           final key = '${item.foodCode}|${item.foodName}';
           if (dedup.add(key)) {
@@ -465,16 +512,19 @@ class FoodRepository {
         }
       }
 
-      final filtered = merged.where((item) => _matchesAllTokens(item, baseTokens)).toList();
-      final sorted = (filtered.isNotEmpty ? filtered : merged)..sort((a, b) {
-        final pA = _foodCodePriority(a.foodCode);
-        final pB = _foodCodePriority(b.foodCode);
-        if (pA != pB) return pA.compareTo(pB);
-        return a.foodName.compareTo(b.foodName);
-      });
+      final filtered =
+          merged.where((item) => _matchesAllTokens(item, baseTokens)).toList();
+      final sorted = (filtered.isNotEmpty ? filtered : merged)
+        ..sort((a, b) {
+          final pA = _foodCodePriority(a.foodCode);
+          final pB = _foodCodePriority(b.foodCode);
+          if (pA != pB) return pA.compareTo(pB);
+          return a.foodName.compareTo(b.foodName);
+        });
 
       if (offset >= sorted.length) return [];
-      final end = (offset + limit) > sorted.length ? sorted.length : (offset + limit);
+      final end =
+          (offset + limit) > sorted.length ? sorted.length : (offset + limit);
       final result = sorted.sublist(offset, end);
       return result;
     } catch (e) {
@@ -483,7 +533,8 @@ class FoodRepository {
   }
 
   /// 해당 날짜 식사 기록 목록 조회 (날짜별 아침/점심/저녁/간식)
-  static Future<List<FoodRecordSummary>> getRecordsForDate(String mbId, DateTime date) async {
+  static Future<List<FoodRecordSummary>> getRecordsForDate(
+      String mbId, DateTime date) async {
     try {
       final trimmedMbId = mbId.trim();
       if (trimmedMbId.isEmpty) {
@@ -502,8 +553,10 @@ class FoodRepository {
       }
       final body = _decodeResponseBody(response.body);
       List<dynamic> list = [];
-      if (body is List) list = body;
-      else if (body is Map && body['data'] is List) list = body['data'] as List;
+      if (body is List)
+        list = body;
+      else if (body is Map && body['data'] is List)
+        list = body['data'] as List;
       else if (body is Map && body['success'] == true && body['data'] is List) {
         list = body['data'] as List;
       }
@@ -555,9 +608,11 @@ class FoodRepository {
   }
 
   /// 식사 기록에 음식 추가
-  static Future<bool> addItemToRecord(String foodRecordId, FoodSearchItem item) async {
+  static Future<bool> addItemToRecord(
+      String foodRecordId, FoodSearchItem item) async {
     try {
-      final uri = Uri.parse('$_baseUrl${ApiEndpoints.foodRecordItems(foodRecordId)}');
+      final uri =
+          Uri.parse('$_baseUrl${ApiEndpoints.foodRecordItems(foodRecordId)}');
       final body = {
         'food_code': item.foodCode,
         'food_name': item.foodName,
@@ -580,9 +635,11 @@ class FoodRepository {
   }
 
   /// 식사 기록에서 음식 항목 삭제
-  static Future<bool> deleteRecordItem(String foodRecordId, String itemId) async {
+  static Future<bool> deleteRecordItem(
+      String foodRecordId, String itemId) async {
     try {
-      final uri = Uri.parse('$_baseUrl${ApiEndpoints.foodRecordItemDelete(foodRecordId, itemId)}');
+      final uri = Uri.parse(
+          '$_baseUrl${ApiEndpoints.foodRecordItemDelete(foodRecordId, itemId)}');
       final response = await http.delete(
         uri,
         headers: {'Content-Type': 'application/json'},
@@ -619,13 +676,16 @@ class FoodRepository {
       );
       if (response.statusCode == 200) {
         final data = _decodeResponseBody(response.body);
-        if (data is Map && data['success'] == true && data['url'] != null) {
+        if (data is Map && data['success'] == true) {
+          final filename = _bufferFieldToString(data['filename']).trim();
+          if (filename.isNotEmpty) {
+            return '/api/health/food/images/${Uri.encodeComponent(filename)}';
+          }
           final relativeUrl = _bufferFieldToString(data['url']).trim();
           if (relativeUrl.isEmpty || _isCorruptImagePath(relativeUrl)) {
             return null;
           }
-          if (relativeUrl.startsWith('http')) return relativeUrl;
-          return '${ApiClient.baseUrl}$relativeUrl';
+          return _imagePathForApi(relativeUrl);
         }
       }
       return null;

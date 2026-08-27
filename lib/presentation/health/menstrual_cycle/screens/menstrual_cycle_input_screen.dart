@@ -11,7 +11,9 @@ import '../../health_common/widgets/health_date_selector.dart';
 import '../widgets/health_year_month_picker_dialog.dart';
 import '../../../../data/models/health/menstrual_cycle/menstrual_cycle_model.dart';
 import '../../../../data/repositories/health/menstrual_cycle/menstrual_cycle_repository.dart';
+import '../../../../data/repositories/health/dashboard/health_dashboard_repository.dart';
 import '../../../../data/services/auth_service.dart';
+import '../../../../core/health/health_refresh_bus.dart';
 
 class MenstrualCycleInputScreen extends StatefulWidget {
   final MenstrualCycleRecord? existingRecord;
@@ -30,6 +32,7 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
   bool _isLoading = false;
   late final TextEditingController _cycleLengthController;
   List<MenstrualCycleRecord> _historyRecords = const [];
+
   /// 달력에서 이력 범위를 탭해 고른 행(또는 화면 진입 시 existing). 저장 시 이 id로 update.
   int? _explicitEditRecordId;
 
@@ -43,8 +46,10 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
   static const Color _kFutureDayText = Color(0xFFB3B3B3);
   static const Color _kRangeBarFill = Color(0x26FC6795);
   static const Color _kAccentPink = Color(0xFFFF5A8D);
+
   /// 예정 생리 기간(연한 표시) — 바·끝 원 동일 색 (입력 화면에서만 사용)
   static const Color _kPredictedPeriodFill = Color(0x14FC6795);
+
   /// 시작·끝 동그라미 지름(바는 이 원 바깥으로 나가지 않게 계산)
   static const double _kPeriodEndpointDiameter = 25.0;
 
@@ -216,9 +221,13 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
     } else if (_lastPeriodStart != null) {
       baseStart = _lastPeriodStart;
       baseCycle = _cycleLength;
-      basePeriod = (_lastPeriodEnd ?? _lastPeriodStart)!.difference(_lastPeriodStart!).inDays + 1;
+      basePeriod = (_lastPeriodEnd ?? _lastPeriodStart)!
+              .difference(_lastPeriodStart!)
+              .inDays +
+          1;
     } else if (_historyRecords.isNotEmpty) {
-      final sorted = [..._historyRecords]..sort((a, b) => b.lastPeriodStart.compareTo(a.lastPeriodStart));
+      final sorted = [..._historyRecords]
+        ..sort((a, b) => b.lastPeriodStart.compareTo(a.lastPeriodStart));
       final r = sorted.first;
       baseStart = r.lastPeriodStart;
       baseCycle = r.cycleLength;
@@ -370,8 +379,7 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
       primaryTextTheme:
           baseTheme.primaryTextTheme.apply(fontFamily: 'Gmarket Sans TTF'),
     );
-    final textScale =
-        healthTextScaleByWidth(MediaQuery.sizeOf(context).width);
+    final textScale = healthTextScaleByWidth(MediaQuery.sizeOf(context).width);
 
     return Theme(
       data: gmarketTheme,
@@ -551,8 +559,10 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
                   cellW: cellW,
                   fillColor: _kRangeBarFill,
                   endpointMatcher: (d) =>
-                      (_lastPeriodStart != null && _sameDate(d, _lastPeriodStart!)) ||
-                      (_lastPeriodEnd != null && _sameDate(d, _lastPeriodEnd!)) ||
+                      (_lastPeriodStart != null &&
+                          _sameDate(d, _lastPeriodStart!)) ||
+                      (_lastPeriodEnd != null &&
+                          _sameDate(d, _lastPeriodEnd!)) ||
                       _isHistoricalEndpoint(d),
                 ),
               Row(
@@ -608,8 +618,7 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
           decoration: ShapeDecoration(
             color: fillColor,
             shape: RoundedRectangleBorder(
-              borderRadius:
-                  BorderRadius.circular(healthDp(context, 13)),
+              borderRadius: BorderRadius.circular(healthDp(context, 13)),
             ),
           ),
         ),
@@ -628,14 +637,15 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
     final inMonth = _inFocusedMonth(day, focusedMonth);
     final rangeStart =
         _lastPeriodStart != null && _sameDate(day, _lastPeriodStart!);
-    final rangeEnd =
-        _lastPeriodEnd != null && _sameDate(day, _lastPeriodEnd!);
+    final rangeEnd = _lastPeriodEnd != null && _sameDate(day, _lastPeriodEnd!);
     final isCurrentPeriodEndpoint = rangeStart || rangeEnd;
-    final isPeriodEndpoint = isCurrentPeriodEndpoint || _isHistoricalEndpoint(day);
+    final isPeriodEndpoint =
+        isCurrentPeriodEndpoint || _isHistoricalEndpoint(day);
     final inRange = _inPeriodRange(day);
     final predictedEndpoint =
         showPredicted && !isPeriodEndpoint && _isPredictedEndpoint(day);
-    final predictedInRange = showPredicted && !inRange && _inPredictedRange(day);
+    final predictedInRange =
+        showPredicted && !inRange && _inPredictedRange(day);
 
     final plainTextColor = isFuture
         ? _kFutureDayText
@@ -689,8 +699,7 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
                         decoration: ShapeDecoration(
                           color: _kPredictedPeriodFill,
                           shape: RoundedRectangleBorder(
-                            borderRadius:
-                                BorderRadius.circular(endpointRadius),
+                            borderRadius: BorderRadius.circular(endpointRadius),
                           ),
                         ),
                         child: Center(
@@ -711,19 +720,19 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
                         ),
                       ),
                     )
-              : Text(
-                  '${day.day}',
-                  style: TextStyle(
-                    color: isFuture
-                        ? _kFutureDayText
-                        : (predictedInRange
-                            ? const Color(0xFF1A1A1A)
-                            : plainTextColor),
-                    fontSize: 14,
-                    fontFamily: 'Gmarket Sans TTF',
-                    fontWeight: plainWeight,
-                  ),
-                ),
+                  : Text(
+                      '${day.day}',
+                      style: TextStyle(
+                        color: isFuture
+                            ? _kFutureDayText
+                            : (predictedInRange
+                                ? const Color(0xFF1A1A1A)
+                                : plainTextColor),
+                        fontSize: 14,
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: plainWeight,
+                      ),
+                    ),
         ),
       ),
     );
@@ -741,9 +750,7 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
           overlayColor: const WidgetStatePropertyAll(Colors.transparent),
           onTap: _openMonthFromHealthPicker,
           child: Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: healthDp(context, 4)
-            ),
+            padding: EdgeInsets.symmetric(horizontal: healthDp(context, 4)),
             child: Row(
               children: [
                 Text(
@@ -857,75 +864,75 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
         SizedBox(
           height: healthDp(context, 20),
           child: Row(
-          children: [
-            Container(
-              width: healthDp(context, 52),
-              height: healthDp(context, 20),
-              padding: EdgeInsets.fromLTRB(
-                healthDp(context, 19),
-                0,
-                healthDp(context, 19),
-                healthDp(context, 6),
-              ),
-              clipBehavior: Clip.antiAlias,
-              decoration: ShapeDecoration(
-                color: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(healthDp(context, 5)),
+            children: [
+              Container(
+                width: healthDp(context, 52),
+                height: healthDp(context, 20),
+                padding: EdgeInsets.fromLTRB(
+                  healthDp(context, 19),
+                  0,
+                  healthDp(context, 19),
+                  healthDp(context, 6),
                 ),
-                shadows: [
-                  BoxShadow(
-                    color: const Color(0x19000000),
-                    blurRadius: healthDp(context, 2),
-                    offset: Offset.zero,
-                    spreadRadius: 0,
+                clipBehavior: Clip.antiAlias,
+                decoration: ShapeDecoration(
+                  color: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(healthDp(context, 5)),
                   ),
-                ],
-              ),
-              alignment: Alignment.center,
-              child: Center(
-                child: TextField(
-                  controller: _cycleLengthController,
-                  textAlign: TextAlign.center,
-                  textAlignVertical: TextAlignVertical.center,
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [
-                    FilteringTextInputFormatter.digitsOnly,
-                    LengthLimitingTextInputFormatter(3),
+                  shadows: [
+                    BoxShadow(
+                      color: const Color(0x19000000),
+                      blurRadius: healthDp(context, 2),
+                      offset: Offset.zero,
+                      spreadRadius: 0,
+                    ),
                   ],
-                  style: const TextStyle(
-                    color: Colors.black,
-                    fontSize: 10,
-                    fontFamily: 'Gmarket Sans TTF',
-                    fontWeight: FontWeight.w500,
-                    height: 1,
+                ),
+                alignment: Alignment.center,
+                child: Center(
+                  child: TextField(
+                    controller: _cycleLengthController,
+                    textAlign: TextAlign.center,
+                    textAlignVertical: TextAlignVertical.center,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(3),
+                    ],
+                    style: const TextStyle(
+                      color: Colors.black,
+                      fontSize: 10,
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w500,
+                      height: 1,
+                    ),
+                    decoration: const InputDecoration(
+                      isCollapsed: true,
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                    onChanged: (value) {
+                      final parsed = int.tryParse(value);
+                      if (parsed != null && parsed > 0) {
+                        _cycleLength = parsed;
+                      }
+                    },
                   ),
-                  decoration: const InputDecoration(
-                    isCollapsed: true,
-                    border: InputBorder.none,
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                  onChanged: (value) {
-                    final parsed = int.tryParse(value);
-                    if (parsed != null && parsed > 0) {
-                      _cycleLength = parsed;
-                    }
-                  },
                 ),
               ),
-            ),
-            SizedBox(width: healthDp(context, 5)),
-            const Text(
-              '일',
-              style: TextStyle(
-                color: Colors.black,
-                fontSize: 10,
-                fontFamily: 'Gmarket Sans TTF',
-                fontWeight: FontWeight.w300,
+              SizedBox(width: healthDp(context, 5)),
+              const Text(
+                '일',
+                style: TextStyle(
+                  color: Colors.black,
+                  fontSize: 10,
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w300,
+                ),
               ),
-            ),
-          ],
-        ),
+            ],
+          ),
         ),
       ],
     );
@@ -1168,7 +1175,8 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
           if (DateUtils.isSameDay(DateUtils.dateOnly(r.lastPeriodStart), s)) {
             byCalcStart ??= r;
           }
-          if (DateUtils.isSameDay(DateUtils.dateOnly(r.displayPeriodStart), s)) {
+          if (DateUtils.isSameDay(
+              DateUtils.dateOnly(r.displayPeriodStart), s)) {
             byDisplayStart ??= r;
           }
         }
@@ -1177,12 +1185,14 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
       }
 
       bool success;
-      MenstrualCycleRecord? _latestByCalcStart(List<MenstrualCycleRecord> list) {
+      MenstrualCycleRecord? _latestByCalcStart(
+          List<MenstrualCycleRecord> list) {
         if (list.isEmpty) return null;
         final sorted = [...list]
           ..sort((a, b) => b.lastPeriodStart.compareTo(a.lastPeriodStart));
         return sorted.first;
       }
+
       final MenstrualCycleRecord? matched = _explicitEditRecordId != null
           ? (_recordById(_explicitEditRecordId!) ??
               _matchExistingRecordForEdit(_lastPeriodStart!))
@@ -1230,16 +1240,18 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
           cycleLength: _cycleLength,
           periodLength: periodLength,
         );
-        success = await MenstrualCycleRepository.addMenstrualCycleRecord(record);
+        success =
+            await MenstrualCycleRepository.addMenstrualCycleRecord(record);
       }
 
       if (success) {
         if (mounted) {
+          HealthDashboardRepository.invalidate(user.id);
+          notifyHealthDataChanged();
           Navigator.pop(context, true);
         }
       } else {
-        throw Exception(
-            matched != null ? '수정에 실패했습니다' : '저장에 실패했습니다');
+        throw Exception(matched != null ? '수정에 실패했습니다' : '저장에 실패했습니다');
       }
     } catch (e) {
       if (mounted) {

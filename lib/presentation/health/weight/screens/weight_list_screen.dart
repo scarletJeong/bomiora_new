@@ -19,6 +19,9 @@ import '../../../../data/repositories/health/health_goal/health_goal_repository.
 import '../../../../data/repositories/health/weight/weight_repository.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../core/utils/image_picker_utils.dart';
+import '../../../../core/utils/image_url_helper.dart';
+import '../../../../core/health/health_refresh_bus.dart';
+import '../../../../core/health/health_refresh_listener.dart';
 import '../widgets/weight_chart_section.dart';
 import '../utils/weight_goal_progress.dart';
 import '../../health_common/health_chart_axis_style.dart';
@@ -51,7 +54,8 @@ class WeightListScreen extends StatefulWidget {
   State<WeightListScreen> createState() => _WeightListScreenState();
 }
 
-class _WeightListScreenState extends State<WeightListScreen> {
+class _WeightListScreenState extends State<WeightListScreen>
+    with HealthRefreshListener {
   String selectedPeriod = '일'; // 일, 주, 월
 
   // 사용자 정보
@@ -152,8 +156,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
     final slots = healthDailyHourSlotCount(forExpandedChart);
     final startHour =
         (timeOffset * maxStartHour).clamp(0.0, maxStartHour.toDouble());
-    final endHour =
-        (startHour + slots - 1.0).clamp(slots - 1.0, 24.0);
+    final endHour = (startHour + slots - 1.0).clamp(slots - 1.0, 24.0);
     return {'min': startHour, 'max': endHour};
   }
 
@@ -273,8 +276,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
         final record = hourRecords.single;
         final recordHour = record.measuredAt.hour;
         const normalizedMinute = 0;
-        final slot =
-            (recordHour - windowStartHour).clamp(0, slots - 1).toInt();
+        final slot = (recordHour - windowStartHour).clamp(0, slots - 1).toInt();
 
         chartData.add({
           'date': '$recordHour시',
@@ -449,6 +451,11 @@ class _WeightListScreenState extends State<WeightListScreen> {
     _loadData();
   }
 
+  @override
+  void onHealthDataChanged() {
+    _loadData();
+  }
+
   // 데이터 로드
   Future<void> _loadData() async {
     setState(() {
@@ -460,11 +467,12 @@ class _WeightListScreenState extends State<WeightListScreen> {
       currentUser = await AuthService.getUser();
 
       if (currentUser != null) {
-        // 체중 기록 목록 가져오기
-        final records =
-            await WeightRepository.getWeightRecords(currentUser!.id);
-        final goal = await HealthGoalRepository.fetchLatest(currentUser!.id)
-            .catchError((_) => null);
+        final results = await Future.wait<dynamic>([
+          WeightRepository.getWeightRecords(currentUser!.id),
+          HealthGoalRepository.fetchLatest(currentUser!.id),
+        ]);
+        final records = results[0] as List<WeightRecord>;
+        final goal = results[1] as HealthGoalRecordModel?;
 
         // 모든 기록 저장 (시간 정보 포함)
         allRecords = records;
@@ -538,44 +546,44 @@ class _WeightListScreenState extends State<WeightListScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                              // 0. 날짜 선택 공통 위젯
-                              HealthDateSelector(
-                                selectedDate: selectedDate,
-                                onDateChanged: (newDate) {
-                                  setState(() {
-                                    selectedDate = newDate;
-                                    selectedChartPointIndex = null;
-                                    tooltipPosition = null;
+                            // 0. 날짜 선택 공통 위젯
+                            HealthDateSelector(
+                              selectedDate: selectedDate,
+                              onDateChanged: (newDate) {
+                                setState(() {
+                                  selectedDate = newDate;
+                                  selectedChartPointIndex = null;
+                                  tooltipPosition = null;
 
-                                    timeOffset = _dailyOffsetForDate(newDate);
-                                  });
-                                  _notifyExpandedChart();
-                                  _loadData();
-                                },
-                                monthTextColor: const Color(0xFF898686),
-                                selectedTextColor: const Color(0xFFFF5A8D),
-                                unselectedTextColor: const Color(0xFFB7B7B7),
-                                dividerColor: const Color(0xFFD2D2D2),
-                                iconColor: const Color(0xFF898686),
-                              ),
-                              SizedBox(height: healthDp(context, 16)),
+                                  timeOffset = _dailyOffsetForDate(newDate);
+                                });
+                                _notifyExpandedChart();
+                                _loadData();
+                              },
+                              monthTextColor: const Color(0xFF898686),
+                              selectedTextColor: const Color(0xFFFF5A8D),
+                              unselectedTextColor: const Color(0xFFB7B7B7),
+                              dividerColor: const Color(0xFFD2D2D2),
+                              iconColor: const Color(0xFF898686),
+                            ),
+                            SizedBox(height: healthDp(context, 16)),
 
-                              // 1~3. 상단 요약 카드 영역 (시안 기준)
-                              _buildTopWeightSummaryCard(),
-                              SizedBox(height: healthDp(context, 20)),
-                              _buildBmiSummaryCard(),
-                              SizedBox(height: healthDp(context, 30)),
+                            // 1~3. 상단 요약 카드 영역 (시안 기준)
+                            _buildTopWeightSummaryCard(),
+                            SizedBox(height: healthDp(context, 20)),
+                            _buildBmiSummaryCard(),
+                            SizedBox(height: healthDp(context, 30)),
 
-                              // 4~5. 체중 차트(기간 탭은 카드 안)
-                              WeightChartSection(
-                                chartContent: _buildChartContent(),
-                              ),
-                              SizedBox(height: healthDp(context, 20)),
+                            // 4~5. 체중 차트(기간 탭은 카드 안)
+                            WeightChartSection(
+                              chartContent: _buildChartContent(),
+                            ),
+                            SizedBox(height: healthDp(context, 20)),
 
-                              // 6. 눈바디 이미지
-                              _buildBodyImages(),
-                              SizedBox(height: healthDp(context, 20)),
-                            ],
+                            // 6. 눈바디 이미지
+                            _buildBodyImages(),
+                            SizedBox(height: healthDp(context, 20)),
+                          ],
                         ),
                       ),
                     ),
@@ -611,7 +619,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
                       fontWeight: FontWeight.w500,
                     ),
                     onPressed: () async {
-                      final result = await Navigator.push(
+                      await Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) => WeightInputScreen(
@@ -620,8 +628,8 @@ class _WeightListScreenState extends State<WeightListScreen> {
                         ),
                       );
 
-                      if (result == true && mounted) {
-                        _loadData();
+                      if (mounted) {
+                        await _loadData();
                       }
                     },
                     backgroundColor: const Color(0xFFFF5A8D),
@@ -938,9 +946,11 @@ class _WeightListScreenState extends State<WeightListScreen> {
           height: buttonBandH,
           child: Align(
             alignment: Alignment.centerRight,
-            child: HealthListEditButton(
-              onTap: _openSelectedDateEditorPopup,
-            ),
+            child: selectedRecord == null
+                ? const SizedBox.shrink()
+                : HealthListEditButton(
+                    onTap: _openSelectedDateEditorPopup,
+                  ),
           ),
         ),
         SizedBox(height: gapBeforeMetricsBand),
@@ -1497,12 +1507,12 @@ class _WeightListScreenState extends State<WeightListScreen> {
           _notifyExpandedChart();
         },
         chartAreaBuilder: (a, b, c, d) => _buildChartArea(
-              a,
-              b,
-              c,
-              d,
-              forExpandedChart: expandedChartView,
-            ),
+          a,
+          b,
+          c,
+          d,
+          forExpandedChart: expandedChartView,
+        ),
         tooltipBuilder: _buildChartTooltip,
       ),
       emptyChartBuilder: (height, tabs) => WeightEmptyChart(
@@ -1693,7 +1703,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
               child: _buildImageContainer(
                 '정면사진',
                 frontImagePath,
-                () => _selectImage('front'),
+                (anchorContext) => _selectImage('front', anchorContext),
               ),
             ),
             SizedBox(width: gap),
@@ -1703,7 +1713,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
               child: _buildImageContainer(
                 '측면사진',
                 sideImagePath,
-                () => _selectImage('side'),
+                (anchorContext) => _selectImage('side', anchorContext),
               ),
             ),
           ],
@@ -1714,73 +1724,92 @@ class _WeightListScreenState extends State<WeightListScreen> {
 
   // 이미지 컨테이너 위젯
   Widget _buildImageContainer(
-      String label, String? imagePath, VoidCallback onTap) {
-    final hasImage = imagePath != null &&
-        imagePath.isNotEmpty &&
-        ImagePickerUtils.isImageFileExists(imagePath);
+      String label, String? imagePath, void Function(BuildContext) onTap) {
+    final raw = imagePath?.trim();
+    final networkUrl = (raw != null &&
+            raw.isNotEmpty &&
+            (ImageUrlHelper.isRemoteImageUrl(raw) ||
+                raw.startsWith('/api/') ||
+                raw.contains('weight_images') ||
+                raw.contains('data/weight')))
+        ? ImageUrlHelper.getImageUrl(raw)
+        : null;
+    final localPath = (!kIsWeb &&
+            raw != null &&
+            raw.isNotEmpty &&
+            networkUrl == null &&
+            ImagePickerUtils.isImageFileExists(raw))
+        ? raw
+        : null;
+    final blobUrl =
+        kIsWeb && raw != null && raw.startsWith('blob:') ? raw : null;
+    final hasImage = networkUrl != null || localPath != null || blobUrl != null;
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: BoxDecoration(
-          color: hasImage ? Colors.grey[100] : Colors.grey[200],
-          borderRadius: BorderRadius.circular(healthDp(context, 12)),
-          border: Border.all(
-            color: hasImage ? Colors.grey[300]! : Colors.grey[200]!,
-            width: healthDp(context, 1),
+    return Builder(
+      builder: (anchorContext) => GestureDetector(
+        onTap: () => onTap(anchorContext),
+        child: Container(
+          width: double.infinity,
+          height: double.infinity,
+          decoration: BoxDecoration(
+            color: hasImage ? Colors.grey[100] : Colors.grey[200],
+            borderRadius: BorderRadius.circular(healthDp(context, 12)),
+            border: Border.all(
+              color: hasImage ? Colors.grey[300]! : Colors.grey[200]!,
+              width: healthDp(context, 1),
+            ),
           ),
-        ),
-        child: hasImage
-            ? Stack(
-                children: [
-                  // 이미지 표시
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(healthDp(context, 12)),
-                    child: kIsWeb
-                        ? Image.network(
-                            imagePath,
-                            width: double.infinity,
-                            height: double.infinity,
-                            fit: BoxFit.contain,
-                            errorBuilder: (context, error, stackTrace) {
-                              return _buildImagePlaceholder(label);
-                            },
-                          )
-                        : Image.file(
-                            File(imagePath),
-                            width: double.infinity,
-                            height: double.infinity,
-                            fit: BoxFit.contain,
-                            errorBuilder: (context, error, stackTrace) {
-                              return _buildImagePlaceholder(label);
-                            },
+          child: hasImage
+              ? Stack(
+                  children: [
+                    // 이미지 표시
+                    ClipRRect(
+                      borderRadius:
+                          BorderRadius.circular(healthDp(context, 12)),
+                      child: (networkUrl != null || blobUrl != null)
+                          ? Image.network(
+                              networkUrl ?? blobUrl!,
+                              width: double.infinity,
+                              height: double.infinity,
+                              fit: BoxFit.contain,
+                              errorBuilder: (context, error, stackTrace) {
+                                return _buildImagePlaceholder(label);
+                              },
+                            )
+                          : Image.file(
+                              File(localPath!),
+                              width: double.infinity,
+                              height: double.infinity,
+                              fit: BoxFit.contain,
+                              errorBuilder: (context, error, stackTrace) {
+                                return _buildImagePlaceholder(label);
+                              },
+                            ),
+                    ),
+                    // 삭제 버튼
+                    Positioned(
+                      top: healthDp(context, 4),
+                      right: healthDp(context, 4),
+                      child: GestureDetector(
+                        onTap: () => _deleteImage(raw!),
+                        child: Container(
+                          padding: EdgeInsets.all(healthDp(context, 4)),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.6),
+                            shape: BoxShape.circle,
                           ),
-                  ),
-                  // 삭제 버튼
-                  Positioned(
-                    top: healthDp(context, 4),
-                    right: healthDp(context, 4),
-                    child: GestureDetector(
-                      onTap: () => _deleteImage(imagePath),
-                      child: Container(
-                        padding: EdgeInsets.all(healthDp(context, 4)),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.6),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.close,
-                          color: Colors.white,
-                          size: healthDp(context, 16),
+                          child: Icon(
+                            Icons.close,
+                            color: Colors.white,
+                            size: healthDp(context, 16),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ],
-              )
-            : _buildImagePlaceholder(label),
+                  ],
+                )
+              : _buildImagePlaceholder(label),
+        ),
       ),
     );
   }
@@ -1809,67 +1838,71 @@ class _WeightListScreenState extends State<WeightListScreen> {
   }
 
   // 이미지 선택 및 업로드
-  Future<void> _selectImage(String type) async {
+  void _selectImage(String type, BuildContext anchorContext) {
     try {
-      await ImagePickerUtils.showImageSourceDialog(context,
-          (XFile? image) async {
-        if (image != null) {
-          String? imageUrl;
+      ImagePickerUtils.showPhotoSourceDropdown(
+        context: context,
+        anchorContext: anchorContext,
+        onImageSelected: (XFile? image) async {
+          if (image != null) {
+            String? imageUrl;
 
-          if (kIsWeb) {
-            // 웹에서는 XFile을 직접 전달
-            try {
-              imageUrl = await WeightRepository.uploadImage(image);
-            } catch (e) {
-              // 업로드 실패 시 blob URL 사용 (임시)
-              imageUrl = image.path;
-            }
-          } else {
-            // 모바일에서는 실제 파일 업로드
-            final File imageFile = File(image.path);
-            imageUrl = await WeightRepository.uploadImage(imageFile);
-          }
-
-          if (imageUrl != null) {
-            // 기존 이미지가 있으면 삭제 (선택사항)
-            if (type == 'front' && selectedRecord?.frontImagePath != null) {
-              // TODO: 기존 이미지 파일 삭제
-            } else if (type == 'side' &&
-                selectedRecord?.sideImagePath != null) {
-              // TODO: 기존 이미지 파일 삭제
-            }
-
-            // 데이터베이스 업데이트
-            if (selectedRecord != null) {
-              final updatedRecord = selectedRecord!.copyWith(
-                frontImagePath:
-                    type == 'front' ? imageUrl : selectedRecord!.frontImagePath,
-                sideImagePath:
-                    type == 'side' ? imageUrl : selectedRecord!.sideImagePath,
-              );
-
-              await WeightRepository.updateWeightRecord(updatedRecord);
-              _loadData(); // 데이터 새로고침
+            if (kIsWeb) {
+              // 웹에서는 XFile을 직접 전달
+              try {
+                imageUrl = await WeightRepository.uploadImage(image);
+              } catch (e) {
+                // 업로드 실패 시 blob URL 사용 (임시)
+                imageUrl = image.path;
+              }
             } else {
-              // 새 기록 생성 (체중 입력 화면으로 이동)
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => WeightInputScreen(
-                    recordContextDate: selectedDate,
-                    initialImages: {
-                      'front': type == 'front' ? imageUrl : null,
-                      'side': type == 'side' ? imageUrl : null,
-                    },
+              // 모바일에서는 실제 파일 업로드
+              final File imageFile = File(image.path);
+              imageUrl = await WeightRepository.uploadImage(imageFile);
+            }
+
+            if (imageUrl != null) {
+              // 기존 이미지가 있으면 삭제 (선택사항)
+              if (type == 'front' && selectedRecord?.frontImagePath != null) {
+                // TODO: 기존 이미지 파일 삭제
+              } else if (type == 'side' &&
+                  selectedRecord?.sideImagePath != null) {
+                // TODO: 기존 이미지 파일 삭제
+              }
+
+              // 데이터베이스 업데이트
+              if (selectedRecord != null) {
+                final updatedRecord = selectedRecord!.copyWith(
+                  frontImagePath: type == 'front'
+                      ? imageUrl
+                      : selectedRecord!.frontImagePath,
+                  sideImagePath:
+                      type == 'side' ? imageUrl : selectedRecord!.sideImagePath,
+                );
+
+                await WeightRepository.updateWeightRecord(updatedRecord);
+                notifyHealthDataChanged();
+                _loadData(); // 데이터 새로고침
+              } else {
+                // 새 기록 생성 (체중 입력 화면으로 이동)
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => WeightInputScreen(
+                      recordContextDate: selectedDate,
+                      initialImages: {
+                        'front': type == 'front' ? imageUrl : null,
+                        'side': type == 'side' ? imageUrl : null,
+                      },
+                    ),
                   ),
-                ),
-              );
+                );
+              }
             }
           }
-        }
-      });
-    } catch (e) {
-    }
+        },
+      );
+    } catch (e) {}
   }
 
   // 이미지 삭제
@@ -1909,10 +1942,10 @@ class _WeightListScreenState extends State<WeightListScreen> {
         );
 
         await WeightRepository.updateWeightRecord(updatedRecord);
+        notifyHealthDataChanged();
         _loadData(); // 데이터 새로고침
       }
-    } catch (e) {
-    }
+    } catch (e) {}
   }
 
   // 차트 클릭 핸들러 (차트의 점 클릭 감지)
@@ -2368,15 +2401,15 @@ class _WeightListScreenState extends State<WeightListScreen> {
 
     if (selectedRecord == null || !mounted) return;
 
-    final result = await Navigator.push(
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => WeightInputScreen(record: selectedRecord),
       ),
     );
 
-    if (result == true && mounted) {
-      _loadData();
+    if (mounted) {
+      await _loadData();
     }
   }
 
@@ -2603,9 +2636,7 @@ class WeightChartPainter extends CustomPainter {
         final midY = (yTop + yBottom) / 2;
         final barH = math.max(yBottom - yTop, m.minBarHeight);
         final isSel = selectedPointIndex != null && selectedPointIndex == i;
-        final wBar = isSel
-            ? barWidth + m.barWidthSelectedExtra
-            : barWidth;
+        final wBar = isSel ? barWidth + m.barWidthSelectedExtra : barWidth;
         final rect = RRect.fromRectAndRadius(
           Rect.fromCenter(
             center: Offset(xCenter, midY),

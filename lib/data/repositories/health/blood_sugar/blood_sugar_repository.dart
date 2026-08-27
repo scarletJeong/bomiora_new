@@ -5,16 +5,20 @@ import '../../../models/health/blood_sugar/blood_sugar_record_model.dart';
 
 class BloodSugarRepository {
   // 사용자의 모든 혈당 기록 가져오기 (최적화: 한 번에 모든 데이터 로드)
-  static Future<List<BloodSugarRecord>> getBloodSugarRecords(String userId) async {
+  static Future<List<BloodSugarRecord>> getBloodSugarRecords(
+      String userId) async {
     try {
-      final response = await ApiClient.get('${ApiEndpoints.bloodSugarRecords}?mb_id=$userId');
+      final response = await ApiClient.get(
+          '${ApiEndpoints.bloodSugarRecords}?mb_id=$userId');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
 
         if (data['success'] == true && data['data'] != null) {
           final List<dynamic> records = data['data'];
-          return records.map((json) => BloodSugarRecord.fromJson(json)).toList();
+          return records
+              .map((json) => BloodSugarRecord.fromJson(json))
+              .toList();
         } else if (data is List) {
           return data.map((json) => BloodSugarRecord.fromJson(json)).toList();
         }
@@ -26,9 +30,11 @@ class BloodSugarRepository {
     }
   }
 
-  static Future<BloodSugarRecord?> getLatestBloodSugarRecord(String userId) async {
+  static Future<BloodSugarRecord?> getLatestBloodSugarRecord(
+      String userId) async {
     try {
-      final response = await ApiClient.get('${ApiEndpoints.bloodSugarRecords}/latest?mb_id=$userId');
+      final response = await ApiClient.get(
+          '${ApiEndpoints.bloodSugarRecords}/latest?mb_id=$userId');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -84,10 +90,15 @@ class BloodSugarRepository {
     }
   }
 
-  static Future<bool> deleteBloodSugarRecord(int recordId) async {
+  static Future<bool> deleteBloodSugarRecord(
+    int recordId, {
+    String? mbId,
+  }) async {
     try {
+      final id = mbId?.trim() ?? '';
+      final query = id.isEmpty ? '' : '?mb_id=${Uri.encodeQueryComponent(id)}';
       final response = await ApiClient.delete(
-        '${ApiEndpoints.bloodSugarRecords}/$recordId',
+        '${ApiEndpoints.bloodSugarRecords}/$recordId$query',
       );
 
       if (response.statusCode == 200) {
@@ -116,7 +127,9 @@ class BloodSugarRepository {
 
         if (data['success'] == true && data['data'] != null) {
           final List<dynamic> records = data['data'];
-          return records.map((json) => BloodSugarRecord.fromJson(json)).toList();
+          return records
+              .map((json) => BloodSugarRecord.fromJson(json))
+              .toList();
         }
       }
 

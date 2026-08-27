@@ -159,34 +159,41 @@ class TodayMealSection extends StatelessWidget {
             ),
             SizedBox(height: healthDp(context, 14)),
             Row(
-              mainAxisAlignment: MainAxisAlignment.start,
               children: [
-                _TodayMealItemCard(
-                  key: const ValueKey('dashboard-meal-breakfast'),
-                  mealName: '아침',
-                  calories: mealCalories['Breakfast'] ?? 0,
-                  imagePaths: mealImagePaths['Breakfast'] ?? const [],
+                Expanded(
+                  child: _TodayMealItemCard(
+                    key: const ValueKey('dashboard-meal-breakfast'),
+                    mealName: '아침',
+                    calories: mealCalories['Breakfast'] ?? 0,
+                    imagePaths: mealImagePaths['Breakfast'] ?? const [],
+                  ),
                 ),
                 SizedBox(width: healthDp(context, 6)),
-                _TodayMealItemCard(
-                  key: const ValueKey('dashboard-meal-lunch'),
-                  mealName: '점심',
-                  calories: mealCalories['Lunch'] ?? 0,
-                  imagePaths: mealImagePaths['Lunch'] ?? const [],
+                Expanded(
+                  child: _TodayMealItemCard(
+                    key: const ValueKey('dashboard-meal-lunch'),
+                    mealName: '점심',
+                    calories: mealCalories['Lunch'] ?? 0,
+                    imagePaths: mealImagePaths['Lunch'] ?? const [],
+                  ),
                 ),
                 SizedBox(width: healthDp(context, 6)),
-                _TodayMealItemCard(
-                  key: const ValueKey('dashboard-meal-dinner'),
-                  mealName: '저녁',
-                  calories: mealCalories['Dinner'] ?? 0,
-                  imagePaths: mealImagePaths['Dinner'] ?? const [],
+                Expanded(
+                  child: _TodayMealItemCard(
+                    key: const ValueKey('dashboard-meal-dinner'),
+                    mealName: '저녁',
+                    calories: mealCalories['Dinner'] ?? 0,
+                    imagePaths: mealImagePaths['Dinner'] ?? const [],
+                  ),
                 ),
                 SizedBox(width: healthDp(context, 6)),
-                _TodayMealItemCard(
-                  key: const ValueKey('dashboard-meal-snack'),
-                  mealName: '간식',
-                  calories: mealCalories['Snack'] ?? 0,
-                  imagePaths: mealImagePaths['Snack'] ?? const [],
+                Expanded(
+                  child: _TodayMealItemCard(
+                    key: const ValueKey('dashboard-meal-snack'),
+                    mealName: '간식',
+                    calories: mealCalories['Snack'] ?? 0,
+                    imagePaths: mealImagePaths['Snack'] ?? const [],
+                  ),
                 ),
               ],
             ),
@@ -332,9 +339,8 @@ class _TodayMealItemCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final radius = BorderRadius.circular(healthDp(context, 10));
-    return SizedBox(
-      width: healthDp(context, 75),
-      height: healthDp(context, 96),
+    return AspectRatio(
+      aspectRatio: 75 / 96,
       child: ClipRRect(
         borderRadius: radius,
         child: Container(

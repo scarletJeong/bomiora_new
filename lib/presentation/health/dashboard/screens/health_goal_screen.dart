@@ -3,7 +3,9 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../data/repositories/health/dashboard/health_dashboard_repository.dart';
 import '../../../../data/repositories/health/health_goal/health_goal_repository.dart';
+import '../../../../core/health/health_refresh_bus.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../health_common/health_responsive_scale.dart';
@@ -152,6 +154,8 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
     setState(() => _submitting = false);
 
     if (result.success) {
+      HealthDashboardRepository.invalidate(mbId);
+      notifyHealthDataChanged();
       Navigator.pop(context, true);
     }
   }

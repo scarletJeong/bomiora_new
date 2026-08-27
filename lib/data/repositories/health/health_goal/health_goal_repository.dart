@@ -7,8 +7,36 @@ import '../../../../core/network/api_endpoints.dart';
 import '../../../models/health/health_goal_record_model.dart';
 
 class HealthGoalRepository {
+  static const Duration _cacheTtl = Duration(seconds: 30);
+  static final Map<String, HealthGoalRecordModel?> _cache = {};
+  static final Map<String, DateTime> _cacheAt = {};
+  static final Map<String, Future<HealthGoalRecordModel?>> _inFlight = {};
+
   /// GET 최신 목표 1건 (`mb_id` 기준)
   static Future<HealthGoalRecordModel?> fetchLatest(String mbId) async {
+    final id = mbId.trim();
+    final cachedAt = _cacheAt[id];
+    if (cachedAt != null &&
+        DateTime.now().difference(cachedAt) < _cacheTtl &&
+        _cache.containsKey(id)) {
+      return _cache[id];
+    }
+    final pending = _inFlight[id];
+    if (pending != null) return pending;
+
+    final request = _fetchLatest(id);
+    _inFlight[id] = request;
+    try {
+      final goal = await request;
+      _cache[id] = goal;
+      _cacheAt[id] = DateTime.now();
+      return goal;
+    } finally {
+      _inFlight.remove(id);
+    }
+  }
+
+  static Future<HealthGoalRecordModel?> _fetchLatest(String mbId) async {
     try {
       final response = await ApiClient.get(ApiEndpoints.healthGoalLatest(mbId));
       if (response.statusCode != 200) return null;
@@ -48,10 +76,9 @@ class HealthGoalRepository {
       );
 
       final body = json.decode(response.body) as Map<String, dynamic>?;
-      final ok =
-          (response.statusCode == 200 || response.statusCode == 201) &&
-              body != null &&
-              body['success'] == true;
+      final ok = (response.statusCode == 200 || response.statusCode == 201) &&
+          body != null &&
+          body['success'] == true;
 
       if (!ok) {
         final msg = body?['message']?.toString() ?? '목표설정 저장에 실패했습니다.';
@@ -64,6 +91,13 @@ class HealthGoalRepository {
         weightRecordId = data['weight_record_id'] is int
             ? data['weight_record_id'] as int
             : int.tryParse('${data['weight_record_id']}');
+        final goal = data['goal'];
+        if (goal is Map) {
+          _cache[mbId.trim()] = HealthGoalRecordModel.fromJson(
+            Map<String, dynamic>.from(goal),
+          );
+          _cacheAt[mbId.trim()] = DateTime.now();
+        }
       }
 
       return HealthGoalRegisterResult(

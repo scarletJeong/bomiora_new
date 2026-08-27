@@ -20,6 +20,7 @@ import '../../health_common/widgets/health_list_edit_button.dart';
 import '../../../../data/models/health/blood_pressure/blood_pressure_record_model.dart';
 import '../../../../data/models/user/user_model.dart';
 import '../../../../data/repositories/health/blood_pressure/blood_pressure_repository.dart';
+import '../../../../core/health/health_refresh_listener.dart';
 import '../../../../data/services/auth_service.dart';
 import 'blood_pressure_input_screen.dart';
 import '../widgets/blood_pressure_chart_section.dart';
@@ -35,7 +36,8 @@ class BloodPressureListScreen extends StatefulWidget {
       _BloodPressureListScreenState();
 }
 
-class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
+class _BloodPressureListScreenState extends State<BloodPressureListScreen>
+    with HealthRefreshListener {
   String selectedPeriod = '일';
   UserModel? currentUser;
   List<BloodPressureRecord> allRecords = []; // 전체 혈압 기록
@@ -91,8 +93,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
     final startHour = (timeOffset * maxStartHour)
         .clamp(0.0, maxStartHour.toDouble())
         .roundToDouble();
-    final endHour =
-        (startHour + slots - 1.0).clamp(slots - 1.0, 24.0);
+    final endHour = (startHour + slots - 1.0).clamp(slots - 1.0, 24.0);
 
     return {'min': startHour, 'max': endHour};
   }
@@ -197,7 +198,8 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
     final maxH = hours.reduce(math.max);
     final low = (maxH - (slots - 1)).clamp(0, maxStart);
     final high = minH.clamp(0, maxStart);
-    final startTarget = low <= high ? low : (maxH - (slots - 1)).clamp(0, maxStart);
+    final startTarget =
+        low <= high ? low : (maxH - (slots - 1)).clamp(0, maxStart);
     timeOffset = _clampDragOffset(
       startTarget / maxStart,
       forExpandedChart: forExpandedChart,
@@ -492,6 +494,11 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
     _loadData();
   }
 
+  @override
+  void onHealthDataChanged() {
+    _loadData();
+  }
+
   // 주/월 데이터 로드 (메모리에서 필터링)
   void _loadPeriodData() {
     // 이미 allRecords에 모든 데이터가 있으므로 UI만 업데이트
@@ -695,7 +702,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
                             fontWeight: FontWeight.w500,
                           ),
                           onPressed: () async {
-                            final result = await Navigator.push(
+                            await Navigator.push(
                               context,
                               MaterialPageRoute(
                                 builder: (context) => BloodPressureInputScreen(
@@ -703,10 +710,6 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
                                 ),
                               ),
                             );
-
-                            if (result == true) {
-                              _loadData();
-                            }
                           },
                           backgroundColor: const Color(0xFFFF5A8D),
                         ),
@@ -782,9 +785,11 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
               SizedBox(width: healthDp(context, 10)),
               SizedBox(
                 height: healthDp(context, 22),
-                child: HealthListEditButton(
-                  onTap: _openSelectedRecordEditor,
-                ),
+                child: selectedRecord == null
+                    ? const SizedBox.shrink()
+                    : HealthListEditButton(
+                        onTap: _openSelectedRecordEditor,
+                      ),
               ),
             ],
           ),
@@ -1565,18 +1570,13 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
 
     if (selected == null || !mounted) return;
 
-    final result = await Navigator.push(
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => BloodPressureInputScreen(record: selected),
       ),
     );
-
-    if (result == true && mounted) {
-      _loadData();
-    }
   }
-
 }
 
 class _PressureLegend extends StatelessWidget {

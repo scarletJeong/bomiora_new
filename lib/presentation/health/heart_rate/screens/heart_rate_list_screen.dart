@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import '../../../../data/models/health/heart_rate/heart_rate_record_model.dart';
 import '../../../../data/models/user/user_model.dart';
 import '../../../../data/repositories/health/heart_rate/heart_rate_repository.dart';
+import '../../../../core/health/health_refresh_listener.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../common/chart_layout.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
@@ -37,7 +38,8 @@ class HeartRateListScreen extends StatefulWidget {
   State<HeartRateListScreen> createState() => _HeartRateListScreenState();
 }
 
-class _HeartRateListScreenState extends State<HeartRateListScreen> {
+class _HeartRateListScreenState extends State<HeartRateListScreen>
+    with HealthRefreshListener {
   String selectedPeriod = '일';
   late DateTime selectedDate;
 
@@ -69,6 +71,11 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
     if (_isToday()) {
       timeOffset = _dailyOffsetForToday();
     }
+    _loadData();
+  }
+
+  @override
+  void onHealthDataChanged() {
     _loadData();
   }
 
@@ -251,8 +258,7 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
     final slots = healthDailyHourSlotCount(forExpandedChart);
     final startHour =
         (timeOffset * maxStartHour).clamp(0.0, maxStartHour.toDouble());
-    final endHour =
-        (startHour + slots - 1.0).clamp(slots - 1.0, 24.0);
+    final endHour = (startHour + slots - 1.0).clamp(slots - 1.0, 24.0);
     return {'min': startHour, 'max': endHour};
   }
 
@@ -561,113 +567,116 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                        HealthDateSelector(
-                          selectedDate: selectedDate,
-                          onDateChanged: (newDate) {
-                            _setChartState(() {
-                              selectedDate = newDate;
-                              _recordsCacheDateKey = null;
-                              _recordsCacheForDate = null;
-                              selectedChartPointIndex = null;
-                              tooltipPosition = null;
-                              _dailyChartTooltip = null;
-                              if (_isToday()) {
-                                timeOffset = _dailyOffsetForToday();
-                              } else {
-                                timeOffset = 0.0;
-                              }
-                            });
-                          },
-                          monthTextColor: const Color(0xFF898686),
-                          selectedTextColor: const Color(0xFFFF5A8D),
-                          unselectedTextColor: const Color(0xFFB7B7B7),
-                          dividerColor: const Color(0xFFD2D2D2),
-                          iconColor: const Color(0xFF898686),
-                        ),
-                        SizedBox(height: healthDp(context, 20)),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _summaryCard(context, '최저 심박수', minBpm),
-                            ),
-                            SizedBox(width: healthDp(context, 10)),
-                            Expanded(
-                              child: _summaryCard(context, '최고 심박수', maxBpm),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: healthDp(context, 20)),
-                        _buildChart(
-                          chartHeight: healthDp(
-                            context,
-                            ChartConstants.weightChartHeight,
-                          ),
-                        ),
-                        SizedBox(height: healthDp(context, 20)),
-                        Row(
-                          children: [
-                            const _HeartLegend(
-                              color: Color(0xFFFF8686),
-                              label: '운동',
-                            ),
-                            SizedBox(width: healthDp(context, 10)),
-                            const _HeartLegend(
-                              color: Color(0xFF86B0FF),
-                              label: '일상',
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: healthDp(context, 20)),
-                        ...todayRecords.reversed.map(_recordTile),
-                      ],
-                    ),
-                  ),
-                ),
-                    ),
-                    SafeArea(
-                      top: false,
-                      child: Padding(
-                        padding: EdgeInsets.fromLTRB(
-                          healthDp(context, 27),
-                          healthDp(context, 8),
-                          healthDp(context, 27),
-                          healthDp(context, 16),
-                        ),
-                        child: SizedBox(
-                          width: double.infinity,
-                          height: healthDp(context, 38),
-                          child: ElevatedButton(
-                            onPressed: _loadData,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFFF5A8D),
-                              foregroundColor: Colors.white,
-                              padding: EdgeInsets.symmetric(
-                                vertical: healthDp(context, 10),
+                              HealthDateSelector(
+                                selectedDate: selectedDate,
+                                onDateChanged: (newDate) {
+                                  _setChartState(() {
+                                    selectedDate = newDate;
+                                    _recordsCacheDateKey = null;
+                                    _recordsCacheForDate = null;
+                                    selectedChartPointIndex = null;
+                                    tooltipPosition = null;
+                                    _dailyChartTooltip = null;
+                                    if (_isToday()) {
+                                      timeOffset = _dailyOffsetForToday();
+                                    } else {
+                                      timeOffset = 0.0;
+                                    }
+                                  });
+                                },
+                                monthTextColor: const Color(0xFF898686),
+                                selectedTextColor: const Color(0xFFFF5A8D),
+                                unselectedTextColor: const Color(0xFFB7B7B7),
+                                dividerColor: const Color(0xFFD2D2D2),
+                                iconColor: const Color(0xFF898686),
                               ),
-                              minimumSize: Size(
-                                double.infinity,
-                                healthDp(context, 38),
+                              SizedBox(height: healthDp(context, 20)),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child:
+                                        _summaryCard(context, '최저 심박수', minBpm),
+                                  ),
+                                  SizedBox(width: healthDp(context, 10)),
+                                  Expanded(
+                                    child:
+                                        _summaryCard(context, '최고 심박수', maxBpm),
+                                  ),
+                                ],
                               ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(
-                                  healthDp(context, 10),
+                              SizedBox(height: healthDp(context, 20)),
+                              _buildChart(
+                                chartHeight: healthDp(
+                                  context,
+                                  ChartConstants.weightChartHeight,
                                 ),
                               ),
-                              elevation: 0,
-                            ),
-                            child: Text(
-                              '동기화 하기',
-                              textScaler: TextScaler.noScaling,
-                              style: TextStyle(
-                                fontFamily: 'Gmarket Sans TTF',
-                                fontSize: healthSp(context, 16),
-                                fontWeight: FontWeight.w500,
+                              SizedBox(height: healthDp(context, 20)),
+                              Row(
+                                children: [
+                                  const _HeartLegend(
+                                    color: Color(0xFFFF8686),
+                                    label: '운동',
+                                  ),
+                                  SizedBox(width: healthDp(context, 10)),
+                                  const _HeartLegend(
+                                    color: Color(0xFF86B0FF),
+                                    label: '일상',
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: healthDp(context, 20)),
+                              ...todayRecords.reversed.map(_recordTile),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (!kIsWeb)
+                      SafeArea(
+                        top: false,
+                        child: Padding(
+                          padding: EdgeInsets.fromLTRB(
+                            healthDp(context, 27),
+                            healthDp(context, 8),
+                            healthDp(context, 27),
+                            healthDp(context, 16),
+                          ),
+                          child: SizedBox(
+                            width: double.infinity,
+                            height: healthDp(context, 38),
+                            child: ElevatedButton(
+                              onPressed: _loadData,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFFF5A8D),
+                                foregroundColor: Colors.white,
+                                padding: EdgeInsets.symmetric(
+                                  vertical: healthDp(context, 10),
+                                ),
+                                minimumSize: Size(
+                                  double.infinity,
+                                  healthDp(context, 38),
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(
+                                    healthDp(context, 10),
+                                  ),
+                                ),
+                                elevation: 0,
+                              ),
+                              child: Text(
+                                '동기화 하기',
+                                textScaler: TextScaler.noScaling,
+                                style: TextStyle(
+                                  fontFamily: 'Gmarket Sans TTF',
+                                  fontSize: healthSp(context, 16),
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
                             ),
                           ),
                         ),
                       ),
-                    ),
                   ],
                 ),
         ),
@@ -682,75 +691,75 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
     return SizedBox(
       height: healthDp(context, 83.33),
       child: Container(
-      padding: EdgeInsets.fromLTRB(hPad, vPad, hPad, vPad),
-      decoration: ShapeDecoration(
-        shape: RoundedRectangleBorder(
-          side: BorderSide(
-            width: healthDp(context, 0.5),
-            color: const Color(0x7FD2D2D2),
+        padding: EdgeInsets.fromLTRB(hPad, vPad, hPad, vPad),
+        decoration: ShapeDecoration(
+          shape: RoundedRectangleBorder(
+            side: BorderSide(
+              width: healthDp(context, 0.5),
+              color: const Color(0x7FD2D2D2),
+            ),
+            borderRadius: BorderRadius.circular(healthDp(context, 10)),
           ),
-          borderRadius: BorderRadius.circular(healthDp(context, 10)),
         ),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Text(
-            title,
-            textScaler: TextScaler.noScaling,
-            style: TextStyle(
-              color: const Color(0xFF1A1A1A),
-              fontSize: healthSp(context, 16),
-              height: 1.0,
-              fontFamily: 'Gmarket Sans TTF',
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          SizedBox(height: healthDp(context, 8.33)),
-          RichText(
-            textScaler: TextScaler.noScaling,
-            text: TextSpan(
-              children: [
-                TextSpan(
-                  text: value,
-                  style: TextStyle(
-                    color: Colors.black,
-                    fontSize: healthSp(context, 20.83),
-                    height: 1.0,
-                    fontFamily: 'Gmarket Sans TTF',
-                    fontWeight: hasData ? FontWeight.w700 : FontWeight.w300,
-                  ),
-                ),
-                TextSpan(
-                  text: ' bpm',
-                  style: TextStyle(
-                    color: const Color(0xFF9C9393),
-                    fontSize: healthSp(context, 12),
-                    height: 1.0,
-                    fontFamily: 'Gmarket Sans TTF',
-                    fontWeight: FontWeight.w300,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (!hasData) ...[
-            SizedBox(height: healthDp(context, 4)),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
             Text(
-              '수치를 입력하세요',
+              title,
               textScaler: TextScaler.noScaling,
               style: TextStyle(
                 color: const Color(0xFF1A1A1A),
-                fontSize: healthSp(context, 8),
+                fontSize: healthSp(context, 16),
                 height: 1.0,
                 fontFamily: 'Gmarket Sans TTF',
-                fontWeight: FontWeight.w300,
+                fontWeight: FontWeight.w700,
               ),
             ),
+            SizedBox(height: healthDp(context, 8.33)),
+            RichText(
+              textScaler: TextScaler.noScaling,
+              text: TextSpan(
+                children: [
+                  TextSpan(
+                    text: value,
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: healthSp(context, 20.83),
+                      height: 1.0,
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: hasData ? FontWeight.w700 : FontWeight.w300,
+                    ),
+                  ),
+                  TextSpan(
+                    text: ' bpm',
+                    style: TextStyle(
+                      color: const Color(0xFF9C9393),
+                      fontSize: healthSp(context, 12),
+                      height: 1.0,
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w300,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (!hasData) ...[
+              SizedBox(height: healthDp(context, 4)),
+              Text(
+                '수치를 입력하세요',
+                textScaler: TextScaler.noScaling,
+                style: TextStyle(
+                  color: const Color(0xFF1A1A1A),
+                  fontSize: healthSp(context, 8),
+                  height: 1.0,
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w300,
+                ),
+              ),
+            ],
           ],
-        ],
-      ),
+        ),
       ),
     );
   }
@@ -1056,8 +1065,7 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
                                             details.localPosition,
                                             Size(w, h),
                                             dailyVisuals,
-                                            forExpandedChart:
-                                                forExpandedChart,
+                                            forExpandedChart: forExpandedChart,
                                           );
                                         },
                                         onPanStart: (selectedPeriod == '일' ||

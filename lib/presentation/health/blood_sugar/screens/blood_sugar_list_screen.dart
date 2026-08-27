@@ -16,6 +16,7 @@ import '../../health_common/widgets/health_list_edit_button.dart';
 import '../../../../data/models/health/blood_sugar/blood_sugar_record_model.dart';
 import '../../../../data/models/user/user_model.dart';
 import '../../../../data/repositories/health/blood_sugar/blood_sugar_repository.dart';
+import '../../../../core/health/health_refresh_listener.dart';
 import '../../../../data/services/auth_service.dart';
 import '../widgets/blood_sugar_chart_section.dart';
 import 'blood_sugar_input_screen.dart';
@@ -29,7 +30,8 @@ class BloodSugarListScreen extends StatefulWidget {
   State<BloodSugarListScreen> createState() => _BloodSugarListScreenState();
 }
 
-class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
+class _BloodSugarListScreenState extends State<BloodSugarListScreen>
+    with HealthRefreshListener {
   String selectedPeriod = '일';
   UserModel? currentUser;
   List<BloodSugarRecord> allRecords = []; // 전체 혈당 기록
@@ -96,8 +98,7 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
     final startHour = ((offset ?? timeOffset) * maxStartHour)
         .clamp(0.0, maxStartHour.toDouble())
         .roundToDouble();
-    final endHour =
-        (startHour + slots - 1.0).clamp(slots - 1.0, 24.0);
+    final endHour = (startHour + slots - 1.0).clamp(slots - 1.0, 24.0);
 
     return {'min': startHour, 'max': endHour};
   }
@@ -463,6 +464,11 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
     _loadData();
   }
 
+  @override
+  void onHealthDataChanged() {
+    _loadData();
+  }
+
   // 주/월 데이터 로드 (메모리에서 필터링)
   void _loadPeriodData() {
     // 이미 allRecords에 모든 데이터가 있으므로 UI만 업데이트
@@ -721,7 +727,7 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
                             fontWeight: FontWeight.w500,
                           ),
                           onPressed: () async {
-                            final result = await Navigator.push(
+                            await Navigator.push(
                               context,
                               MaterialPageRoute(
                                 builder: (context) => BloodSugarInputScreen(
@@ -729,10 +735,6 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
                                 ),
                               ),
                             );
-
-                            if (result == true || result == null) {
-                              await _loadData();
-                            }
                           },
                           backgroundColor: const Color(0xFFFF5A8D),
                         ),
@@ -809,9 +811,10 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
                 ),
               ),
               SizedBox(width: healthDp(context, 10)),
-              HealthListEditButton(
-                onTap: _openSelectedSugarRecordEditor,
-              ),
+              if (_recordsForDate(selectedDate).isNotEmpty)
+                HealthListEditButton(
+                  onTap: _openSelectedSugarRecordEditor,
+                ),
             ],
           ),
         ],
@@ -1208,16 +1211,12 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
 
     if (selected == null || !mounted) return;
 
-    final result = await Navigator.push(
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => BloodSugarInputScreen(record: selected),
       ),
     );
-
-    if ((result == true || result == null) && mounted) {
-      await _loadData();
-    }
   }
 
   /// 바텀시트 측정 유형 배지 너비 — 3글자(취침전) 기준, 식후·공복 등 2글자도 동일 폭.
@@ -1253,7 +1252,6 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
         return const Color(0xFF71D375);
     }
   }
-
 }
 
 class _SugarLegend extends StatelessWidget {

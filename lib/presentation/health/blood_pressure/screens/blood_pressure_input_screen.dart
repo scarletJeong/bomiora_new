@@ -10,12 +10,15 @@ import '../../../common/widgets/login_required_dialog.dart';
 import '../../../../data/models/health/blood_pressure/blood_pressure_record_model.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/repositories/health/blood_pressure/blood_pressure_repository.dart';
+import '../../../../data/repositories/health/dashboard/health_dashboard_repository.dart';
+import '../../../../core/health/health_refresh_bus.dart';
 
 class BloodPressureInputScreen extends StatefulWidget {
   final BloodPressureRecord? record; // null이면 새 기록, 있으면 수정
   final DateTime? recordContextDate;
 
-  const BloodPressureInputScreen({super.key, this.record, this.recordContextDate});
+  const BloodPressureInputScreen(
+      {super.key, this.record, this.recordContextDate});
 
   @override
   State<BloodPressureInputScreen> createState() =>
@@ -137,6 +140,8 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
 
       if (mounted) {
         if (success) {
+          HealthDashboardRepository.invalidate(user.id);
+          notifyHealthDataChanged();
           Navigator.pop(context, true); // 성공
         }
       }
@@ -180,10 +185,14 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
 
     try {
       final success = await BloodPressureRepository.deleteBloodPressureRecord(
-          widget.record!.id!);
+        widget.record!.id!,
+        mbId: widget.record!.mbId,
+      );
 
       if (mounted) {
         if (success) {
+          HealthDashboardRepository.invalidate(widget.record!.mbId);
+          notifyHealthDataChanged();
           Navigator.pop(context, true); // 성공
         }
       }
@@ -211,8 +220,7 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
       primaryTextTheme:
           baseTheme.primaryTextTheme.apply(fontFamily: 'Gmarket Sans TTF'),
     );
-    final textScale =
-        healthTextScaleByWidth(MediaQuery.of(context).size.width);
+    final textScale = healthTextScaleByWidth(MediaQuery.of(context).size.width);
 
     return Theme(
       data: gmarketTheme,
@@ -328,8 +336,7 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
     required VoidCallback? onTap,
     required bool isDisabled,
   }) {
-    final fieldFill =
-        isDisabled ? const Color(0xFFF2F2F2) : Colors.transparent;
+    final fieldFill = isDisabled ? const Color(0xFFF2F2F2) : Colors.transparent;
     final fieldBorder =
         isDisabled ? const Color(0xFFDADADA) : const Color(0x7FD2D2D2);
     final fieldText =

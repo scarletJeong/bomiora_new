@@ -26,6 +26,7 @@ class TodayHealthRecordSection extends StatelessWidget {
     super.key,
     required this.selectedDate,
     required this.onBeforeAction,
+    required this.onAfterReturn,
     required this.latestBloodSugarRecord,
     required this.latestBloodPressureRecord,
     required this.latestStepsRecord,
@@ -40,6 +41,7 @@ class TodayHealthRecordSection extends StatelessWidget {
 
   final DateTime selectedDate;
   final Future<bool> Function() onBeforeAction;
+  final VoidCallback onAfterReturn;
   final BloodSugarRecord? latestBloodSugarRecord;
   final BloodPressureRecord? latestBloodPressureRecord;
   final StepsRecord? latestStepsRecord;
@@ -138,7 +140,7 @@ class TodayHealthRecordSection extends StatelessWidget {
                             onMore: () async {
                               if (!await onBeforeAction()) return;
                               if (!context.mounted) return;
-                              Navigator.push(
+                              await Navigator.push(
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) => BloodSugarListScreen(
@@ -146,6 +148,7 @@ class TodayHealthRecordSection extends StatelessWidget {
                                   ),
                                 ),
                               );
+                              onAfterReturn();
                             },
                           ),
                           SizedBox(height: healthDp(context, 5)),
@@ -170,7 +173,7 @@ class TodayHealthRecordSection extends StatelessWidget {
                             onMore: () async {
                               if (!await onBeforeAction()) return;
                               if (!context.mounted) return;
-                              Navigator.push(
+                              await Navigator.push(
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) => BloodPressureListScreen(
@@ -178,6 +181,7 @@ class TodayHealthRecordSection extends StatelessWidget {
                                   ),
                                 ),
                               );
+                              onAfterReturn();
                             },
                           ),
                         ],
@@ -191,6 +195,7 @@ class TodayHealthRecordSection extends StatelessWidget {
                         dashboardLayout: true,
                         selectedDate: selectedDate,
                         onBeforeAction: onBeforeAction,
+                        onAfterReturn: onAfterReturn,
                         latestStepsRecord: latestStepsRecord,
                         latestHealthGoal: latestHealthGoal,
                         steps: steps,
@@ -233,7 +238,7 @@ class TodayHealthRecordSection extends StatelessWidget {
                         onMore: () async {
                           if (!await onBeforeAction()) return;
                           if (!context.mounted) return;
-                          Navigator.push(
+                          await Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (context) => HeartRateListScreen(
@@ -241,6 +246,7 @@ class TodayHealthRecordSection extends StatelessWidget {
                               ),
                             ),
                           );
+                          onAfterReturn();
                         },
                       ),
                     ),
@@ -273,7 +279,7 @@ class TodayHealthRecordSection extends StatelessWidget {
                         onMore: () async {
                           if (!await onBeforeAction()) return;
                           if (!context.mounted) return;
-                          Navigator.push(
+                          await Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (context) => MenstrualCycleInfoScreen(
@@ -281,6 +287,7 @@ class TodayHealthRecordSection extends StatelessWidget {
                               ),
                             ),
                           );
+                          onAfterReturn();
                         },
                       ),
                     ),
@@ -540,6 +547,7 @@ Widget _buildStepsCard(
   required bool dashboardLayout,
   required DateTime selectedDate,
   required Future<bool> Function() onBeforeAction,
+  required VoidCallback onAfterReturn,
   required StepsRecord? latestStepsRecord,
   required HealthGoalRecordModel? latestHealthGoal,
   required int steps,
@@ -560,12 +568,13 @@ Widget _buildStepsCard(
       onTap: () async {
         if (!await onBeforeAction()) return;
         if (!context.mounted) return;
-        Navigator.push(
+        await Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => StepsTodayScreen(initialDate: selectedDate),
           ),
         );
+        onAfterReturn();
       },
       child: Container(
         padding: EdgeInsets.all(pad),
@@ -629,12 +638,13 @@ Widget _buildStepsCard(
     onTap: () async {
       if (!await onBeforeAction()) return;
       if (!context.mounted) return;
-      Navigator.push(
+      await Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => StepsTodayScreen(initialDate: selectedDate),
         ),
       );
+      onAfterReturn();
     },
     child: Container(
       padding: EdgeInsets.all(pad),

@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../../../core/constants/app_assets.dart';
+import '../../../../core/health/health_refresh_listener.dart';
 import '../../../../core/utils/image_url_helper.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/appbar_menutap.dart';
@@ -13,14 +15,8 @@ import '../../../../data/models/health/blood_sugar/blood_sugar_record_model.dart
 import '../../../../data/models/health/menstrual_cycle/menstrual_cycle_model.dart';
 import '../../../../data/models/health/heart_rate/heart_rate_record_model.dart';
 import '../../../../data/models/health/steps/steps_record_model.dart';
-import '../../../../data/repositories/health/weight/weight_repository.dart';
-import '../../../../data/repositories/health/blood_pressure/blood_pressure_repository.dart';
-import '../../../../data/repositories/health/blood_sugar/blood_sugar_repository.dart';
-import '../../../../data/repositories/health/menstrual_cycle/menstrual_cycle_repository.dart';
-import '../../../../data/repositories/health/heart_rate/heart_rate_repository.dart';
-import '../../../../data/repositories/health/steps/steps_repository.dart';
+import '../../../../data/repositories/health/dashboard/health_dashboard_repository.dart';
 import '../../../../data/repositories/health/food/food_repository.dart';
-import '../../../../data/repositories/health/health_goal/health_goal_repository.dart';
 import '../../../../data/models/health/health_goal_record_model.dart';
 import '../../weight/screens/weight_list_screen.dart';
 import '../../weight/utils/weight_goal_progress.dart';
@@ -41,7 +37,8 @@ class HealthDashboardScreen extends StatefulWidget {
   State<HealthDashboardScreen> createState() => _HealthDashboardScreenState();
 }
 
-class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
+class _HealthDashboardScreenState extends State<HealthDashboardScreen>
+    with HealthRefreshListener {
   UserModel? currentUser;
   WeightRecord? latestWeightRecord;
   BloodPressureRecord? latestBloodPressureRecord;
@@ -90,6 +87,18 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
     _loadData();
   }
 
+  @override
+  void onHealthDataChanged() {
+    _loadData(showBlockingLoader: false);
+  }
+
+  Future<void> _reloadAfterChildRoute(Future<dynamic>? route) async {
+    await route;
+    if (mounted) {
+      await _loadData(showBlockingLoader: false);
+    }
+  }
+
   Future<void> _loadData({bool showBlockingLoader = true}) async {
     if (showBlockingLoader) {
       setState(() => isLoading = true);
@@ -135,29 +144,33 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
 
       final userId = user.id.toString();
 
-      final results = await Future.wait([
-        WeightRepository.getWeightRecords(userId)
-            .catchError((_) => <WeightRecord>[]),
-        BloodPressureRepository.getBloodPressureRecords(userId)
-            .catchError((_) => <BloodPressureRecord>[]),
-        BloodSugarRepository.getBloodSugarRecords(userId)
-            .catchError((_) => <BloodSugarRecord>[]),
-        HeartRateRepository.getHeartRateRecords(userId)
-            .catchError((_) => <HeartRateRecord>[]),
-        MenstrualCycleRepository.getLatestMenstrualCycleRecord(userId)
-            .catchError((_) => null),
-        StepsRepository.getStepsRecordByMbId(userId, selectedDate)
-            .catchError((_) => null),
-        HealthGoalRepository.fetchLatest(userId).catchError((_) => null),
+      final results = await Future.wait<dynamic>([
+        HealthDashboardRepository.fetchDashboard(
+          mbId: userId,
+          date: selectedDate,
+        ),
+        FoodRepository.getRecordsForDate(userId, selectedDate),
       ]);
+      final dashboard = results[0] as HealthDashboardPayload?;
 
-      final weightRecords = results[0] as List<WeightRecord>;
-      final bpRecords = results[1] as List<BloodPressureRecord>;
-      final sugarRecords = results[2] as List<BloodSugarRecord>;
-      final heartRateRecords = results[3] as List<HeartRateRecord>;
-      final menstrualCycleRecord = results[4] as MenstrualCycleRecord?;
-      final stepsRecord = results[5] as StepsRecord?;
-      final healthGoal = results[6] as HealthGoalRecordModel?;
+      final weightRecords = dashboard?.weightRecords ?? <WeightRecord>[];
+      final bpRecords =
+          dashboard?.bloodPressureRecords ?? <BloodPressureRecord>[];
+      final sugarRecords = dashboard?.bloodSugarRecords ?? <BloodSugarRecord>[];
+      final heartRateRecords =
+          dashboard?.heartRateRecords ?? <HeartRateRecord>[];
+      final menstrualCycleRecord = dashboard?.menstrualCycle;
+      final stepsRecord = dashboard?.steps;
+      final healthGoal = dashboard?.healthGoal;
+
+      final foodRecords = results[1] as List<FoodRecordSummary>;
+      unawaited(
+        HealthDashboardRepository.fetchDashboard(
+          mbId: userId,
+          date: selectedDate.subtract(const Duration(days: 1)),
+        ),
+      );
+
       // 선택한 날짜에 측정 기록이 있을 때만 사용 (다른 날의 최신 체중으로 채우지 않음)
       final WeightRecord? weightRecord = _latestOfDate(
         weightRecords,
@@ -167,10 +180,6 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
       final bloodSugarRecord = _latestOfDate(sugarRecords, (e) => e.measuredAt);
       final heartRateRecord =
           _latestOfDate(heartRateRecords, (e) => e.measuredAt);
-      final foodRecords = await FoodRepository.getRecordsForDate(
-        userId,
-        selectedDate,
-      );
 
       setState(() {
         currentUser = user;
@@ -319,8 +328,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                             children: [
                               SizedBox(height: topInset),
                               _buildHeaderSection(),
-                              SizedBox(
-                                  height: _headerToWhiteCardGap(context)),
+                              SizedBox(height: _headerToWhiteCardGap(context)),
                               Transform.translate(
                                 offset: const Offset(0, -36),
                                 child: Container(
@@ -351,8 +359,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                                           });
                                           _loadData();
                                         },
-                                        monthTextColor:
-                                            const Color(0xFF898686),
+                                        monthTextColor: const Color(0xFF898686),
                                         selectedTextColor:
                                             const Color(0xFFFF5A8D),
                                         unselectedTextColor:
@@ -360,11 +367,9 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                                         iconColor: const Color(0xFF898686),
                                         topGapBase: 10,
                                       ),
-                                      SizedBox(
-                                          height: healthDp(context, 14)),
+                                      SizedBox(height: healthDp(context, 14)),
                                       _buildBodyMetricsSection(),
-                                      SizedBox(
-                                          height: healthDp(context, 14)),
+                                      SizedBox(height: healthDp(context, 14)),
                                       TodayMealSection(
                                         consumedCalories: consumedCalories,
                                         targetCalories: targetCalories,
@@ -375,16 +380,23 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                                         mealCalories: mealCalories,
                                         mealImagePaths: mealImagePaths,
                                         selectedDate: selectedDate,
-                                        onBeforeAction: _ensureDashboardFeatureAccess,
+                                        onBeforeAction:
+                                            _ensureDashboardFeatureAccess,
                                         onAfterDietReturn: () {
                                           if (mounted) _loadData();
                                         },
                                       ),
-                                      SizedBox(
-                                          height: healthDp(context, 14)),
+                                      SizedBox(height: healthDp(context, 14)),
                                       TodayHealthRecordSection(
                                         selectedDate: selectedDate,
-                                        onBeforeAction: _ensureDashboardFeatureAccess,
+                                        onBeforeAction:
+                                            _ensureDashboardFeatureAccess,
+                                        onAfterReturn: () {
+                                          if (mounted) {
+                                            _loadData(
+                                                showBlockingLoader: false);
+                                          }
+                                        },
                                         latestBloodSugarRecord:
                                             latestBloodSugarRecord,
                                         latestBloodPressureRecord:
@@ -471,41 +483,19 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
         children: [
           Row(
             children: [
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Container(
-                    width: healthDp(context, 62),
-                    height: healthDp(context, 62),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white.withOpacity(0.35),
-                      border: Border.all(
-                        color: Colors.white,
-                        width: healthDp(context, 2),
-                      ),
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    child: _buildProfileAvatar(context),
+              Container(
+                width: healthDp(context, 62),
+                height: healthDp(context, 62),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withValues(alpha: 0.35),
+                  border: Border.all(
+                    color: Colors.white,
+                    width: healthDp(context, 2),
                   ),
-                  Positioned(
-                    right: -2,
-                    bottom: -2,
-                    child: Container(
-                      width: healthDp(context, 20),
-                      height: healthDp(context, 20),
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.add,
-                        size: healthDp(context, 14),
-                        color: const Color(0xFFFF5A8D),
-                      ),
-                    ),
-                  ),
-                ],
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: _buildProfileAvatar(context),
               ),
               SizedBox(width: healthDp(context, 10)),
               Expanded(
@@ -551,14 +541,12 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                     );
                     return;
                   }
-                  final saved = await Navigator.push<bool>(
+                  await Navigator.push<bool>(
                     context,
                     MaterialPageRoute(
                       builder: (context) => const HealthGoalScreen(),
                     ),
                   );
-                  if (!mounted) return;
-                  if (saved == true) _loadData();
                 },
                 style: OutlinedButton.styleFrom(
                   side: const BorderSide(color: Colors.white70),
@@ -588,7 +576,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                   backgroundColor: const Color(0xFFFF5A8D),
                   foregroundColor: Colors.white,
                   elevation: 0,
-                  minimumSize: Size(0, healthDp(context, 20)),  
+                  minimumSize: Size(0, healthDp(context, 20)),
                   fixedSize: Size.fromHeight(healthDp(context, 20)),
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   padding: EdgeInsets.symmetric(
@@ -625,7 +613,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
         ? weightTowardGoalRatio(currentWeight, goalTgt, anchor)
         : 0.0;
     final int diff =
-        goalTgt != null ? (leftLabelWeight - currentWeight).round() : 0;
+        goalTgt != null ? (currentWeight - leftLabelWeight).round() : 0;
     final String rightLabel = goalTgt != null
         ? (goalTgt == goalTgt.roundToDouble()
             ? '${goalTgt.toInt()}kg'
@@ -715,7 +703,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                               ],
                             ),
                             child: Text(
-                              diff <= 0 ? '${diff}kg' : '-${diff}kg',
+                              diff > 0 ? '+${diff}kg' : '${diff}kg',
                               style: const TextStyle(
                                 color: Color(0xFFFF5A8D),
                                 fontFamily: 'Gmarket Sans TTF',
@@ -781,19 +769,20 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
   void _openHealthConnectScreen() async {
     if (!await _ensureDashboardFeatureAccess()) return;
     if (!mounted) return;
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const HealthConnectScreen(),
+    await _reloadAfterChildRoute(
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const HealthConnectScreen(),
+        ),
       ),
     );
   }
 
   Widget _buildBodyMetricsSection() {
     // 당일 기록이 없으면 단위/플레이스홀더 표시 (다른 날 데이터로 채우지 않음)
-    final String heightValue = latestWeightRecord == null
-        ? '- cm'
-        : '${height.toStringAsFixed(1)}cm';
+    final String heightValue =
+        latestWeightRecord == null ? '- cm' : '${height.toStringAsFixed(1)}cm';
     final String weightValue = latestWeightRecord == null
         ? '- kg'
         : '${currentWeight.toStringAsFixed(1)}kg';
@@ -821,16 +810,15 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
           if (!await _ensureDashboardFeatureAccess()) return;
           if (!mounted) return;
 
-          final result = await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => WeightListScreen(initialDate: selectedDate),
+          await _reloadAfterChildRoute(
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) =>
+                    WeightListScreen(initialDate: selectedDate),
+              ),
             ),
           );
-
-          if (result == true && mounted) {
-            _loadData();
-          }
         }
       },
       child: Container(

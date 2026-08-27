@@ -13,6 +13,7 @@ import '../../../../data/repositories/health/steps/steps_repository.dart';
 import '../../../../data/repositories/health/health_goal/health_goal_repository.dart';
 import '../../../../data/models/health/health_goal_record_model.dart';
 import '../../../../data/services/auth_service.dart';
+import '../../../../core/health/health_refresh_listener.dart';
 import '../utils/step_calculator.dart';
 import '../widgets/steps_chart_tooltip.dart';
 import '../../health_common/health_chart_axis_style.dart';
@@ -35,7 +36,8 @@ class StepsTodayScreen extends StatefulWidget {
   State<StepsTodayScreen> createState() => _StepsTodayScreenState();
 }
 
-class _StepsTodayScreenState extends State<StepsTodayScreen> {
+class _StepsTodayScreenState extends State<StepsTodayScreen>
+    with HealthRefreshListener {
   UserModel? currentUser;
   StepsRecord? todayStepsRecord;
   StepsStatistics? stepsStatistics;
@@ -61,6 +63,11 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
       selectedDate = widget.initialDate!;
     }
     timeOffset = _isToday() ? _defaultDailyTimeOffset() : 0.0;
+    _loadData();
+  }
+
+  @override
+  void onHealthDataChanged() {
     _loadData();
   }
 
