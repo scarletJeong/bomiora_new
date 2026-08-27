@@ -122,10 +122,21 @@ List<CartLineGroup> cartGroupsForTab(
 }) {
   final groups = CartLineGroup.groupItems(allItems);
   return groups.where((g) {
-    if (g.parent.isSupplyAdd) return false;
-    final parentIsRx = g.parent.isPrescription;
+    final parent = g.parent;
+    if (parent.isSupplyAdd) {
+      if (prescriptionTab) return parent.isPrescription;
+      return _isGeneralCartLine(parent);
+    }
+    final parentIsRx = parent.isPrescription;
     return prescriptionTab ? parentIsRx : !parentIsRx;
   }).toList();
+}
+
+bool _isGeneralCartLine(CartItem item) {
+  final ck = item.ctKind.trim().toLowerCase();
+  if (ck == 'general') return true;
+  if (ck == 'prescription') return false;
+  return !item.isPrescription;
 }
 
 /// 동일 상품·옵션 라인을 수량으로 합친 표시용

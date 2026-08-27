@@ -8,32 +8,47 @@ import '../../services/auth_service.dart';
 class ProductRepository {
   static const Duration _listCacheTtl = Duration(seconds: 30);
   static final Map<String, _ProductListCacheEntry> _listCache = {};
+  static const Duration _detailCacheTtl = Duration(minutes: 2);
+  static final Map<String, Product> _detailCache = {};
+  static final Map<String, Product> _previewCache = {};
+  static final Map<String, DateTime> _detailCacheAt = {};
+  static final Map<String, Future<Product?>> _detailInFlight = {};
 
   static List<Product> _parseProductList(dynamic data) {
     if (data is Map && data['success'] == true && data['data'] != null) {
       final raw = data['data'];
       if (raw is List) {
-        return raw
+        return _rememberProductList(raw
             .whereType<Map>()
             .map((json) => Product.fromJson(Map<String, dynamic>.from(json)))
-            .toList();
+            .toList());
       }
     } else if (data is List) {
-      return data
+      return _rememberProductList(data
           .whereType<Map>()
           .map((json) => Product.fromJson(Map<String, dynamic>.from(json)))
-          .toList();
+          .toList());
     } else if (data is Map && data['products'] != null) {
       final raw = data['products'];
       if (raw is List) {
-        return raw
+        return _rememberProductList(raw
             .whereType<Map>()
             .map((json) => Product.fromJson(Map<String, dynamic>.from(json)))
-            .toList();
+            .toList());
       }
     }
     return const [];
   }
+
+  static List<Product> _rememberProductList(List<Product> products) {
+    for (final product in products) {
+      _previewCache[product.id] = product;
+    }
+    return products;
+  }
+
+  static Product? getProductPreview(String productId) =>
+      _detailCache[productId.trim()] ?? _previewCache[productId.trim()];
 
   // 카테고리별 상품 목록 가져오기
   static Future<List<Product>> getProductsByCategory({
@@ -73,7 +88,8 @@ class ProductRepository {
             expiresAt: DateTime.now().add(_listCacheTtl),
           );
           return products;
-        } catch (e) {
+        } catch (_) {
+          return hit?.products ?? [];
         }
       }
       
@@ -85,6 +101,31 @@ class ProductRepository {
 
   // 상품 상세 정보 가져오기
   static Future<Product?> getProductDetail(String productId) async {
+    final id = productId.trim();
+    final cachedAt = _detailCacheAt[id];
+    if (cachedAt != null &&
+        DateTime.now().difference(cachedAt) < _detailCacheTtl) {
+      return _detailCache[id];
+    }
+    final pending = _detailInFlight[id];
+    if (pending != null) return pending;
+
+    final request = _fetchProductDetail(id);
+    _detailInFlight[id] = request;
+    try {
+      final result = await request;
+      if (result != null) {
+        _detailCache[id] = result;
+        _previewCache[id] = result;
+        _detailCacheAt[id] = DateTime.now();
+      }
+      return result;
+    } finally {
+      _detailInFlight.remove(id);
+    }
+  }
+
+  static Future<Product?> _fetchProductDetail(String productId) async {
     try {
       final response = await ApiClient.get('${ApiEndpoints.productDetail}?id=$productId');
       
@@ -95,51 +136,11 @@ class ProductRepository {
         if (data is Map && data['success'] == true && data['data'] != null) {
           final product = data['data'];
           if (product is Map) {
-            // bomiora_shop_item_new 테이블에서 가져온 원본 데이터 로그 출력
-            final itId = product['it_id'] ?? product['id'];
-            final itKind = product['it_kind'];
-            final ctKind = product['ct_kind'];
-            final productKind = product['productKind'];
-            
-            // Buffer 객체 처리
-            String? itIdStr;
-            String? itKindStr;
-            if (itId is Map && itId['type'] == 'Buffer' && itId['data'] != null) {
-              itIdStr = String.fromCharCodes((itId['data'] as List).map((e) => e as int));
-            } else {
-              itIdStr = itId?.toString();
-            }
-            if (itKind is Map && itKind['type'] == 'Buffer' && itKind['data'] != null) {
-              itKindStr = String.fromCharCodes((itKind['data'] as List).map((e) => e as int));
-            } else {
-              itKindStr = itKind?.toString();
-            }
-            
             productObj = Product.fromJson(Map<String, dynamic>.from(product));
           }
         } else if (data is Map && data['product'] != null) {
           final product = data['product'];
           if (product is Map) {
-            // bomiora_shop_item_new 테이블에서 가져온 원본 데이터 로그 출력
-            final itId = product['it_id'] ?? product['id'];
-            final itKind = product['it_kind'];
-            final ctKind = product['ct_kind'];
-            final productKind = product['productKind'];
-            
-            // Buffer 객체 처리
-            String? itIdStr;
-            String? itKindStr;
-            if (itId is Map && itId['type'] == 'Buffer' && itId['data'] != null) {
-              itIdStr = String.fromCharCodes((itId['data'] as List).map((e) => e as int));
-            } else {
-              itIdStr = itId?.toString();
-            }
-            if (itKind is Map && itKind['type'] == 'Buffer' && itKind['data'] != null) {
-              itKindStr = String.fromCharCodes((itKind['data'] as List).map((e) => e as int));
-            } else {
-              itKindStr = itKind?.toString();
-            }
-            
             productObj = Product.fromJson(Map<String, dynamic>.from(product));
           }
         }
@@ -162,15 +163,15 @@ class ProductRepository {
         
         if (data is Map && data['success'] == true && data['data'] != null) {
           final List<dynamic> products = data['data'];
-          return products
+          return _rememberProductList(products
               .whereType<Map>()
               .map((json) => Product.fromJson(Map<String, dynamic>.from(json)))
-              .toList();
+              .toList());
         } else if (data is List) {
-          return data
+          return _rememberProductList(data
               .whereType<Map>()
               .map((json) => Product.fromJson(Map<String, dynamic>.from(json)))
-              .toList();
+              .toList());
         }
       }
       

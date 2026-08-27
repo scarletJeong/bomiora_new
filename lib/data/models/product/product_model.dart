@@ -437,14 +437,8 @@ class Product {
   /// 장바구니에 추가할 때 사용할 ct_kind 값 반환
   /// productKind (it_kind)를 기반으로 판단, 없으면 'general'
   String get ctKind {
-    if (productKind != null && productKind!.trim().isNotEmpty) {
-      final normalized = productKind!.trim().toLowerCase();
-      // prescription 관련 값이면 'prescription' 반환
-      if (normalized == 'prescription'  ) {
-        return 'prescription';
-      }
-      return normalized;
-    }
+    final normalized = (productKind ?? '').trim().toLowerCase();
+    if (normalized == 'prescription') return 'prescription';
     return 'general';
   }
 }

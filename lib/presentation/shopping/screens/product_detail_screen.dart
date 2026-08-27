@@ -1,5 +1,4 @@
 import 'dart:ui';
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_svg/flutter_svg.dart';
@@ -9,16 +8,14 @@ import '../../../data/models/product/product_model.dart';
 import '../../../data/repositories/product/product_repository.dart';
 import '../../../data/models/review/review_model.dart';
 import '../../../core/utils/image_url_helper.dart';
-import '../../../core/utils/node_value_parser.dart';
 import '../../../core/utils/product_share.dart';
 import '../../../core/utils/inf_code_tracker.dart';
 import '../../../data/services/point_service.dart';
 import '../../../data/services/auth_service.dart';
+import '../../../data/services/app_config_service.dart';
 import '../../../data/services/wish_service.dart';
 import '../../../data/services/recent_view_service.dart';
 import '../../../data/services/cart_service.dart';
-import '../../../core/network/api_client.dart';
-import '../../../core/network/api_endpoints.dart';
 import '../../../data/models/user/user_model.dart';
 import '../../../data/models/product/product_option_model.dart';
 import '../../../data/repositories/product/product_option_repository.dart';
@@ -34,6 +31,11 @@ import '../utils/get_review.dart';
 import '../utils/product_detail_html_helper.dart';
 import '../utils/product_info_spec_helper.dart';
 import '../../common/widgets/login_required_dialog.dart';
+import '../../common/widgets/app_alert_dialog.dart';
+import '../../user/healthprofile/screens/health_profile_form_screen.dart';
+import '../../user/healthprofile/screens/health_profile_list_screen.dart';
+import '../../../data/services/health_profile_service.dart';
+import '../../user/healthprofile/models/health_profile_model.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../../data/services/pending_product_checkout.dart';
 
@@ -131,8 +133,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   }
 
   Future<void> _loadProductDetail() async {
+    final preview = ProductRepository.getProductPreview(widget.productId);
     _safeSetState(() {
-      _isLoading = true;
+      _product = preview;
+      _isLoading = preview == null;
       _hasError = false;
       _errorMessage = null;
     });
@@ -196,26 +200,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
 
   /// 찜하기 상태 확인
   Future<void> _checkFavoriteStatus() async {
-    try {
-      final wishList = await WishService.getWishList();
-
-      // 현재 상품이 찜 목록에 있는지 확인
-      final isFavorite = wishList.any((item) {
-        // it_id 필드로 비교
-        final itemId = item is Map
-            ? (NodeValueParser.asString(item['it_id']) ??
-                NodeValueParser.asString(item['itId']) ??
-                '')
-            : '';
-        return itemId == widget.productId;
-      });
-
-      _safeSetState(() {
-        _isFavorite = isFavorite;
-      });
-    } catch (e) {
-      // 에러 발생 시 기본값(false) 유지
-    }
+    final isFavorite = await WishService.isWished(widget.productId);
+    _safeSetState(() {
+      _isFavorite = isFavorite;
+    });
   }
 
   Future<void> _loadReviews() async {
@@ -266,24 +254,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
 
   /// 설정 조회 (cf_use_point)
   Future<void> _loadConfig() async {
-    try {
-      final response = await ApiClient.get(ApiEndpoints.config);
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['success'] == true && data['data'] != null) {
-          final config = data['data'];
-          _safeSetState(() {
-            _usePointConfig =
-                config['cf_use_point'] == 1 || config['cf_use_point'] == true;
-          });
-        }
-      }
-    } catch (e) {
-      // 기본값 설정
-      _safeSetState(() {
-        _usePointConfig = true;
-      });
-    }
+    final usePoint = await AppConfigService.usePoint();
+    _safeSetState(() => _usePointConfig = usePoint);
   }
 
   /// 제품 옵션 조회
@@ -1645,23 +1617,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
 
         if (!mounted) return;
 
-        final result = await CartService.addOptionsToCart(
+        final addFuture = CartService.addOptionsToCart(
           product: _product!,
           selectedOptions: _selectedOptions,
           supplyLines: _supplyLines,
         );
+        addFuture.then(_onCartAddCompleted);
 
         if (!mounted) return;
-
-        if (result['success'] == true) {
-          _safeSetState(() {
-            _selectedOptions.clear();
-            _supplyLines.clear();
-          });
-          await _loadRecommendedProducts();
-          if (!mounted) return;
-          await _showRecommendProductBottomup();
-        }
+        await _showRecommendProductBottomup(cartAddFuture: addFuture);
       },
       onAddToPrescriptionCart: () async {
         if (_product == null || _selectedOptions.isEmpty) return;
@@ -1676,14 +1640,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
 
         if (!mounted) return;
 
-        final added = await _addPrescriptionItemsToShoppingCart(
-          navigateToCart: false,
+        final addFuture = CartService.addOptionsToCart(
+          product: _product!,
+          selectedOptions: _selectedOptions,
+          supplyLines: _supplyLines,
         );
-        if (added != null && mounted) {
-          await _loadRecommendedProducts();
-          if (!mounted) return;
-          await _showRecommendProductBottomup();
-        }
+        addFuture.then(_onCartAddCompleted);
+
+        if (!mounted) return;
+        await _showRecommendProductBottomup(cartAddFuture: addFuture);
       },
       onReserve: () async {
         if (_product == null || _selectedOptions.isEmpty) return;
@@ -1762,31 +1727,29 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
 
     if (bookingItems.isEmpty || !mounted) return;
 
-    await Navigator.push<void>(
-      context,
-      MaterialPageRoute(
-        builder: (context) => PrescriptionProfileScreen(
-          productId: bookingItems.first.itId,
-          productName: bookingItems.first.itName,
-          selectedOptions: _cartItemsToBookingOptions(bookingItems),
-          cartCtIdsForCheckout: bookingItems.map((e) => e.ctId).toList(),
-          checkoutCartItems: bookingItems,
-          checkoutShippingCost: 0,
-        ),
-      ),
-    );
+    await _openPrescriptionProfileFlow(bookingItems);
   }
 
-  Future<void> _showRecommendProductBottomup() async {
+  Future<void> _showRecommendProductBottomup({
+    Future<Map<String, dynamic>>? cartAddFuture,
+  }) async {
     if (_product == null || !mounted) return;
 
-    final products =
-        await CartService.getProductRecommendProducts(_product!.id);
-    if (!mounted || products.isEmpty) return;
+    final cached = _recommendedProducts;
+    final productsLoader = cached.isEmpty
+        ? CartService.getProductRecommendProducts(_product!.id).then((loaded) {
+            if (mounted && loaded.isNotEmpty) {
+              setState(() => _recommendedProducts = loaded);
+            }
+            return loaded;
+          })
+        : null;
+    if (cached.isEmpty && productsLoader == null) return;
 
     await showRecommendProductBottomup(
       context: context,
-      products: products,
+      products: cached,
+      productsLoader: productsLoader,
       onProductTap: (product) {
         Navigator.of(context).pop();
         _openRecommendProduct(product);
@@ -1794,6 +1757,137 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       onGoToCart: () {
         CartNavigation.openCart(context, prescriptionTab: true);
       },
+      onPrimaryAction: () async {
+        await _navigateToPrescriptionBooking(cartAddFuture: cartAddFuture);
+      },
+    );
+  }
+
+  Future<void> _navigateToPrescriptionBooking({
+    Future<Map<String, dynamic>>? cartAddFuture,
+  }) async {
+    if (_product == null || !mounted) return;
+
+    Map<String, dynamic>? addResult;
+    if (cartAddFuture != null) {
+      addResult = await cartAddFuture;
+      if (!mounted || addResult['success'] != true) return;
+    } else {
+      final addedCtIds = await _addPrescriptionItemsToShoppingCart(
+        navigateToCart: false,
+      );
+      if (addedCtIds == null || addedCtIds.isEmpty || !mounted) return;
+
+      final cartResult = await CartService.getCart();
+      if (!mounted || cartResult['success'] != true) return;
+
+      final rawItems = cartResult['data'];
+      final allItems = (rawItems is List ? rawItems : [])
+          .whereType<Map>()
+          .map((e) => CartItem.fromJson(Map<String, dynamic>.from(e)))
+          .toList();
+      final addedIdSet = addedCtIds.toSet();
+      final bookingItems =
+          allItems.where((item) => addedIdSet.contains(item.ctId)).toList();
+      if (bookingItems.isEmpty || !mounted) return;
+
+      await _openPrescriptionProfileFlow(bookingItems);
+      return;
+    }
+
+    var bookingItems = CartService.addedItemsFromAddOptionsResult(addResult);
+    if (bookingItems.isEmpty) {
+      final cartIds = CartService.cartIdsFromAddOptionsResult(addResult);
+      if (cartIds.isEmpty || !mounted) return;
+
+      final cartResult = await CartService.getCart();
+      if (!mounted || cartResult['success'] != true) return;
+
+      final rawItems = cartResult['data'];
+      final allItems = (rawItems is List ? rawItems : [])
+          .whereType<Map>()
+          .map((e) => CartItem.fromJson(Map<String, dynamic>.from(e)))
+          .toList();
+      final addedIdSet = cartIds.toSet();
+      bookingItems =
+          allItems.where((item) => addedIdSet.contains(item.ctId)).toList();
+    }
+
+    if (bookingItems.isEmpty || !mounted) return;
+    await _openPrescriptionProfileFlow(bookingItems);
+  }
+
+  Future<void> _openPrescriptionProfileFlow(List<CartItem> bookingItems) async {
+    if (bookingItems.isEmpty || !mounted) return;
+
+    final user = await AuthService.getUser();
+    if (user == null || user.id.isEmpty || !mounted) return;
+
+    HealthProfileModel? profile;
+    try {
+      profile = await HealthProfileService.getHealthProfile(user.id);
+    } catch (_) {
+      profile = null;
+    }
+    if (!mounted) return;
+
+    final booking = HealthProfilePrescriptionBookingArgs(
+      productId: bookingItems.first.itId,
+      productName: bookingItems.first.itName,
+      selectedOptions: _cartItemsToBookingOptions(bookingItems),
+      cartCtIdsForCheckout: bookingItems.map((e) => e.ctId).toList(),
+      checkoutCartItems: bookingItems,
+      checkoutShippingCost: 0,
+    );
+
+    if (profile == null || profile.needsInitialQuestionnaire) {
+      await AppAlertDialog.show(
+        context,
+        title: '',
+        message: '초진으로 문진표를 작성해야합니다',
+        useRootNavigator: true,
+      );
+      if (!mounted) return;
+      await Navigator.push<void>(
+        context,
+        MaterialPageRoute(
+          builder: (context) => HealthProfileFormScreen(
+            prescriptionBooking: booking,
+            existingProfile: profile,
+          ),
+        ),
+      );
+      return;
+    }
+
+    if (!mounted) return;
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PrescriptionProfileScreen(
+          productId: booking.productId,
+          productName: booking.productName,
+          selectedOptions: booking.selectedOptions,
+          cartCtIdsForCheckout: booking.cartCtIdsForCheckout,
+          checkoutCartItems: booking.checkoutCartItems,
+          checkoutShippingCost: booking.checkoutShippingCost,
+        ),
+      ),
+    );
+  }
+
+  void _onCartAddCompleted(Map<String, dynamic> result) {
+    if (!mounted) return;
+    if (result['success'] == true) {
+      setState(() {
+        _selectedOptions.clear();
+        _supplyLines.clear();
+      });
+      return;
+    }
+    final message = (result['message'] ?? '장바구니 담기에 실패했습니다.').toString();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
     );
   }
 

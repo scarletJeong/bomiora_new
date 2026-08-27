@@ -13,9 +13,9 @@ import '../../../core/constants/app_assets.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_endpoints.dart';
 import '../../../core/utils/price_formatter.dart';
-import '../../../core/utils/web_kcp_popup.dart';
 import '../../../data/models/cart/cart_item_model.dart';
 import '../../../data/models/coupon/coupon_model.dart';
+import '../../../data/models/user/user_model.dart';
 import '../../../data/services/address_service.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/coupon_service.dart';
@@ -24,11 +24,44 @@ import '../../user/delivery/widgets/delivery_address_change_popup_ver2.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../widgets/payment_product_card.dart';
 import '../widgets/prescription_booking_progress_bar.dart';
+import 'kcp_pay_webview_screen.dart';
+
+class PaymentPrefetchData {
+  final List<Map<String, dynamic>> addresses;
+  final List<Coupon> coupons;
+  final int point;
+
+  const PaymentPrefetchData({
+    required this.addresses,
+    required this.coupons,
+    required this.point,
+  });
+
+  static Future<PaymentPrefetchData?> load(String mbId) async {
+    final id = mbId.trim();
+    if (id.isEmpty) return null;
+    try {
+      final results = await Future.wait([
+        AddressService.getAddressList(id),
+        CouponService.getAvailableCoupons(id),
+        PointService.getUserPoint(id),
+      ]);
+      return PaymentPrefetchData(
+        addresses: results[0] as List<Map<String, dynamic>>,
+        coupons: results[1] as List<Coupon>,
+        point: (results[2] as int?) ?? 0,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+}
 
 class PaymentScreen extends StatefulWidget {
   final List<CartItem> cartItems;
   final int shippingCost;
   final String sourceTitle;
+  final PaymentPrefetchData? prefetch;
 
   /// 비대면 진료(처방) 예약 플로우에서 진입한 결제 화면일 때 앱바 4단 프로그레스 표시.
   final bool showPrescriptionBookingProgress;
@@ -44,6 +77,7 @@ class PaymentScreen extends StatefulWidget {
     required this.cartItems,
     required this.shippingCost,
     required this.sourceTitle,
+    this.prefetch,
     this.showPrescriptionBookingProgress = false,
     this.reservationDate,
     this.reservationTime,
@@ -84,8 +118,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
   bool _syncingPoint = false;
   bool _useEscrow = false;
   final ValueNotifier<double> _scrollProgress = ValueNotifier(0);
-  String? _lastWebKcpLaunchUrl;
-  Object? _lastWebKcpPopup;
 
   int _paymentMethodIndex = 0; // 0 card, 1 bank transfer, 2 virtual account
   int _myPoint = 0;
@@ -144,6 +176,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
       return;
     }
 
+    if (widget.prefetch != null) {
+      _applyPrefetch(user, widget.prefetch!);
+      return;
+    }
+
     final results = await Future.wait([
       AddressService.getAddressList(user.id),
       CouponService.getAvailableCoupons(user.id),
@@ -175,6 +212,44 @@ class _PaymentScreenState extends State<PaymentScreen> {
     });
     _applyAddressMode();
     // 기본 배송지 없으면 회원 성함/연락처 프리필
+    if (_defaultAddress == null) {
+      setState(() {
+        if (_receiverController.text.trim().isEmpty) {
+          _receiverController.text = user.name;
+        }
+        if (_phoneController.text.trim().isEmpty &&
+            (user.phone ?? '').trim().isNotEmpty) {
+          _phoneController.text =
+              (user.phone ?? '').replaceAll(RegExp(r'[^0-9]'), '');
+        }
+        _addressNameController.text = _addressLabelChip;
+      });
+    }
+  }
+
+  void _applyPrefetch(UserModel user, PaymentPrefetchData prefetch) {
+    if (!mounted) return;
+    final defaultAddress = prefetch.addresses.firstWhere(
+      (e) => e['adDefault'] == 1,
+      orElse: () =>
+          prefetch.addresses.isNotEmpty
+              ? prefetch.addresses.first
+              : <String, dynamic>{},
+    );
+    setState(() {
+      _defaultAddress = defaultAddress.isEmpty ? null : defaultAddress;
+      _myPoint = prefetch.point;
+      _applicableCoupons = _couponPointDisabled
+          ? []
+          : prefetch.coupons.where(_isCouponApplicable).toList();
+      if (_couponPointDisabled) {
+        _selectedCoupons = [];
+        _usedPoint = 0;
+        _pointController.clear();
+      }
+      _loading = false;
+    });
+    _applyAddressMode();
     if (_defaultAddress == null) {
       setState(() {
         if (_receiverController.text.trim().isEmpty) {
@@ -459,6 +534,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
     return 'Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Mobile Safari/537.36';
   }
 
+  String _kcpDesktopUserAgent() {
+    return 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36';
+  }
+
+  String _kcpRequestUserAgent() => kIsWeb ? _kcpDesktopUserAgent() : _kcpMobileUserAgent();
+
   bool _validateBeforePay() {
     if (_receiverController.text.trim().isEmpty ||
         _phoneController.text.trim().isEmpty ||
@@ -552,9 +633,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
     if (_submitting) return;
     if (!_validateBeforePay()) return;
 
-    final webPendingPopup = kIsWeb ? openPendingKcpPopup() : null;
-    if (kIsWeb && webPendingPopup == null) return;
-
     final user = await AuthService.getUser();
     if (user == null || user.id.trim().isEmpty) return;
 
@@ -567,9 +645,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
     try {
       await _maybeSaveDefaultAddress(user.id);
-      if (kIsWeb) {
-        _lastWebKcpPopup = webPendingPopup;
-      }
       final response = await ApiClient.post(
         ApiEndpoints.kcpPayRequest,
         {
@@ -604,13 +679,15 @@ class _PaymentScreenState extends State<PaymentScreen> {
             'memo': _deliveryRequestMemo,
           },
           // 앱: SmartPay(모바일 거래등록). 웹: PC payplus_web.
-          'user_agent': defaultTargetPlatform == TargetPlatform.iOS
-              ? 'iPhone'
-              : 'Android',
+          'user_agent': kIsWeb
+              ? 'Windows'
+              : (defaultTargetPlatform == TargetPlatform.iOS
+                  ? 'iPhone'
+                  : 'Android'),
           'is_mobile': !kIsWeb,
         },
         additionalHeaders: <String, String>{
-          'User-Agent': _kcpMobileUserAgent(),
+          'User-Agent': _kcpRequestUserAgent(),
         },
       );
 
@@ -628,24 +705,23 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
       dynamic result;
       if (kIsWeb) {
-        final launchUrl =
-            '${ApiClient.baseUrl}/api/kcp-pay/launch/${Uri.encodeComponent(token)}';
-        _lastWebKcpLaunchUrl = launchUrl;
-        // 1) 먼저 HTML을 Blob URL로 로드(서버 메모리 스토어 분산/재시작으로 launch 404가 나는 케이스 회피)
-        // 2) 실패 시 launch URL로 폴백
-        var opened = loadKcpHtmlToPopup(webPendingPopup, html);
-        if (!opened) {
-          // data: URL로 팝업 top-frame 이동은 Chrome에서 차단됨 → 백엔드 launch URL 폴백
-          opened = loadKcpUrlToPopup(webPendingPopup, launchUrl);
-        }
-        if (!opened) {
-          final directOpened = openKcpUrlInNewTab(launchUrl);
-          if (!directOpened) {
-            throw Exception('팝업이 차단되었습니다. 팝업 허용 후 다시 시도해 주세요.');
-          }
-        }
-        if (!mounted) return;
-        result = await _pollKcpPayResult(token, webPopup: webPendingPopup);
+        result = await Navigator.of(context).push<Map<String, dynamic>>(
+          PageRouteBuilder(
+            opaque: false,
+            barrierDismissible: false,
+            barrierColor: const Color(0x99000000),
+            pageBuilder: (context, animation, secondaryAnimation) {
+              return KcpPayWebViewScreen(
+                html: html,
+                token: token,
+                usePcLayout: true,
+              );
+            },
+            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+              return FadeTransition(opacity: animation, child: child);
+            },
+          ),
+        );
       } else {
         result = await Navigator.pushNamed(
           context,
@@ -702,9 +778,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
         }
 
         await _showPaymentFailureGuideDialog(code, message);
-        if (kIsWeb && message.contains('3017')) {
-          _showWebPopupBlockedDialog();
-        }
       }
     } catch (e) {
       if (!mounted) return;
@@ -715,136 +788,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
         });
       }
     }
-  }
-
-  void _reopenWebKcpLaunch() {
-    if (!kIsWeb) return;
-    final url = (_lastWebKcpLaunchUrl ?? '').trim();
-    if (url.isEmpty) return;
-    openKcpUrlInNewTab(url);
-  }
-
-  Future<void> _showWebPopupBlockedDialog() async {
-    if (!mounted) return;
-    await showDialog<void>(
-      context: context,
-      barrierDismissible: true,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('팝업 차단 감지 (3017)'),
-          content: const Text(
-            '결제창은 열렸지만 카드사 인증 팝업이 차단된 상태입니다.\n\n'
-            '확장 프로그램/브라우저 팝업 차단을 해제한 뒤,\n'
-            '"결제창 다시열기" 또는 아래 버튼으로 재시도해 주세요.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('닫기'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _reopenWebKcpLaunch();
-              },
-              child: const Text('결제창 다시열기'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Future<Map<String, dynamic>?> _pollKcpPayResult(
-    String token, {
-    Object? webPopup,
-  }) async {
-    const maxTry = 150; // 약 5분
-    var popupClosedSeen = false;
-    var popupClosedGraceLeft = 6; // 팝업 닫힘 감지 후 약 12초(6*2s) 동안 결과를 추가 확인
-    for (var i = 0; i < maxTry; i += 1) {
-      if (!mounted) return null;
-      if (kIsWeb && webPopup != null && isKcpPopupClosed(webPopup)) {
-        // 가상계좌/승인 완료 직후 팝업이 먼저 닫히는 경우가 있어,
-        // 즉시 취소 처리하지 않고 잠깐 결과를 더 확인한다.
-        popupClosedSeen = true;
-      }
-      try {
-        final response = await ApiClient.get(ApiEndpoints.kcpPayResult(token));
-        if (response.statusCode == 404) {
-          if (popupClosedSeen) {
-            popupClosedGraceLeft -= 1;
-            if (popupClosedGraceLeft <= 0) {
-              return {
-                'success': false,
-                'error_code': 'USER_CANCELLED',
-                'message': '사용자가 결제를 취소했습니다. 결제하기 버튼으로 다시 시도해 주세요.',
-              };
-            }
-          }
-          await Future.delayed(const Duration(seconds: 2));
-          continue;
-        }
-
-        final data = jsonDecode(response.body) as Map<String, dynamic>;
-        final status = (data['status'] ?? '').toString();
-        if (status == 'pending') {
-          // 가상계좌는 "입금 전"이어도 발급(결제 프로세스 완료)이면 완료 화면으로 이동해야 함.
-          // 백엔드가 status=pending으로 내려도 res_cd=0000(성공) + order_id가 있으면 성공으로 처리.
-          final resCd = (data['res_cd'] ?? '').toString().trim();
-          final orderId = (data['order_id'] ?? '').toString().trim();
-          if (resCd == '0000' && orderId.isNotEmpty) {
-            return {
-              'success': true,
-              'error_code': data['error_code'],
-              'status': status,
-              'order_id': orderId,
-              'message': (data['message'] ?? '가상계좌 발급이 완료되었습니다.').toString(),
-            };
-          }
-          if (popupClosedSeen) {
-            popupClosedGraceLeft -= 1;
-            if (popupClosedGraceLeft <= 0) {
-              return {
-                'success': false,
-                'error_code': 'USER_CANCELLED',
-                'status': status,
-                'order_id': data['order_id'],
-                'message': '결제창이 닫혀 결제가 완료되지 않았습니다. 결제하기 버튼으로 다시 시도해 주세요.',
-              };
-            }
-          }
-          await Future.delayed(const Duration(seconds: 2));
-          continue;
-        }
-
-        return {
-          'success': data['success'] == true,
-          'error_code': data['error_code'],
-          'status': status,
-          'order_id': data['order_id'],
-          'message': (data['message'] ?? '').toString(),
-        };
-      } catch (_) {
-        if (popupClosedSeen) {
-          popupClosedGraceLeft -= 1;
-          if (popupClosedGraceLeft <= 0) {
-            return {
-              'success': false,
-              'error_code': 'USER_CANCELLED',
-              'message': '결제창이 닫혀 결제가 완료되지 않았습니다. 결제하기 버튼으로 다시 시도해 주세요.',
-            };
-          }
-        }
-        await Future.delayed(const Duration(seconds: 2));
-      }
-    }
-
-    return {
-      'success': false,
-      'error_code': 'NO_CODE',
-      'message': '결제 결과 확인 시간이 초과되었습니다. 주문내역에서 상태를 확인해 주세요.',
-    };
   }
 
   String _resolvePaymentErrorCode(String rawCode, String message) {
@@ -903,13 +846,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: () {
-                // 웹: 결제 새창이 남아있다면 닫고, 결제 화면에 그대로 복귀
-                if (kIsWeb) {
-                  closeKcpPopup(_lastWebKcpPopup);
-                }
-                Navigator.pop(context);
-              },
+              onPressed: () => Navigator.pop(context),
               child: const Text('확인'),
             ),
           ],

@@ -130,12 +130,16 @@ class CartLineGroup {
       if (used.contains(item.ctId)) continue;
       if (item.isSupplyAdd) continue;
       if (item.isPrescription) continue;
+      // 주문번호가 있으면 독립적으로 담은 일반상품일 수 있으므로 CSV만으로
+      // 처방상품의 추가상품에 흡수하면 안 됩니다.
+      if (item.odId.trim().isNotEmpty) continue;
 
       CartItem? matchedParent;
       for (final p in items) {
         if (p.ctId == item.ctId) continue;
         if (used.contains(p.ctId)) continue;
         if (p.isSupplyAdd) continue;
+        if (p.odId.trim().isNotEmpty) continue;
         if (!_csvContains(p.itSupplyItems, item.itId)) continue;
         if (matchedParent == null ||
             (p.isPrescription && !matchedParent.isPrescription)) {

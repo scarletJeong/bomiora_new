@@ -79,8 +79,14 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
     });
     _nameController.addListener(_onContactChanged);
     _phoneController.addListener(_onContactChanged);
-    _loadSettings();
-    _loadUser();
+    _bootstrap();
+  }
+
+  Future<void> _bootstrap() async {
+    await Future.wait([
+      _loadSettings(),
+      _loadUser(),
+    ]);
   }
 
   void _syncProgressAndProceed() {
@@ -748,8 +754,15 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
         requestData['cart_ct_ids'] = cartCtIds;
       }
 
-      final response =
-          await ApiClient.post('/api/cart/healthprofile', requestData);
+      final user = await AuthService.getUser();
+      final prefetchFuture = user != null && user.id.isNotEmpty
+          ? PaymentPrefetchData.load(user.id)
+          : Future<PaymentPrefetchData?>.value(null);
+
+      final responseFuture =
+          ApiClient.post('/api/cart/healthprofile', requestData);
+      final response = await responseFuture;
+      final prefetch = await prefetchFuture;
 
       if (response.statusCode != 200 && response.statusCode != 201) {
         throw Exception('healthprofile 요청 실패 (status=${response.statusCode})');
@@ -768,7 +781,6 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
 
       final checkoutItems = widget.checkoutCartItems;
       if (checkoutItems != null && checkoutItems.isNotEmpty) {
-        // 대기 없이 바로 결제 화면으로 이동
         final payRoute = MaterialPageRoute<bool>(
           settings: const RouteSettings(name: '/pay'),
           builder: (context) => PaymentScreen(
@@ -778,13 +790,14 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
             showPrescriptionBookingProgress: true,
             reservationDate: _selectedDate.value,
             reservationTime: _selectedTime.value,
+            prefetch: prefetch,
           ),
         );
-        Navigator.of(context).popUntil(
-          (route) => route.settings.name == '/cart' || route.isFirst,
-        );
         if (!mounted) return;
-        await Navigator.of(context).push(payRoute);
+        await Navigator.of(context).pushAndRemoveUntil(
+          payRoute,
+          (route) => route.isFirst,
+        );
         return;
       }
 

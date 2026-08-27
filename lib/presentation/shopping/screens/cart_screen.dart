@@ -136,7 +136,10 @@ class _CartScreenState extends State<CartScreen> {
     return false;
   }
 
-  Future<void> _loadCart({bool showCachedData = false}) async {
+  Future<void> _loadCart({
+    bool showCachedData = false,
+    bool forceRefresh = false,
+  }) async {
     // 캐시된 데이터를 먼저 표시하고 백그라운드에서 갱신하는 모드
     final hasCachedData = showCachedData && cartItems.isNotEmpty;
 
@@ -155,22 +158,11 @@ class _CartScreenState extends State<CartScreen> {
 
     try {
       final previousItems = List<CartItem>.from(cartItems);
-      final result = await CartService.getCart();
+      final result = await CartService.getCart(forceRefresh: forceRefresh);
       if (!mounted) return;
 
       if (result['success'] == true) {
-        // null 체크 추가 (웹 환경 대응)
-        final data = result['data'];
-        final items = (data is List ? data : [])
-            .map((item) {
-              try {
-                return CartItem.fromJson(item as Map<String, dynamic>);
-              } catch (e) {
-                return null;
-              }
-            })
-            .whereType<CartItem>() // null 제거
-            .toList();
+        final items = CartService.parseCartItems(result['data']);
         final orderedItems = _preserveCartItemOrder(previousItems, items);
         setState(() {
           cartItems = orderedItems;
@@ -451,7 +443,10 @@ class _CartScreenState extends State<CartScreen> {
                           ),
                           topBar: _buildSelectAllRow(),
                           scrollChild: RefreshIndicator(
-                            onRefresh: () => _loadCart(showCachedData: false),
+                            onRefresh: () => _loadCart(
+                              showCachedData: false,
+                              forceRefresh: true,
+                            ),
                             child: SingleChildScrollView(
                               controller: _scrollController,
                               physics: const AlwaysScrollableScrollPhysics(),

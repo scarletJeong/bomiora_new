@@ -24,11 +24,13 @@ class CartIntegrationScreen extends StatefulWidget {
 
 class _CartIntegrationScreenState extends State<CartIntegrationScreen> {
   late int _selectedTabIndex;
+  bool _generalTabMounted = false;
 
   @override
   void initState() {
     super.initState();
     _selectedTabIndex = widget.initialTabIndex == 1 ? 1 : 0;
+    _generalTabMounted = _selectedTabIndex == 1;
   }
 
   void _handleBackNavigation() {
@@ -41,6 +43,9 @@ class _CartIntegrationScreenState extends State<CartIntegrationScreen> {
 
   void _onTabSelected(int index) {
     if (_selectedTabIndex == index) return;
+    if (index == 1) {
+      _generalTabMounted = true;
+    }
     setState(() => _selectedTabIndex = index);
   }
 
@@ -124,11 +129,13 @@ class _CartIntegrationScreenState extends State<CartIntegrationScreen> {
               backToProductId: widget.backToProductId,
               scrollHeader: _buildTabBar(),
             ),
-            cart_general.CartScreen(
-              embedInParent: true,
-              backToProductId: widget.backToProductId,
-              scrollHeader: _buildTabBar(),
-            ),
+            _generalTabMounted
+                ? cart_general.CartScreen(
+                    embedInParent: true,
+                    backToProductId: widget.backToProductId,
+                    scrollHeader: _buildTabBar(),
+                  )
+                : const SizedBox.shrink(),
           ],
         ),
       ),

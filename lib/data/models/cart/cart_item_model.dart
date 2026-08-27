@@ -72,8 +72,11 @@ class CartItem {
     this.ctSelect = false,
   });
 
-  /// 추가상품: `parent` 컬럼(또는 legacy ct_kind=supply_add|)에 부모 it_id가 있음
+  /// 추가상품: `parent` 컬럼(또는 legacy ct_kind=supply_add|)에 부모 it_id가 있음.
+  /// `ct_kind=general` 본품은 DB에 parent가 잘못 붙어도 일반 라인으로 취급.
   bool get isSupplyAdd {
+    if (_normalizeKind(ctKind) == 'general') return false;
+
     final p = parentItId?.trim() ?? '';
     if (p.isNotEmpty) return true;
     return kind == 'supply_add' || ctKind.startsWith('supply_add|');
@@ -153,11 +156,14 @@ class CartItem {
     final productCtKind = rawCtKind.trim().toLowerCase().startsWith('supply_add|')
         ? 'general'
         : (rawCtKind.trim().isEmpty ? 'general' : rawCtKind.trim());
-    final parsedKind = hasParent
+    final normalizedCtKind = _normalizeKind(productCtKind);
+    final parsedKind = hasParent && normalizedCtKind != 'general'
         ? 'supply_add'
         : (NodeValueParser.asString(normalized['kind']) ??
             _parseKindToken(productCtKind));
-    final normalizedCtKind = _normalizeKind(productCtKind);
+    final effectiveParentItId = normalizedCtKind == 'general'
+        ? null
+        : (hasParent ? parentItId : null);
     final hpReservationDate =
         NodeValueParser.asString(normalized['hp_rsvt_date'])?.trim();
     final hpReservationStart =
@@ -212,7 +218,7 @@ class CartItem {
             NodeValueParser.asString(normalized['product_kind']) ??
             NodeValueParser.asString(normalized['productKind']),
       ),
-      parentItId: hasParent ? parentItId : null,
+      parentItId: effectiveParentItId,
       itSupplyItems: NodeValueParser.asString(normalized['it_supply_items']) ??
           NodeValueParser.asString(normalized['itSupplyItems']),
       ctTime: ctTime,
@@ -438,12 +444,19 @@ class CartItem {
 
   bool get isPrescription {
     if (isSupplyAdd) return false;
-    final k = _normalizeKind(kind);
-    if (k == 'prescription') return true;
+
     final ck = _normalizeKind(ctKind);
+    if (ck == 'general') return false;
     if (ck == 'prescription') return true;
+
+    final k = _normalizeKind(kind);
+    if (k == 'general') return false;
+    if (k == 'prescription') return true;
+
     final ik = _normalizeKind(itKind ?? '');
+    if (ik == 'general') return false;
     if (ik == 'prescription') return true;
+
     if (doctorName != null && doctorName!.trim().isNotEmpty) return true;
     if (hasReservationSchedule) return true;
     return false;

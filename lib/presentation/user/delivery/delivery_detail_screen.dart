@@ -122,12 +122,12 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
         odId: odId,
       );
       if (!mounted) return;
-      setState(() {
+        setState(() {
         _reviewedItIds =
             (check['reviewedItIds'] as List<String>?) ?? const <String>[];
-      });
+        });
     } catch (_) {}
-  }
+      }
 
   bool _canWriteReview(OrderDetailModel order) {
     return pendingReviewProducts(order, _reviewedItIds).isNotEmpty;
@@ -343,15 +343,15 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
               else if (!completed) ...[
                 gap,
                 if (!isRx && preparing) ...[
-                  Container(
-                    width: double.infinity,
+        Container(
+          width: double.infinity,
                     padding: EdgeInsets.symmetric(
                       vertical: healthDp(context, 10),
                     ),
                     clipBehavior: Clip.antiAlias,
-                    decoration: ShapeDecoration(
+          decoration: ShapeDecoration(
                       color: const Color(0x19FF5A8D),
-                      shape: RoundedRectangleBorder(
+            shape: RoundedRectangleBorder(
                         borderRadius:
                             BorderRadius.circular(healthDp(context, 10)),
                       ),
@@ -359,11 +359,11 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
                     child: Text(
                       '배송준비중인 상태로\n배송지 변경 또는 취소가 어렵습니다.',
                       textAlign: TextAlign.center,
-                      style: TextStyle(
+                              style: TextStyle(
                         color: const Color(0xFFFF5A8D),
                         fontSize: healthSp(context, 12),
-                        fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w500,
+                                fontFamily: 'Gmarket Sans TTF',
+                                fontWeight: FontWeight.w500,
                         height: 1.50,
                       ),
                     ),
@@ -406,10 +406,10 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
                   showChangeButton: false,
                 ),
               ],
+              ],
             ],
-          ],
+          ),
         ),
-      ),
     );
   }
 
@@ -534,15 +534,15 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
           style: DeliveryDetailProductActionStyle.outlinePink,
         ),
         (
-          label: '배송조회',
-          onTap: _trackDelivery,
+              label: '배송조회',
+              onTap: _trackDelivery,
           style: DeliveryDetailProductActionStyle.outlinePink,
         ),
       ];
       if (_canWriteReview(order)) {
         actions.add((
-          label: '리뷰쓰기',
-          onTap: _writeReviewFromDetail,
+              label: '리뷰쓰기',
+              onTap: _writeReviewFromDetail,
           style: DeliveryDetailProductActionStyle.primary,
         ));
       } else {
@@ -812,8 +812,8 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
     final bool? result;
     if (pending.length > 1) {
       result = await Navigator.push<bool>(
-        context,
-        MaterialPageRoute(
+      context,
+      MaterialPageRoute(
           builder: (_) => DeliverySelectList(
             orderDetail: _orderDetail!,
             pendingProducts: pending,

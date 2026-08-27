@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../data/models/product/product_model.dart';
+import '../../../data/models/cart/cart_item_model.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/product_card.dart';
 import '../../health/health_common/health_responsive_scale.dart';
@@ -129,14 +130,17 @@ Widget _dismissibleBottomSheetShell({
 Future<void> showRecommendProductBottomup({
   required BuildContext context,
   required List<Product> products,
+  Future<List<Product>>? productsLoader,
   required ValueChanged<Product> onProductTap,
   VoidCallback? onGoToCart,
-  VoidCallback? onPrimaryAction,
+  Future<void> Function()? onPrimaryAction,
+  List<CartItem>? addedItems,
+  Future<List<CartItem>>? addedItemsFuture,
   String headline = '장바구니에 상품을 담았어요.',
   String title = '함께 구매하기 좋은 상품',
   String primaryButtonLabel = '처방 예약 바로가기',
 }) async {
-  if (products.isEmpty) return;
+  if (products.isEmpty && productsLoader == null) return;
 
   final contentW = MobileLayoutWrapper.contentWidthOf(context);
 
@@ -165,12 +169,15 @@ Future<void> showRecommendProductBottomup({
             ),
             child: RecommendProductBottomSheet(
               products: products,
+              productsLoader: productsLoader,
               headline: headline,
               title: title,
               primaryButtonLabel: primaryButtonLabel,
               onProductTap: onProductTap,
               onGoToCart: onGoToCart,
               onPrimaryAction: onPrimaryAction,
+              addedItems: addedItems,
+              addedItemsFuture: addedItemsFuture,
             ),
           ),
         ),
@@ -179,28 +186,65 @@ Future<void> showRecommendProductBottomup({
   );
 }
 
-class RecommendProductBottomSheet extends StatelessWidget {
+class RecommendProductBottomSheet extends StatefulWidget {
   final List<Product> products;
+  final Future<List<Product>>? productsLoader;
   final String headline;
   final String title;
   final String primaryButtonLabel;
   final ValueChanged<Product> onProductTap;
   final VoidCallback? onGoToCart;
-  final VoidCallback? onPrimaryAction;
+  final Future<void> Function()? onPrimaryAction;
+  final List<CartItem>? addedItems;
+  final Future<List<CartItem>>? addedItemsFuture;
 
   const RecommendProductBottomSheet({
     super.key,
     required this.products,
+    this.productsLoader,
     required this.headline,
     required this.title,
     required this.primaryButtonLabel,
     required this.onProductTap,
     this.onGoToCart,
     this.onPrimaryAction,
+    this.addedItems,
+    this.addedItemsFuture,
   });
 
-  VoidCallback? get _primaryTap =>
-      onPrimaryAction ?? onGoToCart;
+  @override
+  State<RecommendProductBottomSheet> createState() =>
+      _RecommendProductBottomSheetState();
+}
+
+class _RecommendProductBottomSheetState extends State<RecommendProductBottomSheet> {
+  bool _primaryLoading = false;
+
+  Future<void> Function()? get _primaryTap =>
+      widget.onPrimaryAction ??
+      (widget.onGoToCart != null
+          ? () async {
+              widget.onGoToCart!();
+            }
+          : null);
+
+  Future<void> _handlePrimaryTap() async {
+    final action = _primaryTap;
+    if (action == null || _primaryLoading) return;
+
+    setState(() => _primaryLoading = true);
+    try {
+      if (widget.addedItemsFuture != null &&
+          (widget.addedItems == null || widget.addedItems!.isEmpty)) {
+        await widget.addedItemsFuture;
+      }
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      await action();
+    } finally {
+      if (mounted) setState(() => _primaryLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -248,7 +292,7 @@ class RecommendProductBottomSheet extends StatelessWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            headline,
+                            widget.headline,
                             style: TextStyle(
                               color: const Color(0xFF1A1A1E),
                               fontSize: healthSp(context, 16),
@@ -257,11 +301,11 @@ class RecommendProductBottomSheet extends StatelessWidget {
                             ),
                           ),
                         ),
-                        if (onGoToCart != null)
+                        if (widget.onGoToCart != null)
                           GestureDetector(
                             onTap: () {
                               Navigator.of(context).pop();
-                              onGoToCart!();
+                              widget.onGoToCart!();
                             },
                             behavior: HitTestBehavior.opaque,
                             child: Padding(
@@ -303,41 +347,44 @@ class RecommendProductBottomSheet extends StatelessWidget {
                         ),
                         Expanded(
                           child: Text(
-                            title,
+                            widget.title,
                             style: shoppingSectionTitleStyle(context),
                           ),
                         ),
                       ],
                     ),
                     SizedBox(height: healthDp(context, 12)),
-                    _buildFixedRecommendRow(
-                      context: context,
-                      products: products,
-                      onProductTap: onProductTap,
-                      innerWidth: innerWidth,
-                    ),
+                    _buildRecommendSection(context, innerWidth),
                     if (_primaryTap != null) ...[
                       SizedBox(height: healthDp(context, 20)),
                       GestureDetector(
-                        onTap: () {
-                          Navigator.of(context).pop();
-                          _primaryTap!();
-                        },
+                        onTap: _primaryLoading ? null : _handlePrimaryTap,
                         child: Container(
                           width: double.infinity,
                           height: healthDp(context, 40),
                           padding: EdgeInsets.all(healthDp(context, 10)),
                           clipBehavior: Clip.antiAlias,
                           decoration: ShapeDecoration(
-                            color: const Color(0xFFFF5A8D),
+                            color: _primaryLoading
+                                ? const Color(0xFFFF5A8D).withValues(alpha: 0.6)
+                                : const Color(0xFFFF5A8D),
                             shape: RoundedRectangleBorder(
                               borderRadius:
                                   BorderRadius.circular(healthDp(context, 10)),
                             ),
                           ),
                           alignment: Alignment.center,
-                          child: Text(
-                            primaryButtonLabel,
+                          child: _primaryLoading
+                              ? SizedBox(
+                                  width: healthDp(context, 18),
+                                  height: healthDp(context, 18),
+                                  child: const CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : Text(
+                                  widget.primaryButtonLabel,
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: healthSp(context, 16),
@@ -353,6 +400,75 @@ class RecommendProductBottomSheet extends StatelessWidget {
               ),
             ),
           ),
+        );
+      },
+    );
+  }
+
+  Widget _buildRecommendSection(BuildContext context, double innerWidth) {
+    if (widget.products.isNotEmpty) {
+      return _buildFixedRecommendRow(
+        context: context,
+        products: widget.products,
+        onProductTap: widget.onProductTap,
+        innerWidth: innerWidth,
+      );
+    }
+
+    final loader = widget.productsLoader;
+    if (loader == null) {
+      return SizedBox(
+        height: healthDp(context, 120),
+        child: Center(
+          child: Text(
+            '추천 상품을 불러오지 못했습니다.',
+            style: TextStyle(
+              color: Colors.grey[600],
+              fontSize: healthSp(context, 12),
+              fontFamily: 'Gmarket Sans TTF',
+            ),
+          ),
+        ),
+      );
+    }
+
+    return FutureBuilder<List<Product>>(
+      future: loader,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return SizedBox(
+            height: healthDp(context, 120),
+            child: const Center(
+              child: CircularProgressIndicator(
+                color: Color(0xFFFF5A8D),
+                strokeWidth: 2,
+              ),
+            ),
+          );
+        }
+
+        final loaded = snapshot.data ?? const <Product>[];
+        if (loaded.isEmpty) {
+          return SizedBox(
+            height: healthDp(context, 48),
+            child: Center(
+              child: Text(
+                '추천 상품이 없습니다.',
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontSize: healthSp(context, 12),
+                  fontFamily: 'Gmarket Sans TTF',
+                ),
+              ),
+            ),
+          );
+        }
+
+        return _buildFixedRecommendRow(
+          context: context,
+          products: loaded,
+          onProductTap: widget.onProductTap,
+          innerWidth: innerWidth,
         );
       },
     );

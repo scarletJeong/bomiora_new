@@ -3,7 +3,7 @@ import 'dart:collection';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart'
-    show TargetPlatform, defaultTargetPlatform;
+    show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
@@ -15,10 +15,12 @@ class KcpPayWebViewScreen extends StatefulWidget {
     super.key,
     required this.html,
     required this.token,
+    this.usePcLayout = false,
   });
 
   final String html;
   final String token;
+  final bool usePcLayout;
 
   @override
   State<KcpPayWebViewScreen> createState() => _KcpPayWebViewScreenState();
@@ -130,7 +132,6 @@ class _KcpPayWebViewScreenState extends State<KcpPayWebViewScreen> {
 
   Timer? _pollingTimer;
   bool _completed = false;
-  bool _isLoading = true;
 
   String get _launchUrl =>
       '${ApiClient.baseUrl}/api/kcp-pay/launch/${Uri.encodeComponent(widget.token)}';
@@ -184,6 +185,18 @@ class _KcpPayWebViewScreenState extends State<KcpPayWebViewScreen> {
       final data = jsonDecode(response.body) as Map<String, dynamic>;
       final status = (data['status'] ?? '').toString();
       if (status == 'pending') {
+        final resCd = (data['res_cd'] ?? '').toString().trim();
+        final orderId = (data['order_id'] ?? '').toString().trim();
+        if (resCd == '0000' && orderId.isNotEmpty) {
+          _completed = true;
+          _pollingTimer?.cancel();
+          if (!mounted) return;
+          Navigator.pop(context, {
+            'success': true,
+            'order_id': orderId,
+            'message': (data['message'] ?? '가상계좌 발급이 완료되었습니다.').toString(),
+          });
+        }
         return;
       }
 
@@ -220,24 +233,29 @@ class _KcpPayWebViewScreenState extends State<KcpPayWebViewScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final ua = _mobileUserAgent();
-    return WillPopScope(
-      onWillPop: () async {
-        _returnUserCancelled();
-        return false;
-      },
-      child: Scaffold(
-        body: SafeArea(
-          // 상태바(시간·배터리)와 KCP 닫기(X) 겹침 방지
-          bottom: false,
-          child: Stack(
-            children: [
-            InAppWebView(
-              // initialData 대신 launch URL — HTTP User-Agent 가 payplus 요청에 실림
-              initialUrlRequest: URLRequest(
-                url: WebUri(_launchUrl),
-                headers: {'User-Agent': ua},
-              ),
+    final usePc = widget.usePcLayout || kIsWeb;
+    final ua = usePc ? null : _mobileUserAgent();
+    final size = MediaQuery.sizeOf(context);
+    final sheetWidth = usePc ? size.width.clamp(360.0, 720.0) : size.width;
+    final sheetHeight = usePc ? size.height * 0.92 : size.height;
+    final inlineHtml = widget.html.trim();
+    final useInlineHtml = inlineHtml.isNotEmpty;
+
+    final webView = InAppWebView(
+              initialData: useInlineHtml
+                  ? InAppWebViewInitialData(
+                      data: inlineHtml,
+                      baseUrl: WebUri('${ApiClient.baseUrl}/'),
+                      mimeType: 'text/html',
+                      encoding: 'utf-8',
+                    )
+                  : null,
+              initialUrlRequest: useInlineHtml
+                  ? null
+                  : URLRequest(
+                      url: WebUri(_launchUrl),
+                      headers: ua != null ? {'User-Agent': ua} : null,
+                    ),
               initialSettings: InAppWebViewSettings(
                 javaScriptEnabled: true,
                 domStorageEnabled: true,
@@ -245,9 +263,11 @@ class _KcpPayWebViewScreenState extends State<KcpPayWebViewScreen> {
                 cacheEnabled: false,
                 clearCache: true,
                 userAgent: ua,
-                preferredContentMode: UserPreferredContentMode.MOBILE,
+                preferredContentMode: usePc
+                    ? UserPreferredContentMode.RECOMMENDED
+                    : UserPreferredContentMode.MOBILE,
                 javaScriptCanOpenWindowsAutomatically: true,
-                supportMultipleWindows: true,
+                supportMultipleWindows: !usePc,
                 thirdPartyCookiesEnabled: true,
                 sharedCookiesEnabled: true,
                 useHybridComposition: true,
@@ -260,19 +280,22 @@ class _KcpPayWebViewScreenState extends State<KcpPayWebViewScreen> {
                 mediaPlaybackRequiresUserGesture: false,
                 mixedContentMode: MixedContentMode.MIXED_CONTENT_ALWAYS_ALLOW,
               ),
-              initialUserScripts: UnmodifiableListView<UserScript>([
-                UserScript(
-                  source: _forceMobileUaScript,
-                  injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
-                  forMainFrameOnly: false,
-                ),
-                UserScript(
-                  source: _fitPaymentLayerScript,
-                  injectionTime: UserScriptInjectionTime.AT_DOCUMENT_END,
-                  forMainFrameOnly: false,
-                ),
-              ]),
+              initialUserScripts: usePc
+                  ? null
+                  : UnmodifiableListView<UserScript>([
+                      UserScript(
+                        source: _forceMobileUaScript,
+                        injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
+                        forMainFrameOnly: false,
+                      ),
+                      UserScript(
+                        source: _fitPaymentLayerScript,
+                        injectionTime: UserScriptInjectionTime.AT_DOCUMENT_END,
+                        forMainFrameOnly: false,
+                      ),
+                    ]),
               onWebViewCreated: (controller) async {
+                if (ua == null) return;
                 try {
                   await controller.setSettings(
                     settings: InAppWebViewSettings(
@@ -282,7 +305,9 @@ class _KcpPayWebViewScreenState extends State<KcpPayWebViewScreen> {
                   );
                 } catch (_) {}
               },
-              onCreateWindow: (controller, createWindowAction) async {
+              onCreateWindow: usePc
+                  ? null
+                  : (controller, createWindowAction) async {
                 await showDialog<void>(
                   context: context,
                   barrierDismissible: false,
@@ -331,8 +356,9 @@ class _KcpPayWebViewScreenState extends State<KcpPayWebViewScreen> {
               },
               onLoadStop: (controller, url) async {
                 if (!mounted) return;
-                setState(() => _isLoading = false);
-                await _injectHelpers(controller);
+                if (!usePc) {
+                  await _injectHelpers(controller);
+                }
                 final text = url?.toString() ?? '';
                 if (text.contains('/api/kcp-pay/callback')) {
                   await _pollResult();
@@ -344,15 +370,38 @@ class _KcpPayWebViewScreenState extends State<KcpPayWebViewScreen> {
                   _pollResult();
                 }
               },
-            ),
-            if (_isLoading)
-              const Center(
-                child: CircularProgressIndicator(),
+            );
+
+    return WillPopScope(
+      onWillPop: () async {
+        _returnUserCancelled();
+        return false;
+      },
+      child: usePc
+          ? Material(
+              color: Colors.transparent,
+              child: Center(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: SizedBox(
+                    width: sheetWidth,
+                    height: sheetHeight,
+                    child: Scaffold(
+                      body: SafeArea(
+                        bottom: false,
+                        child: webView,
+                      ),
+                    ),
+                  ),
+                ),
               ),
-          ],
-          ),
-        ),
-      ),
+            )
+          : Scaffold(
+              body: SafeArea(
+                bottom: false,
+                child: webView,
+              ),
+            ),
     );
   }
 }

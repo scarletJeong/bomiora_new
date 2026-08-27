@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../data/services/cart_service.dart';
 import '../../../data/services/prescription_purchase_history_service.dart';
 import '../screens/cart_general_screen.dart' as cart_general;
 import '../screens/cart_integration_screen.dart';
@@ -14,7 +15,11 @@ class CartNavigation {
     BuildContext context, {
     bool prescriptionTab = false,
     bool clearStack = false,
+    bool forceRefresh = true,
   }) async {
+    if (forceRefresh) {
+      CartService.invalidateCartCache();
+    }
     final useIntegrated =
         await PrescriptionPurchaseHistoryService.shouldUseIntegratedCart();
     if (!context.mounted) return;

@@ -1,5 +1,4 @@
 import 'dart:ui';
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_svg/flutter_svg.dart';
@@ -8,16 +7,14 @@ import '../../../data/models/product/product_model.dart';
 import '../../../data/repositories/product/product_repository.dart';
 import '../../../data/models/review/review_model.dart';
 import '../../../core/utils/image_url_helper.dart';
-import '../../../core/utils/node_value_parser.dart';
 import '../../../core/utils/product_share.dart';
 import '../../../core/utils/inf_code_tracker.dart';
 import '../../../data/services/point_service.dart';
 import '../../../data/services/auth_service.dart';
+import '../../../data/services/app_config_service.dart';
 import '../../../data/services/wish_service.dart';
 import '../../../data/services/recent_view_service.dart';
 import '../../../data/services/cart_service.dart';
-import '../../../core/network/api_client.dart';
-import '../../../core/network/api_endpoints.dart';
 import '../../../data/models/user/user_model.dart';
 import '../../../data/models/product/product_option_model.dart';
 import '../../../data/repositories/product/product_option_repository.dart';
@@ -80,6 +77,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
   Map<ProductOption, int> _selectedOptions = {}; // 옵션과 수량을 함께 관리
   List<SupplyCartLine> _supplyLines = [];
   List<Product> _recommendedProducts = [];
+  List<CartItem> _lastGeneralAddItems = [];
 
   void _safeSetState(VoidCallback fn) {
     if (!mounted) return;
@@ -130,8 +128,10 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
   }
 
   Future<void> _loadProductDetail() async {
+    final preview = ProductRepository.getProductPreview(widget.productId);
     _safeSetState(() {
-      _isLoading = true;
+      _product = preview;
+      _isLoading = preview == null;
       _hasError = false;
       _errorMessage = null;
     });
@@ -247,26 +247,10 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
 
   /// 찜하기 상태 확인
   Future<void> _checkFavoriteStatus() async {
-    try {
-      final wishList = await WishService.getWishList();
-
-      // 현재 상품이 찜 목록에 있는지 확인
-      final isFavorite = wishList.any((item) {
-        // it_id 필드로 비교
-        final itemId = item is Map
-            ? (NodeValueParser.asString(item['it_id']) ??
-                NodeValueParser.asString(item['itId']) ??
-                '')
-            : '';
-        return itemId == widget.productId;
-      });
-
-      _safeSetState(() {
-        _isFavorite = isFavorite;
-      });
-    } catch (e) {
-      // 에러 발생 시 기본값(false) 유지
-    }
+    final isFavorite = await WishService.isWished(widget.productId);
+    _safeSetState(() {
+      _isFavorite = isFavorite;
+    });
   }
 
   Future<void> _loadReviews() async {
@@ -317,24 +301,8 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
 
   /// 설정 조회 (cf_use_point)
   Future<void> _loadConfig() async {
-    try {
-      final response = await ApiClient.get(ApiEndpoints.config);
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['success'] == true && data['data'] != null) {
-          final config = data['data'];
-          _safeSetState(() {
-            _usePointConfig =
-                config['cf_use_point'] == 1 || config['cf_use_point'] == true;
-          });
-        }
-      }
-    } catch (e) {
-      // 기본값 설정
-      _safeSetState(() {
-        _usePointConfig = true;
-      });
-    }
+    final usePoint = await AppConfigService.usePoint();
+    _safeSetState(() => _usePointConfig = usePoint);
   }
 
   /// 상품 옵션 조회
@@ -1565,29 +1533,19 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
 
         if (!mounted) return;
 
-        final beforeIds = await _snapshotGeneralCartIds();
-        final result = await CartService.addOptionsToCart(
+        final addFuture = CartService.addOptionsToCart(
           product: _product!,
           selectedOptions: options,
           supplyLines: supply,
           mergeIfExists: true,
         );
+        addFuture.then(_onCartAddCompleted);
 
         if (!mounted) return;
-
-        if (result['success'] == true) {
-          _safeSetState(() {
-            _selectedOptions.clear();
-            _supplyLines.clear();
-          });
-          final checkout = await _resolveGeneralCheckoutPayload(
-            beforeIds: beforeIds,
-            selectedOptions: options,
-          );
-          await _loadRecommendedProducts();
-          if (!mounted) return;
-          await _showRecommendProductBottomup(checkout: checkout);
-        }
+        await _showRecommendProductBottomup(
+          addedItemsFuture:
+              addFuture.then((result) => _parseAddedCartItems(result)),
+        );
       },
       onAddToPrescriptionCart: () async {},
       onReserve: () async {},
@@ -1638,6 +1596,12 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
     if (!mounted) return false;
 
     final success = result['success'] == true;
+    if (success) {
+      final item = CartService.cartItemFromAddResponseData(result['data']);
+      _lastGeneralAddItems = item != null ? [item] : const [];
+    } else {
+      _lastGeneralAddItems = const [];
+    }
     return success;
   }
 
@@ -1648,6 +1612,15 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
         .map((e) => CartItem.fromJson(Map<String, dynamic>.from(e)))
         .where((e) => !e.isPrescription)
         .toList();
+  }
+
+  List<CartItem> _parseAddedCartItems(Map<String, dynamic> result) {
+    final raw = result['added_items'];
+    if (raw is List && raw.isNotEmpty) {
+      return raw.whereType<CartItem>().toList();
+    }
+    final item = CartService.cartItemFromAddResponseData(result['data']);
+    return item != null ? [item] : const [];
   }
 
   Future<Set<int>> _snapshotGeneralCartIds() async {
@@ -1760,8 +1733,6 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
         selectedOptions != null && selectedOptions.isNotEmpty;
     if (!hasOptions && (quantity == null || quantity <= 0)) return;
 
-    final beforeIds = await _snapshotGeneralCartIds();
-
     final Map<String, dynamic> result;
     if (hasOptions) {
       result = await CartService.addOptionsToCart(
@@ -1789,11 +1760,15 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       _supplyLines.clear();
     });
 
-    final payItems = await _resolveGeneralBuyNowPayItems(
-      beforeIds: beforeIds,
-      selectedOptions: selectedOptions,
-      quantity: quantity,
-    );
+    var payItems = _parseAddedCartItems(result);
+    if (payItems.isEmpty) {
+      final beforeIds = await _snapshotGeneralCartIds();
+      payItems = await _resolveGeneralBuyNowPayItems(
+        beforeIds: beforeIds,
+        selectedOptions: selectedOptions,
+        quantity: quantity,
+      );
+    }
     if (!mounted || payItems.isEmpty) {
       _showBuyNowFailedSnackBar();
       return;
@@ -1816,47 +1791,29 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
     );
   }
 
-  Future<({List<CartItem> payItems, int shippingCost})?>
-      _resolveGeneralCheckoutPayload({
-    required Set<int> beforeIds,
-    Map<ProductOption, int>? selectedOptions,
-    int? quantity,
-  }) async {
-    final payItems = await _resolveGeneralBuyNowPayItems(
-      beforeIds: beforeIds,
-      selectedOptions: selectedOptions,
-      quantity: quantity,
-    );
-    if (payItems.isEmpty) return null;
-
-    final cart = await CartService.getCart();
-    if (cart['success'] != true) return null;
-
-    final allGeneralItems = _parseGeneralCartItems(cart);
-    final cartShippingCost = (cart['shipping_cost'] as num?)?.toInt() ?? 0;
-    final shippingCost = _resolveBuyNowShippingCost(
-      payItems: payItems,
-      allGeneralItems: allGeneralItems,
-      cartShippingCost: cartShippingCost,
-    );
-    return (payItems: payItems, shippingCost: shippingCost);
-  }
-
   Future<void> _showRecommendProductBottomup({
-    ({List<CartItem> payItems, int shippingCost})? checkout,
+    List<CartItem>? addedItems,
+    Future<List<CartItem>>? addedItemsFuture,
   }) async {
     if (_product == null || !mounted) return;
 
-    final products =
-        await CartService.getProductRecommendProducts(_product!.id);
-    if (!mounted) return;
+    final cached = _recommendedProducts;
+    final productsLoader = cached.isEmpty
+        ? CartService.getProductRecommendProducts(_product!.id).then((loaded) {
+            if (mounted && loaded.isNotEmpty) {
+              setState(() => _recommendedProducts = loaded);
+            }
+            return loaded;
+          })
+        : null;
 
-    // 추천이 없어도 바로 결제하기는 가능해야 함
-    if (products.isEmpty) {
-      if (checkout != null) {
+    if (cached.isEmpty && productsLoader == null) {
+      final items = addedItems ??
+          (addedItemsFuture != null ? await addedItemsFuture : null);
+      if (items != null && items.isNotEmpty) {
         await _openGeneralPaymentScreen(
-          payItems: checkout.payItems,
-          shippingCost: checkout.shippingCost,
+          payItems: items,
+          shippingCost: 0,
         );
       }
       return;
@@ -1864,7 +1821,10 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
 
     await showRecommendProductBottomup(
       context: context,
-      products: products,
+      products: cached,
+      productsLoader: productsLoader,
+      addedItems: addedItems,
+      addedItemsFuture: addedItemsFuture,
       primaryButtonLabel: '바로 결제하기',
       onProductTap: (product) {
         Navigator.of(context).pop();
@@ -1876,15 +1836,34 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       },
       onPrimaryAction: () async {
         if (!mounted) return;
-        if (checkout == null || checkout.payItems.isEmpty) {
+        final items = addedItems ??
+            (addedItemsFuture != null
+                ? await addedItemsFuture
+                : const <CartItem>[]);
+        if (items.isEmpty) {
           _showBuyNowFailedSnackBar();
           return;
         }
         await _openGeneralPaymentScreen(
-          payItems: checkout.payItems,
-          shippingCost: checkout.shippingCost,
+          payItems: items,
+          shippingCost: 0,
         );
       },
+    );
+  }
+
+  void _onCartAddCompleted(Map<String, dynamic> result) {
+    if (!mounted) return;
+    if (result['success'] == true) {
+      _safeSetState(() {
+        _selectedOptions.clear();
+        _supplyLines.clear();
+      });
+      return;
+    }
+    final message = (result['message'] ?? '장바구니 담기에 실패했습니다.').toString();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
     );
   }
 
@@ -1900,16 +1879,23 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       onToggleFavorite: _toggleFavorite,
       onAddToCart: (quantity) async {
         Navigator.of(context).pop();
-        final beforeIds = await _snapshotGeneralCartIds();
-        final success = await _addGeneralProductToCart(quantity: quantity);
-        if (!mounted || !success) return;
-        final checkout = await _resolveGeneralCheckoutPayload(
-          beforeIds: beforeIds,
-          quantity: quantity,
-        );
-        await _loadRecommendedProducts();
         if (!mounted) return;
-        await _showRecommendProductBottomup(checkout: checkout);
+
+        final addFuture = () async {
+          final success = await _addGeneralProductToCart(quantity: quantity);
+          if (!success) return <CartItem>[];
+          return _lastGeneralAddItems;
+        }();
+        addFuture.then((items) {
+          if (!mounted) return;
+          if (items.isNotEmpty) return;
+          _showBuyNowFailedSnackBar();
+        });
+
+        if (!mounted) return;
+        await _showRecommendProductBottomup(
+          addedItemsFuture: addFuture,
+        );
       },
       onBuyNow: (quantity) async {
         Navigator.of(context).pop();
