@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../../data/repositories/auth/auth_repository.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/kakao_auth_service.dart';
 import '../../../data/services/naver_auth_service.dart';
+import '../../../core/utils/web_history.dart';
 import '../../../data/models/user/user_model.dart';
 import '../../../core/constants/app_assets.dart';
 import '../../../core/utils/node_value_parser.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
+import '../../common/widgets/app_alert_dialog.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../widgets/kcp_cert.dart';
 import 'signup_screen.dart';
@@ -30,7 +33,17 @@ class _LoginScreenState extends State<LoginScreen> {
   String? _loginErrorText;
   String? _returnTo;
   bool _didApplyPrefillEmail = false;
+  bool _naverWebResumeStarted = false;
 
+  @override
+  void initState() {
+    super.initState();
+    if (kIsWeb) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _resumeNaverWebAuthIfNeeded();
+      });
+    }
+  }
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -47,6 +60,15 @@ class _LoginScreenState extends State<LoginScreen> {
           _emailController.text.trim().isEmpty) {
         _emailController.text = prefill;
         _didApplyPrefillEmail = true;
+      }
+    }
+
+    if (kIsWeb) {
+      final queryReturnTo = Uri.base.queryParameters['returnTo']?.trim();
+      if (queryReturnTo != null &&
+          queryReturnTo.isNotEmpty &&
+          queryReturnTo != '/login') {
+        _returnTo = queryReturnTo;
       }
     }
   }
@@ -638,7 +660,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (cert['popupBlocked'] == true) return;
 
     if (cert['duplicate'] == true) {
-      Navigator.pushReplacementNamed(context, '/login');
+      await AppAlertDialog.showAlreadyRegisteredThenLogin(context);
       return;
     }
 
@@ -840,23 +862,116 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Future<void> _resumeNaverWebAuthIfNeeded() async {
+    if (!kIsWeb || _naverWebResumeStarted || !mounted) return;
+    _naverWebResumeStarted = true;
+
+    final authError = NaverAuthService.peekWebAuthError();
+    if (authError != null && authError.isNotEmpty) {
+      NaverAuthService.clearWebAuthQueryFromUrl();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(authError)),
+      );
+      return;
+    }
+
+    final token = NaverAuthService.peekWebAuthToken();
+    if (token == null || token.isEmpty) {
+      _naverWebResumeStarted = false;
+      return;
+    }
+
+    NaverAuthService.clearWebAuthQueryFromUrl();
+    setState(() => _isLoading = true);
+
+    try {
+      final naverResult = await NaverAuthService.fetchWebAuthResult(token);
+      if (!naverResult['success']) {
+        if (!mounted) return;
+        final msg = naverResult['error']?.toString();
+        if (msg != null && msg.isNotEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(msg)),
+          );
+        }
+        return;
+      }
+
+      final naverData = naverResult['data'] as Map<String, dynamic>;
+      await _completeNaverLoginFromData(naverData);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('네이버 로그인 오류: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+      _naverWebResumeStarted = false;
+    }
+  }
+
+  Future<void> _completeNaverLoginFromData(Map<String, dynamic> naverData) async {
+    final naverId = naverData['naverId']?.toString() ?? '';
+    final email = naverData['email']?.toString();
+    final nickname = naverData['nickname']?.toString();
+    final name = naverData['name']?.toString();
+
+    if (naverId.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('네이버 사용자 정보를 가져오지 못했습니다.')),
+      );
+      return;
+    }
+
+    final result = await AuthRepository.loginWithNaver(
+      naverId: naverId,
+      email: email,
+      nickname: nickname,
+      name: name,
+      profileImageUrl: naverData['profileImageUrl']?.toString(),
+      gender: naverData['gender']?.toString(),
+      birthday: naverData['birthday']?.toString(),
+      accessToken: naverData['accessToken']?.toString(),
+    );
+
+    await _handleSocialAuthResult(
+      result,
+      provider: 'naver',
+      identifier: naverId,
+      email: email,
+      nickname: nickname,
+      name: name,
+      gender: naverData['gender']?.toString(),
+      birthday: naverData['birthday']?.toString(),
+      profileImageUrl: naverData['profileImageUrl']?.toString(),
+    );
+  }
+
   Future<void> _handleNaverLogin() async {
     setState(() {
       _isLoading = true;
     });
 
     try {
-      final naverResult = await NaverAuthService.login();
+      final naverResult = await NaverAuthService.login(
+        returnToAfterLogin: _returnTo,
+      );
+
+      if (naverResult['needsRedirect'] == true) {
+        final redirectUrl = naverResult['redirectUrl']?.toString();
+        if (redirectUrl != null && redirectUrl.isNotEmpty) {
+          redirectBrowser(redirectUrl);
+        }
+        return;
+      }
 
       if (!naverResult['success']) {
         if (!mounted) return;
-        if (naverResult['needsServerAuth'] == true) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('웹 환경에서는 네이버 로그인을 지원하지 않습니다.'),
-            ),
-          );
-        } else if (naverResult['cancelled'] != true) {
+        if (naverResult['cancelled'] != true) {
           final msg = naverResult['error']?.toString();
           if (msg != null && msg.isNotEmpty) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -868,41 +983,7 @@ class _LoginScreenState extends State<LoginScreen> {
       }
 
       final naverData = naverResult['data'] as Map<String, dynamic>;
-      final naverId = naverData['naverId']?.toString() ?? '';
-      final email = naverData['email']?.toString();
-      final nickname = naverData['nickname']?.toString();
-      final name = naverData['name']?.toString();
-
-      if (naverId.isEmpty) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('네이버 사용자 정보를 가져오지 못했습니다.')),
-        );
-        return;
-      }
-
-      final result = await AuthRepository.loginWithNaver(
-        naverId: naverId,
-        email: email,
-        nickname: nickname,
-        name: name,
-        profileImageUrl: naverData['profileImageUrl']?.toString(),
-        gender: naverData['gender']?.toString(),
-        birthday: naverData['birthday']?.toString(),
-        accessToken: naverData['accessToken']?.toString(),
-      );
-
-      await _handleSocialAuthResult(
-        result,
-        provider: 'naver',
-        identifier: naverId,
-        email: email,
-        nickname: nickname,
-        name: name,
-        gender: naverData['gender']?.toString(),
-        birthday: naverData['birthday']?.toString(),
-        profileImageUrl: naverData['profileImageUrl']?.toString(),
-      );
+      await _completeNaverLoginFromData(naverData);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

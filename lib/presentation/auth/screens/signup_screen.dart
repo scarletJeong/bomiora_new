@@ -7,6 +7,7 @@ import '../../../data/repositories/auth/auth_repository.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/pending_product_checkout.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
+import '../../common/widgets/app_alert_dialog.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../health/health_common/widgets/health_app_bar.dart';
 import '../../user/healthprofile/screens/health_profile_list_screen.dart';
@@ -175,10 +176,7 @@ class _SignupScreenState extends State<SignupScreen> {
     }
 
     if (cert['duplicate'] == true) {
-      Navigator.of(context).pushNamedAndRemoveUntil(
-        '/login',
-        (route) => route.isFirst,
-      );
+      await AppAlertDialog.showAlreadyRegisteredThenLogin(context);
       return;
     }
 
@@ -330,16 +328,9 @@ class _SignupScreenState extends State<SignupScreen> {
         });
       } else {
         final errorMessage = result['error']?.toString() ?? '회원가입에 실패했습니다.';
-        if (_isDuplicateEmailMessage(errorMessage)) {
-          setState(() {
-            _step = _SignupStep.form;
-          });
-          return;
-        }
-        if (_isDuplicateCertMessage(errorMessage)) {
-          setState(() {
-            _step = _SignupStep.form;
-          });
+        if (_isDuplicateEmailMessage(errorMessage) ||
+            _isDuplicateCertMessage(errorMessage)) {
+          await AppAlertDialog.showAlreadyRegisteredThenLogin(context);
           return;
         }
       }

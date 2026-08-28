@@ -3,6 +3,7 @@ class ApiEndpoints {
   static const String login = '/api/auth/login';
   static const String register = '/api/auth/register';
   static const String checkEmail = '/api/auth/check-email';
+
   /// 본인인증 `mb_dupinfo`(또는 DI) 기준 기가입 여부 — 서버 미구현 시 404 등으로 무시 가능
   static const String checkDupInfo = '/api/auth/check-dup-info';
   static const String logout = '/api/auth/logout';
@@ -15,9 +16,14 @@ class ApiEndpoints {
   static const String otpVerify = '/api/auth/otp/verify';
   static const String kakaoLogin = '/api/auth/kakao/login';
   static const String naverLogin = '/api/auth/naver/login';
+  static String naverOAuthAuthorize(String returnTo) =>
+      '/api/auth/naver/authorize?returnTo=${Uri.encodeComponent(returnTo)}';
+  static String naverOAuthResult(String token) =>
+      '/api/auth/naver/result/$token';
   static const String socialLogin = '/api/auth/social/login';
   static const String socialRegister = '/api/auth/social/register';
   static const String authSession = '/api/auth/session';
+  static const String profileUploadImage = '/api/user/profile/image';
 
   // 상품 관련 (기존 Cafe24 서버)
   static const String popularProducts = '/api/products/popular';
@@ -55,6 +61,7 @@ class ApiEndpoints {
 
   // 최근 본 상품
   static const String recentViewRecord = '/api/recent-view/record';
+  static const String recentViewSync = '/api/recent-view/sync';
   static const String recentViewList = '/api/recent-view/list';
   static const String recentViewRemove = '/api/recent-view/remove';
   static const String recentViewClear = '/api/recent-view/clear';
@@ -65,6 +72,7 @@ class ApiEndpoints {
 
   // 리뷰 관련 — 메인 홈 베스트 리뷰는 Node `bomiora_main_review` (쿼리: ?size=8)
   static const String mainHomeReviews = '/api/user/reviews/main';
+
   /// 베스트 리뷰 목록 페이지 (?page=0&size=5&mrNo=)
   static const String mainHomeReviewsBest = '/api/user/reviews/main/best';
 
@@ -87,7 +95,8 @@ class ApiEndpoints {
   static const String userRefundAccount = '/api/user/refund-account';
   static const String userOrders = '/api/user/orders';
   static const String userFcmToken = '/api/user/fcm-token';
-  static const String userNotificationSettings = '/api/user/notification-settings';
+  static const String userNotificationSettings =
+      '/api/user/notification-settings';
   static const String userNotifications = '/api/user/notifications';
   static const String userNotificationRead = '/api/user/notifications/read';
 
@@ -97,6 +106,13 @@ class ApiEndpoints {
   static const String heartRateRecords = '/api/health/heart-rate';
   static const String weightRecords = '/api/health/weight';
   static const String menstrualCycleRecords = '/api/health/menstrual-cycle';
+
+  /// 건강 대시보드 일괄 조회 (체중·혈압·혈당·심박·생리·걸음·목표)
+  static String healthDashboard({
+    required String mbId,
+    required String dateYyyyMmDd,
+  }) =>
+      '/api/health/dashboard?mb_id=${Uri.encodeComponent(mbId)}&date=${Uri.encodeComponent(dateYyyyMmDd)}';
 
   /// 목표설정 (현재/목표 체중, 일일 목표 걸음) — Node: POST/GET latest
   static const String healthGoal = '/api/health/health-goal';

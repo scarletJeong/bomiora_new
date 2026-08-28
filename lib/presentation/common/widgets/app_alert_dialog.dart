@@ -25,16 +25,32 @@ class AppAlertDialog extends StatelessWidget {
     required String message,
     String confirmText = '확인',
     double width = 272,
+    bool useRootNavigator = false,
   }) {
     return showDialog<void>(
       context: context,
       barrierDismissible: false,
+      useRootNavigator: useRootNavigator,
       builder: (context) => AppAlertDialog(
         title: title,
         message: message,
         confirmText: confirmText,
         width: width,
       ),
+    );
+  }
+
+  /// 본인인증·회원가입 중복 — 안내 후 로그인 화면으로 이동
+  static Future<void> showAlreadyRegisteredThenLogin(BuildContext context) async {
+    await show(
+      context,
+      title: '이미 가입된 회원입니다',
+      message: '아이디/비밀번호 찾기를 이용해\n계정을 확인해 주세요.',
+    );
+    if (!context.mounted) return;
+    Navigator.of(context).pushNamedAndRemoveUntil(
+      '/login',
+      (route) => route.isFirst,
     );
   }
 
@@ -80,17 +96,19 @@ class AppAlertDialog extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: const Color(0xFF1A1A1E),
-                fontSize: healthSp(context, 20),
-                fontFamily: 'Gmarket Sans TTF',
-                fontWeight: FontWeight.w700,
+            if (title.trim().isNotEmpty) ...[
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: const Color(0xFF1A1A1E),
+                  fontSize: healthSp(context, 20),
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w700,
+                ),
               ),
-            ),
-            SizedBox(height: healthDp(context, 20)),
+              SizedBox(height: healthDp(context, 20)),
+            ],
             Text(
               message,
               textAlign: TextAlign.center,
