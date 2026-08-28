@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_endpoints.dart';
 import '../../core/utils/inf_code_tracker.dart';
@@ -134,7 +135,7 @@ class CartService {
     return null;
   }
 
-  /// 장바구니에 상품 추가 (동일 상품·옵션이 있으면 수량 합산)
+  /// 장바구니에 상품 추가 (동일 상품·옵션은 서버 `/api/cart/add` 에서 병합)
   static Future<Map<String, dynamic>> addOrMergeToCart({
     required String productId,
     required int quantity,
@@ -148,27 +149,8 @@ class CartService {
     String? parentItId,
     String? ctStatus,
     bool mergeIfExists = true,
+    String? mbId,
   }) async {
-    if (mergeIfExists) {
-      final cart = await getCart();
-      if (cart['success'] == true) {
-        final items = parseShoppingCartItems(cart);
-        final existing = findMatchingShoppingItem(
-          items: items,
-          productId: productId,
-          optionId: optionId,
-          optionText: optionText,
-          parentItId: parentItId,
-        );
-        if (existing != null) {
-          return updateCartQuantity(
-            ctId: existing.ctId,
-            quantity: existing.ctQty + quantity,
-          );
-        }
-      }
-    }
-
     return addToCart(
       productId: productId,
       quantity: quantity,
@@ -181,7 +163,89 @@ class CartService {
       ctKind: ctKind,
       parentItId: parentItId,
       ctStatus: ctStatus,
+      mbId: mbId,
     );
+  }
+
+  static String _generateOrderIdLocal() {
+    final now = DateTime.now();
+    String pad2(int n) => n.toString().padLeft(2, '0');
+    final timestamp =
+        '${now.year}${pad2(now.month)}${pad2(now.day)}${pad2(now.hour)}${pad2(now.minute)}${pad2(now.second)}';
+    final random = Random().nextInt(10000).toString().padLeft(4, '0');
+    return '$timestamp$random';
+  }
+
+  static Future<Map<String, dynamic>> _addSingleOptionLine({
+    required String mbId,
+    required Product product,
+    required ProductOption option,
+    required int quantity,
+    String? odId,
+    String? ctStatus,
+    bool mergeIfExists = false,
+  }) async {
+    final ioType = option.ioType;
+    final int linePrice;
+    if (ioType == 1 || ioType == 2 || ioType == 3) {
+      linePrice = 0;
+    } else {
+      linePrice = (product.price + option.price) * quantity;
+    }
+
+    String ctOptionText;
+    if (option.months != null) {
+      ctOptionText = '${option.step} / ${option.months}일';
+    } else if (option.subOption.isNotEmpty) {
+      ctOptionText = option.subOption.isNotEmpty
+          ? '${option.step} / ${option.subOption}'
+          : option.step;
+      if (option.step.isEmpty) ctOptionText = option.displayText;
+    } else {
+      ctOptionText = option.step.isNotEmpty ? option.step : option.displayText;
+    }
+
+    return addOrMergeToCart(
+      productId: product.id,
+      quantity: quantity,
+      price: linePrice,
+      optionId: option.id,
+      optionText: ctOptionText,
+      optionPrice: option.price,
+      ioType: ioType,
+      odId: odId,
+      ctKind: normalizeCartKind(ctKind: product.ctKind, product: product),
+      ctStatus: ctStatus,
+      mergeIfExists: mergeIfExists,
+      mbId: mbId,
+    );
+  }
+
+  static CartItem? cartItemFromAddResponseData(dynamic data) {
+    if (data is! Map) return null;
+    try {
+      return CartItem.fromJson(Map<String, dynamic>.from(data));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static List<CartItem> parseCartItems(dynamic raw) {
+    if (raw is! List) return [];
+    final items = <CartItem>[];
+    for (final row in raw) {
+      if (row is! Map) continue;
+      try {
+        items.add(CartItem.fromJson(Map<String, dynamic>.from(row)));
+      } catch (_) {}
+    }
+    return items;
+  }
+
+  static String normalizeCartKind({String? ctKind, Product? product}) {
+    final raw = (ctKind ?? product?.ctKind ?? '').trim().toLowerCase();
+    if (raw == 'prescription') return 'prescription';
+    return 'general';
   }
 
   /// 장바구니에 상품 추가
@@ -197,10 +261,13 @@ class CartService {
     String? ctKind, // 상품 종류 (prescription | general)
     String? parentItId,
     String? ctStatus, // 장바구니 상태 (쇼핑, 임시 등)
+    String? mbId,
   }) async {
     try {
-      final user = await AuthService.getUser();
-      if (user == null) {
+      final resolvedMbId = (mbId ?? '').trim().isNotEmpty
+          ? mbId!.trim()
+          : (await AuthService.getUser())?.id;
+      if (resolvedMbId == null || resolvedMbId.isEmpty) {
         return {
           'success': false,
           'message': '로그인이 필요합니다.',
@@ -208,7 +275,7 @@ class CartService {
       }
 
       final requestData = <String, dynamic>{
-        'mb_id': user.id,
+        'mb_id': resolvedMbId,
         'it_id': productId,
         'quantity': quantity,
         'price': price,
@@ -240,7 +307,7 @@ class CartService {
       if (ctKind != null &&
           ctKind.isNotEmpty &&
           !ctKind.toLowerCase().startsWith('supply_add|')) {
-        requestData['ct_kind'] = ctKind;
+        requestData['ct_kind'] = normalizeCartKind(ctKind: ctKind);
       }
 
       if (ctStatus != null && ctStatus.isNotEmpty) {
@@ -256,6 +323,7 @@ class CartService {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
+        invalidateCartCache();
         return {
           'success': data['success'] ?? true,
           'message': data['message'] ?? '장바구니에 추가되었습니다.',
@@ -292,56 +360,27 @@ class CartService {
           'message': '로그인이 필요합니다.',
         };
       }
+      final mbId = user.id;
 
       int successCount = 0;
       int failCount = 0;
       List<String> errorMessages = [];
       final addedCtIds = <int>[];
+      final addedItems = <CartItem>[];
       String? sharedOdId = odId;
+      final supplyCount = supplyLines?.length ?? 0;
+      if (sharedOdId == null &&
+          (selectedOptions.length > 1 || supplyCount > 0)) {
+        sharedOdId = _generateOrderIdLocal();
+      }
 
-      // 각 옵션별로 장바구니에 추가
-      for (final entry in selectedOptions.entries) {
-        final option = entry.key;
-        final quantity = entry.value;
-        final ioType = option.ioType;
-        final int linePrice;
-        if (ioType == 1 || ioType == 2 || ioType == 3) {
-          linePrice = 0;
-        } else {
-          linePrice = (product.price + option.price) * quantity;
-        }
-
-        // ct_option 형식: "디톡스 / 3일" (단계 / 개월수일)
-        String ctOptionText;
-        if (option.months != null) {
-          ctOptionText = '${option.step} / ${option.months}일';
-        } else if (option.subOption.isNotEmpty) {
-          ctOptionText = option.subOption.isNotEmpty
-              ? '${option.step} / ${option.subOption}'
-              : option.step;
-          if (option.step.isEmpty) ctOptionText = option.displayText;
-        } else {
-          ctOptionText = option.step.isNotEmpty ? option.step : option.displayText;
-        }
-
-        final result = await addOrMergeToCart(
-          productId: product.id,
-          quantity: quantity,
-          price: linePrice,
-          optionId: option.id,
-          optionText: ctOptionText,
-          optionPrice: option.price,
-          ioType: ioType,
-          odId: sharedOdId,
-          ctKind: product.ctKind,
-          ctStatus: ctStatus,
-          mergeIfExists: mergeIfExists,
-        );
-
+      void absorbResult(Map<String, dynamic> result, String errorLabel) {
         if (result['success'] == true) {
           successCount++;
           final ctId = ctIdFromCartResponseData(result['data']);
           if (ctId != null) addedCtIds.add(ctId);
+          final item = cartItemFromAddResponseData(result['data']);
+          if (item != null) addedItems.add(item);
           final data = result['data'];
           if (data is Map && sharedOdId == null) {
             final od = data['od_id'] ?? data['odId'];
@@ -349,61 +388,79 @@ class CartService {
           }
         } else {
           failCount++;
-          errorMessages.add('${option.displayText}: ${result['message']}');
+          errorMessages.add('$errorLabel: ${result['message']}');
         }
+      }
+
+      final optionResults = await Future.wait(
+        selectedOptions.entries.map((entry) {
+          return _addSingleOptionLine(
+            mbId: mbId,
+            product: product,
+            option: entry.key,
+            quantity: entry.value,
+            odId: sharedOdId,
+            ctStatus: ctStatus,
+            mergeIfExists: mergeIfExists,
+          );
+        }),
+      );
+
+      for (var i = 0; i < optionResults.length; i++) {
+        final option = selectedOptions.keys.elementAt(i);
+        absorbResult(optionResults[i], option.displayText);
       }
 
       // 연결상품 라인 (본상품 담기 성공 후)
       if (supplyLines != null && supplyLines.isNotEmpty && successCount > 0) {
-        for (final line in supplyLines) {
-          final qty = line.quantity;
-          final ioType = line.option?.ioType ?? 0;
-          final int price;
-          if (ioType == 1 || ioType == 2 || ioType == 3) {
-            price = line.basePrice * qty;
-          } else {
-            price = (line.basePrice + (line.option?.price ?? 0)) * qty;
-          }
-          final optionText = line.option?.displayText ?? '';
-          final result = await addToCart(
-            productId: line.productId,
-            quantity: qty,
-            price: price,
-            optionId: line.option?.id,
-            optionText: optionText,
-            optionPrice: line.option?.price ?? 0,
-            ioType: ioType,
-            odId: sharedOdId,
-            parentItId: product.id,
-            // 상품 종류는 서버가 item_new.it_kind로 채움. 관계는 parent.
-            ctStatus: ctStatus,
-          );
-          if (result['success'] == true) {
-            successCount++;
-            final ctId = ctIdFromCartResponseData(result['data']);
-            if (ctId != null) addedCtIds.add(ctId);
-          } else {
-            failCount++;
-            errorMessages.add('${line.productName}: ${result['message']}');
-          }
+        final supplyResults = await Future.wait(
+          supplyLines.map((line) async {
+            final qty = line.quantity;
+            final ioType = line.option?.ioType ?? 0;
+            final int price;
+            if (ioType == 1 || ioType == 2 || ioType == 3) {
+              price = line.basePrice * qty;
+            } else {
+              price = (line.basePrice + (line.option?.price ?? 0)) * qty;
+            }
+            final optionText = line.option?.displayText ?? '';
+            return addToCart(
+              productId: line.productId,
+              quantity: qty,
+              price: price,
+              optionId: line.option?.id,
+              optionText: optionText,
+              optionPrice: line.option?.price ?? 0,
+              ioType: ioType,
+              odId: sharedOdId,
+              parentItId: product.id,
+              ctStatus: ctStatus,
+              mbId: mbId,
+            );
+          }),
+        );
+
+        for (var i = 0; i < supplyResults.length; i++) {
+          final line = supplyLines[i];
+          absorbResult(supplyResults[i], line.productName);
         }
       }
 
       if (failCount == 0) {
-        await ensureCartItemsSelected(addedCtIds);
         return {
           'success': true,
           'message': '모든 상품이 장바구니에 추가되었습니다.',
           'cart_ids': addedCtIds,
+          'added_items': addedItems,
           'od_id': sharedOdId,
         };
       } else if (successCount > 0) {
-        await ensureCartItemsSelected(addedCtIds);
         return {
           'success': true,
           'message': '일부 상품이 장바구니에 추가되었습니다.',
           'errors': errorMessages,
           'cart_ids': addedCtIds,
+          'added_items': addedItems,
           'od_id': sharedOdId,
         };
       } else {
@@ -421,10 +478,31 @@ class CartService {
     }
   }
 
+  static List<CartItem> addedItemsFromAddOptionsResult(
+    Map<String, dynamic> result,
+  ) {
+    final raw = result['added_items'];
+    if (raw is List && raw.isNotEmpty) {
+      return raw.whereType<CartItem>().toList();
+    }
+    final item = cartItemFromAddResponseData(result['data']);
+    return item != null ? [item] : const [];
+  }
+
   /// 상품 상세 하단 추천 (인플루언서 SKU + MD픽). [itId] 기준으로 추천 목록 조회.
+  static final Map<String, ({List<Product> value, DateTime at})>
+      _productRecommendCache = {};
+  static const Duration _productRecommendCacheTtl = Duration(minutes: 10);
+
   static Future<List<Product>> getProductRecommendProducts(String itId) async {
     final id = itId.trim();
     if (id.isEmpty) return [];
+
+    final cached = _productRecommendCache[id];
+    if (cached != null &&
+        DateTime.now().difference(cached.at) < _productRecommendCacheTtl) {
+      return cached.value;
+    }
 
     try {
       final user = await AuthService.getUser();
@@ -443,14 +521,16 @@ class CartService {
       if (data is! Map || data['success'] != true) return [];
 
       final raw = data['data'];
-      if (raw is! List) return [];
+      if (raw is! List) return cached?.value ?? [];
 
-      return raw
+      final list = raw
           .whereType<Map>()
           .map((e) => Product.fromJson(Map<String, dynamic>.from(e)))
           .toList();
+      _productRecommendCache[id] = (value: list, at: DateTime.now());
+      return list;
     } catch (_) {
-      return [];
+      return cached?.value ?? [];
     }
   }
 
@@ -483,7 +563,23 @@ class CartService {
   }
 
   /// 장바구니 조회 (ct_status가 '쇼핑'인 것만)
-  static Future<Map<String, dynamic>> getCart({String ctStatus = '쇼핑'}) async {
+  static Map<String, dynamic>? _cartCache;
+  static String? _cartCacheKey;
+  static DateTime? _cartCacheAt;
+  static Future<Map<String, dynamic>>? _cartInFlight;
+  static String? _cartInFlightKey;
+  static const Duration _cartCacheTtl = Duration(seconds: 5);
+
+  static void invalidateCartCache() {
+    _cartCache = null;
+    _cartCacheKey = null;
+    _cartCacheAt = null;
+  }
+
+  static Future<Map<String, dynamic>> getCart({
+    String ctStatus = '쇼핑',
+    bool forceRefresh = false,
+  }) async {
     try {
       final user = await AuthService.getUser();
       if (user == null) {
@@ -494,25 +590,31 @@ class CartService {
         };
       }
 
-      final response = await ApiClient.get(
-        '${ApiEndpoints.getCart}?mb_id=${user.id}&ct_status=${Uri.encodeComponent(ctStatus)}',
-      );
+      final cacheKey = '${user.id}|$ctStatus';
+      if (!forceRefresh &&
+          _cartCache != null &&
+          _cartCacheKey == cacheKey &&
+          _cartCacheAt != null &&
+          DateTime.now().difference(_cartCacheAt!) < _cartCacheTtl) {
+        return Map<String, dynamic>.from(_cartCache!);
+      }
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return {
-          'success': true,
-          'data': data['data'] ?? [],
-          'items': data['data'] ?? [], // 하위 호환성
-          'shipping_cost': data['shipping_cost'] ?? 0,
-          'total_price': data['total_price'] ?? 0,
-        };
-      } else {
-        return {
-          'success': false,
-          'message': '장바구니 조회에 실패했습니다.',
-          'items': [],
-        };
+      if (_cartInFlight != null && _cartInFlightKey == cacheKey) {
+        final inflight = await _cartInFlight!;
+        return Map<String, dynamic>.from(inflight);
+      }
+
+      final request =
+          _fetchCart(user.id, ctStatus, forceRefresh: forceRefresh);
+      _cartInFlight = request;
+      _cartInFlightKey = cacheKey;
+      try {
+        return await request;
+      } finally {
+        if (identical(_cartInFlight, request)) {
+          _cartInFlight = null;
+          _cartInFlightKey = null;
+        }
       }
     } catch (e) {
       return {
@@ -521,6 +623,37 @@ class CartService {
         'items': [],
       };
     }
+  }
+
+  static Future<Map<String, dynamic>> _fetchCart(
+    String mbId,
+    String ctStatus, {
+    bool forceRefresh = false,
+  }) async {
+    final response = await ApiClient.get(
+      '${ApiEndpoints.getCart}?mb_id=$mbId&ct_status=${Uri.encodeComponent(ctStatus)}${forceRefresh ? '&refresh=1' : ''}',
+    );
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      final result = {
+        'success': true,
+        'data': data['data'] ?? [],
+        'items': data['data'] ?? [],
+        'shipping_cost': data['shipping_cost'] ?? 0,
+        'total_price': data['total_price'] ?? 0,
+      };
+      _cartCache = result;
+      _cartCacheKey = '$mbId|$ctStatus';
+      _cartCacheAt = DateTime.now();
+      return result;
+    }
+
+    return {
+      'success': false,
+      'message': '장바구니 조회에 실패했습니다.',
+      'items': [],
+    };
   }
 
   /// 주문 ID(od_id) 생성
@@ -593,6 +726,7 @@ class CartService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+        invalidateCartCache();
         return {
           'success': data['success'] ?? true,
           'message': data['message'] ?? '수량이 변경되었습니다.',
@@ -640,6 +774,7 @@ class CartService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+        invalidateCartCache();
         return {
           'success': data['success'] ?? true,
           'message': data['message'] ?? '선택이 저장되었습니다.',
@@ -680,6 +815,7 @@ class CartService {
 
       if (response.statusCode == 200 || response.statusCode == 204) {
         final data = json.decode(response.body);
+        invalidateCartCache();
         return {
           'success': data['success'] ?? true,
           'message': data['message'] ?? '장바구니에서 삭제되었습니다.',
