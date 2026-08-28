@@ -8,6 +8,11 @@ import '../../core/network/api_endpoints.dart';
 // 리뷰 서비스 내부 디버그 콘솔 출력 비활성화
 /// 리뷰 서비스
 class ReviewService {
+  static const Duration _bestCacheTtl = Duration(minutes: 1);
+  static final Map<String, Map<String, dynamic>> _bestCache = {};
+  static final Map<String, DateTime> _bestCacheAt = {};
+  static final Map<String, Future<Map<String, dynamic>>> _bestInFlight = {};
+
   static const int maxReviewImages = 3;
 
   /// 리뷰 첨부 사진 업로드 (웹·모바일 공통)
@@ -17,6 +22,7 @@ class ReviewService {
         ApiEndpoints.reviewUploadImage,
         imageFile,
       );
+      if (response.statusCode == 413) return null;
       if (response.statusCode != 200) return null;
       final data = json.decode(response.body) as Map<String, dynamic>;
       if (data['success'] != true || data['url'] == null) return null;
@@ -120,6 +126,38 @@ class ReviewService {
   static Future<Map<String, dynamic>> getMainHomeReviewsBest({
     int page = 0,
     int size = 5,
+    int? mrNo,
+  }) async {
+    final key = '$page|$size|${mrNo ?? 0}';
+    final cachedAt = _bestCacheAt[key];
+    if (cachedAt != null &&
+        DateTime.now().difference(cachedAt) < _bestCacheTtl) {
+      return Map<String, dynamic>.from(_bestCache[key]!);
+    }
+    final pending = _bestInFlight[key];
+    if (pending != null) return pending;
+
+    final request = _fetchMainHomeReviewsBest(
+      page: page,
+      size: size,
+      mrNo: mrNo,
+    );
+    _bestInFlight[key] = request;
+    try {
+      final result = await request;
+      if (result['success'] == true) {
+        _bestCache[key] = Map<String, dynamic>.from(result);
+        _bestCacheAt[key] = DateTime.now();
+      }
+      return result;
+    } finally {
+      _bestInFlight.remove(key);
+    }
+  }
+
+  static Future<Map<String, dynamic>> _fetchMainHomeReviewsBest({
+    required int page,
+    required int size,
     int? mrNo,
   }) async {
     try {

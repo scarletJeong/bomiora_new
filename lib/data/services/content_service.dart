@@ -6,6 +6,11 @@ import '../../core/network/api_endpoints.dart';
 import '../../core/utils/image_url_helper.dart';
 
 class ContentService {
+  static const Duration _detailCacheTtl = Duration(minutes: 2);
+  static final Map<String, Map<String, dynamic>> _detailCache = {};
+  static final Map<String, DateTime> _detailCacheAt = {};
+  static final Map<String, Future<Map<String, dynamic>>> _detailInFlight = {};
+
   /// Cafe24 업로드 썸네일 실제 경로 (HTML이 아닌 이미지 바이트가 내려오는 경로)
   static const String _contentThumbBase =
       'https://bomiora0.mycafe24.com/data/content/';
@@ -141,7 +146,7 @@ class ContentService {
     final host = Uri.base.host;
     final isLocalWeb = host == 'localhost' || host == '127.0.0.1' || host.isEmpty;
     if (!isLocalWeb) return url;
-    // 로컬 웹: [ImageUrlHelper.convertToLocalUrl] — 프록시 이중 감싸기·415 방지, Cafe24 원본 직링크 사용
+    // 로컬 웹: Cafe24 data/ 이미지는 CORS * 로 직링크, Node API 경로만 baseUrl
     return ImageUrlHelper.convertToLocalUrl(url);
   }
 
@@ -243,6 +248,34 @@ class ContentService {
 
   /// [mbId]·[pfNo]가 있으면 서버에 `user_recommended` 여부를 함께 조회(문진 프로필당 글당 1회).
   static Future<Map<String, dynamic>> getContentDetail(
+    int id, {
+    String? mbId,
+    int? pfNo,
+  }) async {
+    final key = '$id|${(mbId ?? '').trim()}|${pfNo ?? 0}';
+    final cachedAt = _detailCacheAt[key];
+    if (cachedAt != null &&
+        DateTime.now().difference(cachedAt) < _detailCacheTtl) {
+      return Map<String, dynamic>.from(_detailCache[key]!);
+    }
+    final pending = _detailInFlight[key];
+    if (pending != null) return pending;
+
+    final request = _fetchContentDetail(id, mbId: mbId, pfNo: pfNo);
+    _detailInFlight[key] = request;
+    try {
+      final result = await request;
+      if (result['success'] == true) {
+        _detailCache[key] = Map<String, dynamic>.from(result);
+        _detailCacheAt[key] = DateTime.now();
+      }
+      return result;
+    } finally {
+      _detailInFlight.remove(key);
+    }
+  }
+
+  static Future<Map<String, dynamic>> _fetchContentDetail(
     int id, {
     String? mbId,
     int? pfNo,

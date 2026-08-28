@@ -111,6 +111,7 @@ class RecentViewService {
     final local = await _getLocalList();
     if (local.isEmpty) return;
 
+    final items = <Map<String, String>>[];
     for (final item in local.reversed) {
       final itId = NodeValueParser.asString(item['it_id'])?.trim() ?? '';
       final kind = (NodeValueParser.asString(item['it_kind']) ??
@@ -118,19 +119,17 @@ class RecentViewService {
               '')
           .trim();
       if (itId.isEmpty || kind.isEmpty) continue;
+      items.add({'it_id': itId, 'it_kind': kind});
+    }
+    if (items.isEmpty) return;
 
-      try {
-        await ApiClient.post(
-          ApiEndpoints.recentViewRecord,
-          {
-            'mb_id': id,
-            'it_id': itId,
-            'it_kind': kind,
-          },
-        );
-      } catch (_) {
-        // 개별 실패는 무시하고 나머지 동기화 계속
-      }
+    try {
+      await ApiClient.post(
+        ApiEndpoints.recentViewSync,
+        {'mb_id': id, 'items': items},
+      );
+    } catch (_) {
+      // 최근 본 상품 동기화 실패는 로그인 완료에 영향 없음
     }
   }
 

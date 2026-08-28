@@ -82,12 +82,14 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
     if (mounted) {
       setState(() => _recommendPfNo = pfNo);
     }
-    final result = await ContentService.getContentDetail(
-      id,
-      mbId: mbId,
-      pfNo: pfNo,
-    );
+    final results = await Future.wait([
+      ContentService.getContentDetail(id, mbId: mbId, pfNo: pfNo),
+      WishService.isWished('$id'),
+    ]);
+    final result = results[0] as Map<String, dynamic>;
+    final wished = results[1] as bool;
     if (!mounted) return;
+    setState(() => _isWished = wished);
     if (result['success'] == true) {
       final data = result['data'] as Map<String, dynamic>? ?? const {};
       final prev = result['prev'] as Map<String, dynamic>?;
@@ -116,20 +118,12 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
           _userRecommended = null;
         }
       });
-      await _loadWishState();
     } else {
       setState(() {
         _fetchError = result['message']?.toString();
       });
     }
     setState(() => _isLoading = false);
-  }
-
-  Future<void> _loadWishState() async {
-    final id = _currentContentId;
-    if (id == null || !mounted) return;
-    final wished = await WishService.isWished('$id');
-    if (mounted) setState(() => _isWished = wished);
   }
 
   Future<void> _toggleWish() async {

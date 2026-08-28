@@ -182,10 +182,18 @@ class ApiClient {
   }
 
   // 파일 업로드 요청 (웹 호환성 고려)
-  static Future<http.Response> uploadFile(String endpoint, dynamic file) async {
+  static Future<http.Response> uploadFile(
+    String endpoint,
+    dynamic file, {
+    Map<String, String>? fields,
+  }) async {
     try {
       var request =
           http.MultipartRequest('POST', Uri.parse('$baseUrl$endpoint'));
+
+      if (fields != null) {
+        request.fields.addAll(fields);
+      }
 
       if (file is XFile) {
         final bytes = await file.readAsBytes();

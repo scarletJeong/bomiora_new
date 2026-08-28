@@ -10,6 +10,8 @@ import '../../../health/health_common/widgets/health_app_bar.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 import '../widgets/my_page_common.dart';
 import '../../../../core/constants/app_assets.dart';
+import '../../../../core/utils/image_picker_utils.dart';
+import '../../../../core/utils/image_url_helper.dart';
 import '../../../../data/repositories/auth/auth_repository.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/models/user/user_model.dart';
@@ -48,6 +50,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   bool _contactOtpSending = false;
   bool _contactOtpVerifying = false;
   String? _contactOtpErrorText;
+  bool _profileUploading = false;
 
   @override
   void initState() {
@@ -167,6 +170,40 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
 
   void _showNicknameChangeLimitToast() {
     AppToastOverlay.show(context, '닉네임은 6개월에 1번만 변경 가능합니다.');
+  }
+
+  Future<void> _pickAndUploadProfilePhoto() async {
+    if (_currentUser == null || _profileUploading) return;
+
+    await ImagePickerUtils.showImageSourceDialog(context, (file) async {
+      if (file == null || !mounted) return;
+
+      setState(() => _profileUploading = true);
+      final result = await AuthService.uploadProfileImage(
+        mbId: _currentUser!.id,
+        imageFile: file,
+      );
+      if (!mounted) return;
+
+      setState(() => _profileUploading = false);
+
+      if (result['success'] == true) {
+        final user = result['user'] as UserModel?;
+        if (user != null) {
+          setState(() => _currentUser = user);
+        } else {
+          await _loadCurrentUser();
+        }
+        if (!mounted) return;
+        AppToastOverlay.show(context, '프로필 사진이 변경되었습니다.');
+        return;
+      }
+
+      AppToastOverlay.show(
+        context,
+        result['message']?.toString() ?? '프로필 사진 업로드에 실패했습니다.',
+      );
+    });
   }
 
   String _formatPhoneForApi(String phoneDigits) {
@@ -602,7 +639,9 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           _ProfileHeader(
             name: '${_currentUser!.name} 님',
             email: _currentUser!.email,
-            onAddPhoto: () {},
+            profileImage: _currentUser!.profileImage,
+            uploading: _profileUploading,
+            onAddPhoto: _pickAndUploadProfilePhoto,
           ),
           SizedBox(height: healthDp(context, 20)),
 
@@ -906,11 +945,43 @@ class _ProfileHeader extends StatelessWidget {
     required this.name,
     required this.email,
     required this.onAddPhoto,
+    this.profileImage,
+    this.uploading = false,
   });
 
   final String name;
   final String email;
   final VoidCallback onAddPhoto;
+  final String? profileImage;
+  final bool uploading;
+
+  Widget _buildAvatarImage(BuildContext context, double avatarSize) {
+    final raw = profileImage?.trim();
+    if (raw != null && raw.isNotEmpty) {
+      final url = ImageUrlHelper.getImageUrl(raw);
+      if (url.isNotEmpty) {
+        return Image.network(
+          url,
+          key: ValueKey(url),
+          width: avatarSize,
+          height: avatarSize,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => SvgPicture.asset(
+            AppAssets.mypagePhotoProfileIcon,
+            width: avatarSize,
+            height: avatarSize,
+            fit: BoxFit.contain,
+          ),
+        );
+      }
+    }
+    return SvgPicture.asset(
+      AppAssets.mypagePhotoProfileIcon,
+      width: avatarSize,
+      height: avatarSize,
+      fit: BoxFit.contain,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -933,11 +1004,27 @@ class _ProfileHeader extends StatelessWidget {
                     child: ClipRRect(
                       borderRadius:
                           BorderRadius.circular(healthDp(context, 45)),
-                      child: SvgPicture.asset(
-                        AppAssets.mypagePhotoProfileIcon,
-                        width: avatarSize,
-                        height: avatarSize,
-                        fit: BoxFit.contain,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          _buildAvatarImage(context, avatarSize),
+                          if (uploading)
+                            Container(
+                              width: avatarSize,
+                              height: avatarSize,
+                              color: Colors.black26,
+                              child: Center(
+                                child: SizedBox(
+                                  width: healthDp(context, 22),
+                                  height: healthDp(context, 22),
+                                  child: const CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                     ),
                   ),
@@ -946,7 +1033,7 @@ class _ProfileHeader extends StatelessWidget {
                   right: 0,
                   bottom: 0,
                   child: InkWell(
-                    onTap: onAddPhoto,
+                    onTap: uploading ? null : onAddPhoto,
                     borderRadius: BorderRadius.circular(healthDp(context, 25)),
                     child: Container(
                       width: healthDp(context, 18),

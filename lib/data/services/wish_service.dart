@@ -6,6 +6,11 @@ import '../../core/utils/node_value_parser.dart';
 import '../services/auth_service.dart';
 
 class WishService {
+  static const Duration _checkCacheTtl = Duration(seconds: 30);
+  static final Map<String, bool> _checkCache = {};
+  static final Map<String, DateTime> _checkCacheAt = {};
+  static final Map<String, Future<bool>> _checkInFlight = {};
+
   static const Map<String, String> _noCacheHeaders = {
     'Cache-Control': 'no-cache',
     'Pragma': 'no-cache',
@@ -86,10 +91,32 @@ class WishService {
 
   /// 찜 여부 (콘텐츠는 [productId]에 글 id 문자열, 상품은 it_id)
   static Future<bool> isWished(String productId) async {
+    final user = await AuthService.getUser();
+    if (user == null) return false;
+    final key = '${user.id}|${productId.trim()}';
+    final cachedAt = _checkCacheAt[key];
+    if (cachedAt != null &&
+        DateTime.now().difference(cachedAt) < _checkCacheTtl) {
+      return _checkCache[key] ?? false;
+    }
+    final pending = _checkInFlight[key];
+    if (pending != null) return pending;
+
+    final request = _fetchIsWished(user.id, productId);
+    _checkInFlight[key] = request;
     try {
-      final user = await AuthService.getUser();
-      if (user == null) return false;
-      final q = Uri.encodeQueryComponent(user.id);
+      final result = await request;
+      _checkCache[key] = result;
+      _checkCacheAt[key] = DateTime.now();
+      return result;
+    } finally {
+      _checkInFlight.remove(key);
+    }
+  }
+
+  static Future<bool> _fetchIsWished(String userId, String productId) async {
+    try {
+      final q = Uri.encodeQueryComponent(userId);
       final p = Uri.encodeQueryComponent(productId);
       final response = await ApiClient.get(
         '${ApiEndpoints.checkWish}?mb_id=$q&it_id=$p',
@@ -135,7 +162,10 @@ class WishService {
         body,
       );
 
-      return json.decode(response.body);
+      final result = json.decode(response.body);
+      _checkCache['${user.id}|${productId.trim()}'] = true;
+      _checkCacheAt['${user.id}|${productId.trim()}'] = DateTime.now();
+      return result;
     } catch (e) {
       throw Exception('찜 추가 실패: $e');
     }
@@ -157,7 +187,10 @@ class WishService {
         },
       );
 
-      return json.decode(response.body);
+      final result = json.decode(response.body);
+      _checkCache['${user.id}|${productId.trim()}'] = false;
+      _checkCacheAt['${user.id}|${productId.trim()}'] = DateTime.now();
+      return result;
     } catch (e) {
       throw Exception('찜 삭제 실패: $e');
     }

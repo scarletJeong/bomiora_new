@@ -706,6 +706,10 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
               ),
             ),
           ),
+          if (_reviewAttachImageUrls(r).isNotEmpty) ...[
+            SizedBox(height: healthDp(context, 20)),
+            _reviewPhotosGallery(r),
+          ],
         ],
       ),
     );

@@ -1,13 +1,12 @@
+import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../models/user/user_model.dart';
-import '../repositories/auth/auth_repository.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_endpoints.dart';
 import '../../core/utils/node_value_parser.dart';
-import 'fcm_service_stub.dart'
-    if (dart.library.io) 'fcm_service.dart';
+import 'fcm_service_stub.dart' if (dart.library.io) 'fcm_service.dart';
 import 'prescription_purchase_history_service.dart';
 import 'recent_view_service.dart';
 
@@ -26,18 +25,17 @@ class AuthService {
     final userJsonStr = json.encode(user.toJson());
 
     await prefs.setString(_userKey, userJsonStr);
-    if (token != null) { // token이 null이 아닐 때만 저장
+    if (token != null) {
+      // token이 null이 아닐 때만 저장
       await prefs.setString(_tokenKey, token);
     } else {
       await prefs.remove(_tokenKey); // 기존 토큰이 있다면 삭제
     }
     await prefs.setBool(_isLoggedInKey, true);
 
-    // 로그인 전 로컬에 쌓인 최근 본 상품을 계정에 반영
-    await RecentViewService.syncLocalToAccount(user.id);
-
-    // 로그인 후 FCM 토큰 서버 등록 (모바일만)
-    await FCMService().registerTokenWithServer();
+    // 부가 동기화는 로그인 화면 전환을 막지 않는다.
+    unawaited(RecentViewService.syncLocalToAccount(user.id));
+    unawaited(FCMService().registerTokenWithServer());
   }
 
   // 로그인 상태 확인
@@ -50,10 +48,10 @@ class AuthService {
   static Future<UserModel?> getUser() async {
     final prefs = await SharedPreferences.getInstance();
     final userJson = prefs.getString(_userKey);
-    
+
     if (userJson != null) {
       try {
-        final userData = json.decode(userJson);     
+        final userData = json.decode(userJson);
         final user = UserModel.fromJson(userData);
         return user;
       } catch (e) {
@@ -74,7 +72,7 @@ class AuthService {
   static Future<void> logout() async {
     await PrescriptionPurchaseHistoryService.clearCurrentUserCache();
     final prefs = await SharedPreferences.getInstance();
-    
+
     await prefs.remove(_userKey);
     await prefs.remove(_tokenKey);
     await prefs.remove(_isLoggedInKey);
@@ -138,7 +136,8 @@ class AuthService {
       if (userRaw is! Map) return local;
 
       final merged = Map<String, dynamic>.from(local.toJson())
-        ..addAll(NodeValueParser.normalizeMap(Map<String, dynamic>.from(userRaw)));
+        ..addAll(
+            NodeValueParser.normalizeMap(Map<String, dynamic>.from(userRaw)));
       final refreshed = UserModel.fromJson(merged);
       await updateUser(refreshed);
       return refreshed;
@@ -167,7 +166,7 @@ class AuthService {
         if (nickname != null) 'nickname': nickname,
         if (phone != null) 'phone': phone,
       };
-      
+
       final response = await http.put(
         Uri.parse('${ApiClient.baseUrl}/api/user/profile'),
         headers: {
@@ -176,7 +175,7 @@ class AuthService {
         },
         body: json.encode(requestData),
       );
-      
+
       final data = json.decode(response.body) as Map<String, dynamic>;
 
       if (response.statusCode == 200 && data['success'] == true) {
@@ -196,6 +195,58 @@ class AuthService {
         'message': data['message']?.toString() ?? '프로필 수정에 실패했습니다.',
         'code': data['code']?.toString(),
         'nextChangeDate': data['nextChangeDate']?.toString(),
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'message': '네트워크 오류가 발생했습니다.',
+      };
+    }
+  }
+
+  /// 프로필 사진 업로드 (Node → Cafe24 미러)
+  static Future<Map<String, dynamic>> uploadProfileImage({
+    required String mbId,
+    required dynamic imageFile,
+  }) async {
+    try {
+      final response = await ApiClient.uploadFile(
+        ApiEndpoints.profileUploadImage,
+        imageFile,
+        fields: {'mbId': mbId},
+      );
+
+      if (response.statusCode != 200) {
+        return {
+          'success': false,
+          'message': response.statusCode == 413
+              ? '사진 용량이 너무 큽니다. (서버 업로드 한도 확인)'
+              : '프로필 사진 업로드에 실패했습니다.',
+        };
+      }
+
+      final data = json.decode(response.body) as Map<String, dynamic>;
+      if (data['success'] != true) {
+        return {
+          'success': false,
+          'message': data['message']?.toString() ?? '프로필 사진 업로드에 실패했습니다.',
+        };
+      }
+
+      UserModel? updatedUser;
+      if (data['user'] != null) {
+        updatedUser = UserModel.fromJson(
+          NodeValueParser.normalizeMap(
+            Map<String, dynamic>.from(data['user'] as Map),
+          ),
+        );
+        await updateUser(updatedUser);
+      }
+
+      return {
+        'success': true,
+        'message': data['message']?.toString() ?? '프로필 사진이 업로드되었습니다.',
+        'user': updatedUser,
       };
     } catch (e) {
       return {

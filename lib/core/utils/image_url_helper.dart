@@ -3,17 +3,17 @@ import 'package:flutter/foundation.dart';
 import '../network/api_client.dart';
 
 /// 이미지 URL 정규화 헬퍼
-/// 
-/// 주의: CORS 문제 해결 필요
-/// Flutter 앱이 localhost:5000에서 실행되고 이미지가 localhost:80에 있으면
-/// CORS 정책으로 차단될 수 있습니다.
-/// 
-/// 해결 방법:
-/// 1. XAMPP Apache 설정에 CORS 헤더 추가 (httpd.conf 또는 .htaccess)
-///    Header set Access-Control-Allow-Origin "*"
-/// 
-/// 2. 또는 Flutter 앱을 XAMPP를 통해 서빙 (포트 80)
+///
+/// **Cafe24 `data/` 정적 파일** (상품·리뷰·배너·미러 업로드 등)
+/// → `https://bomiora0.mycafe24.com/...` 직링크 (Node `/api/proxy/image` 사용 안 함)
+/// → Cafe24 nginx CORS: `Access-Control-Allow-Origin: https://bomiora.net`
+/// → `data/.htaccess` 에 ACAO 추가 금지 (nginx 와 중복 시 브라우저 CORS 실패)
+///
+/// **Node API 정적** (`/api/health/...`, `/api/user/reviews/images/...` 등)
+/// → [ApiClient.baseUrl] origin
 class ImageUrlHelper {
+  static const _cafe24CanonicalHost = 'https://bomiora0.mycafe24.com';
+
   /// placehold.co 개발용 플레이스홀더 (기본 응답은 SVG → [Image.network] 디코드 실패).
   static String placeholdCo(int width, int height) {
     return placeholdCoAsPng('https://placehold.co/${width}x$height');
@@ -24,7 +24,9 @@ class ImageUrlHelper {
     final u = url.trim();
     if (!u.contains('placehold.co')) return u;
     final lower = u.toLowerCase();
-    if (lower.contains('/png') || lower.endsWith('.png') || lower.endsWith('.jpg')) {
+    if (lower.contains('/png') ||
+        lower.endsWith('.png') ||
+        lower.endsWith('.jpg')) {
       return u;
     }
     final uri = Uri.tryParse(u);
@@ -33,7 +35,7 @@ class ImageUrlHelper {
     return uri.replace(path: path).toString();
   }
 
-  /// `/api/proxy/image?url=` 로 감싼 URL을 최대 여러 겹 벗겨 실제 이미지 주소만 남김.
+  /// DB/API에 남아 있는 예전 `/api/proxy/image?url=` 래핑만 벗김 (새 URL 생성 시 사용 안 함)
   static String unwrapProxyImageUrlIfAny(String url) {
     var current = url.trim();
     for (var i = 0; i < 8; i++) {
@@ -81,16 +83,17 @@ class ImageUrlHelper {
       // 웹 환경: 현재 origin 사용 (Uri.base 사용)
       try {
         final currentHost = Uri.base.host;
-        
+
         // localhost인 경우 로컬 웹 서버 사용 (XAMPP)
-        if (currentHost == 'localhost' || currentHost == '127.0.0.1' || currentHost.isEmpty) {
+        if (currentHost == 'localhost' ||
+            currentHost == '127.0.0.1' ||
+            currentHost.isEmpty) {
           return 'https://bomiora0.mycafe24.com';
         }
         // Cafe24 개발 서버 환경 - 같은 도메인 사용 (CORS 해결)
         else if (currentHost.contains('mycafe24.com')) {
           return 'https://$currentHost';
-        }
-        else {
+        } else {
           // 프로덕션: 실제 도메인 - TODO: 프로덕션 도메인 설정
           // return 'https://bomiora.kr';
           return 'https://bomiora0.mycafe24.com';
@@ -106,7 +109,7 @@ class ImageUrlHelper {
       return 'https://bomiora0.mycafe24.com';
     }
   }
-  
+
   static const _cafe24EventImageBase =
       'https://bomiora0.mycafe24.com/data/event/';
 
@@ -167,11 +170,17 @@ class ImageUrlHelper {
     if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
       return convertToLocalUrl(imageUrl);
     }
-    
+
     // 상대 경로인 경우 base URL과 조합
     String normalizedPath = imageUrl;
-    
+
     // 건강 API 업로드 경로는 data/item 접두사 없음
+    if (isWeightImagePath(normalizedPath)) {
+      return _resolveWeightImageUrl(normalizedPath);
+    }
+    if (isFoodImagePath(normalizedPath)) {
+      return _resolveFoodImageUrl(normalizedPath);
+    }
     if (isHealthApiImagePath(normalizedPath)) {
       return _resolveHealthApiImageUrl(normalizedPath);
     }
@@ -192,19 +201,18 @@ class ImageUrlHelper {
     } else if (!normalizedPath.startsWith('/')) {
       normalizedPath = '/$normalizedPath';
     }
-    
+
     // 웹 환경에서는 같은 도메인 사용 (CORS 해결)
     if (kIsWeb) {
       final currentHost = Uri.base.host;
-      
+
       // Cafe24 환경
       if (currentHost.contains('mycafe24.com')) {
         final result = 'https://$currentHost$normalizedPath';
         return result;
       }
-      
     }
-    
+
     final result = '${imageBaseUrl}$normalizedPath';
     return convertToLocalUrl(result);
   }
@@ -216,13 +224,13 @@ class ImageUrlHelper {
     if (imagePath == null || imagePath.isEmpty) {
       return null;
     }
-    
+
     // 이미 전체 URL인 경우 convertToLocalUrl로 변환
     if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
       final converted = convertToLocalUrl(imagePath);
       return converted;
     }
-    
+
     // 이미 data/item/이 포함된 경우 정규화만 수행
     if (imagePath.contains('/data/item/')) {
       String path = imagePath;
@@ -232,14 +240,14 @@ class ImageUrlHelper {
       final fullUrl = '${imageBaseUrl}$path';
       return convertToLocalUrl(fullUrl);
     }
-    
+
     // 상대 경로 처리
     String path = imagePath.trim();
-    
+
     // 숫자로 시작하는 폴더명 패턴 찾기 (예: 1691484067/image.jpg 또는 /1691484067/image.jpg)
     final numberFolderPattern = RegExp(r'^/?(\d+)/');
     final match = numberFolderPattern.firstMatch(path);
-    
+
     if (match != null) {
       // 숫자 폴더가 있으면 data/item/ 추가
       final folderId = match.group(1);
@@ -275,62 +283,36 @@ class ImageUrlHelper {
         }
       }
     }
-    
+
     // 앞에 /가 없으면 추가 (http로 시작하지 않는 경우만)
     if (!path.startsWith('/') && !path.startsWith('http')) {
       path = '/$path';
     }
-    
+
     final result = '${imageBaseUrl}$path';
     return convertToLocalUrl(result);
   }
 
-  /// 프로덕션 URL을 현재 환경에 맞는 URL로 변환
-  /// 예: https://bomiora.kr/data/item/... -> http://localhost/bomiora/www/data/item/... (로컬 환경)
-  /// CORS 문제 해결: 같은 도메인 사용
+  /// bomiora.kr / mycafe24 → Cafe24 canonical 직링크
+  static String _cafe24CanonicalUrl(String path) {
+    final p = path.startsWith('/') ? path : '/$path';
+    return '$_cafe24CanonicalHost$p';
+  }
+
+  /// Cafe24 호스트 URL → canonical 직링크 (프록시 없음)
   static String convertToLocalUrl(String url) {
     var u = unwrapProxyImageUrlIfAny(url);
     if (u.isEmpty) return url;
     if (isBrowserBlobOrInvalidImageUrl(u)) {
-      // 재귀: 로컬 웹이면 프록시 경로로 정리됨
-      return convertToLocalUrl('https://bomiora0.mycafe24.com/data/item/no_img.png');
+      return '$_cafe24CanonicalHost/data/item/no_img.png';
     }
 
-    if (u.contains('bomiora.kr') || u.contains('www.bomiora.kr') || u.contains('bomiora0.mycafe24.com')) {
-      Uri uri = Uri.parse(u);
-      String path = uri.path;
-      // 쇼핑몰(Cafe24) 업로드 경로는 호스트만 다를 뿐 동일 파일이 mycafe24에 있는 경우가 많음.
-      // 예전에는 /data/editor/ 만 bomiora.kr 로 보냈으나, 프록시 415·HTML 응답 이슈로 mycafe24 원본으로 통일.
-      const canonicalUpstreamHost = 'https://bomiora0.mycafe24.com';
-      final canonicalUpstreamUrl = '$canonicalUpstreamHost$path';
-      
-      if (kIsWeb) {
-        final currentHost = Uri.base.host;
-        
-        // 로컬 웹: Flutter web은 이미지 로드에 XHR을 쓰는 경우가 많아 cross-origin 원본은 CORS에 막힘 → 백엔드 프록시(한 겹)
-        if (currentHost == 'localhost' || currentHost == '127.0.0.1' || currentHost.isEmpty) {
-          return '${ApiClient.baseUrl}/api/proxy/image?url=${Uri.encodeComponent(canonicalUpstreamUrl)}';
-        }
-        
-        // Cafe24 프로덕션 환경 - 같은 도메인 사용 (CORS 해결!)
-        if (currentHost.contains('mycafe24.com')) {
-          // TODO: 운영 전환 시 이 반환값도 bomiora.kr 기준으로 변경
-          final result = canonicalUpstreamUrl;
-          return result;
-        }
-        
-        // bomiora.net 웹에서는 항상 mycafe24 원본으로 프록시 우회
-        // TODO: 운영 전환 시 proxy 대상 URL을 bomiora.kr로 변경
-        final result = 'https://bomiora.net/api/proxy/image?url=${Uri.encodeComponent(canonicalUpstreamUrl)}';
-        return result;
-      }
-      
-      // 기본: 현재 환경에 맞는 base URL 사용
-      String baseUrl = imageBaseUrl;
-      final result = path.startsWith('/') ? '$baseUrl$path' : '$baseUrl/$path';
-      return result;
+    if (u.contains('bomiora.kr') ||
+        u.contains('www.bomiora.kr') ||
+        u.contains('bomiora0.mycafe24.com')) {
+      return _cafe24CanonicalUrl(Uri.parse(u).path);
     }
-    
+
     return u;
   }
 
@@ -352,7 +334,8 @@ class ImageUrlHelper {
 
   static bool isReviewApiImagePath(String path) {
     final p = path.toLowerCase();
-    return p.contains('/api/user/reviews/images/');
+    return p.contains('/api/user/reviews/images/') ||
+        p.contains('/data/review_images/');
   }
 
   static bool isQaApiImagePath(String path) {
@@ -360,15 +343,155 @@ class ImageUrlHelper {
     return p.contains('/api/qa/images/') || p.contains('/data/qa_images/');
   }
 
+  static bool isProfileImagePath(String path) {
+    final p = path.toLowerCase();
+    return p.contains('/uploads/profiles/') || p.contains('/data/profiles/');
+  }
+
+  static bool isWeightImagePath(String path) {
+    final p = path.toLowerCase();
+    return p.contains('/data/weight_images/') ||
+        p.contains('/api/health/weight/images/');
+  }
+
+  static bool isFoodImagePath(String path) {
+    final p = path.toLowerCase();
+    return p.contains('/data/food_images/') ||
+        p.contains('/api/health/food/images/');
+  }
+
+  static bool isRemoteImageUrl(String? path) {
+    final t = (path ?? '').trim().toLowerCase();
+    return t.startsWith('http://') ||
+        t.startsWith('https://') ||
+        t.startsWith('blob:');
+  }
+
+  /// Cafe24 미러 경로 → Node 즉시 서빙 URL (미러 완료 전에도 표시)
+  static String? _nodeProfileImageUrl(String pathOrUrl) {
+    var raw = unwrapProxyImageUrlIfAny(pathOrUrl.trim());
+    if (raw.isEmpty) return null;
+
+    String path = raw;
+    if (raw.startsWith('http://') || raw.startsWith('https://')) {
+      path = Uri.tryParse(raw)?.path ?? raw;
+    } else if (!path.startsWith('/')) {
+      path = '/$path';
+    }
+
+    final match = RegExp(
+      r'/(?:data|uploads)/profiles/([^/]+)/([^/?#]+)',
+      caseSensitive: false,
+    ).firstMatch(path);
+    if (match == null) return null;
+
+    final mbId = Uri.decodeComponent(match.group(1)!);
+    final file = Uri.decodeComponent(match.group(2)!);
+    return '${ApiClient.baseUrl}/uploads/profiles/$mbId/$file';
+  }
+
+  static String? _nodeReviewImageUrl(String pathOrUrl) {
+    var raw = unwrapProxyImageUrlIfAny(pathOrUrl.trim());
+    if (raw.isEmpty) return null;
+
+    String path = raw;
+    if (raw.startsWith('http://') || raw.startsWith('https://')) {
+      path = Uri.tryParse(raw)?.path ?? raw;
+    } else if (!path.startsWith('/')) {
+      path = '/$path';
+    }
+
+    final apiMatch = RegExp(
+      r'/api/user/reviews/images/([^/?#]+)',
+      caseSensitive: false,
+    ).firstMatch(path);
+    if (apiMatch != null) {
+      final file = Uri.decodeComponent(apiMatch.group(1)!);
+      return '${ApiClient.baseUrl}/api/user/reviews/images/$file';
+    }
+
+    final cafeMatch = RegExp(
+      r'/data/review_images/([^/?#]+)',
+      caseSensitive: false,
+    ).firstMatch(path);
+    if (cafeMatch != null) {
+      final file = Uri.decodeComponent(cafeMatch.group(1)!);
+      return '${ApiClient.baseUrl}/api/user/reviews/images/$file';
+    }
+
+    return null;
+  }
+
+  static String? _nodeWeightImageUrl(String pathOrUrl) {
+    var raw = unwrapProxyImageUrlIfAny(pathOrUrl.trim());
+    if (raw.isEmpty) return null;
+
+    String path = raw;
+    if (raw.startsWith('http://') || raw.startsWith('https://')) {
+      path = Uri.tryParse(raw)?.path ?? raw;
+    } else if (!path.startsWith('/')) {
+      path = '/$path';
+    }
+
+    final apiMatch = RegExp(
+      r'/api/health/weight/images/([^/?#]+)',
+      caseSensitive: false,
+    ).firstMatch(path);
+    if (apiMatch != null) {
+      final file = Uri.decodeComponent(apiMatch.group(1)!);
+      return '${ApiClient.baseUrl}/api/health/weight/images/$file';
+    }
+
+    final cafeMatch = RegExp(
+      r'/data/weight_images/([^/?#]+)',
+      caseSensitive: false,
+    ).firstMatch(path);
+    if (cafeMatch != null) {
+      final file = Uri.decodeComponent(cafeMatch.group(1)!);
+      return '${ApiClient.baseUrl}/api/health/weight/images/$file';
+    }
+
+    return null;
+  }
+
+  static String? _nodeFoodImageUrl(String pathOrUrl) {
+    var raw = unwrapProxyImageUrlIfAny(pathOrUrl.trim());
+    if (raw.isEmpty) return null;
+
+    String path = raw;
+    if (raw.startsWith('http://') || raw.startsWith('https://')) {
+      path = Uri.tryParse(raw)?.path ?? raw;
+    } else if (!path.startsWith('/')) {
+      path = '/$path';
+    }
+
+    final match = RegExp(
+      r'/(?:data/food_images|api/health/food/images)/([^/?#]+)',
+      caseSensitive: false,
+    ).firstMatch(path);
+    if (match == null) return null;
+
+    final file = Uri.decodeComponent(match.group(1)!);
+    return '${ApiClient.baseUrl}/api/health/food/images/$file';
+  }
+
   /// 과거 `normalizeImageUrl`이 붙인 `/data/item/api/health/...` 접두사 제거
   static String fixHealthApiImagePath(String path) {
     var p = path.trim();
-    final lower = p.toLowerCase();
+    p = p.replaceFirst(
+      RegExp(r'^/data/item/(?=https?://)', caseSensitive: false),
+      '',
+    );
+    while (p.startsWith('/http://') || p.startsWith('/https://')) {
+      p = p.substring(1);
+    }
+    var lower = p.toLowerCase();
     if (lower.contains('/data/item/api/health/')) {
       p = p.replaceFirst(
         RegExp(r'/data/item(?=/api/health/)', caseSensitive: false),
         '',
       );
+      lower = p.toLowerCase();
     }
     if (lower.contains('/data/item/api/qa/')) {
       p = p.replaceFirst(
@@ -383,9 +506,7 @@ class ImageUrlHelper {
   static String _healthApiImageOrigin() {
     if (kIsWeb) {
       final host = Uri.base.host;
-      if (host == 'localhost' ||
-          host == '127.0.0.1' ||
-          host.isEmpty) {
+      if (host == 'localhost' || host == '127.0.0.1' || host.isEmpty) {
         return ApiClient.baseUrl;
       }
       if (host.contains('mycafe24.com')) {
@@ -411,13 +532,11 @@ class ImageUrlHelper {
 
     if (kIsWeb) {
       final webHost = Uri.base.host;
-      final isLocalWeb = webHost == 'localhost' ||
-          webHost == '127.0.0.1' ||
-          webHost.isEmpty;
+      final isLocalWeb =
+          webHost == 'localhost' || webHost == '127.0.0.1' || webHost.isEmpty;
 
       // 로컬 웹 + 로컬 API 서버 파일 → 프록시 없이 직접 로드 (415·CORS 방지)
-      if (isLocalWeb &&
-          (uri.host == 'localhost' || uri.host == '127.0.0.1')) {
+      if (isLocalWeb && (uri.host == 'localhost' || uri.host == '127.0.0.1')) {
         return fullUrl;
       }
 
@@ -444,6 +563,9 @@ class ImageUrlHelper {
     final uri = Uri.tryParse(fullUrl);
     if (uri == null) return fullUrl;
 
+    final nodeReviewUrl = _nodeReviewImageUrl(fullUrl);
+    if (nodeReviewUrl != null) return nodeReviewUrl;
+
     if (kIsWeb) {
       final webHost = Uri.base.host;
       final isLocalWeb =
@@ -451,6 +573,10 @@ class ImageUrlHelper {
       if (isLocalWeb && isReviewApiImagePath(uri.path)) {
         return '${ApiClient.baseUrl}${uri.path}';
       }
+    }
+
+    if (isReviewApiImagePath(uri.path)) {
+      return '${ApiClient.baseUrl}${uri.path}';
     }
 
     return convertToLocalUrl(fullUrl);
@@ -482,6 +608,51 @@ class ImageUrlHelper {
     return convertToLocalUrl(fullUrl);
   }
 
+  static String _resolveProfileImageUrl(String imageUrl) {
+    final nodeUrl = _nodeProfileImageUrl(imageUrl);
+    if (nodeUrl != null) return nodeUrl;
+
+    final fixed = fixHealthApiImagePath(imageUrl);
+    late final String fullUrl;
+    if (fixed.startsWith('http://') || fixed.startsWith('https://')) {
+      fullUrl = fixed;
+    } else {
+      var path = fixed;
+      if (!path.startsWith('/')) path = '/$path';
+      fullUrl = '${ApiClient.baseUrl}$path';
+    }
+
+    final uri = Uri.tryParse(fullUrl);
+    if (uri == null) return fullUrl;
+
+    if (kIsWeb) {
+      final webHost = Uri.base.host;
+      final isLocalWeb =
+          webHost == 'localhost' || webHost == '127.0.0.1' || webHost.isEmpty;
+      if (isLocalWeb && isProfileImagePath(uri.path)) {
+        return '${ApiClient.baseUrl}${uri.path}';
+      }
+    }
+
+    if (isProfileImagePath(uri.path)) {
+      return '${ApiClient.baseUrl}${uri.path.startsWith('/') ? uri.path : '/${uri.path}'}';
+    }
+
+    return convertToLocalUrl(fullUrl);
+  }
+
+  static String _resolveWeightImageUrl(String imageUrl) {
+    final nodeUrl = _nodeWeightImageUrl(imageUrl);
+    if (nodeUrl != null) return nodeUrl;
+    return _resolveHealthApiImageUrl(imageUrl);
+  }
+
+  static String _resolveFoodImageUrl(String imageUrl) {
+    final nodeUrl = _nodeFoodImageUrl(imageUrl);
+    if (nodeUrl != null) return nodeUrl;
+    return _resolveHealthApiImageUrl(imageUrl);
+  }
+
   static String getImageUrl(String? imageUrl) {
     if (imageUrl == null || imageUrl.isEmpty) {
       return convertToLocalUrl('${imageBaseUrl}/data/item/no_img.png');
@@ -494,6 +665,12 @@ class ImageUrlHelper {
     }
 
     final normalizedPath = fixHealthApiImagePath(imageUrl);
+    if (isWeightImagePath(normalizedPath)) {
+      return _resolveWeightImageUrl(normalizedPath);
+    }
+    if (isFoodImagePath(normalizedPath)) {
+      return _resolveFoodImageUrl(normalizedPath);
+    }
     if (isHealthApiImagePath(normalizedPath)) {
       return _resolveHealthApiImageUrl(normalizedPath);
     }
@@ -503,19 +680,35 @@ class ImageUrlHelper {
     if (isQaApiImagePath(normalizedPath)) {
       return _resolveQaApiImageUrl(normalizedPath);
     }
+    if (isProfileImagePath(normalizedPath)) {
+      return _resolveProfileImageUrl(normalizedPath);
+    }
 
     // localhost URL 수정 (잘못된 형태)
     if (imageUrl.contains('localhost/bomiora/www/')) {
       String fixedUrl = imageUrl
-          .replaceAll('https://localhost/bomiora/www/', '$imageBaseUrl/data/item/')
-          .replaceAll('http://localhost/bomiora/www/', '$imageBaseUrl/data/item/');
+          .replaceAll(
+              'https://localhost/bomiora/www/', '$imageBaseUrl/data/item/')
+          .replaceAll(
+              'http://localhost/bomiora/www/', '$imageBaseUrl/data/item/');
       return normalizeImageUrl(fixedUrl);
     }
 
     // 이미 전체 URL인 경우 convertToLocalUrl로 변환
     if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+      if (isWeightImagePath(imageUrl)) {
+        return _resolveWeightImageUrl(imageUrl);
+      }
+      if (isFoodImagePath(imageUrl)) {
+        return _resolveFoodImageUrl(imageUrl);
+      }
+      if (isProfileImagePath(imageUrl)) {
+        return _resolveProfileImageUrl(imageUrl);
+      }
       // localhost:9000/api/qa/images 등 API 정적 파일
-      if (isQaApiImagePath(imageUrl) || isReviewApiImagePath(imageUrl) || isHealthApiImagePath(imageUrl)) {
+      if (isQaApiImagePath(imageUrl) ||
+          isReviewApiImagePath(imageUrl) ||
+          isHealthApiImagePath(imageUrl)) {
         final uri = Uri.tryParse(imageUrl);
         if (uri != null && uri.path.isNotEmpty) {
           return '${ApiClient.baseUrl}${uri.path}';
@@ -523,7 +716,7 @@ class ImageUrlHelper {
       }
       return convertToLocalUrl(imageUrl);
     }
-    
+
     // 상대 경로인 경우 normalizeImageUrl 사용
     return normalizeImageUrl(imageUrl);
   }
@@ -574,14 +767,11 @@ class ImageUrlHelper {
         return 'https://$currentHost/data/itemuse/$path';
       }
 
-      // bomiora.net 등 — 상대경로만 오는 경우 여기로 오는데,
-      // 수동으로 bomiora.kr 을 넣으면 프록시 대상이 [convertToLocalUrl] 과 달라져 502 등이 날 수 있음.
-      // 항상 bomiora.kr URL 을 넘겨 [convertToLocalUrl] 이 mycafe24 canonical + 동일 프록시 규칙 적용.
+      // bomiora.net 등 — mycafe24 canonical 직링크
       return convertToLocalUrl('https://bomiora.kr/data/itemuse/$path');
     }
 
-    // 모바일 앱 - bomiora.kr 경로 사용
-    return 'https://bomiora.kr/data/itemuse/$path';
+    return convertToLocalUrl('https://bomiora.kr/data/itemuse/$path');
   }
 
   /// 메인 홈 리뷰 이미지 URL 변환 (data/mainreview 경로 사용)
@@ -607,8 +797,11 @@ class ImageUrlHelper {
 
     // 절대/상대 경로 혼재 정리
     raw = raw
-        .replaceFirst(RegExp(r'^/bomiora0/www/data/mainreview/', caseSensitive: false), '')
-        .replaceFirst(RegExp(r'^bomiora0/www/data/mainreview/', caseSensitive: false), '')
+        .replaceFirst(
+            RegExp(r'^/bomiora0/www/data/mainreview/', caseSensitive: false),
+            '')
+        .replaceFirst(
+            RegExp(r'^bomiora0/www/data/mainreview/', caseSensitive: false), '')
         .replaceFirst(RegExp(r'^/data/mainreview/', caseSensitive: false), '')
         .replaceFirst(RegExp(r'^data/mainreview/', caseSensitive: false), '');
 
@@ -628,6 +821,6 @@ class ImageUrlHelper {
       return convertToLocalUrl('https://bomiora.kr/data/mainreview/$raw');
     }
 
-    return 'https://bomiora.kr/data/mainreview/$raw';
+    return convertToLocalUrl('https://bomiora.kr/data/mainreview/$raw');
   }
 }

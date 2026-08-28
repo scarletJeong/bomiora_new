@@ -39,7 +39,9 @@ class ImagePickerUtils {
                 Navigator.of(dialogContext).pop();
                 final XFile? image = await _picker.pickImage(
                   source: ImageSource.camera,
-                  imageQuality: 80,
+                  imageQuality: 75,
+                  maxWidth: 1920,
+                  maxHeight: 1920,
                 );
                 onImageSelected(image);
               },
@@ -50,7 +52,9 @@ class ImagePickerUtils {
                 Navigator.of(dialogContext).pop();
                 final XFile? image = await _picker.pickImage(
                   source: ImageSource.gallery,
-                  imageQuality: 80,
+                  imageQuality: 75,
+                  maxWidth: 1920,
+                  maxHeight: 1920,
                 );
                 onImageSelected(image);
               },
@@ -67,7 +71,9 @@ class ImagePickerUtils {
     try {
       return await _picker.pickImage(
         source: ImageSource.camera,
-        imageQuality: 80,
+        imageQuality: 75,
+        maxWidth: 1920,
+        maxHeight: 1920,
       );
     } catch (e) {
       return null;
@@ -110,66 +116,6 @@ class ImagePickerUtils {
     );
   }
 
-  /// 식사 사진: 라이브러리 / 촬영 / 파일 선택 (하단 시트)
-  static Future<void> showMealPhotoSourceBottomSheet(
-    BuildContext context,
-    void Function(XFile?) onImageSelected,
-  ) async {
-    final choice = await showModalBottomSheet<String>(
-      context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (sheetContext) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                title: const Text(
-                  '라이브러리에서 선택',
-                  style: TextStyle(fontFamily: 'Gmarket Sans TTF'),
-                ),
-                onTap: () => Navigator.pop(sheetContext, 'gallery'),
-              ),
-              ListTile(
-                title: const Text(
-                  '사진찍기',
-                  style: TextStyle(fontFamily: 'Gmarket Sans TTF'),
-                ),
-                onTap: () => Navigator.pop(sheetContext, 'camera'),
-              ),
-              ListTile(
-                title: const Text(
-                  '파일가져오기',
-                  style: TextStyle(fontFamily: 'Gmarket Sans TTF'),
-                ),
-                onTap: () => Navigator.pop(sheetContext, 'file'),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-
-    if (choice == null) return;
-
-    XFile? image;
-    switch (choice) {
-      case 'gallery':
-        image = await pickImageFromGallery();
-        break;
-      case 'camera':
-        image = await pickImageFromCamera();
-        break;
-      case 'file':
-        image = await pickImageFromFile();
-        break;
-    }
-    onImageSelected(image);
-  }
-
   /// 파일에서 이미지 선택
   static Future<XFile?> pickImageFromFile() async {
     try {
@@ -200,7 +146,9 @@ class ImagePickerUtils {
     try {
       return await _picker.pickImage(
         source: ImageSource.gallery,
-        imageQuality: 80,
+        imageQuality: 75,
+        maxWidth: 1920,
+        maxHeight: 1920,
       );
     } catch (e) {
       return null;

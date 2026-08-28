@@ -20,10 +20,11 @@ import '../../health/health_common/widgets/health_app_bar.dart';
 
 /// 리뷰 첨부 사진 슬롯 (기존 URL 또는 새로 고른 파일)
 class _ReviewDraftImage {
-  _ReviewDraftImage({this.file, this.serverPath});
+  _ReviewDraftImage({this.file, this.serverPath, this.previewBytes});
 
   final XFile? file;
   final String? serverPath;
+  final Uint8List? previewBytes;
 
   bool get isServer =>
       serverPath != null && serverPath!.trim().isNotEmpty;
@@ -227,34 +228,46 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
     try {
       final bytes = await image.readAsBytes();
       if (bytes.length > _maxImageBytes) {
+        if (mounted) {
+          AppToastOverlay.show(context, '사진은 파일당 5MB 이하만 등록할 수 있습니다.');
+        }
         return;
       }
-      setState(() => _draftImages.add(_ReviewDraftImage(file: image)));
+      setState(
+        () => _draftImages.add(
+          _ReviewDraftImage(file: image, previewBytes: bytes),
+        ),
+      );
     } catch (e) {
       debugPrint('이미지 선택 오류: $e');
     }
   }
 
   Future<List<String>> _resolveImagePathsForSubmit() async {
-    final paths = <String>[];
+    final uploads = <Future<String?>>[];
     for (final draft in _draftImages) {
       if (draft.isServer) {
-        paths.add(draft.serverPath!);
+        uploads.add(Future.value(draft.serverPath!.trim()));
         continue;
       }
       final file = draft.file;
-      if (file == null) continue;
-      final uploaded = await ReviewService.uploadReviewImage(file);
-      if (uploaded != null && uploaded.isNotEmpty) {
-        paths.add(uploaded);
+      if (file == null) {
+        uploads.add(Future.value(null));
+        continue;
       }
+      uploads.add(ReviewService.uploadReviewImage(file));
     }
-    return paths.take(_maxImages).toList();
+    final results = await Future.wait(uploads);
+    return results
+        .whereType<String>()
+        .where((u) => u.isNotEmpty)
+        .take(_maxImages)
+        .toList();
   }
 
   Widget _draftImageThumb(_ReviewDraftImage draft, double size) {
     if (draft.isServer) {
-      final url = ImageUrlHelper.getReviewImageUrl(draft.serverPath);
+      final url = ImageUrlHelper.getImageUrl(draft.serverPath);
       return Image.network(
         url,
         width: size,
@@ -265,6 +278,14 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
     }
 
     final file = draft.file!;
+    if (draft.previewBytes != null && draft.previewBytes!.isNotEmpty) {
+      return Image.memory(
+        draft.previewBytes!,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+      );
+    }
     return FutureBuilder<Uint8List>(
       future: file.readAsBytes(),
       builder: (context, snapshot) {
@@ -1475,22 +1496,23 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
           imgs = d.images;
         }
 
-        final paths = <String>[];
-        for (final draft in imgs) {
-          if (draft.isServer) {
-            paths.add(draft.serverPath!.trim());
-          } else if (draft.file != null) {
-            final uploaded =
-                await ReviewService.uploadReviewImage(draft.file!);
-            if (uploaded == null || uploaded.isEmpty) {
-              if (mounted) {
-                AppToastOverlay.show(
-                    context, '${i + 1}번 상품 이미지 업로드에 실패했습니다.');
-              }
-              return;
-            }
-            paths.add(uploaded);
+        final uploadFutures = imgs.map((draft) async {
+          if (draft.isServer) return draft.serverPath!.trim();
+          if (draft.file == null) return null;
+          return ReviewService.uploadReviewImage(draft.file!);
+        }).toList();
+        final uploadResults = await Future.wait(uploadFutures);
+        final paths = uploadResults
+            .whereType<String>()
+            .where((u) => u.isNotEmpty)
+            .toList();
+        if (paths.length !=
+            imgs.where((d) => d.isServer || d.file != null).length) {
+          if (mounted) {
+            AppToastOverlay.show(
+                context, '${i + 1}번 상품 이미지 업로드에 실패했습니다.');
           }
+          return;
         }
 
         final item = _targetProducts[i];

@@ -2,10 +2,13 @@
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/constants/app_assets.dart';
+import '../../../../core/utils/image_url_helper.dart';
 import '../../../../data/services/auth_service.dart';
+import '../../../../data/services/address_service.dart';
 import '../../../../data/services/delivery_service.dart';
 import '../../../../data/services/coupon_service.dart';
 import '../../../../data/services/point_service.dart';
+import '../../../../data/services/refund_account_service.dart';
 import '../../../../data/models/user/user_model.dart';
 import 'profile_settings_screen.dart';
 import '../../../customer_service/screens/qa_list_screen.dart';
@@ -14,7 +17,6 @@ import '../../../shopping/wish/screens/wish_list_screen.dart';
 import 'refund_account_screen.dart';
 import '../widgets/my_page_common.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
-import '../../../settings/settings_screen.dart';
 
 class MyPageScreen extends StatefulWidget {
   const MyPageScreen({super.key});
@@ -108,7 +110,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
   }
 
   Future<void> _loadCurrentUser() async {
-    final user = await AuthService.refreshUserFromServer();
+    final user = await AuthService.getUser();
     if (!mounted) return;
 
     if (user == null) {
@@ -123,7 +125,22 @@ class _MyPageScreenState extends State<MyPageScreen> {
       _currentUser = user;
       _statsLoading = true;
     });
-    await _loadMyPageStats();
+    // 상세 메뉴 진입 전에 자주 쓰는 사용자 데이터를 미리 준비합니다.
+    Future.wait([
+      AddressService.getAddressList(user.id),
+      RefundAccountService.fetch(user.id),
+      PointService.getPointHistory(user.id),
+    ]);
+    await Future.wait([
+      _loadMyPageStats(),
+      _refreshCurrentUserInBackground(),
+    ]);
+  }
+
+  Future<void> _refreshCurrentUserInBackground() async {
+    final refreshed = await AuthService.refreshUserFromServer();
+    if (!mounted || refreshed == null) return;
+    setState(() => _currentUser = refreshed);
   }
 
   Future<void> _openInfluencerAdmin() async {
@@ -293,10 +310,30 @@ class _MyPageScreenState extends State<MyPageScreen> {
   }
 
   Widget _buildProfilePhotoIcon() {
+    final size = healthDp(context, 77);
+    final raw = _currentUser?.profileImage?.trim();
+    if (raw != null && raw.isNotEmpty) {
+      final url = ImageUrlHelper.getImageUrl(raw);
+      if (url.isNotEmpty) {
+        return Image.network(
+          url,
+          key: ValueKey(url),
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => SvgPicture.asset(
+            AppAssets.mypagePhotoProfileIcon,
+            width: size,
+            height: size,
+            fit: BoxFit.contain,
+          ),
+        );
+      }
+    }
     return SvgPicture.asset(
       AppAssets.mypagePhotoProfileIcon,
-      width: healthDp(context, 77),
-      height: healthDp(context, 77),
+      width: size,
+      height: size,
       fit: BoxFit.contain,
     );
   }
