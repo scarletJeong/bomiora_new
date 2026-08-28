@@ -5,6 +5,11 @@ import '../models/coupon/coupon_model.dart';
 
 /// 쿠폰 관련 서비스
 class CouponService {
+  static const Duration _availableCacheTtl = Duration(seconds: 60);
+  static final Map<String, List<Coupon>> _availableCache = {};
+  static final Map<String, DateTime> _availableCacheAt = {};
+  static final Map<String, Future<List<Coupon>>> _availableInFlight = {};
+
   /// 사용자의 모든 쿠폰 조회
   static Future<List<Coupon>> getUserCoupons(String userId) async {
     try {
@@ -31,6 +36,28 @@ class CouponService {
 
   /// 사용 가능한 쿠폰 조회
   static Future<List<Coupon>> getAvailableCoupons(String userId) async {
+    final id = userId.trim();
+    final cachedAt = _availableCacheAt[id];
+    if (cachedAt != null &&
+        DateTime.now().difference(cachedAt) < _availableCacheTtl) {
+      return List<Coupon>.from(_availableCache[id] ?? const []);
+    }
+    final pending = _availableInFlight[id];
+    if (pending != null) return pending;
+
+    final request = _fetchAvailableCoupons(id);
+    _availableInFlight[id] = request;
+    try {
+      final result = await request;
+      _availableCache[id] = result;
+      _availableCacheAt[id] = DateTime.now();
+      return List<Coupon>.from(result);
+    } finally {
+      _availableInFlight.remove(id);
+    }
+  }
+
+  static Future<List<Coupon>> _fetchAvailableCoupons(String userId) async {
     try {
       final response = await ApiClient.get(ApiEndpoints.availableCoupons(userId));
       

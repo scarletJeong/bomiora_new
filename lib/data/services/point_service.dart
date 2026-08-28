@@ -5,9 +5,54 @@ import '../models/point/point_history_model.dart';
 
 /// 포인트 관련 공통 서비스
 class PointService {
+  static const Duration _cacheTtl = Duration(seconds: 60);
+  static final Map<String, int?> _pointCache = {};
+  static final Map<String, List<PointHistory>> _historyCache = {};
+  static final Map<String, DateTime> _pointCacheAt = {};
+  static final Map<String, DateTime> _historyCacheAt = {};
+  static final Map<String, Future<int?>> _pointInFlight = {};
+  static final Map<String, Future<List<PointHistory>>> _historyInFlight = {};
+
+  static void invalidate([String? userId]) {
+    if (userId == null || userId.trim().isEmpty) {
+      _pointCache.clear();
+      _historyCache.clear();
+      _pointCacheAt.clear();
+      _historyCacheAt.clear();
+      return;
+    }
+    final id = userId.trim();
+    _pointCache.remove(id);
+    _historyCache.remove(id);
+    _pointCacheAt.remove(id);
+    _historyCacheAt.remove(id);
+  }
+
   /// 사용자의 현재 보유 포인트 조회
   /// bomiora_point 테이블에서 mb_id에 해당하는 가장 최근의 po_mb_point 값을 반환
   static Future<int?> getUserPoint(String userId) async {
+    final id = userId.trim();
+    final cachedAt = _pointCacheAt[id];
+    if (cachedAt != null &&
+        DateTime.now().difference(cachedAt) < _cacheTtl) {
+      return _pointCache[id];
+    }
+    final pending = _pointInFlight[id];
+    if (pending != null) return pending;
+
+    final request = _fetchUserPoint(id);
+    _pointInFlight[id] = request;
+    try {
+      final result = await request;
+      _pointCache[id] = result;
+      _pointCacheAt[id] = DateTime.now();
+      return result;
+    } finally {
+      _pointInFlight.remove(id);
+    }
+  }
+
+  static Future<int?> _fetchUserPoint(String userId) async {
     try {
       final response = await ApiClient.get(ApiEndpoints.userPoint(userId));
 
@@ -34,6 +79,28 @@ class PointService {
 
   /// 포인트 내역 조회
   static Future<List<PointHistory>> getPointHistory(String userId) async {
+    final id = userId.trim();
+    final cachedAt = _historyCacheAt[id];
+    if (cachedAt != null &&
+        DateTime.now().difference(cachedAt) < _cacheTtl) {
+      return List<PointHistory>.from(_historyCache[id] ?? const []);
+    }
+    final pending = _historyInFlight[id];
+    if (pending != null) return pending;
+
+    final request = _fetchPointHistory(id);
+    _historyInFlight[id] = request;
+    try {
+      final result = await request;
+      _historyCache[id] = result;
+      _historyCacheAt[id] = DateTime.now();
+      return List<PointHistory>.from(result);
+    } finally {
+      _historyInFlight.remove(id);
+    }
+  }
+
+  static Future<List<PointHistory>> _fetchPointHistory(String userId) async {
     try {
       final response = await ApiClient.get(ApiEndpoints.pointHistory(userId));
 

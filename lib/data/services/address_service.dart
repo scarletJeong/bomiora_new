@@ -4,6 +4,17 @@ import '../../core/utils/node_value_parser.dart';
 
 /// 배송지 관리 서비스
 class AddressService {
+  static const Duration _listCacheTtl = Duration(seconds: 60);
+  static final Map<String, List<Map<String, dynamic>>> _listCache = {};
+  static final Map<String, DateTime> _listCacheAt = {};
+  static final Map<String, Future<List<Map<String, dynamic>>>> _listInFlight = {};
+
+  static void invalidate(String mbId) {
+    final id = mbId.trim();
+    _listCache.remove(id);
+    _listCacheAt.remove(id);
+  }
+
   static Map<String, dynamic>? _normalizeAddressItem(dynamic raw) {
     if (raw is! Map) return null;
     final item = NodeValueParser.normalizeMap(Map<String, dynamic>.from(raw));
@@ -64,6 +75,28 @@ class AddressService {
 
   /// 배송지 목록 조회
   static Future<List<Map<String, dynamic>>> getAddressList(String mbId) async {
+    final id = mbId.trim();
+    final cachedAt = _listCacheAt[id];
+    if (cachedAt != null &&
+        DateTime.now().difference(cachedAt) < _listCacheTtl) {
+      return List<Map<String, dynamic>>.from(_listCache[id] ?? const []);
+    }
+    final pending = _listInFlight[id];
+    if (pending != null) return pending;
+
+    final request = _fetchAddressList(id);
+    _listInFlight[id] = request;
+    try {
+      final result = await request;
+      _listCache[id] = result;
+      _listCacheAt[id] = DateTime.now();
+      return List<Map<String, dynamic>>.from(result);
+    } finally {
+      _listInFlight.remove(id);
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> _fetchAddressList(String mbId) async {
     try {
       final response = await ApiClient.get('/api/user/address?mbId=$mbId');
 
@@ -169,6 +202,7 @@ class AddressService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+        invalidate((addressData['mbId'] ?? addressData['mb_id'] ?? '').toString());
 
         return {
           'success': true,
@@ -199,6 +233,7 @@ class AddressService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+        invalidate((addressData['mbId'] ?? addressData['mb_id'] ?? '').toString());
 
         return {
           'success': true,
@@ -228,6 +263,7 @@ class AddressService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+        invalidate(mbId);
 
         return {
           'success': true,
@@ -259,6 +295,7 @@ class AddressService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+        invalidate(mbId);
         return {
           'success': true,
           'data': data['data'],
