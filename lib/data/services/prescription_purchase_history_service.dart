@@ -1,5 +1,8 @@
+import 'dart:convert';
+
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../core/network/api_client.dart';
 import '../models/delivery/delivery_model.dart';
 import 'auth_service.dart';
 import 'order_service.dart';
@@ -10,6 +13,8 @@ import 'order_service.dart';
 /// 없으면(비로그인·미구매·일반만 구매) → 기존 드롭다운 유지.
 class PrescriptionPurchaseHistoryService {
   static const String _cachePrefix = 'has_prescription_shipped_or_done_';
+  static const Duration _negativeCacheTtl = Duration(minutes: 5);
+  static final Map<String, DateTime> _negativeCacheAt = {};
 
   static String _cacheKey(String mbId) => '$_cachePrefix$mbId';
 
@@ -65,8 +70,28 @@ class PrescriptionPurchaseHistoryService {
     if (prefs.getBool(_cacheKey(mbId)) == true) {
       return true;
     }
+    final negativeAt = _negativeCacheAt[mbId];
+    if (negativeAt != null &&
+        DateTime.now().difference(negativeAt) < _negativeCacheTtl) {
+      return false;
+    }
 
     try {
+      final response = await ApiClient.get(
+        '/api/orders/has-prescription-history?mb_id=${Uri.encodeQueryComponent(mbId)}',
+      );
+      if (response.statusCode == 200) {
+        final body = json.decode(response.body);
+        final hasHistory = body is Map && body['hasHistory'] == true;
+        if (hasHistory) {
+          await markHasHistory(mbId);
+        } else {
+          _negativeCacheAt[mbId] = DateTime.now();
+        }
+        return hasHistory;
+      }
+
+      // 구버전 서버 배포 중에는 기존 목록 방식으로 호환합니다.
       final result = await OrderService.getOrderList(
         mbId: mbId,
         period: 0,
@@ -101,6 +126,7 @@ class PrescriptionPurchaseHistoryService {
       return false;
     }
 
+    _negativeCacheAt[mbId] = DateTime.now();
     return false;
   }
 }
