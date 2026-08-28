@@ -1,7 +1,10 @@
-﻿import 'package:flutter/material.dart';
+import 'dart:async';
+
+import 'package:flutter/material.dart';
 import '../../../../core/constants/app_assets.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/services/health_profile_service.dart';
+import '../../../../data/services/shop_default_service.dart';
 import '../../../../data/models/user/user_model.dart';
 import '../models/health_profile_model.dart';
 import '../health_profile_payload.dart';
@@ -10,6 +13,7 @@ import 'health_profile_form_screen.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/login_required_dialog.dart';
 import '../../../common/widgets/centered_empty_state.dart';
+import '../../../common/widgets/app_alert_dialog.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
 import '../../../shopping/screens/prescription_booking/prescription_time_screen.dart';
@@ -47,6 +51,8 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
   UserModel? _currentUser;
   HealthProfileModel? _healthProfile;
   bool _isLoading = true;
+  bool _initialPromptShown = false;
+
   /// 스크롤 진행률 — setState 없이 프로그레스바만 갱신(스크롤 끊김 방지)
   final ValueNotifier<double> _scrollProgress = ValueNotifier(0);
 
@@ -55,6 +61,9 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
   @override
   void initState() {
     super.initState();
+    if (_isPrescriptionBooking) {
+      unawaited(ShopDefaultService.getReservationSettings());
+    }
     _loadData();
   }
 
@@ -91,16 +100,33 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
-    // 처방 예약 + 문진표 미작성 → 작성 폼으로 바로 이동
+    await _maybePromptInitialQuestionnaire();
+  }
+
+  Future<void> _maybePromptInitialQuestionnaire() async {
+    if (!mounted || !_isPrescriptionBooking || _currentUser == null) return;
+    if (_initialPromptShown) return;
+
+    final needsInitial =
+        _healthProfile == null || _healthProfile!.needsInitialQuestionnaire;
+    if (!needsInitial) return;
+
+    // 라우트 push 직후 showDialog가 무시되는 경우(웹 등) 방지
+    await Future<void>.delayed(const Duration(milliseconds: 80));
+    if (!mounted || _initialPromptShown) return;
+    _initialPromptShown = true;
+    await _promptInitialQuestionnaire();
+  }
+
+  Future<void> _promptInitialQuestionnaire() async {
+    await AppAlertDialog.show(
+      context,
+      title: '',
+      message: '초진으로 문진표를 작성해야합니다',
+      useRootNavigator: true,
+    );
     if (!mounted) return;
-    if (_isPrescriptionBooking &&
-        _currentUser != null &&
-        _healthProfile == null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        _openPrescriptionFormReplace();
-      });
-    }
+    _openPrescriptionFormReplace();
   }
 
   /// 문진표 목록을 폼으로 교체 (완료 시 폼에서 날짜/시간으로 이동)
@@ -113,6 +139,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
         settings: const RouteSettings(name: HealthProfileFormScreen.routeName),
         builder: (context) => HealthProfileFormScreen(
           prescriptionBooking: booking,
+          existingProfile: _healthProfile,
         ),
       ),
     );
@@ -188,7 +215,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
         ),
       );
     }
-    if (_healthProfile == null) {
+    if (_healthProfile == null || _healthProfile!.needsInitialQuestionnaire) {
       return _buildNoProfileState();
     }
     return _buildProfileCard();
@@ -204,7 +231,8 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
       fillAvailable: true,
       trailing: [
         ElevatedButton.icon(
-          onPressed: _navigateToForm,
+          onPressed:
+              _healthProfile == null ? _navigateToForm : _navigateToEditForm,
           icon: Icon(Icons.add, size: healthDp(context, 22)),
           label: Text(
             '문진표 작성하기',
@@ -365,8 +393,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
         : profile.answer2 == 'F'
             ? '여'
             : '-';
-    final nameGender =
-        genderLabel == '-' ? name : '$name ($genderLabel)';
+    final nameGender = genderLabel == '-' ? name : '$name ($genderLabel)';
 
     final height = _asDouble(profile.answer4);
     final weight = _asDouble(profile.answer5);
@@ -416,7 +443,9 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
             decoration: BoxDecoration(
               color: _kChipBg,
               borderRadius: BorderRadius.circular(healthDp(context, 10)),
-              border: Border.all(color: const Color(0x0F000000), width: healthDp(context, 0.5)),
+              border: Border.all(
+                  color: const Color(0x0F000000),
+                  width: healthDp(context, 0.5)),
             ),
             child: Column(
               children: [
@@ -442,7 +471,8 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
                           color: bmiLabel.$2,
                           borderRadius:
                               BorderRadius.circular(healthDp(context, 28)),
-                          border: Border.all(color: bmiLabel.$2, width: healthDp(context, 1)),
+                          border: Border.all(
+                              color: bmiLabel.$2, width: healthDp(context, 1)),
                         ),
                         child: Text(
                           bmiLabel.$1,
@@ -615,9 +645,8 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
   // ─── 식습관 및 운동 ─────────────────────────────────────────────────────
 
   Widget _buildDietExerciseCard(HealthProfileModel profile) {
-    final mealLabel = profile.answer7.trim().isEmpty
-        ? '-'
-        : profile.answer7.trim();
+    final mealLabel =
+        profile.answer7.trim().isEmpty ? '-' : profile.answer7.trim();
     final mealTimes = _mealTimes(profile.answer71);
     final habits = _listItemsFromPipe(profile.answer8);
     final foods = _listItemsFromPipe(profile.answer9);
@@ -707,7 +736,9 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
               decoration: BoxDecoration(
                 color: _kChipBg,
                 borderRadius: BorderRadius.circular(healthDp(context, 15)),
-                border: Border.all(color: const Color(0x0F000000), width: healthDp(context, 0.5)),
+                border: Border.all(
+                    color: const Color(0x0F000000),
+                    width: healthDp(context, 0.5)),
               ),
               child: Column(
                 children: [
@@ -813,7 +844,8 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
         onPressed: _navigateToEditForm,
         style: OutlinedButton.styleFrom(
           foregroundColor: _kMuted,
-          side: BorderSide(width: healthDp(context, 0.5), color: const Color(0xFFD2D2D2)),
+          side: BorderSide(
+              width: healthDp(context, 0.5), color: const Color(0xFFD2D2D2)),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(healthDp(context, 10)),
           ),
@@ -832,9 +864,18 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
     );
   }
 
-  void _goToPrescriptionTime(HealthProfilePrescriptionBookingArgs booking) {
+  Future<void> _goToPrescriptionTime(
+    HealthProfilePrescriptionBookingArgs booking,
+  ) async {
     final profile = _healthProfile;
-    if (profile == null) return;
+    if (profile == null) {
+      await _promptInitialQuestionnaire();
+      return;
+    }
+    if (profile.needsInitialQuestionnaire) {
+      await _promptInitialQuestionnaire();
+      return;
+    }
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -1019,7 +1060,8 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
       decoration: BoxDecoration(
         color: _kChipBg,
         borderRadius: BorderRadius.circular(healthDp(context, 50)),
-        border: Border.all(color: const Color(0x0F000000), width: healthDp(context, 0.5)),
+        border: Border.all(
+            color: const Color(0x0F000000), width: healthDp(context, 0.5)),
       ),
       child: Text(
         text,
@@ -1164,6 +1206,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
         settings: const RouteSettings(name: HealthProfileFormScreen.routeName),
         builder: (context) => HealthProfileFormScreen(
           existingProfile: _healthProfile,
+          prescriptionBooking: widget.prescriptionBooking,
         ),
       ),
     );

@@ -258,6 +258,17 @@ class HealthProfileModel {
       pfMemo: pfMemo ?? this.pfMemo,
     );
   }
+
+  /// DB/API placeholder 값도 빈 값으로 취급.
+  static bool isBlankAnswer(String? value) {
+    final v = (value ?? '').trim();
+    if (v.isEmpty) return true;
+    const placeholders = {'-', 'null', 'NULL', 'undefined'};
+    return placeholders.contains(v);
+  }
+
+  /// answer_3(목표 체중)이 비어 있으면 초진 — 성별·생년월일만 있는 상태.
+  bool get needsInitialQuestionnaire => isBlankAnswer(answer3);
 }
 
 // 건강 프로필 질문 모델

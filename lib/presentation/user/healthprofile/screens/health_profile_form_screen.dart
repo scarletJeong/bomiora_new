@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import '../../../../core/constants/app_assets.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/services/health_profile_service.dart';
+import '../../../../data/services/shop_default_service.dart';
 import '../../../../data/models/user/user_model.dart';
 import '../models/health_profile_model.dart';
 import '../health_profile_prescription_booking_args.dart';
@@ -24,12 +25,16 @@ class HealthProfileFormScreen extends StatefulWidget {
   static const String routeName = 'health_profile_form';
 
   final HealthProfileModel? existingProfile;
+
   /// 목록 등에서 특정 섹션만 수정할 때. 길이 1이면 해당 섹션만, 2 이상이면 해당 섹션들만 PageView(스와이프) + 하단 `수정하기`만 표시.
   final List<int>? initialSectionIndices;
+
   /// 앱바 제목용 (예: 카드 제목이 `건강 정보`와 다를 때 별도 제목). null이면 해당 섹션의 `title` 사용.
   final String? editScreenTitle;
+
   /// 전체 문진표 모드에서 처음 열 페이지 (0~3). `initialSectionIndices`가 있으면 무시됩니다.
   final int? initialWizardIndex;
+
   /// 처방 예약 플로우: 4장 작성 진행률 표시 + 완료 시 날짜/시간 선택으로 이동
   final HealthProfilePrescriptionBookingArgs? prescriptionBooking;
 
@@ -43,7 +48,8 @@ class HealthProfileFormScreen extends StatefulWidget {
   });
 
   @override
-  State<HealthProfileFormScreen> createState() => _HealthProfileFormScreenState();
+  State<HealthProfileFormScreen> createState() =>
+      _HealthProfileFormScreenState();
 }
 
 class _Answer6MenuLine extends StatelessWidget {
@@ -101,15 +107,15 @@ class _Answer6MenuLine extends StatelessWidget {
 class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
   final _formKey = GlobalKey<FormState>();
   late final PageController _pageController;
-  
+
   UserModel? _currentUser;
   HealthProfileModel? _existingProfile; // 기존 건강프로필 정보 저장
   int _currentPage = 0;
   bool _isLoading = false;
-  
+
   // 폼 데이터
   final Map<String, dynamic> _formData = {};
-  
+
   // 다이어트 경험 관련 필드 백업 (있음 → 없음 → 있음 선택 시 복원용)
   final Map<String, String> _backupAnswer13Fields = {};
   int _dietDetailResetTick = 0;
@@ -135,7 +141,8 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
   /// 복용중인 약 > 기타 약명
   final List<String> _medicationOthers = [];
   bool _medicationOtherDraftOpen = false;
-  final TextEditingController _medicationOtherDraftCtrl = TextEditingController();
+  final TextEditingController _medicationOtherDraftCtrl =
+      TextEditingController();
   final FocusNode _medicationOtherDraftFocus = FocusNode();
 
   /// 생년월일 `TextFormField` 재마운트용(프리필/기존 데이터 로드 시만 증가). 입력마다 바꾸면 포커스가 끊김.
@@ -165,6 +172,9 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.prescriptionBooking != null) {
+      unawaited(ShopDefaultService.getReservationSettings());
+    }
     if (widget.initialSectionIndices != null &&
         widget.initialSectionIndices!.isNotEmpty) {
       final subs = widget.initialSectionIndices!;
@@ -184,7 +194,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
       _pageController = PageController(initialPage: initialPage);
       _currentPage = initialPage;
     }
-    
+
     _loadUser();
     _initializeSections();
     _exerciseOtherDraftFocus.addListener(_onExerciseOtherDraftFocusChange);
@@ -247,10 +257,11 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
 
   void _prefillMemberBasicsFromUser(UserModel user) {
     // 이미 프로필/폼에 값이 있으면 덮어쓰지 않음
-    final hasBirth = (_formData['answer_1']?.toString().trim().isNotEmpty == true) ||
-        ((_formData['birth_year']?.toString().length ?? 0) == 4 &&
-            (_formData['birth_month']?.toString().length ?? 0) == 2 &&
-            (_formData['birth_day']?.toString().length ?? 0) == 2);
+    final hasBirth =
+        (_formData['answer_1']?.toString().trim().isNotEmpty == true) ||
+            ((_formData['birth_year']?.toString().length ?? 0) == 4 &&
+                (_formData['birth_month']?.toString().length ?? 0) == 2 &&
+                (_formData['birth_day']?.toString().length ?? 0) == 2);
     final g = _formData['answer_2']?.toString().trim() ?? '';
     final hasGender = g == 'M' || g == 'F';
 
@@ -320,7 +331,8 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
             options: HealthProfileQuestionnaireOptions.mealsPerDay,
             columns: 4,
           ),
-          HealthProfileQuestion(id: 'answer_7_1', question: '식사시간', type: 'mealtime'),
+          HealthProfileQuestion(
+              id: 'answer_7_1', question: '식사시간', type: 'mealtime'),
           HealthProfileQuestion(
             id: 'answer_8',
             question: '식습관',
@@ -406,7 +418,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
       _formData['birth_day'] = profile.answer1.substring(6, 8);
     }
     _formData['answer_1'] = profile.answer1;
-    
+
     // API·저장값은 M/F. 피그마 칩(selected)도 M/F와 비교하므로 로드 시 그대로 M/F 유지.
     final rawGender = profile.answer2.trim();
     final upper = rawGender.toUpperCase();
@@ -433,7 +445,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     _formData['answer_5'] = profile.answer5;
     _formData['answer_6'] = _normalizeDietPeriodOption(profile.answer6);
     _formData['answer_7'] = _normalizeMealsPerDay(profile.answer7);
-    
+
     // 식사시간 파싱 (| 기준으로 분리)
     // 예: 122||222|555,666,777 -> 1식: 122, 2식: (없음), 3식: 222, 기타: 555,666,777
     if (profile.answer71.isNotEmpty) {
@@ -445,7 +457,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
       _formData['meal_other'] = parts.length > 3 ? parts[3] : '';
     }
     _formData['answer_7_1'] = profile.answer71;
-    
+
     // answer_8 (식습관) - 파이프(|)로 구분된 문자열을 List로 변환
     if (profile.answer8.isNotEmpty) {
       _formData['answer_8'] = profile.answer8
@@ -456,7 +468,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     } else {
       _formData['answer_8'] = [];
     }
-    
+
     // answer_9 (자주 먹는 음식) - 파이프(|)로 구분된 문자열을 List로 변환
     if (profile.answer9.isNotEmpty) {
       _formData['answer_9'] = profile.answer9
@@ -467,7 +479,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     } else {
       _formData['answer_9'] = [];
     }
-    
+
     HealthProfilePayload.parseAnswer10IntoFormData(
       profile.answer10,
       answer10TypesRaw: profile.answer102,
@@ -486,19 +498,15 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     }
 
     List<String> normalizeDiseaseMedicationParts(Iterable<String> parts) {
-      return parts
-          .map((e) => e.trim())
-          .where((e) => e.isNotEmpty)
-          .map((e) {
-            if (e == '없음' || e == '해당없음') return '해당 없음';
-            if (e == '심혈관') return '심혈증';
-            if (e.contains('내분비') &&
-                (e.contains('신장') || e.contains('대사') || e.contains('영양'))) {
-              return '내분비, 영양, 대사질환';
-            }
-            return e;
-          })
-          .toList();
+      return parts.map((e) => e.trim()).where((e) => e.isNotEmpty).map((e) {
+        if (e == '없음' || e == '해당없음') return '해당 없음';
+        if (e == '심혈관') return '심혈증';
+        if (e.contains('내분비') &&
+            (e.contains('신장') || e.contains('대사') || e.contains('영양'))) {
+          return '내분비, 영양, 대사질환';
+        }
+        return e;
+      }).toList();
     }
 
     // answer_11 (질병)
@@ -514,8 +522,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
 
     // 복용중인 약 (기타 파싱 유지)
     if (profile.answer12.isNotEmpty) {
-      if (profile.answer12.contains('|') ||
-          profile.answer12.contains('기타:')) {
+      if (profile.answer12.contains('|') || profile.answer12.contains('기타:')) {
         final parts = profile.answer12.contains('|')
             ? profile.answer12.split('|')
             : [profile.answer12];
@@ -567,7 +574,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     } else {
       _formData['answer_12'] = <String>['해당 없음'];
     }
-    
+
     // 다이어트 약 변환 (1 = 없음, 2 = 있음)
     if (profile.answer13 == '1') {
       _formData['answer_13'] = '없음';
@@ -576,12 +583,12 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     } else {
       _formData['answer_13'] = profile.answer13;
     }
-    
+
     _formData['answer_13_medicine'] = profile.answer13Medicine;
     _formData['answer_13_period'] = profile.answer13Period;
     _formData['answer_13_dosage'] = profile.answer13Dosage;
     _formData['answer_13_sideeffect'] = profile.answer13Sideeffect;
-    
+
     // 기존 데이터 백업 (있음 → 없음 → 있음 선택 시 복원용)
     _backupAnswer13Fields['answer_13_medicine'] = profile.answer13Medicine;
     _backupAnswer13Fields['answer_13_period'] = profile.answer13Period;
@@ -644,8 +651,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
   /// 칩 라벨 공백/개행·오타(다이터트) 정규화
   String _normalizeChipOptionLabel(String raw) {
     var s = raw.replaceAll('\n', ' ').replaceAll(RegExp(r'\s+'), ' ').trim();
-    if (s.contains('샐러드') &&
-        (s.contains('다이어트') || s.contains('다이터트'))) {
+    if (s.contains('샐러드') && (s.contains('다이어트') || s.contains('다이터트'))) {
       return '샐러드/다이어트식단';
     }
     return s;
@@ -932,8 +938,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
             : '');
 
     final isPrescriptionBooking = widget.prescriptionBooking != null;
-    final stepCount =
-        _sections.isEmpty ? _stepLabels.length : _sections.length;
+    final stepCount = _sections.isEmpty ? _stepLabels.length : _sections.length;
     // 장(페이지)을 넘길 때마다 1/4씩 채움 (0장→0, 1장 완료→0.25 … 3장 완료→0.75)
     final wizardStepProgress =
         stepCount <= 0 ? 0.0 : (_currentPage / stepCount).clamp(0.0, 1.0);
@@ -1000,13 +1005,16 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
   /// 식습관+운동처럼 여러 단계를 스와이프로 넘기되, 이전/다음 바는 숨기고 `수정하기`만 표시
   Widget _buildMultiSubsetFormMode() {
     final subs = widget.initialSectionIndices!;
-    final mergeDietExercise =
-        subs.length == 2 && subs[0] == 1 && subs[1] == 2;
+    final mergeDietExercise = subs.length == 2 && subs[0] == 1 && subs[1] == 2;
 
     Widget body;
     if (mergeDietExercise) {
       body = SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(healthDp(context, 27), healthDp(context, 20), healthDp(context, 27), healthDp(context, 16)),
+        padding: EdgeInsets.fromLTRB(
+            healthDp(context, 27),
+            healthDp(context, 20),
+            healthDp(context, 27),
+            healthDp(context, 16)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -1051,7 +1059,11 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                 ),
               ),
               Padding(
-                padding: EdgeInsets.fromLTRB(healthDp(context, 27), healthDp(context, 4), healthDp(context, 27), healthDp(context, 20)),
+                padding: EdgeInsets.fromLTRB(
+                    healthDp(context, 27),
+                    healthDp(context, 4),
+                    healthDp(context, 27),
+                    healthDp(context, 20)),
                 child: SizedBox(
                   width: double.infinity,
                   height: healthDp(context, 40),
@@ -1064,7 +1076,8 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                       minimumSize: Size(double.infinity, healthDp(context, 40)),
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(healthDp(context, 10)),
+                        borderRadius:
+                            BorderRadius.circular(healthDp(context, 10)),
                       ),
                     ),
                     child: Text(
@@ -1180,7 +1193,8 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                     child: Container(
                       height: tabH,
                       decoration: BoxDecoration(
-                        border: Border.all(color: _pfPink, width: healthDp(context, 1)),
+                        border: Border.all(
+                            color: _pfPink, width: healthDp(context, 1)),
                         borderRadius:
                             BorderRadius.circular(healthDp(context, 10)),
                       ),
@@ -1250,8 +1264,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     int stepIndex, {
     bool showBottomBar = false,
   }) {
-    final isFullWizard =
-        widget.initialSectionIndices == null ||
+    final isFullWizard = widget.initialSectionIndices == null ||
         widget.initialSectionIndices!.isEmpty;
     return SingleChildScrollView(
       padding: EdgeInsets.fromLTRB(
@@ -1397,7 +1410,9 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
               onPressed: _isLoading ? null : _previousPage,
               style: OutlinedButton.styleFrom(
                 padding: EdgeInsets.zero,
-                side: BorderSide(width: healthDp(context, 1), color: const Color(0x7FD2D2D2)),
+                side: BorderSide(
+                    width: healthDp(context, 1),
+                    color: const Color(0x7FD2D2D2)),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(healthDp(context, 8)),
                 ),
@@ -1460,7 +1475,8 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
 
   bool _nonEmptyString(dynamic v) => (v?.toString().trim().isNotEmpty ?? false);
 
-  bool _nonEmptyList(dynamic v) => v is List && v.map((e) => e.toString().trim()).any((e) => e.isNotEmpty);
+  bool _nonEmptyList(dynamic v) =>
+      v is List && v.map((e) => e.toString().trim()).any((e) => e.isNotEmpty);
 
   bool _isYmdValid(int y, int m, int d) {
     try {
@@ -1589,7 +1605,8 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     return true;
   }
 
-  Widget _buildFigmaQuestionBlock(HealthProfileQuestion question, int stepIndex) {
+  Widget _buildFigmaQuestionBlock(
+      HealthProfileQuestion question, int stepIndex) {
     final hintInlineIds = const <String>{
       'answer_12',
       'answer_10_types',
@@ -1787,8 +1804,10 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                     ),
                     decoration: ShapeDecoration(
                       shape: RoundedRectangleBorder(
-                        side: BorderSide(width: healthDp(context, 1), color: _pfBorder),
-                        borderRadius: BorderRadius.circular(healthDp(context, 50)),
+                        side: BorderSide(
+                            width: healthDp(context, 1), color: _pfBorder),
+                        borderRadius:
+                            BorderRadius.circular(healthDp(context, 50)),
                       ),
                     ),
                     child: Row(
@@ -1915,15 +1934,18 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
           ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(healthDp(context, 50)),
-            borderSide: BorderSide(width: healthDp(context, 1), color: _pfBorder),
+            borderSide:
+                BorderSide(width: healthDp(context, 1), color: _pfBorder),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(healthDp(context, 50)),
-            borderSide: BorderSide(width: healthDp(context, 1), color: _pfBorder),
+            borderSide:
+                BorderSide(width: healthDp(context, 1), color: _pfBorder),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(healthDp(context, 50)),
-            borderSide: BorderSide(width: healthDp(context, 1), color: const Color(0xFFFF5A8D)),
+            borderSide: BorderSide(
+                width: healthDp(context, 1), color: const Color(0xFFFF5A8D)),
           ),
         ),
       ),
@@ -1943,8 +1965,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     final goal = double.tryParse(
       (_formData['answer_3']?.toString() ?? '').replaceAll(',', ''),
     );
-    final remaining =
-        (weight != null && goal != null) ? weight - goal : null;
+    final remaining = (weight != null && goal != null) ? weight - goal : null;
     final bmi = (height != null && height > 0 && weight != null)
         ? weight / ((height / 100) * (height / 100))
         : null;
@@ -2206,9 +2227,8 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                   requiredMsg: '목표 체중을 입력해주세요',
                   allowDecimal: true,
                   forcePinkBorder: _goalWeightInvalid,
-                  transientErrorText: _goalWeightHintVisible
-                      ? '현재 체중보다 낮게만 입력해주세요'
-                      : null,
+                  transientErrorText:
+                      _goalWeightHintVisible ? '현재 체중보다 낮게만 입력해주세요' : null,
                   onAfterChanged: _checkGoalWeightAgainstCurrent,
                 ),
               ),
@@ -2540,7 +2560,8 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
   Widget _buildAnswer6Dropdown() {
     final options = HealthProfileQuestionnaireOptions.dietPeriod;
     final current = _formData['answer_6']?.toString().trim() ?? '';
-    final selected = current.isEmpty || !options.contains(current) ? null : current;
+    final selected =
+        current.isEmpty || !options.contains(current) ? null : current;
     return FormField<String>(
       // initialValue는 첫 마운트에만 적용되므로, 값이 바뀔 때마다 필드를 재생성해 표시·검증이 _formData와 일치하게 함
       key: ValueKey<String>('answer6|${selected ?? ''}'),
@@ -2743,10 +2764,13 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     required String label,
     required Widget field,
     TextAlign labelAlign = TextAlign.left,
+
     /// 라벨–필드 사이 간격 (375 기준 20)
     bool includeLabelToFieldGap = true,
+
     /// 라벨을 입력칸 높이 중앙에 맞추기 위한 고정 박스 높이 (ex: 생년월일/성별)
     double? labelBoxHeight,
+
     /// 라벨 영역 안쪽 여백 (ex: 생년월일만 살짝 오른쪽)
     EdgeInsets? labelPadding,
   }) {
@@ -2781,8 +2805,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
           width: healthDp(context, 72),
           child: labelChild,
         ),
-        if (includeLabelToFieldGap)
-          SizedBox(width: healthDp(context, 20)),
+        if (includeLabelToFieldGap) SizedBox(width: healthDp(context, 20)),
         Expanded(child: field),
       ],
     );
@@ -2830,7 +2853,8 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                         width: healthDp(context, 1),
                         color: isYes ? _pfPink : _pfBorder,
                       ),
-                      borderRadius: BorderRadius.circular(healthDp(context, 15)),
+                      borderRadius:
+                          BorderRadius.circular(healthDp(context, 15)),
                     ),
                   ),
                   child: Text(
@@ -2862,7 +2886,8 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                         width: healthDp(context, 1),
                         color: isNo ? _pfPink : _pfBorder,
                       ),
-                      borderRadius: BorderRadius.circular(healthDp(context, 15)),
+                      borderRadius:
+                          BorderRadius.circular(healthDp(context, 15)),
                     ),
                   ),
                   child: Text(
@@ -2871,7 +2896,9 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                       fontSize: healthSp(context, 14),
                       fontFamily: 'Gmarket Sans TTF',
                       fontWeight: FontWeight.w500,
-                      color: isNo ? const Color(0xFF1A1A1A) : const Color(0xFF898383),
+                      color: isNo
+                          ? const Color(0xFF1A1A1A)
+                          : const Color(0xFF898383),
                     ),
                   ),
                 ),
@@ -2941,8 +2968,10 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                     clipBehavior: Clip.antiAlias,
                     decoration: ShapeDecoration(
                       shape: RoundedRectangleBorder(
-                        side: BorderSide(width: healthDp(context, 1), color: _pfBorder),
-                        borderRadius: BorderRadius.circular(healthDp(context, 50)),
+                        side: BorderSide(
+                            width: healthDp(context, 1), color: _pfBorder),
+                        borderRadius:
+                            BorderRadius.circular(healthDp(context, 50)),
                       ),
                     ),
                     child: Row(
@@ -3028,15 +3057,19 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
               ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(healthDp(context, 15)),
-                borderSide: BorderSide(width: healthDp(context, 1), color: _pfBorder),
+                borderSide:
+                    BorderSide(width: healthDp(context, 1), color: _pfBorder),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(healthDp(context, 15)),
-                borderSide: BorderSide(width: healthDp(context, 1), color: _pfBorder),
+                borderSide:
+                    BorderSide(width: healthDp(context, 1), color: _pfBorder),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(healthDp(context, 15)),
-                borderSide: BorderSide(width: healthDp(context, 1), color: const Color(0xFFFF5A8D)),
+                borderSide: BorderSide(
+                    width: healthDp(context, 1),
+                    color: const Color(0xFFFF5A8D)),
               ),
             ),
             onChanged: (v) {
@@ -3122,9 +3155,8 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: empty
-                      ? const Color(0xFF898686)
-                      : const Color(0xFF1A1A1E),
+                  color:
+                      empty ? const Color(0xFF898686) : const Color(0xFF1A1A1E),
                   fontSize: healthSp(context, 14),
                   fontFamily: 'Gmarket Sans TTF',
                   fontWeight: FontWeight.w500,
@@ -3337,7 +3369,8 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     List<String> selected = [];
     final raw = _formData[question.id];
     if (isMulti) {
-      selected = raw is List ? List<String>.from(raw.map((e) => e.toString())) : [];
+      selected =
+          raw is List ? List<String>.from(raw.map((e) => e.toString())) : [];
     } else {
       if (raw != null) selected = [raw.toString()];
     }
@@ -3386,11 +3419,9 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
           }
         }
         if (question.id == 'answer_11' || question.id == 'answer_12') {
-          final noneLabel =
-              question.id == 'answer_11' ? '해당없음' : '해당 없음';
+          final noneLabel = question.id == 'answer_11' ? '해당없음' : '해당 없음';
           if (optC == noneLabel || optC == '해당 없음' || optC == '해당없음') {
-            _formData[question.id] =
-                isMulti ? <String>[noneLabel] : noneLabel;
+            _formData[question.id] = isMulti ? <String>[noneLabel] : noneLabel;
             if (question.id == 'answer_12') {
               _clearMedicationOthers();
             }
@@ -3644,8 +3675,10 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                     ),
                     decoration: ShapeDecoration(
                       shape: RoundedRectangleBorder(
-                        side: BorderSide(width: healthDp(context, 1), color: _pfBorder),
-                        borderRadius: BorderRadius.circular(healthDp(context, 50)),
+                        side: BorderSide(
+                            width: healthDp(context, 1), color: _pfBorder),
+                        borderRadius:
+                            BorderRadius.circular(healthDp(context, 50)),
                       ),
                     ),
                     child: Row(
@@ -3769,15 +3802,18 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
           ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(healthDp(context, 50)),
-            borderSide: BorderSide(width: healthDp(context, 1), color: _pfBorder),
+            borderSide:
+                BorderSide(width: healthDp(context, 1), color: _pfBorder),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(healthDp(context, 50)),
-            borderSide: BorderSide(width: healthDp(context, 1), color: _pfBorder),
+            borderSide:
+                BorderSide(width: healthDp(context, 1), color: _pfBorder),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(healthDp(context, 50)),
-            borderSide: BorderSide(width: healthDp(context, 1), color: const Color(0xFFFF5A8D)),
+            borderSide: BorderSide(
+                width: healthDp(context, 1), color: const Color(0xFFFF5A8D)),
           ),
         ),
       ),
@@ -3822,9 +3858,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                       ? 6
                       : (stretchWidth
                           ? 4
-                          : (chars == 5
-                              ? 14
-                              : (chars < 5 ? 6 : 14)))))),
+                          : (chars == 5 ? 14 : (chars < 5 ? 6 : 14)))))),
     );
 
     final text = Text(
@@ -3833,9 +3867,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
       maxLines: 1,
       softWrap: false,
       style: TextStyle(
-        color: selected
-            ? const Color(0xFF1A1A1E)
-            : const Color(0xFF898383),
+        color: selected ? const Color(0xFF1A1A1E) : const Color(0xFF898383),
         fontSize: healthSp(context, 14),
         fontFamily: 'Gmarket Sans TTF',
         fontWeight: FontWeight.w500,
@@ -3917,7 +3949,8 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                       minimumSize: Size(double.infinity, healthDp(context, 40)),
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(healthDp(context, 10)),
+                        borderRadius:
+                            BorderRadius.circular(healthDp(context, 10)),
                       ),
                     ),
                     child: Text(
@@ -3949,7 +3982,8 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
 
   Widget _buildSectionPage(HealthProfileSection section) {
     return SingleChildScrollView(
-      padding: EdgeInsets.fromLTRB(healthDp(context, 27), healthDp(context, 16), healthDp(context, 27), healthDp(context, 20)),
+      padding: EdgeInsets.fromLTRB(healthDp(context, 27), healthDp(context, 16),
+          healthDp(context, 27), healthDp(context, 20)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -4039,10 +4073,10 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
         return _buildFigmaBirthAndGender();
       case 'birthdate':
         return _buildBirthdateInput();
-        
+
       case 'mealtime':
         return _buildMealtimeInput();
-        
+
       case 'text':
         return TextFormField(
           initialValue: _formData[question.id] ?? '',
@@ -4067,14 +4101,15 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
           onSaved: (value) {
             final savedValue = value ?? '';
             _formData[question.id] = savedValue;
-            
+
             // 다이어트 경험 관련 필드 입력 시 백업 업데이트
-            if (question.id.startsWith('answer_13') && question.id != 'answer_13') {
+            if (question.id.startsWith('answer_13') &&
+                question.id != 'answer_13') {
               _backupAnswer13Fields[question.id] = savedValue;
             }
           },
         );
-        
+
       case 'number':
         return TextFormField(
           initialValue: _formData[question.id] ?? '',
@@ -4101,15 +4136,15 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
           onSaved: (value) {
             final savedValue = value ?? '';
             _formData[question.id] = savedValue;
-            
+
             // 다이어트 경험 관련 필드 입력 시 백업 업데이트
-            if (question.id.startsWith('answer_13') && question.id != 'answer_13') {
+            if (question.id.startsWith('answer_13') &&
+                question.id != 'answer_13') {
               _backupAnswer13Fields[question.id] = savedValue;
             }
           },
         );
-        
-        
+
       case 'radio':
         if (question.id == 'answer_13') {
           return _buildFigmaYesNoChips();
@@ -4126,7 +4161,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
               if (groupValue == '1') groupValue = '없음';
               if (groupValue == '2') groupValue = '있음';
             }
-            
+
             return RadioListTile<String>(
               title: Text(option),
               value: option,
@@ -4135,10 +4170,13 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                 setState(() {
                   // 성별 저장 시 M/F로 변환
                   if (question.id == 'answer_2') {
-                    _formData[question.id] = value == '남' ? 'M' : (value == '여' ? 'F' : value ?? '');
+                    _formData[question.id] =
+                        value == '남' ? 'M' : (value == '여' ? 'F' : value ?? '');
                   } else if (question.id == 'answer_13') {
                     // 다이어트 약 저장 시 1/2로 변환 (없음=1, 있음=2)
-                    final newValue = value == '없음' ? '1' : (value == '있음' ? '2' : value ?? '');
+                    final newValue = value == '없음'
+                        ? '1'
+                        : (value == '있음' ? '2' : value ?? '');
                     final oldValue = _formData[question.id]?.toString();
                     _formData[question.id] = newValue;
 
@@ -4161,7 +4199,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                         _dietDetailResetTick++;
                       }
                     }
-                    
+
                     // UI 업데이트를 위해 강제 리빌드
                     Future.microtask(() {
                       if (mounted) {
@@ -4176,10 +4214,10 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
             );
           }).toList(),
         );
-        
+
       case 'grid':
         return _buildFigmaGrid(question);
-        
+
       default:
         return const SizedBox();
     }
@@ -4188,10 +4226,11 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
   Widget _buildGridWidget(HealthProfileQuestion question) {
     final columns = question.columns ?? 2;
     final options = question.options ?? [];
-    final selectedValues = _formData[question.id] is List 
+    final selectedValues = _formData[question.id] is List
         ? List<String>.from(_formData[question.id])
-        : (_formData[question.id] != null ? [_formData[question.id]] : []).cast<String>();
-    
+        : (_formData[question.id] != null ? [_formData[question.id]] : [])
+            .cast<String>();
+
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -4204,10 +4243,10 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
       itemCount: options.length,
       itemBuilder: (context, index) {
         final option = options[index];
-        final isSelected = question.allowMultiple 
+        final isSelected = question.allowMultiple
             ? selectedValues.contains(option)
             : _formData[question.id] == option;
-        
+
         return GestureDetector(
           onTap: () {
             setState(() {
@@ -4232,7 +4271,8 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
             decoration: BoxDecoration(
               color: isSelected ? const Color(0xFFFFE5EE) : Colors.white,
               border: Border.all(
-                color: isSelected ? const Color(0xFFFF3787) : Colors.grey.shade300,
+                color:
+                    isSelected ? const Color(0xFFFF3787) : Colors.grey.shade300,
                 width: healthDp(context, isSelected ? 2 : 1),
               ),
               borderRadius: BorderRadius.circular(healthDp(context, 8)),
@@ -4302,11 +4342,11 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     }
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
-      
+
       setState(() {
         _isLoading = true;
       });
-      
+
       try {
         await _saveHealthProfile();
 
@@ -4388,17 +4428,18 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     final birthYear = _formData['birth_year'] ?? '';
     final birthMonth = _formData['birth_month'] ?? '';
     final birthDay = _formData['birth_day'] ?? '';
-    final birthDate = birthYear.length == 4 && birthMonth.length == 2 && birthDay.length == 2
-        ? '$birthYear$birthMonth$birthDay'
-        : _formData['answer_1'] ?? '';
-    
+    final birthDate =
+        birthYear.length == 4 && birthMonth.length == 2 && birthDay.length == 2
+            ? '$birthYear$birthMonth$birthDay'
+            : _formData['answer_1'] ?? '';
+
     // 식사시간 합치기 (| 기준으로 연결)
     final meal1 = _formData['meal_1'] ?? '';
     final meal2 = _formData['meal_2'] ?? '';
     final meal3 = _formData['meal_3'] ?? '';
     final mealOther = _formData['meal_other'] ?? '';
     final mealtime = '$meal1|$meal2|$meal3|$mealOther';
-    
+
     final profile = HealthProfileModel(
       pfNo: _existingProfile?.pfNo, // 기존 프로필의 번호 포함
       mbId: _currentUser!.id,
@@ -4436,7 +4477,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
       pfIp: '', // 서버에서 처리
       pfMemo: '',
     );
-    
+
     if (_existingProfile != null && _existingProfile!.pfNo != null) {
       // 수정
       await HealthProfileService.updateHealthProfile(profile);
@@ -4566,7 +4607,9 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                   if (year != null && month != null) {
                     try {
                       final date = DateTime(year, month, day);
-                      if (date.year != year || date.month != month || date.day != day) {
+                      if (date.year != year ||
+                          date.month != month ||
+                          date.day != day) {
                         return '올바른 날짜를 입력해주세요';
                       }
                       if (date.isAfter(DateTime.now())) {
@@ -4615,7 +4658,8 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                     decoration: InputDecoration(
                       hintText: '예: 08:00',
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(healthDp(context, 8)),
+                        borderRadius:
+                            BorderRadius.circular(healthDp(context, 8)),
                       ),
                       contentPadding: EdgeInsets.symmetric(
                         horizontal: healthDp(context, 16),
@@ -4649,7 +4693,8 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                     decoration: InputDecoration(
                       hintText: '예: 12:00',
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(healthDp(context, 8)),
+                        borderRadius:
+                            BorderRadius.circular(healthDp(context, 8)),
                       ),
                       contentPadding: EdgeInsets.symmetric(
                         horizontal: healthDp(context, 16),
@@ -4683,7 +4728,8 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                     decoration: InputDecoration(
                       hintText: '예: 19:00',
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(healthDp(context, 8)),
+                        borderRadius:
+                            BorderRadius.circular(healthDp(context, 8)),
                       ),
                       contentPadding: EdgeInsets.symmetric(
                         horizontal: healthDp(context, 16),
@@ -4717,7 +4763,8 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                     decoration: InputDecoration(
                       hintText: '예: 21:00',
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(healthDp(context, 8)),
+                        borderRadius:
+                            BorderRadius.circular(healthDp(context, 8)),
                       ),
                       contentPadding: EdgeInsets.symmetric(
                         horizontal: healthDp(context, 16),
@@ -4762,11 +4809,11 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     _exerciseOtherDraftFocus.removeListener(_onExerciseOtherDraftFocusChange);
     _exerciseOtherDraftFocus.dispose();
     _exerciseOtherDraftCtrl.dispose();
-    _medicationOtherDraftFocus.removeListener(_onMedicationOtherDraftFocusChange);
+    _medicationOtherDraftFocus
+        .removeListener(_onMedicationOtherDraftFocusChange);
     _medicationOtherDraftFocus.dispose();
     _medicationOtherDraftCtrl.dispose();
     _pageController.dispose();
     super.dispose();
   }
 }
-
