@@ -10,6 +10,7 @@ import '../../../data/models/announcement/announcement_model.dart';
 import '../../../data/models/event/event_model.dart';
 import '../../../data/models/product/product_model.dart';
 import '../../../data/services/content_service.dart';
+import '../../../data/services/recent_search_service.dart';
 import '../../../data/services/search_service.dart';
 import '../../common/widgets/centered_empty_state.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
@@ -38,7 +39,6 @@ class _SearchListScreenState extends State<SearchListScreen> {
   static const Color _sectionBg = Color(0xFFF9FAFB);
   static const Color _rowBorder = Color(0xFFF3F4F6);
   static const Color _titleDark = Color(0xFF1F2937);
-  static const Color _priceDark = Color(0xFF111827);
 
   late final TextEditingController _queryController;
   Timer? _debounce;
@@ -52,20 +52,28 @@ class _SearchListScreenState extends State<SearchListScreen> {
   bool _initialLoad = true;
   String? _error;
 
-  double _hPad(BuildContext context) => healthDp(context, 16);
+  double _hPad(BuildContext context) => healthDp(context, 20);
 
   @override
   void initState() {
     super.initState();
     _queryController = TextEditingController(text: widget.initialQuery.trim());
     _queryController.addListener(_onQueryChanged);
-    _runSearch(_queryController.text);
+    final initial = _queryController.text.trim();
+    if (initial.isNotEmpty) {
+      unawaited(RecentSearchService.addQuery(initial));
+    }
+    _runSearch(initial);
   }
 
   @override
   void dispose() {
     _debounce?.cancel();
     _queryController.removeListener(_onQueryChanged);
+    final lastQuery = _queryController.text.trim();
+    if (lastQuery.isNotEmpty) {
+      unawaited(RecentSearchService.addQuery(lastQuery));
+    }
     _queryController.dispose();
     super.dispose();
   }
@@ -76,6 +84,16 @@ class _SearchListScreenState extends State<SearchListScreen> {
       if (!mounted) return;
       _runSearch(_queryController.text);
     });
+  }
+
+  Future<void> _commitSearch(String raw) async {
+    final q = raw.trim();
+    if (q.isEmpty) {
+      await _runSearch(q);
+      return;
+    }
+    await RecentSearchService.addQuery(q);
+    await _runSearch(q);
   }
 
   Future<void> _runSearch(String raw) async {
@@ -215,12 +233,12 @@ class _SearchListScreenState extends State<SearchListScreen> {
         else if (_total == 0)
           SliverFillRemaining(
             hasScrollBody: false,
-            child: _buildGlobalEmptyContent(),
+            child: Center(child: _buildGlobalEmptyContent()),
           )
         else
           SliverPadding(
             padding: EdgeInsets.only(
-              top: healthDp(context, 5),
+              top: healthDp(context, 10),
               bottom: healthDp(context, 24),
             ),
             sliver: SliverList(
@@ -247,15 +265,11 @@ class _SearchListScreenState extends State<SearchListScreen> {
 
     addSection(
       title: '비대면 진료',
-      items: _rx
-          .map((p) => _buildProductListRow(p, general: false))
-          .toList(),
+      items: _rx.map((p) => _buildProductListRow(p, general: false)).toList(),
     );
     addSection(
       title: '스토어',
-      items: _store
-          .map((p) => _buildProductListRow(p, general: true))
-          .toList(),
+      items: _store.map((p) => _buildProductListRow(p, general: true)).toList(),
     );
     addSection(
       title: '이벤트',
@@ -282,10 +296,6 @@ class _SearchListScreenState extends State<SearchListScreen> {
       ),
       decoration: const BoxDecoration(
         color: _sectionBg,
-        border: Border(
-          top: BorderSide(color: _rowBorder, width: 1),
-          bottom: BorderSide(color: _rowBorder, width: 1),
-        ),
       ),
       child: Text.rich(
         TextSpan(
@@ -294,7 +304,7 @@ class _SearchListScreenState extends State<SearchListScreen> {
               text: title,
               style: TextStyle(
                 color: _titleDark,
-                fontSize: healthSp(context, 14),
+                fontSize: healthSp(context, 12),
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: FontWeight.w500,
               ),
@@ -303,7 +313,7 @@ class _SearchListScreenState extends State<SearchListScreen> {
               text: ' ($count개)',
               style: TextStyle(
                 color: _muted,
-                fontSize: healthSp(context, 14),
+                fontSize: healthSp(context, 12),
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: FontWeight.w500,
               ),
@@ -319,12 +329,16 @@ class _SearchListScreenState extends State<SearchListScreen> {
   Widget _buildProductListRow(Product product, {required bool general}) {
     final title = stripProductCatalogHtml(product.name);
     final imageSize = _rowImageSize(context);
-    final radius = healthDp(context, 6);
+    final radius = healthDp(context, 4);
 
     return Material(
       color: Colors.white,
       child: InkWell(
         onTap: () => _openProduct(product, general: general),
+        hoverColor: Colors.transparent,
+        splashColor: Colors.transparent,
+        highlightColor: Colors.transparent,
+        overlayColor: const WidgetStatePropertyAll(Colors.transparent),
         child: Container(
           width: double.infinity,
           padding: EdgeInsets.symmetric(
@@ -333,11 +347,11 @@ class _SearchListScreenState extends State<SearchListScreen> {
           ),
           decoration: const BoxDecoration(
             border: Border(
-              bottom: BorderSide(color: _rowBorder, width: 1),
+              bottom: BorderSide(color: Color(0x80D2D2D2), width: 1),
             ),
           ),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(radius),
@@ -361,37 +375,37 @@ class _SearchListScreenState extends State<SearchListScreen> {
               ),
               SizedBox(width: healthDp(context, 10)),
               Expanded(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: healthDp(context, 4)),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        title,
-                        style: TextStyle(
-                          color: _titleDark,
-                          fontSize: healthSp(context, 13),
-                          fontFamily: 'Gmarket Sans TTF',
-                          fontWeight: FontWeight.w500,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        color: const Color(0xFF1A1A1E),
+                        fontSize: healthSp(context, 14),
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: healthSp(context, -0.56),
+                        height: 1,
                       ),
-                      SizedBox(height: healthDp(context, 4)),
-                      Text(
-                        product.formattedPrice,
-                        style: TextStyle(
-                          color: _priceDark,
-                          fontSize: healthSp(context, 12),
-                          fontFamily: 'Gmarket Sans TTF',
-                          fontWeight: FontWeight.w400,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    SizedBox(height: healthDp(context, 6)),
+                    Text(
+                      product.formattedPrice,
+                      style: TextStyle(
+                        color: const Color(0xFF1A1A1E),
+                        fontSize: healthSp(context, 14),
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w500,
+                        height: 1,
                       ),
-                    ],
-                  ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -409,12 +423,16 @@ class _SearchListScreenState extends State<SearchListScreen> {
     required VoidCallback onTap,
   }) {
     final imageSize = _rowImageSize(context);
-    final radius = healthDp(context, 6);
+    final radius = healthDp(context, 4);
 
     return Material(
       color: Colors.white,
       child: InkWell(
         onTap: onTap,
+        hoverColor: Colors.transparent,
+        splashColor: Colors.transparent,
+        highlightColor: Colors.transparent,
+        overlayColor: const WidgetStatePropertyAll(Colors.transparent),
         child: Container(
           width: double.infinity,
           padding: EdgeInsets.symmetric(
@@ -459,41 +477,39 @@ class _SearchListScreenState extends State<SearchListScreen> {
                         ),
                 ),
               ),
-              SizedBox(width: healthDp(context, 16)),
+              SizedBox(width: healthDp(context, 10)),
               Expanded(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: healthDp(context, 4)),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        color: const Color(0xFF1A1A1E),
+                        fontSize: healthSp(context, 14),
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: healthSp(context, -0.56),
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (subtitle != null && subtitle.isNotEmpty) ...[
+                      SizedBox(height: healthDp(context, 6)),
                       Text(
-                        title,
+                        subtitle,
                         style: TextStyle(
-                          color: _titleDark,
-                          fontSize: healthSp(context, 13),
+                          color: _muted,
+                          fontSize: healthSp(context, 14),
                           fontFamily: 'Gmarket Sans TTF',
                           fontWeight: FontWeight.w500,
                         ),
-                        maxLines: 2,
+                        maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      if (subtitle != null && subtitle.isNotEmpty) ...[
-                        SizedBox(height: healthDp(context, 4)),
-                        Text(
-                          subtitle,
-                          style: TextStyle(
-                            color: _muted,
-                            fontSize: healthSp(context, 11),
-                            fontFamily: 'Gmarket Sans TTF',
-                            fontWeight: FontWeight.w400,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
                     ],
-                  ),
+                  ],
                 ),
               ),
             ],
@@ -536,40 +552,33 @@ class _SearchListScreenState extends State<SearchListScreen> {
   }
 
   Widget _buildGlobalEmptyContent() {
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        _hPad(context),
-        healthDp(context, 20),
-        _hPad(context),
-        healthDp(context, 20),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          CenteredEmptyState.assetIcon(context, AppAssets.emptySearchIcon),
-          SizedBox(height: healthDp(context, 10)),
-          Text(
-            '검색 결과가 없습니다.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: _ink,
-              fontSize: healthSp(context, 16),
-              fontFamily: 'Gmarket Sans TTF',
-              fontWeight: FontWeight.w500,
-            ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        CenteredEmptyState.assetIcon(context, AppAssets.searchEmptyIcon),
+        SizedBox(height: healthDp(context, 10)),
+        Text(
+          '검색 결과가 없습니다.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: _ink,
+            fontSize: healthSp(context, 16),
+            fontFamily: 'Gmarket Sans TTF',
+            fontWeight: FontWeight.w500,
           ),
-          Text(
-            '검색어를 다시 입력해주세요.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: _muted,
-              fontSize: healthSp(context, 14),
-              fontFamily: 'Gmarket Sans TTF',
-              fontWeight: FontWeight.w500,
-            ),
+        ),
+        Text(
+          '검색어를 다시 입력해주세요.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: _muted,
+            fontSize: healthSp(context, 14),
+            fontFamily: 'Gmarket Sans TTF',
+            fontWeight: FontWeight.w500,
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -597,11 +606,11 @@ class _SearchListScreenState extends State<SearchListScreen> {
                   color: _pink,
                   fontSize: healthSp(context, 12),
                   fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
               TextSpan(
-                text: '개',
+                text: '건',
                 style: TextStyle(
                   color: _muted,
                   fontSize: healthSp(context, 12),
@@ -621,12 +630,12 @@ class _SearchListScreenState extends State<SearchListScreen> {
   Widget _buildSearchBar() {
     return Container(
       height: healthDp(context, 34),
-      padding: EdgeInsets.symmetric(horizontal: healthDp(context, 12)),
+      padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
       decoration: ShapeDecoration(
         color: Colors.white,
         shape: RoundedRectangleBorder(
           side: const BorderSide(width: 1, color: Color(0xFFD1D5DB)),
-          borderRadius: BorderRadius.circular(healthDp(context, 8)),
+          borderRadius: BorderRadius.circular(healthDp(context, 10)),
         ),
       ),
       child: Row(
@@ -634,7 +643,7 @@ class _SearchListScreenState extends State<SearchListScreen> {
           Expanded(
             child: TextField(
               controller: _queryController,
-              onSubmitted: (s) => _runSearch(s),
+              onSubmitted: (s) => _commitSearch(s),
               style: TextStyle(
                 color: const Color(0xFF333333),
                 fontSize: healthSp(context, 14),
@@ -649,19 +658,19 @@ class _SearchListScreenState extends State<SearchListScreen> {
                   color: _muted,
                   fontSize: healthSp(context, 14),
                   fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w400,
+                  fontWeight: FontWeight.w300,
                 ),
               ),
               textInputAction: TextInputAction.search,
             ),
           ),
           GestureDetector(
-            onTap: () => _runSearch(_queryController.text),
+            onTap: () => _commitSearch(_queryController.text),
             behavior: HitTestBehavior.opaque,
             child: SvgPicture.asset(
               AppAssets.searchIcon,
-              width: healthDp(context, 18),
-              height: healthDp(context, 18),
+              width: healthDp(context, 24),
+              height: healthDp(context, 24),
               fit: BoxFit.contain,
             ),
           ),

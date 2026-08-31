@@ -68,6 +68,9 @@ abstract final class AppAssets {
   // 검색 - 결과 없음 아이콘
   static const String searchEmptyIcon = '${_img}search_empty_icon.svg';
 
+  // 팝업 닫기 아이콘
+  static const String popupCloseIcon = '${_img}popup_close_icon.svg';
+
   /* 2. 회원가입/로그인 */
   // 간편로그인 아이콘
   static const String loginNaver = '${_img}login_naver.svg';
@@ -254,7 +257,7 @@ abstract final class AppAssets {
   static const String emptyCategoryIcon = '${_img}empty_category_icon.svg'; // 카테고리 내 상품 없음
   static const String emptyProductReviewIcon = '${_img}empty_product_review_icon.svg'; // 상품 상세 내 리뷰 없음
   static const String emptyContentIcon = '${_img}empty_content_icon.svg'; // 콘텐츠/게시글 빈 카드
-  static const String emptySearchIcon = '${_img}empty_search_icon.svg'; // 검색 결과 없음
+  static const String emptySearchIcon = searchEmptyIcon; // 검색 결과 없음
   
   static const String emptyNoticeIcon = '${_img}empty_notice_icon.svg'; // 공지사항 빈 카드
   static const String emptyEventIcon = '${_img}empty_event_icon.svg'; // 이벤트 빈 카드
