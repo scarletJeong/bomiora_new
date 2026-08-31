@@ -2,9 +2,7 @@
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/constants/app_assets.dart';
-import '../../../core/utils/image_url_helper.dart';
 import '../../../core/utils/node_value_parser.dart';
-import '../../../core/utils/price_formatter.dart';
 import '../../../data/models/user/user_model.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/prescription_purchase_history_service.dart';
@@ -16,6 +14,7 @@ import '../../shopping/utils/get_product.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../customer_service/screens/qa_list_screen.dart';
 import 'cart_dropdown_menu.dart';
+import 'recent_product_card.dart';
 
 /// AppBar 햄버거 메뉴에서 공통으로 사용하는 Drawer (Figma 사이드 메뉴 스타일)
 class AppBarMenuTapDrawer extends StatefulWidget {
@@ -153,6 +152,7 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
         fontFamily: _fontFamily,
         fontWeight: FontWeight.w500,
         letterSpacing: healthSp(context, -1.26),
+        height: 1,
       );
 
   EdgeInsets _mainMenuTitlePadding(BuildContext context) =>
@@ -184,91 +184,103 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
   }
 
   Widget _buildShortcutGrid(BuildContext context) {
+    final tileW = healthDp(context, _DrawerShortcut._tileSize);
+    final tileGap = healthDp(context, _DrawerShortcut._tileGap);
+
     Widget cell(_DrawerShortcutData d) {
-      return Expanded(
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: healthDp(context, 2)),
-          child: _DrawerShortcut(
-            iconAsset: d.iconAsset,
-            label: d.label,
-            onTap: d.onTap,
-            onCartPrescriptionTap: d.onCartPrescriptionTap,
-            onCartShoppingTap: d.onCartShoppingTap,
-          ),
+      return SizedBox(
+        width: tileW,
+        child: _DrawerShortcut(
+          iconAsset: d.iconAsset,
+          label: d.label,
+          onTap: d.onTap,
+          onCartPrescriptionTap: d.onCartPrescriptionTap,
+          onCartShoppingTap: d.onCartShoppingTap,
+        ),
+      );
+    }
+
+    Widget shortcutRow(List<_DrawerShortcutData> items) {
+      return Align(
+        alignment: Alignment.centerLeft,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (var i = 0; i < items.length; i++) ...[
+              if (i > 0) SizedBox(width: tileGap),
+              cell(items[i]),
+            ],
+          ],
         ),
       );
     }
 
     return Column(
       mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            cell(_DrawerShortcutData(
-              iconAsset: AppAssets.menu_home_icon,
-              label: '홈',
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushReplacementNamed(context, '/home');
-              },
-            )),
-            cell(_DrawerShortcutData(
-              iconAsset: AppAssets.menu_health_icon,
-              label: '문진표',
-              onTap: () => _popAndPushNamed(context, '/profile'),
-            )),
-            cell(_DrawerShortcutData(
-              iconAsset: AppAssets.menu_order_icon,
-              label: '주문배송',
-              onTap: () => _popAndPushNamed(context, '/order'),
-            )),
-            cell(_DrawerShortcutData(
-              iconAsset: AppAssets.menu_cart_icon,
-              label: '장바구니',
-              onTap: () {},
-              onCartPrescriptionTap: () => _popAndPushNamed(context, '/cart'),
-              onCartShoppingTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const cart_general.CartScreen(),
-                  ),
-                );
-              },
-            )),
-          ],
-        ),
-        SizedBox(height: healthDp(context, 14)),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            cell(_DrawerShortcutData(
-              iconAsset: AppAssets.menu_coupon_icon,
-              label: '쿠폰',
-              onTap: () => _popAndPushNamed(context, '/coupon'),
-            )),
-            cell(_DrawerShortcutData(
-              iconAsset: AppAssets.menu_point_icon,
-              label: '포인트',
-              onTap: () => _popAndPushNamed(context, '/point'),
-            )),
-            cell(_DrawerShortcutData(
-              iconAsset: AppAssets.menu_mypage_icon,
-              label: '마이페이지',
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushReplacementNamed(context, '/my_page');
-              },
-            )),
-            cell(_DrawerShortcutData(
-              iconAsset: AppAssets.menu_QA_icon,
-              label: '1:1 문의',
-              onTap: () => _openContactList(context),
-            )),
-          ],
-        ),
+        shortcutRow([
+          _DrawerShortcutData(
+            iconAsset: AppAssets.menu_home_icon,
+            label: '홈',
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.pushReplacementNamed(context, '/home');
+            },
+          ),
+          _DrawerShortcutData(
+            iconAsset: AppAssets.menu_health_icon,
+            label: '문진표',
+            onTap: () => _popAndPushNamed(context, '/profile'),
+          ),
+          _DrawerShortcutData(
+            iconAsset: AppAssets.menu_order_icon,
+            label: '주문배송',
+            onTap: () => _popAndPushNamed(context, '/order'),
+          ),
+          _DrawerShortcutData(
+            iconAsset: AppAssets.menu_cart_icon,
+            label: '장바구니',
+            onTap: () {},
+            onCartPrescriptionTap: () => _popAndPushNamed(context, '/cart'),
+            onCartShoppingTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const cart_general.CartScreen(),
+                ),
+              );
+            },
+          ),
+        ]),
+        SizedBox(height: healthDp(context, _DrawerShortcut._rowStackGap)),
+        shortcutRow([
+          _DrawerShortcutData(
+            iconAsset: AppAssets.menu_coupon_icon,
+            label: '쿠폰',
+            onTap: () => _popAndPushNamed(context, '/coupon'),
+          ),
+          _DrawerShortcutData(
+            iconAsset: AppAssets.menu_point_icon,
+            label: '포인트',
+            onTap: () => _popAndPushNamed(context, '/point'),
+          ),
+          _DrawerShortcutData(
+            iconAsset: AppAssets.menu_mypage_icon,
+            label: '마이페이지',
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.pushReplacementNamed(context, '/my_page');
+            },
+          ),
+          _DrawerShortcutData(
+            iconAsset: AppAssets.menu_QA_icon,
+            label: '1:1 문의',
+            onTap: () => _openContactList(context),
+          ),
+        ]),
       ],
     );
   }
@@ -279,7 +291,7 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
     return Theme(
       data: theme.copyWith(
         drawerTheme: DrawerThemeData(
-          width: healthDp(context, 250),
+          width: healthDp(context, 280),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.horizontal(
               right: Radius.circular(healthDp(context, 20)),
@@ -327,6 +339,12 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                             Expanded(
                               child: InkWell(
                                 onTap: () => _openPrescriptionDietList(context),
+                                hoverColor: Colors.transparent,
+                                splashColor: Colors.transparent,
+                                highlightColor: Colors.transparent,
+                                overlayColor: const WidgetStatePropertyAll(
+                                  Colors.transparent,
+                                ),
                                 child: Padding(
                                   padding: _mainMenuTitlePadding(context),
                                   child: Text(
@@ -336,33 +354,31 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                                 ),
                               ),
                             ),
-                            IconButton(
-                              onPressed: () {
+                            _MenuChevron(
+                              direction: _isTelemedicineExpanded
+                                  ? _MenuChevronDirection.up
+                                  : _MenuChevronDirection.down,
+                              onTap: () {
                                 setState(() {
                                   _isTelemedicineExpanded =
                                       !_isTelemedicineExpanded;
                                 });
                               },
-                              icon: Icon(
-                                _isTelemedicineExpanded
-                                    ? Icons.keyboard_arrow_up
-                                    : Icons.keyboard_arrow_down,
-                                color: _inkTitle,
-                                size: healthDp(context, 24),
-                              ),
                             ),
                           ],
                         ),
                         AnimatedCrossFade(
                           firstChild: Padding(
-                            padding: EdgeInsets.only(bottom: healthDp(context, 8)),
+                            padding:
+                                EdgeInsets.only(bottom: healthDp(context, 8)),
                             child: _ExpansionSubmenuWithRail(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
                                   ..._prescriptionCategories.map(
                                     (item) => _SubLink(
-                                      label: productPrescriptionCategoryMenuLabel(
+                                      label:
+                                          productPrescriptionCategoryMenuLabel(
                                         item.label,
                                       ),
                                       onTap: () => _popAndPushNamed(
@@ -397,6 +413,12 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                               child: InkWell(
                                 onTap: () =>
                                     _openHealthcareStoreTopCategory(context),
+                                hoverColor: Colors.transparent,
+                                splashColor: Colors.transparent,
+                                highlightColor: Colors.transparent,
+                                overlayColor: const WidgetStatePropertyAll(
+                                  Colors.transparent,
+                                ),
                                 child: Padding(
                                   padding: _mainMenuTitlePadding(context),
                                   child: Text(
@@ -406,26 +428,23 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                                 ),
                               ),
                             ),
-                            IconButton(
-                              onPressed: () {
+                            _MenuChevron(
+                              direction: _isHealthcareStoreExpanded
+                                  ? _MenuChevronDirection.up
+                                  : _MenuChevronDirection.down,
+                              onTap: () {
                                 setState(() {
                                   _isHealthcareStoreExpanded =
                                       !_isHealthcareStoreExpanded;
                                 });
                               },
-                              icon: Icon(
-                                _isHealthcareStoreExpanded
-                                    ? Icons.keyboard_arrow_up
-                                    : Icons.keyboard_arrow_down,
-                                color: _inkTitle,
-                                size: healthDp(context, 24),
-                              ),
                             ),
                           ],
                         ),
                         AnimatedCrossFade(
                           firstChild: Padding(
-                            padding: EdgeInsets.only(bottom: healthDp(context, 8)),
+                            padding:
+                                EdgeInsets.only(bottom: healthDp(context, 8)),
                             child: _ExpansionSubmenuWithRail(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -473,7 +492,7 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
               _SectionRow(
                 title: '건강 콘텐츠',
                 titleStyle: _mainMenuTitleStyle(context),
-                titlePadding: _mainMenuTitlePadding(context),
+                titlePadding: EdgeInsets.only(top: healthDp(context, 10)),
                 onTap: () => _popAndPushNamed(context, '/content'),
               ),
               SizedBox(height: healthDp(context, 20)),
@@ -484,7 +503,7 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
               ),
               SizedBox(height: healthDp(context, 20)),
               Text(
-                '최근에 본 상품',
+                '최근 본 상품',
                 style: TextStyle(
                   color: _inkMuted,
                   fontSize: healthSp(context, 12),
@@ -527,11 +546,11 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
               ),
             ],
           ),
-          SizedBox(height: healthDp(context, 16)),
+          SizedBox(height: healthDp(context, 6)),
           Row(
             children: [
               SizedBox(
-                width: healthDp(context, 88),
+                width: healthDp(context, 80),
                 height: healthDp(context, 32),
                 child: FilledButton(
                   onPressed: () {
@@ -543,11 +562,11 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                     foregroundColor: Colors.white,
                     padding: EdgeInsets.zero,
                     minimumSize: Size(
-                      healthDp(context, 88),
+                      healthDp(context, 80),
                       healthDp(context, 32),
                     ),
                     fixedSize: Size(
-                      healthDp(context, 88),
+                      healthDp(context, 80),
                       healthDp(context, 32),
                     ),
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -568,7 +587,7 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
               ),
               SizedBox(width: healthDp(context, 10)),
               SizedBox(
-                width: healthDp(context, 88),
+                width: healthDp(context, 80),
                 height: healthDp(context, 32),
                 child: OutlinedButton(
                   onPressed: () {
@@ -584,11 +603,11 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                     ),
                     padding: EdgeInsets.zero,
                     minimumSize: Size(
-                      healthDp(context, 88),
+                      healthDp(context, 80),
                       healthDp(context, 32),
                     ),
                     fixedSize: Size(
-                      healthDp(context, 88),
+                      healthDp(context, 80),
                       healthDp(context, 32),
                     ),
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -701,6 +720,10 @@ class _DrawerShortcut extends StatefulWidget {
   static const String _fontFamily = 'Gmarket Sans TTF';
   static const Color _muted = Color(0xFF898686);
   static const Color _hoverPink = Color(0xFFFF5A8D);
+  static const double _tileSize = 46.15;
+  static const double _labelGap = 7.69;
+  static const double _tileGap = 15.38;
+  static const double _rowStackGap = 23.08;
 
   final String iconAsset;
   final String label;
@@ -724,6 +747,7 @@ class _DrawerShortcutState extends State<_DrawerShortcut> {
   bool _hover = false;
   bool _pressed = false;
   bool _showCartDropdown = false;
+
   /// 비대면 구매 이력 있으면 드롭다운 숨기고 통합 장바구니로 직행
   bool _useIntegratedCart = false;
   final GlobalKey _cartAnchorKey = GlobalKey();
@@ -734,12 +758,12 @@ class _DrawerShortcutState extends State<_DrawerShortcut> {
       widget.label == '장바구니' &&
       widget.onCartPrescriptionTap != null &&
       widget.onCartShoppingTap != null;
-  bool get _showCartDropdownButton =>
-      _isCartShortcut && !_useIntegratedCart;
+  bool get _showCartDropdownButton => _isCartShortcut && !_useIntegratedCart;
 
   double get _shortcutIconSize {
     if (_isCartShortcut) return 20;
     if (widget.label == '쿠폰' || widget.label == '포인트') return 13;
+    if (widget.label == '문진표' || widget.label == '주문배송') return 18;
     return 16;
   }
 
@@ -809,9 +833,8 @@ class _DrawerShortcutState extends State<_DrawerShortcut> {
 
     final menuW = cartDropdownWidth(context);
     double left = anchorTopLeft.dx + anchorBox.size.width - menuW;
-    double top = anchorTopLeft.dy +
-        anchorBox.size.height +
-        healthDp(context, 6);
+    double top =
+        anchorTopLeft.dy + anchorBox.size.height + healthDp(context, 6);
     if (overlayBox != null) {
       final edge = healthDp(context, 8);
       left = left.clamp(edge, overlayBox.size.width - menuW - edge);
@@ -889,13 +912,18 @@ class _DrawerShortcutState extends State<_DrawerShortcut> {
         _highlight ? _DrawerShortcut._hoverPink : _DrawerShortcut._muted;
     final labelStyle = TextStyle(
       color: color,
-      fontSize: healthSp(context, 9),
+      fontSize: healthSp(context, 12),
       fontFamily: _DrawerShortcut._fontFamily,
       fontWeight: _highlight ? FontWeight.w700 : FontWeight.w500,
       height: 1.2,
     );
 
-    return Material(
+    final tileSize = healthDp(context, _DrawerShortcut._tileSize);
+    final labelH = healthSp(context, 12) * 1.2;
+
+    return SizedBox(
+      width: tileSize,
+      child: Material(
       color: Colors.transparent,
       child: MouseRegion(
         onEnter: (_) => setState(() => _hover = true),
@@ -911,100 +939,150 @@ class _DrawerShortcutState extends State<_DrawerShortcut> {
             splashColor: _DrawerShortcut._hoverPink.withValues(alpha: 0.18),
             highlightColor: _DrawerShortcut._hoverPink.withValues(alpha: 0.08),
             hoverColor: Colors.transparent,
-            child: Padding(
-              padding: EdgeInsets.symmetric(vertical: healthDp(context, 4)),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SizedBox(
-                    key: _cartAnchorKey,
-                    width: healthDp(context, 44),
-                    height: healthDp(context, 44),
-                    child: Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        Container(
-                          width: healthDp(context, 44),
-                          height: healthDp(context, 44),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(
-                              healthDp(context, 15),
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0x19000000),
-                                blurRadius: healthDp(context, 4),
-                                offset: Offset.zero,
-                              ),
-                            ],
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                SizedBox(
+                  key: _cartAnchorKey,
+                  width: tileSize,
+                  height: tileSize,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Container(
+                        width: tileSize,
+                        height: tileSize,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(
+                            healthDp(context, 15),
                           ),
-                          alignment: Alignment.center,
-                          child: SvgPicture.asset(
-                            widget.iconAsset,
-                            width: healthDp(context, _shortcutIconSize),
-                            height: healthDp(context, _shortcutIconSize),
-                            fit: BoxFit.contain,
-                            colorFilter: ColorFilter.mode(
-                              color,
-                              BlendMode.srcIn,
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0x19000000),
+                              blurRadius: healthDp(context, 4),
+                              offset: Offset.zero,
+                              spreadRadius: 0,
+                            ),
+                          ],
+                        ),
+                        alignment: Alignment.center,
+                        child: SvgPicture.asset(
+                          widget.iconAsset,
+                          width: healthDp(context, _shortcutIconSize),
+                          height: healthDp(context, _shortcutIconSize),
+                          fit: BoxFit.contain,
+                          colorFilter: ColorFilter.mode(
+                            color,
+                            BlendMode.srcIn,
+                          ),
+                        ),
+                      ),
+                      if (_showCartDropdownButton)
+                        Positioned(
+                          right: -healthDp(context, 2),
+                          bottom: -healthDp(context, 4),
+                          child: GestureDetector(
+                            onTap: _toggleCartDropdown,
+                            behavior: HitTestBehavior.opaque,
+                            child: Container(
+                              width: healthDp(context, 16),
+                              height: healthDp(context, 16),
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: const Color(0xFFFF5A8D),
+                                  width: healthDp(context, 1),
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0x19000000),
+                                    blurRadius: healthDp(context, 4),
+                                    offset: Offset.zero,
+                                  ),
+                                ],
+                              ),
+                              child: Icon(
+                                _showCartDropdown
+                                    ? Icons.keyboard_arrow_up
+                                    : Icons.keyboard_arrow_down,
+                                size: healthDp(context, 11),
+                                color: const Color(0xFFFF5A8D),
+                              ),
                             ),
                           ),
                         ),
-                        if (_showCartDropdownButton)
-                          Positioned(
-                            right: -healthDp(context, 2),
-                            bottom: -healthDp(context, 4),
-                            child: GestureDetector(
-                              onTap: _toggleCartDropdown,
-                              behavior: HitTestBehavior.opaque,
-                              child: Container(
-                                width: healthDp(context, 16),
-                                height: healthDp(context, 16),
-                                alignment: Alignment.center,
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: const Color(0xFFFF5A8D),
-                                    width: healthDp(context, 1),
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: const Color(0x19000000),
-                                      blurRadius: healthDp(context, 4),
-                                      offset: Offset.zero,
-                                    ),
-                                  ],
-                                ),
-                                child: Icon(
-                                  _showCartDropdown
-                                      ? Icons.keyboard_arrow_up
-                                      : Icons.keyboard_arrow_down,
-                                  size: healthDp(context, 11),
-                                  color: const Color(0xFFFF5A8D),
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
+                    ],
+                  ),
+                ),
+                SizedBox(height: healthDp(context, _DrawerShortcut._labelGap)),
+                SizedBox(
+                  width: tileSize,
+                  height: labelH,
+                  child: OverflowBox(
+                    alignment: Alignment.topCenter,
+                    maxWidth: healthDp(context, 72),
+                    child: Text(
+                      widget.label,
+                      style: labelStyle,
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      softWrap: false,
+                      overflow: TextOverflow.visible,
                     ),
                   ),
-                  SizedBox(height: healthDp(context, 6)),
-                  Text(
-                    widget.label,
-                    style: labelStyle,
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                    softWrap: false,
-                    overflow: TextOverflow.visible,
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
       ),
+    ),
+    );
+  }
+}
+
+enum _MenuChevronDirection { right, down, up }
+
+/// 메뉴 우측 화살표 — 오른쪽/아래/위가 같은 시작선·같은 크기
+class _MenuChevron extends StatelessWidget {
+  final _MenuChevronDirection direction;
+  final VoidCallback? onTap;
+
+  const _MenuChevron({
+    required this.direction,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final size = healthDp(context, 20);
+    Widget icon = Icon(
+      direction == _MenuChevronDirection.up
+          ? Icons.keyboard_arrow_up
+          : Icons.keyboard_arrow_down,
+      size: size,
+      color: const Color(0xFF1A1A1E),
+    );
+    if (direction == _MenuChevronDirection.right) {
+      icon = Transform.rotate(angle: -1.5708, child: icon);
+    }
+
+    final box = SizedBox(
+      width: size,
+      height: size,
+      child: Center(child: icon),
+    );
+
+    if (onTap == null) return box;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: box,
     );
   }
 }
@@ -1026,6 +1104,10 @@ class _SectionRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
+      hoverColor: Colors.transparent,
+      splashColor: Colors.transparent,
+      highlightColor: Colors.transparent,
+      overlayColor: const WidgetStatePropertyAll(Colors.transparent),
       child: Padding(
         padding: titlePadding,
         child: Row(
@@ -1036,14 +1118,7 @@ class _SectionRow extends StatelessWidget {
                 style: titleStyle,
               ),
             ),
-            Transform.rotate(
-              angle: -1.5708,
-              child: Icon(
-                Icons.keyboard_arrow_down,
-                size: healthDp(context, 20),
-                color: const Color(0xFF1A1A1E),
-              ),
-            ),
+            const _MenuChevron(direction: _MenuChevronDirection.right),
           ],
         ),
       ),
@@ -1063,6 +1138,10 @@ class _SubLink extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
+      hoverColor: Colors.transparent,
+      splashColor: Colors.transparent,
+      highlightColor: Colors.transparent,
+      overlayColor: const WidgetStatePropertyAll(Colors.transparent),
       child: Padding(
         padding: EdgeInsets.symmetric(
           vertical: healthDp(context, 8),
@@ -1116,11 +1195,9 @@ class _RecentProductsGrid extends StatelessWidget {
     }
 
     if (items.isEmpty) {
-      return _buildEmptyMessage(context, '최근 본 상품이 없습니다.');
+      return _buildEmptyMessage(context, '최근에 본 상품이 없습니다.');
     }
 
-    final radius = healthDp(context, 5.12);
-    const borderColor = Color(0x7FD2D2D2);
     final display = items.take(4).toList();
     final rows = <List<Map<String, dynamic>>>[];
     for (var i = 0; i < display.length; i += 2) {
@@ -1135,14 +1212,14 @@ class _RecentProductsGrid extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              for (var colIndex = 0; colIndex < rows[rowIndex].length; colIndex++) ...[
+              for (var colIndex = 0;
+                  colIndex < rows[rowIndex].length;
+                  colIndex++) ...[
                 if (colIndex > 0) SizedBox(width: healthDp(context, 10)),
                 Expanded(
-                  child: _RecentProductCard(
+                  child: RecentProductCard(
                     item: rows[rowIndex][colIndex],
                     onTap: () => onTapProduct(rows[rowIndex][colIndex]),
-                    radius: radius,
-                    borderColor: borderColor,
                   ),
                 ),
               ],
@@ -1157,188 +1234,18 @@ class _RecentProductsGrid extends StatelessWidget {
 
   Widget _buildEmptyMessage(BuildContext context, String message) {
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: healthDp(context, 24)),
+      padding: EdgeInsets.only(
+        top: healthDp(context, 30),
+        bottom: healthDp(context, 20),
+      ),
       child: Text(
         message,
         textAlign: TextAlign.center,
         style: TextStyle(
           color: const Color(0xFF898686),
-          fontSize: healthSp(context, 10),
+          fontSize: healthSp(context, 12),
           fontFamily: 'Gmarket Sans TTF',
           fontWeight: FontWeight.w300,
-        ),
-      ),
-    );
-  }
-}
-
-class _RecentProductCard extends StatelessWidget {
-  static const String _fontFamily = 'Gmarket Sans TTF';
-
-  final Map<String, dynamic> item;
-  final VoidCallback onTap;
-  final double radius;
-  final Color borderColor;
-
-  const _RecentProductCard({
-    required this.item,
-    required this.onTap,
-    required this.radius,
-    required this.borderColor,
-  });
-
-  String get _title =>
-      NodeValueParser.asString(item['product_name'])?.trim() ??
-      NodeValueParser.asString(item['it_name'])?.trim() ??
-      '상품';
-
-  String get _price {
-    final raw = NodeValueParser.asInt(item['product_price']) ??
-        NodeValueParser.asInt(item['it_price']);
-    return '${PriceFormatter.format(raw)}원';
-  }
-
-  String get _imageUrl {
-    final raw = NodeValueParser.asString(item['image_url']) ??
-        NodeValueParser.asString(item['it_img']) ??
-        NodeValueParser.asString(item['it_img1']) ??
-        '';
-    return raw.trim();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final imageUrl = _imageUrl;
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(radius),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Stack(
-              clipBehavior: Clip.none,
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(radius),
-                    topRight: Radius.circular(radius),
-                  ),
-                  child: Container(
-                    height: healthDp(context, 100),
-                    color: const Color(0xFFE8E8E8),
-                    alignment: Alignment.center,
-                    child: imageUrl.isNotEmpty
-                        ? Image.network(
-                            ImageUrlHelper.getImageUrl(imageUrl),
-                            fit: BoxFit.cover,
-                            width: double.infinity,
-                            height: healthDp(context, 100),
-                            errorBuilder: (_, __, ___) => Icon(
-                              Icons.image_outlined,
-                              color: Colors.grey.shade500,
-                              size: healthDp(context, 32),
-                            ),
-                          )
-                        : Icon(
-                            Icons.image_outlined,
-                            color: Colors.grey.shade500,
-                            size: healthDp(context, 32),
-                          ),
-                  ),
-                ),
-                Positioned(
-                  right: healthDp(context, 6),
-                  top: healthDp(context, 6),
-                  child: Container(
-                    width: healthDp(context, 22),
-                    height: healthDp(context, 22),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.6),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.favorite_border,
-                      size: healthDp(context, 12),
-                      color: const Color(0xFF898686),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            Container(
-              padding: EdgeInsets.fromLTRB(
-                healthDp(context, 6),
-                healthDp(context, 6),
-                healthDp(context, 6),
-                healthDp(context, 10),
-              ),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                border: Border.all(
-                  color: borderColor,
-                  width: healthDp(context, 0.51),
-                ),
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(radius),
-                  bottomRight: Radius.circular(radius),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '보미오라한의원',
-                    style: TextStyle(
-                      color: const Color(0xFF1A1A1A),
-                      fontSize: healthSp(context, 8),
-                      fontFamily: _fontFamily,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  SizedBox(height: healthDp(context, 2)),
-                  Text(
-                    _title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: const Color(0xFF1A1A1A),
-                      fontSize: healthSp(context, 10),
-                      fontFamily: _fontFamily,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: healthSp(context, -0.90),
-                    ),
-                  ),
-                  SizedBox(height: healthDp(context, 4)),
-                  Row(
-                    children: [
-                      Text(
-                        '0%',
-                        style: TextStyle(
-                          color: const Color(0xFFFF5A8D),
-                          fontSize: healthSp(context, 8),
-                          fontFamily: _fontFamily,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      SizedBox(width: healthDp(context, 4)),
-                      Text(
-                        _price,
-                        style: TextStyle(
-                          color: const Color(0xFF1A1A1A),
-                          fontSize: healthSp(context, 8),
-                          fontFamily: _fontFamily,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
         ),
       ),
     );

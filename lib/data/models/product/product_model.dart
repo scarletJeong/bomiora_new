@@ -73,8 +73,20 @@ class Product {
           NodeValueParser.asString(normalized['description']) ??
           NodeValueParser.asString(rawFields['it_explain']) ??
           NodeValueParser.asString(normalized['it_explain']),
-      price: _parsePrice(normalized['price'] ?? normalized['it_price'] ?? 0),
-      originalPrice: _parsePrice(normalized['originalPrice'] ?? normalized['it_cust_price']),
+      price: _parsePrice(
+        _firstNonZeroPrice(normalized, const [
+          'price',
+          'it_price',
+          'product_price',
+        ]),
+      ),
+      originalPrice: _parsePrice(
+        _firstNonZeroPrice(normalized, const [
+          'originalPrice',
+          'it_cust_price',
+          'original_price',
+        ]),
+      ),
       imageUrl: () {
         // 대표 썸네일은 it_img1~it_img9 중 실제 값이 있는 첫 슬롯을 선택
         final selectedValue = _pickFirstThumbnailValue(rawFields) ??
@@ -205,11 +217,27 @@ class Product {
     return ids;
   }
 
+  static dynamic _firstNonZeroPrice(
+    Map<String, dynamic> source,
+    List<String> keys,
+  ) {
+    dynamic fallback;
+    for (final key in keys) {
+      if (!source.containsKey(key) || source[key] == null) continue;
+      final parsed = _parsePrice(source[key]);
+      if (parsed > 0) return source[key];
+      fallback ??= source[key];
+    }
+    return fallback;
+  }
+
   static int _parsePrice(dynamic value) {
     if (value == null) return 0;
     if (value is int) return value;
+    if (value is num) return value.round();
     if (value is String) {
-      return int.tryParse(value.replaceAll(',', '')) ?? 0;
+      final text = value.replaceAll(',', '').trim();
+      return int.tryParse(text) ?? double.tryParse(text)?.round() ?? 0;
     }
     return 0;
   }

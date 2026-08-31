@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_endpoints.dart';
 import '../../core/utils/node_value_parser.dart';
+import '../repositories/product/product_repository.dart';
 import '../services/auth_service.dart';
 
 class RecentViewService {
@@ -33,7 +34,14 @@ class RecentViewService {
     final safeLimit = limit.clamp(1, 20);
 
     final now = DateTime.now();
+    final cacheHasListPrice = _memList != null &&
+        _memList!.any(
+          (item) =>
+              item.containsKey('originalPrice') ||
+              item.containsKey('it_cust_price'),
+        );
     if (_memList != null &&
+        cacheHasListPrice &&
         _memAt != null &&
         _memLimit >= safeLimit &&
         now.difference(_memAt!) < _memTtl) {
@@ -45,19 +53,66 @@ class RecentViewService {
       if (user != null && user.id.trim().isNotEmpty) {
         final server = await _fetchFromServer(user.id, safeLimit);
         if (server.isNotEmpty) {
-          _memList = server;
+          final enriched = _enrichWithProductPreview(server);
+          _memList = enriched;
           _memAt = now;
           _memLimit = safeLimit;
-          return server;
+          return enriched;
         }
       }
     } catch (_) {}
 
-    final local = (await _getLocalList()).take(safeLimit).toList();
+    final local = _enrichWithProductPreview(
+      (await _getLocalList()).take(safeLimit).toList(),
+    );
     _memList = local;
     _memAt = now;
     _memLimit = safeLimit;
     return local;
+  }
+
+  static bool _hasPositivePrice(Map<String, dynamic> item, List<String> keys) {
+    for (final key in keys) {
+      final n = NodeValueParser.asInt(item[key]);
+      if (n != null && n > 0) return true;
+    }
+    return false;
+  }
+
+  /// 목록/상세에서 이미 본 상품이면 정가·브랜드를 채워 할인율을 맞춘다.
+  static List<Map<String, dynamic>> _enrichWithProductPreview(
+    List<Map<String, dynamic>> items,
+  ) {
+    return items.map((item) {
+      final id = NodeValueParser.asString(item['it_id'])?.trim() ?? '';
+      if (id.isEmpty) return item;
+      final preview = ProductRepository.getProductPreview(id);
+      if (preview == null) return item;
+
+      final merged = Map<String, dynamic>.from(item);
+      if (!_hasPositivePrice(merged, ['it_price', 'product_price', 'price']) &&
+          preview.price > 0) {
+        merged['it_price'] = preview.price;
+        merged['product_price'] = preview.price;
+        merged['price'] = preview.price;
+      }
+      final listPrice = preview.originalPrice;
+      if (!_hasPositivePrice(
+            merged,
+            ['it_cust_price', 'originalPrice', 'original_price'],
+          ) &&
+          listPrice != null &&
+          listPrice > 0) {
+        merged['it_cust_price'] = listPrice;
+        merged['originalPrice'] = listPrice;
+      }
+      final subject = preview.itSubject?.trim() ?? '';
+      if ((NodeValueParser.asString(merged['it_subject']) ?? '').trim().isEmpty &&
+          subject.isNotEmpty) {
+        merged['it_subject'] = subject;
+      }
+      return merged;
+    }).toList();
   }
 
   /// 상품 상세 진입 시 최근 본 상품 기록 (비로그인: 로컬, 로그인: 로컬+서버)
@@ -67,6 +122,8 @@ class RecentViewService {
     String? productName,
     String? imageUrl,
     int? price,
+    int? originalPrice,
+    String? itSubject,
   }) async {
     final trimmedId = itId.trim();
     final kind = productKind.trim();
@@ -79,7 +136,17 @@ class RecentViewService {
         'product_name': productName.trim(),
       if (imageUrl != null && imageUrl.trim().isNotEmpty)
         'image_url': imageUrl.trim(),
-      if (price != null) 'product_price': price,
+      if (price != null) ...{
+        'product_price': price,
+        'it_price': price,
+        'price': price,
+      },
+      if (originalPrice != null && originalPrice > 0) ...{
+        'it_cust_price': originalPrice,
+        'originalPrice': originalPrice,
+      },
+      if (itSubject != null && itSubject.trim().isNotEmpty)
+        'it_subject': itSubject.trim(),
       'viewed_at': DateTime.now().toIso8601String(),
     };
 

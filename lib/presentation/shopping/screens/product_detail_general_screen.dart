@@ -158,6 +158,8 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
             productName: product.name,
             imageUrl: product.imageUrl,
             price: product.price,
+            originalPrice: product.originalPrice,
+            itSubject: product.itSubject,
           );
         }
       });
