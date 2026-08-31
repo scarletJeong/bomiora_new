@@ -17,6 +17,10 @@ abstract final class AppAssets {
   static const String appbarAlarmIcon = '${_img}appbar_menu_alarm.svg';
   static const String appbarCartIcon = '${_img}appbar_menu_cart.svg';
 
+  // 스플래시 화면
+  static const String splashScreen = '${_img}splash_screen.svg';
+  static const String splashIcon = '${_img}splash_icon.svg';
+
   // 햄버거 메뉴 아이콘
   static const String menuIcon = '${_img}menu_icon.svg';
 

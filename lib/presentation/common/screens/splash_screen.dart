@@ -1,7 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
+import '../../../core/constants/app_assets.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../data/models/home/banner_model.dart';
 import '../../../data/models/product/product_model.dart';
@@ -34,8 +36,6 @@ class SplashScreen extends StatefulWidget {
   final bool prefetchHome;
 
   final int homeTabIndex;
-
-  static const String assetPath = 'assets/img/splashScreen.png';
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
@@ -215,21 +215,107 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 }
 
-/// 스플래시 정적 UI
-class SplashView extends StatelessWidget {
+/// 스플래시 UI — [MobileLayoutWrapper] 패널 폭 + [healthDp] 스케일
+class SplashView extends StatefulWidget {
   const SplashView({super.key});
 
   @override
+  State<SplashView> createState() => _SplashViewState();
+}
+
+class _SplashViewState extends State<SplashView> {
+  static const Color _dotIdle = Color(0xFFF6E6EC);
+  static const Color _dotActive = Color(0xFFFF5A8D);
+  static const Duration _dotStep = Duration(milliseconds: 400);
+
+  Timer? _dotTimer;
+  int _activeDot = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _dotTimer = Timer.periodic(_dotStep, (_) {
+      if (!mounted) return;
+      setState(() => _activeDot = (_activeDot + 1) % 3);
+    });
+  }
+
+  @override
+  void dispose() {
+    _dotTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    final logoW = healthDp(context, 159);
+    final logoH = healthDp(context, 21);
+    final blockW = healthDp(context, 321);
+    final gap = healthDp(context, 20);
+    final dot = healthDp(context, 4);
+    final dotGap = healthDp(context, 10);
+
+    return MobileLayoutWrapper(
+      showSideNav: false,
       backgroundColor: Colors.white,
-      body: SizedBox.expand(
-        child: Image.asset(
-          SplashScreen.assetPath,
-          fit: BoxFit.cover,
-          alignment: Alignment.center,
-          filterQuality: FilterQuality.medium,
-        ),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          SvgPicture.asset(
+            AppAssets.splashScreen,
+            fit: BoxFit.cover,
+            alignment: Alignment.bottomCenter,
+            width: double.infinity,
+            height: double.infinity,
+          ),
+          Center(
+            child: SizedBox(
+              width: blockW,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(healthDp(context, 37)),
+                    child: SvgPicture.asset(
+                      AppAssets.splashIcon,
+                      width: logoW,
+                      height: logoH,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                  SizedBox(height: gap),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (var i = 0; i < 3; i++) ...[
+                        if (i > 0) SizedBox(width: dotGap),
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 220),
+                          width: dot,
+                          height: dot,
+                          decoration: BoxDecoration(
+                            color: i == _activeDot ? _dotActive : _dotIdle,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  SizedBox(height: gap),
+                  Text(
+                    '건강한 하루의 시작',
+                    style: TextStyle(
+                      color: const Color(0xFF898686),
+                      fontSize: healthSp(context, 12),
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w300,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
