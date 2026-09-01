@@ -27,8 +27,8 @@ class QaListScreenState extends State<QaListScreen> {
   bool _requiresLogin = false;
   /// 0: 진행중인 문의, 1: 종료된 문의
   int _selectedStatusTab = 0;
-  /// 목록에 표시할 최대 개수(더보기/8개 단위 확장).
-  static const int _pageSize = 8;
+  /// 목록에 표시할 최대 개수(더보기/5개 단위 확장).
+  static const int _pageSize = 5;
   int _visibleCount = _pageSize;
   final ScrollController _scrollController = ScrollController();
 

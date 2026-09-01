@@ -31,6 +31,8 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
   bool _requiresLogin = false;
   int _currentPage = 0;
   bool _hasMore = true;
+  static const int _historyPageSize = 5;
+  int _historyVisibleCount = _historyPageSize;
 
   ReviewModel? _activeReview;
   /// 방금 접힌 리뷰는 '이전 리뷰 내역' 맨 위로
@@ -78,6 +80,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
       if (v == _productNameQuery) return;
       setState(() {
         _productNameQuery = v;
+        _historyVisibleCount = _historyPageSize;
         _ensureActiveInVisible(_visibleReviews());
       });
     });
@@ -211,6 +214,64 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
     return others;
   }
 
+  Future<void> _loadMoreHistory() async {
+    final collapsed = _collapsedOrdered();
+    if (_historyVisibleCount < collapsed.length) {
+      setState(() {
+        _historyVisibleCount = (_historyVisibleCount + _historyPageSize)
+            .clamp(0, collapsed.length);
+      });
+      return;
+    }
+    if (_hasMore && !_isLoading) {
+      await _loadReviews();
+      if (!mounted) return;
+      setState(() {
+        final next = _collapsedOrdered();
+        _historyVisibleCount = (_historyVisibleCount + _historyPageSize)
+            .clamp(0, next.length);
+      });
+    }
+  }
+
+  Widget _buildHistoryLoadMoreButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: healthDp(context, 40),
+      child: OutlinedButton(
+        onPressed: _isLoading ? null : _loadMoreHistory,
+        style: OutlinedButton.styleFrom(
+          side: BorderSide(
+            width: healthDp(context, 0.5),
+            color: _kBorderStrong,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(healthDp(context, 10)),
+          ),
+          backgroundColor: Colors.white,
+        ),
+        child: _isLoading
+            ? SizedBox(
+                width: healthDp(context, 20),
+                height: healthDp(context, 20),
+                child: const CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: _kPink,
+                ),
+              )
+            : Text(
+                '더보기',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: _kMuted,
+                  fontSize: healthSp(context, 16),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+      ),
+    );
+  }
+
   void _selectReview(ReviewModel tapped) {
     if (tapped.isId == _activeReview?.isId) return;
     setState(() {
@@ -238,6 +299,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
         _reviews.clear();
         _hasMore = true;
         _historyHeadId = null;
+        _historyVisibleCount = _historyPageSize;
       }
     });
 
@@ -945,6 +1007,9 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
   Widget build(BuildContext context) {
     final visible = _visibleReviews();
     final collapsed = _collapsedOrdered();
+    final shownHistory = collapsed.take(_historyVisibleCount).toList();
+    final canLoadMoreHistory =
+        shownHistory.length < collapsed.length || _hasMore;
     final baseTheme = Theme.of(context);
     final gmarketTheme = baseTheme.copyWith(
       textTheme: baseTheme.textTheme.apply(fontFamily: 'Gmarket Sans TTF'),
@@ -1034,43 +1099,30 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                                   sliver: SliverList(
                                     delegate: SliverChildBuilderDelegate(
                                       (context, index) {
-                                        if (index == collapsed.length) {
-                                          if (_hasMore && !_isLoading) {
-                                            scheduleMicrotask(() {
-                                              if (mounted) _loadReviews();
-                                            });
+                                        if (index == shownHistory.length) {
+                                          if (!canLoadMoreHistory) {
+                                            return SizedBox(
+                                                height:
+                                                    healthDp(context, 24));
                                           }
-                                          if (_isLoading &&
-                                              _reviews.isNotEmpty) {
-                                            return Padding(
-                                              padding: EdgeInsets.all(
-                                                  healthDp(context, 24)),
-                                              child: Center(
-                                                child: SizedBox(
-                                                  width: healthDp(
-                                                      context, 36),
-                                                  height: healthDp(
-                                                      context, 36),
-                                                  child:
-                                                      const CircularProgressIndicator(
-                                                          color: _kPink),
-                                                ),
-                                              ),
-                                            );
-                                          }
-                                          return SizedBox(
-                                              height:
-                                                  healthDp(context, 24));
+                                          return Padding(
+                                            padding: EdgeInsets.only(
+                                              top: healthDp(context, 8),
+                                              bottom: healthDp(context, 24),
+                                            ),
+                                            child:
+                                                _buildHistoryLoadMoreButton(),
+                                          );
                                         }
                                         return Padding(
                                           padding: EdgeInsets.only(
                                               bottom:
                                                   healthDp(context, 12)),
                                           child: _collapsedTile(
-                                              collapsed[index]),
+                                              shownHistory[index]),
                                         );
                                       },
-                                      childCount: collapsed.length + 1,
+                                      childCount: shownHistory.length + 1,
                                     ),
                                   ),
                                 ),
