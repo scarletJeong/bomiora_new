@@ -8,6 +8,7 @@ import '../../../data/services/pending_product_checkout.dart';
 import '../../../core/utils/node_value_parser.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../health/health_common/health_responsive_scale.dart';
+import '../../health/health_common/widgets/health_app_bar.dart';
 
 /// 웹 `social_register_member.skin.php` 와 동일: 소셜 OAuth 후 휴대폰(+ 네이버 이메일) 입력
 class SocialSignupScreen extends StatefulWidget {
@@ -42,6 +43,11 @@ class _SocialSignupScreenState extends State<SocialSignupScreen> {
   final _hp3 = TextEditingController();
   late final TextEditingController _emailController;
 
+  final _hp1Focus = FocusNode();
+  final _hp2Focus = FocusNode();
+  final _hp3Focus = FocusNode();
+  final _emailFocus = FocusNode();
+
   bool _terms = true;
   bool _privacy = true;
   bool _isLoading = false;
@@ -61,6 +67,10 @@ class _SocialSignupScreenState extends State<SocialSignupScreen> {
     _hp2.dispose();
     _hp3.dispose();
     _emailController.dispose();
+    _hp1Focus.dispose();
+    _hp2Focus.dispose();
+    _hp3Focus.dispose();
+    _emailFocus.dispose();
     super.dispose();
   }
 
@@ -148,22 +158,12 @@ class _SocialSignupScreenState extends State<SocialSignupScreen> {
 
     return MobileAppLayoutWrapper(
       backgroundColor: Colors.white,
-      child: Scaffold(
-        backgroundColor: Colors.white,
-        appBar: AppBar(
-          backgroundColor: Colors.white,
-          elevation: 0,
-          foregroundColor: const Color(0xFF1A1A1A),
-          title: Text(
-            '$providerLabel 회원가입',
-            style: TextStyle(
-              fontFamily: 'Gmarket Sans TTF',
-              fontSize: healthSp(context, 16),
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ),
-        body: SafeArea(
+      appBar: HealthAppBar(
+        title: '$providerLabel 회원가입',
+        titleFontSize: healthSp(context, 16),
+        leadingIconSize: healthDp(context, 24),
+      ),
+      child: SafeArea(
           child: SingleChildScrollView(
             padding: EdgeInsets.all(healthDp(context, 24)),
             child: Column(
@@ -192,9 +192,19 @@ class _SocialSignupScreenState extends State<SocialSignupScreen> {
                   SizedBox(height: healthDp(context, 20)),
                   TextField(
                     controller: _emailController,
+                    focusNode: _emailFocus,
                     keyboardType: TextInputType.emailAddress,
+                    textInputAction: TextInputAction.done,
+                    style: TextStyle(
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontSize: healthSp(context, 16),
+                    ),
                     decoration: InputDecoration(
                       labelText: '이메일',
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: healthDp(context, 12),
+                        vertical: healthDp(context, 12),
+                      ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(healthDp(context, 8)),
                       ),
@@ -207,18 +217,32 @@ class _SocialSignupScreenState extends State<SocialSignupScreen> {
                   onChanged: _isLoading
                       ? null
                       : (v) => setState(() => _terms = v ?? false),
-                  title: const Text('이용약관 동의 (필수)'),
+                  title: Text(
+                    '이용약관 동의 (필수)',
+                    style: TextStyle(
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontSize: healthSp(context, 14),
+                    ),
+                  ),
                   controlAffinity: ListTileControlAffinity.leading,
                   contentPadding: EdgeInsets.zero,
+                  visualDensity: VisualDensity.compact,
                 ),
                 CheckboxListTile(
                   value: _privacy,
                   onChanged: _isLoading
                       ? null
                       : (v) => setState(() => _privacy = v ?? false),
-                  title: const Text('개인정보 처리방침 동의 (필수)'),
+                  title: Text(
+                    '개인정보 처리방침 동의 (필수)',
+                    style: TextStyle(
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontSize: healthSp(context, 14),
+                    ),
+                  ),
                   controlAffinity: ListTileControlAffinity.leading,
                   contentPadding: EdgeInsets.zero,
+                  visualDensity: VisualDensity.compact,
                 ),
                 if (_errorText != null) ...[
                   SizedBox(height: healthDp(context, 12)),
@@ -262,23 +286,61 @@ class _SocialSignupScreenState extends State<SocialSignupScreen> {
             ),
           ),
         ),
-      ),
     );
   }
 
   Widget _buildPhoneRow() {
-    Widget part(TextEditingController c, {int? maxLen, String? hint}) {
+    Widget part(
+      TextEditingController c, {
+      required FocusNode focusNode,
+      required int maxLen,
+      FocusNode? nextFocus,
+      FocusNode? previousFocus,
+      String? hint,
+      TextInputAction? action,
+    }) {
       return Expanded(
         child: TextField(
           controller: c,
+          focusNode: focusNode,
           keyboardType: TextInputType.number,
+          textInputAction: action ??
+              (nextFocus != null
+                  ? TextInputAction.next
+                  : TextInputAction.done),
           inputFormatters: [
             FilteringTextInputFormatter.digitsOnly,
-            if (maxLen != null) LengthLimitingTextInputFormatter(maxLen),
+            LengthLimitingTextInputFormatter(maxLen),
           ],
           textAlign: TextAlign.center,
+          onChanged: (value) {
+            if (value.length >= maxLen) {
+              if (nextFocus != null) {
+                nextFocus.requestFocus();
+              } else {
+                focusNode.unfocus();
+              }
+            } else if (value.isEmpty && previousFocus != null) {
+              previousFocus.requestFocus();
+            }
+          },
+          onSubmitted: (_) {
+            if (nextFocus != null) {
+              nextFocus.requestFocus();
+            } else {
+              focusNode.unfocus();
+            }
+          },
+          style: TextStyle(
+            fontFamily: 'Gmarket Sans TTF',
+            fontSize: healthSp(context, 16),
+          ),
           decoration: InputDecoration(
             hintText: hint,
+            isDense: true,
+            contentPadding: EdgeInsets.symmetric(
+              vertical: healthDp(context, 12),
+            ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(healthDp(context, 8)),
             ),
@@ -289,17 +351,36 @@ class _SocialSignupScreenState extends State<SocialSignupScreen> {
 
     return Row(
       children: [
-        part(_hp1, maxLen: 3),
+        part(
+          _hp1,
+          focusNode: _hp1Focus,
+          maxLen: 3,
+          nextFocus: _hp2Focus,
+        ),
         Padding(
           padding: EdgeInsets.symmetric(horizontal: healthDp(context, 6)),
           child: const Text('-'),
         ),
-        part(_hp2, maxLen: 4, hint: '1234'),
+        part(
+          _hp2,
+          focusNode: _hp2Focus,
+          maxLen: 4,
+          nextFocus: _hp3Focus,
+          previousFocus: _hp1Focus,
+          hint: '1234',
+        ),
         Padding(
           padding: EdgeInsets.symmetric(horizontal: healthDp(context, 6)),
           child: const Text('-'),
         ),
-        part(_hp3, maxLen: 4, hint: '5678'),
+        part(
+          _hp3,
+          focusNode: _hp3Focus,
+          maxLen: 4,
+          nextFocus: _isNaver ? _emailFocus : null,
+          previousFocus: _hp2Focus,
+          hint: '5678',
+        ),
       ],
     );
   }

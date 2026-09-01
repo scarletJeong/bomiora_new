@@ -9,8 +9,8 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import '../../../core/navigation/app_navigator_key.dart';
 import '../../../core/network/api_client.dart';
 import '../../../data/repositories/auth/auth_repository.dart';
-import '../../common/widgets/app_bar.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
+import '../../health/health_common/health_responsive_scale.dart';
 import 'kcp_cert_postmessage.dart';
 
 bool _isTruthy(dynamic value) {
@@ -273,20 +273,6 @@ class _KcpCertWebViewScreenState extends State<KcpCertWebViewScreen> {
     }
   }
 
-  void _onLeadingBack() {
-    if (_blockBack) {
-      debugPrint('[KCP] _onLeadingBack: _blockBack=true → 무시');
-      return;
-    }
-    if (widget.popResultToParent) {
-      debugPrint('[KCP] _onLeadingBack: Navigator.pop(null) (오버레이 취소)');
-      Navigator.pop(context, null);
-    } else {
-      debugPrint('[KCP] _onLeadingBack: Navigator.maybePop');
-      Navigator.maybePop(context);
-    }
-  }
-
   /// 회원가입 오버레이 등 [popResultToParent] 라우트를 웹에서도 확실히 닫는다.
   /// 아이디/비번 찾기 등: 오버레이·웹뷰 콜백 직후 [context] 네비게이션이 누락되는 경우를 줄이기 위해
   /// [appNavigatorKey] + post-frame 으로 [pushReplacementNamed] 한다.
@@ -368,6 +354,62 @@ class _KcpCertWebViewScreenState extends State<KcpCertWebViewScreen> {
     });
   }
 
+  /// 사용자가 인증 창을 닫거나 취소한 경우 — 폴링 중지 후 이전 화면으로 복귀.
+  void _cancelKcpCert({String reason = 'cancelled'}) {
+    if (!mounted || _hasNavigated) {
+      debugPrint(
+        '[KCP] _cancelKcpCert: 스킵 reason=$reason '
+        'mounted=$mounted hasNavigated=$_hasNavigated',
+      );
+      return;
+    }
+    debugPrint('[KCP] _cancelKcpCert: reason=$reason');
+    _hasNavigated = true;
+    _pollingTimer?.cancel();
+    _pollingTimer = null;
+    _kcpCallbackCloseTimer?.cancel();
+    _kcpCallbackCloseTimer = null;
+
+    if (widget.popResultToParent || widget.overlayStyle) {
+      _popKcpCertOverlay(null);
+      return;
+    }
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).maybePop();
+    }
+  }
+
+  Widget _buildCloseButton() {
+    return SafeArea(
+      child: Align(
+        alignment: Alignment.topRight,
+        child: Padding(
+          padding: EdgeInsets.only(
+            top: healthDp(context, 8),
+            right: healthDp(context, 8),
+          ),
+          child: Material(
+            color: Colors.black.withValues(alpha: 0.45),
+            shape: const CircleBorder(),
+            child: InkWell(
+              customBorder: const CircleBorder(),
+              onTap: () => _cancelKcpCert(reason: 'close_button'),
+              child: SizedBox(
+                width: healthDp(context, 40),
+                height: healthDp(context, 40),
+                child: Icon(
+                  Icons.close,
+                  color: Colors.white,
+                  size: healthDp(context, 22),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildWebViewOrError() {
     if (_errorMessage != null) {
       debugPrint('[KCP] _buildWebViewOrError: 분기 errorView');
@@ -382,17 +424,17 @@ class _KcpCertWebViewScreenState extends State<KcpCertWebViewScreen> {
       debugPrint('[KCP] _buildWebViewOrError: 분기 완료 안내(웹뷰 가림)');
       return Center(
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(healthDp(context, 24)),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               const CircularProgressIndicator(color: Color(0xFFFF5A8D)),
-              const SizedBox(height: 16),
+              SizedBox(height: healthDp(context, 16)),
               Text(
                 '본인인증이 완료되었습니다.\n화면을 닫는 중입니다…',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 15,
+                  fontSize: healthSp(context, 15),
                   color: Colors.grey.shade800,
                 ),
               ),
@@ -441,10 +483,8 @@ class _KcpCertWebViewScreenState extends State<KcpCertWebViewScreen> {
       },
       onCloseWindow: (controller) {
         debugPrint('[KCP] onCloseWindow (window.close 등)');
-        if (!mounted || _hasNavigated) return;
-        if (_requestToken != null && _requestToken!.isNotEmpty) {
-          unawaited(_pollKcpResult());
-        }
+        // 인증 팝업/창을 닫으면 폴링만 돌리지 말고 오버레이를 해제해 이전 화면으로 복귀한다.
+        _cancelKcpCert(reason: 'onCloseWindow');
       },
       shouldOverrideUrlLoading: (controller, navigationAction) async {
         final url = navigationAction.request.url;
@@ -555,10 +595,6 @@ class _KcpCertWebViewScreenState extends State<KcpCertWebViewScreen> {
     final isOverlay = widget.popResultToParent || widget.overlayStyle;
 
     final page = MobileAppLayoutWrapper(
-      appBar: HealthAppBar(
-        title: '본인인증',
-        onBack: _onLeadingBack,
-      ),
       // 오버레이 모드에서는 wrapper의 바깥 배경(기본 grey[100])이 불투명이라,
       // 투명으로 바꿔 기존 화면 위 딤이 보이게 한다.
       outerBackgroundColor: isOverlay ? Colors.transparent : null,
@@ -570,6 +606,9 @@ class _KcpCertWebViewScreenState extends State<KcpCertWebViewScreen> {
                 // 오버레이 모드: 카드 UI 없이 WebView를 그대로 표시
                 // (KCP 창이 같은 WebView에서 열리므로, 숨기면 아무것도 안 뜸)
                 Positioned.fill(child: _buildWebViewOrError()),
+                // 팝업을 닫아도 폴링만 남는 경우 대비 — 수동 취소로 이전 화면 복귀
+                if (!_hasNavigated && !_obscureWebViewAfterKcpCallback)
+                  _buildCloseButton(),
               ],
             )
           : _buildWebViewOrError(),
@@ -580,7 +619,7 @@ class _KcpCertWebViewScreenState extends State<KcpCertWebViewScreen> {
     }
 
     // 웹: PopScope + 내비게이션 조합에서 pop이 호출돼도 라우트가 안 빠지는 경우가 있어
-    // 회원가입 오버레이는 PopScope 없이 둔다(앱바 뒤로가기로 취소는 그대로 동작).
+    // 회원가입 오버레이는 PopScope 없이 둔다.
     if (kIsWeb) {
       return page;
     }
@@ -611,19 +650,44 @@ class _KcpCertWebViewScreenState extends State<KcpCertWebViewScreen> {
   Widget _buildErrorView() {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(healthDp(context, 24)),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               _errorMessage ?? '알 수 없는 오류가 발생했습니다.',
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 15),
+              style: TextStyle(
+                fontSize: healthSp(context, 15),
+                color: Colors.white,
+              ),
             ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _initializeKcpRequest,
-              child: const Text('다시 시도'),
+            SizedBox(height: healthDp(context, 16)),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ElevatedButton(
+                  onPressed: _initializeKcpRequest,
+                  child: Text(
+                    '다시 시도',
+                    style: TextStyle(fontSize: healthSp(context, 14)),
+                  ),
+                ),
+                if (widget.popResultToParent || widget.overlayStyle) ...[
+                  SizedBox(width: healthDp(context, 12)),
+                  OutlinedButton(
+                    onPressed: () => _cancelKcpCert(reason: 'error_close'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      side: const BorderSide(color: Colors.white70),
+                    ),
+                    child: Text(
+                      '닫기',
+                      style: TextStyle(fontSize: healthSp(context, 14)),
+                    ),
+                  ),
+                ],
+              ],
             ),
           ],
         ),
@@ -1059,6 +1123,22 @@ class _KcpCertWebViewScreenState extends State<KcpCertWebViewScreen> {
       final message =
           (data['message'] ?? data['res_msg'] ?? '본인인증에 실패했습니다.').toString();
       debugPrint('[KCP] _pollKcpResult: 인증 실패/미완료 msg=$message');
+
+      // 실패·취소 상태로 확정되면 딤 오버레이에 갇히지 않도록 닫는다.
+      if (statusNorm == 'failed' ||
+          statusNorm == 'error' ||
+          statusNorm == 'cancelled' ||
+          statusNorm == 'canceled' ||
+          statusNorm == 'aborted') {
+        _cancelKcpCert(reason: 'poll_status:$statusNorm');
+      } else if (widget.popResultToParent || widget.overlayStyle) {
+        // pending이 아닌데 성공도 아니면 사용자에게 실패를 보여준 뒤 닫을 수 있게 한다.
+        if (mounted) {
+          setState(() {
+            _errorMessage = message;
+          });
+        }
+      }
     } catch (e, st) {
       debugPrint('[KCP] poll error: $e\n$st');
     }

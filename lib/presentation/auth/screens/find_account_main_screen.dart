@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../data/repositories/auth/auth_repository.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
@@ -12,6 +13,10 @@ import '../widgets/registered_account_ui.dart';
 
 enum _FindAccountTab { id, password }
 enum _FindAccountStep { form, result }
+
+final _koreanEnglishOnlyFormatter = FilteringTextInputFormatter.allow(
+  RegExp(r'[a-zA-Z가-힣ㄱ-ㅎㅏ-ㅣ\s]'),
+);
 
 class FindAccountScreen extends StatefulWidget {
   const FindAccountScreen({
@@ -38,6 +43,13 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
   final _phoneMidController = TextEditingController();
   final _phoneLastController = TextEditingController();
   final _verificationCodeController = TextEditingController();
+
+  final _idNameFocus = FocusNode();
+  final _passwordEmailFocus = FocusNode();
+  final _passwordNameFocus = FocusNode();
+  final _phoneMidFocus = FocusNode();
+  final _phoneLastFocus = FocusNode();
+  final _verificationFocus = FocusNode();
 
   _FindAccountTab _selectedTab = _FindAccountTab.id;
   _FindAccountStep _step = _FindAccountStep.form;
@@ -70,6 +82,12 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
     _phoneMidController.dispose();
     _phoneLastController.dispose();
     _verificationCodeController.dispose();
+    _idNameFocus.dispose();
+    _passwordEmailFocus.dispose();
+    _passwordNameFocus.dispose();
+    _phoneMidFocus.dispose();
+    _phoneLastFocus.dispose();
+    _verificationFocus.dispose();
     _countdownTimer?.cancel();
     _resendCooldownTimer?.cancel();
     super.dispose();
@@ -506,15 +524,17 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
             backgroundColor: Colors.white,
             appBar: HealthAppBar(
               title: '아이디/비밀번호찾기',
-              titleFontSize: healthSp(context, 18),
+              titleFontSize: healthSp(context, 16),
               leadingIconSize: healthDp(context, 24),
             ),
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: healthDp(context, 27),
-            vertical: healthDp(context, 20),
+          padding: EdgeInsets.fromLTRB(
+            healthDp(context, 20),
+            healthDp(context, 20),
+            healthDp(context, 20),
+            healthDp(context, 20),
           ),
           child: Column(
             children: [
@@ -537,17 +557,19 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
                                   fontFamily: 'Gmarket Sans TTF',
                                   fontWeight: FontWeight.w500,
                                   letterSpacing: -1.44,
+                                  height: 1,
                                 ),
                               ),
-                              SizedBox(height: healthDp(context, 2)),
+                              SizedBox(height: healthDp(context, 4)),
                               Text(
-                                '소셜 로그인 계정은 각 플랫폼의 계정 찾기 기능을 이용해 주세요.',
+                                '소셜 로그인 계정은 각 플랫폼의 계정 찾기 기능을\n이용해 주세요.',
                                 style: TextStyle(
-                                  color: const Color(0xFFFF5A8D),
-                                  fontSize: healthSp(context, 12),
+                                  color: const Color(0xFF898686),
+                                  fontSize: healthSp(context, 14),
                                   fontFamily: 'Gmarket Sans TTF',
                                   fontWeight: FontWeight.w300,
-                                  letterSpacing: -1.08,
+                                  letterSpacing: -1.26,
+                                  height: 1,
                                 ),
                               ),
                             ],
@@ -559,20 +581,25 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
                         _buildActiveForm(),
                         SizedBox(height: healthDp(context, 20)),
                         _buildPhoneCertCard(),
-                        SizedBox(height: healthDp(context, 16)),
+                        SizedBox(height: healthDp(context, 20)),
                         const SizedBox.shrink(),
                       ] else ...[
-                        _buildFindIdResultView(),
+                        RegisteredAccountList(
+                          accounts: _foundAccounts,
+                          selectedIndex: _selectedFoundAccountIndex,
+                          onSelect: (i) =>
+                              setState(() => _selectedFoundAccountIndex = i),
+                        ),
                       ],
                     ],
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
+              SizedBox(height: healthDp(context, 20)),
               if (_step == _FindAccountStep.form)
                 SizedBox(
                   width: double.infinity,
-                  height: 40,
+                  height: healthDp(context, 40),
                   child: ElevatedButton(
                     onPressed: _isLoading || !_canSubmit ? null : _handleSubmit,
                     style: ElevatedButton.styleFrom(
@@ -581,28 +608,53 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
                           ? const Color(0xFFFF5A8D)
                           : const Color(0xFFD2D2D2),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(healthDp(context, 10)),
                       ),
                     ),
                     child: _isLoading
-                        ? const SizedBox(
-                            height: 18,
-                            width: 18,
-                            child: CircularProgressIndicator(
+                        ? SizedBox(
+                            height: healthDp(context, 18),
+                            width: healthDp(context, 18),
+                            child: const CircularProgressIndicator(
                               strokeWidth: 2,
                               valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                             ),
                           )
-                        : const Text(
+                        : Text(
                             '다음',
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: 20,
+                              fontSize: healthSp(context, 20),
                               fontFamily: 'Gmarket Sans TTF',
                               fontWeight: FontWeight.w500,
                             ),
                           ),
                   ),
+                )
+              else
+                FindAccountResultActions(
+                  onPasswordFind: () {
+                    if (_foundAccounts.isEmpty) return;
+                    final i = _selectedFoundAccountIndex.clamp(
+                        0, _foundAccounts.length - 1);
+                    _resetForTab(
+                      _FindAccountTab.password,
+                      prefillPasswordEmail: _foundAccounts[i],
+                    );
+                  },
+                  onLogin: () {
+                    if (_foundAccounts.isEmpty) {
+                      Navigator.pushReplacementNamed(context, '/login');
+                      return;
+                    }
+                    final i = _selectedFoundAccountIndex
+                        .clamp(0, _foundAccounts.length - 1);
+                    Navigator.pushReplacementNamed(
+                      context,
+                      '/login',
+                      arguments: {'prefillEmail': _foundAccounts[i]},
+                    );
+                  },
                 ),
             ],
           ),
@@ -620,7 +672,7 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
       decoration: ShapeDecoration(
         color: const Color(0xFFF9F9F9),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(healthDp(context, 20)),
         ),
       ),
       child: Row(
@@ -655,9 +707,10 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(healthDp(context, 20)),
       child: Container(
-        padding: EdgeInsets.symmetric(vertical: healthDp(context, 10)),
+        height: healthDp(context, 38),
+        alignment: Alignment.center,
         decoration: selected
             ? ShapeDecoration(
                 color: Colors.white,
@@ -670,15 +723,14 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
                 ),
               )
             : const ShapeDecoration(shape: RoundedRectangleBorder()),
-        child: Center(
-          child: Text(
-            label,
-            style: TextStyle(
-              color: selected ? const Color(0xFF1A1A1A) : const Color(0xFF898686),
-              fontSize: healthSp(context, 16),
-              fontFamily: 'Gmarket Sans TTF',
-              fontWeight: FontWeight.w500,
-            ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: selected ? const Color(0xFF1A1A1A) : const Color(0xFF898686),
+            fontSize: healthSp(context, 16),
+            fontFamily: 'Gmarket Sans TTF',
+            fontWeight: FontWeight.w500,
+            height: 1,
           ),
         ),
       ),
@@ -699,7 +751,14 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
                   SizedBox(height: healthDp(context, 10)),
                   _buildTextField(
                     controller: _idNameController,
+                    focusNode: _idNameFocus,
                     hintText: '이름을 입력해 주세요',
+                    keyboardType: TextInputType.name,
+                    textInputAction: TextInputAction.next,
+                    onFieldSubmitted: (_) => _phoneMidFocus.requestFocus(),
+                    inputFormatters: [
+                      _koreanEnglishOnlyFormatter,
+                    ],
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
                         return '이름을 입력해 주세요.';
@@ -745,7 +804,14 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
                 SizedBox(height: healthDp(context, 10)),
                 _buildTextField(
                   controller: _passwordNameController,
+                  focusNode: _passwordNameFocus,
                   hintText: '이름을 입력해 주세요',
+                  keyboardType: TextInputType.name,
+                  textInputAction: TextInputAction.next,
+                  onFieldSubmitted: (_) => _phoneMidFocus.requestFocus(),
+                  inputFormatters: [
+                    _koreanEnglishOnlyFormatter,
+                  ],
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
                       return '이름을 입력해 주세요.';
@@ -788,38 +854,31 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
           },
           borderRadius: BorderRadius.circular(healthDp(context, 10)),
           child: Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: healthDp(context, 12),
-              vertical: healthDp(context, 12),
+            padding: EdgeInsets.fromLTRB(
+              healthDp(context, 10),
+              healthDp(context, 10),
+              healthDp(context, 10),
+              _isRegisteredPhoneExpanded ? 0 : healthDp(context, 12),
             ),
-            child: Column(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      title,
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: healthSp(context, 16),
-                        fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    Icon(
-                      _isRegisteredPhoneExpanded
-                          ? Icons.keyboard_arrow_up
-                          : Icons.keyboard_arrow_down,
-                      size: healthDp(context, 18),
-                      color: Colors.black,
-                    ),
-                  ],
+                Text(
+                  title,
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: healthSp(context, 16),
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w500,
+                    height: 1,
+                  ),
                 ),
-                SizedBox(height: healthDp(context, 10)),
-                Divider(
-                  height: healthDp(context, 1),
-                  thickness: healthDp(context, 0.5),
-                  color: const Color(0xFFD2D2D2),
+                Icon(
+                  _isRegisteredPhoneExpanded
+                      ? Icons.keyboard_arrow_up
+                      : Icons.keyboard_arrow_down,
+                  size: healthDp(context, 18),
+                  color: Colors.black,
                 ),
               ],
             ),
@@ -839,6 +898,13 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
             ),
             child: Column(
               children: [
+                SizedBox(height: healthDp(context, 10)),
+                Divider(
+                  height: healthDp(context, 1),
+                  thickness: healthDp(context, 0.5),
+                  color: const Color(0xFFD2D2D2),
+                ),
+                SizedBox(height: healthDp(context, 10)),
                 child,
                 _buildVerificationField(),
               ],
@@ -856,8 +922,11 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
       children: [
         _buildTextField(
           controller: _passwordEmailController,
+          focusNode: _passwordEmailFocus,
           hintText: '가입 이메일',
           keyboardType: TextInputType.emailAddress,
+          textInputAction: TextInputAction.next,
+          onFieldSubmitted: (_) => _passwordNameFocus.requestFocus(),
           hasError: _emailLookupErrorText != null,
           validator: (value) {
             if (value == null || value.trim().isEmpty) {
@@ -870,7 +939,7 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
           duration: const Duration(milliseconds: 180),
           curve: Curves.easeInOut,
           child: _emailLookupErrorText == null
-              ? SizedBox(height: healthDp(context, 10))
+              ? SizedBox(height: healthDp(context, 20))
               : Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -897,9 +966,9 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
       alignment: Alignment.centerLeft,
       child: Text(
         label,
-        style: const TextStyle(
+        style: TextStyle(
           color: Colors.black,
-          fontSize: 16,
+          fontSize: healthSp(context, 16),
           fontFamily: 'Gmarket Sans TTF',
           fontWeight: FontWeight.w500,
         ),
@@ -910,64 +979,81 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
   Widget _buildTextField({
     required TextEditingController controller,
     required String hintText,
+    FocusNode? focusNode,
     TextInputType? keyboardType,
+    TextInputAction? textInputAction,
+    ValueChanged<String>? onFieldSubmitted,
+    List<TextInputFormatter>? inputFormatters,
     String? Function(String?)? validator,
     bool hasError = false,
   }) {
     return SizedBox(
-      height: 40,
+      height: healthDp(context, 40),
       child: TextFormField(
         controller: controller,
+        focusNode: focusNode,
         keyboardType: keyboardType,
+        textInputAction: textInputAction,
+        onFieldSubmitted: onFieldSubmitted,
+        inputFormatters: inputFormatters,
         validator: validator,
         onChanged: _handleFieldChanged,
-        style: const TextStyle(
+        style: TextStyle(
           color: Colors.black,
-          fontSize: 16,
+          fontSize: healthSp(context, 16),
           fontFamily: 'Gmarket Sans TTF',
           fontWeight: FontWeight.w500,
         ),
         decoration: InputDecoration(
           hintText: hintText,
-          hintStyle: const TextStyle(
-            color: Color(0xFFB0B0B0),
-            fontSize: 14,
+          hintStyle: TextStyle(
+            color: const Color(0xFFB0B0B0),
+            fontSize: healthSp(context, 14),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w300,
           ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+          contentPadding: EdgeInsets.symmetric(
+            horizontal: healthDp(context, 10),
+            vertical: healthDp(context, 10),
+          ),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(healthDp(context, 10)),
             borderSide: BorderSide(
-              width: 1,
+              width: healthDp(context, 1),
               color: hasError ? const Color(0xFFEF4444) : const Color(0xFFD2D2D2),
             ),
           ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(healthDp(context, 10)),
             borderSide: BorderSide(
-              width: 1,
+              width: healthDp(context, 1),
               color: hasError ? const Color(0xFFEF4444) : const Color(0xFFD2D2D2),
             ),
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(healthDp(context, 10)),
             borderSide: BorderSide(
-              width: 1,
+              width: healthDp(context, 1),
               color: hasError ? const Color(0xFFEF4444) : const Color(0xFFFF5A8D),
             ),
           ),
           errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(width: 1, color: Color(0xFFEF4444)),
+            borderRadius: BorderRadius.circular(healthDp(context, 10)),
+            borderSide: BorderSide(
+              width: healthDp(context, 1),
+              color: const Color(0xFFEF4444),
+            ),
           ),
           focusedErrorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(width: 1, color: Color(0xFFEF4444)),
+            borderRadius: BorderRadius.circular(healthDp(context, 10)),
+            borderSide: BorderSide(
+              width: healthDp(context, 1),
+              color: const Color(0xFFEF4444),
+            ),
           ),
-          errorStyle: const TextStyle(
-            color: Color(0xFFEF4444),
-            fontSize: 10,
+          errorStyle: TextStyle(
+            color: const Color(0xFFEF4444),
+            fontSize: healthSp(context, 10),
             fontFamily: 'Gmarket Sans TTF',
           ),
         ),
@@ -986,39 +1072,59 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
               child: Row(
                 children: [
                   Expanded(child: _buildFixedPhoneBox('010')),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 7),
+                  Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: healthDp(context, 7),
+                    ),
                     child: SizedBox(
-                      width: 8,
-                      child: Divider(color: Color(0xFFD9D9D9), thickness: 1),
+                      width: healthDp(context, 8),
+                      child: Divider(
+                        color: const Color(0xFFD9D9D9),
+                        thickness: healthDp(context, 1),
+                      ),
                     ),
                   ),
                   Expanded(
                     child: _buildPhoneInput(
                       controller: _phoneMidController,
+                      focusNode: _phoneMidFocus,
                       maxLength: 4,
+                      nextFocus: _phoneLastFocus,
+                      previousFocus: _selectedTab == _FindAccountTab.id
+                          ? _idNameFocus
+                          : _passwordNameFocus,
                     ),
                   ),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 7),
+                  Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: healthDp(context, 7),
+                    ),
                     child: SizedBox(
-                      width: 8,
-                      child: Divider(color: Color(0xFFD9D9D9), thickness: 1),
+                      width: healthDp(context, 8),
+                      child: Divider(
+                        color: const Color(0xFFD9D9D9),
+                        thickness: healthDp(context, 1),
+                      ),
                     ),
                   ),
                   Expanded(
                     child: _buildPhoneInput(
                       controller: _phoneLastController,
+                      focusNode: _phoneLastFocus,
                       maxLength: 4,
+                      nextFocus: _isCodeSent && !_isCodeExpired
+                          ? _verificationFocus
+                          : null,
+                      previousFocus: _phoneMidFocus,
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: healthDp(context, 12)),
             SizedBox(
-              width: 60,
-              height: 40,
+              width: healthDp(context, 60),
+              height: healthDp(context, 40),
               child: ElevatedButton(
                 onPressed: (_isLoading || _resendCooldownSeconds > 0)
                     ? null
@@ -1027,15 +1133,15 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
                   elevation: 0,
                   backgroundColor: const Color(0xFFFF5A8D),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(healthDp(context, 10)),
                   ),
                   padding: EdgeInsets.zero,
                 ),
-                child: const Text(
+                child: Text(
                   '발송',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 14,
+                    fontSize: healthSp(context, 14),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w500,
                   ),
@@ -1052,12 +1158,12 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
               : Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SizedBox(height: 14),
+                    SizedBox(height: healthDp(context, 14)),
                     Text(
                       _phoneInlineErrorText!,
-                      style: const TextStyle(
-                        color: Color(0xFFEF4444),
-                        fontSize: 12,
+                      style: TextStyle(
+                        color: const Color(0xFFEF4444),
+                        fontSize: healthSp(context, 12),
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w500,
                       ),
@@ -1071,19 +1177,22 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
 
   Widget _buildFixedPhoneBox(String value) {
     return Container(
-      height: 40,
+      height: healthDp(context, 40),
       alignment: Alignment.center,
       decoration: ShapeDecoration(
         shape: RoundedRectangleBorder(
-          side: const BorderSide(width: 1, color: Color(0xFFD2D2D2)),
-          borderRadius: BorderRadius.circular(10),
+          side: BorderSide(
+            width: healthDp(context, 1),
+            color: const Color(0xFFD2D2D2),
+          ),
+          borderRadius: BorderRadius.circular(healthDp(context, 10)),
         ),
       ),
       child: Text(
         value,
-        style: const TextStyle(
+        style: TextStyle(
           color: Colors.black,
-          fontSize: 16,
+          fontSize: healthSp(context, 16),
           fontFamily: 'Gmarket Sans TTF',
           fontWeight: FontWeight.w500,
         ),
@@ -1093,37 +1202,85 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
 
   Widget _buildPhoneInput({
     required TextEditingController controller,
+    required FocusNode focusNode,
     required int maxLength,
+    FocusNode? nextFocus,
+    FocusNode? previousFocus,
   }) {
-    return SizedBox(
-      height: 40,
-      child: TextFormField(
-        controller: controller,
-        keyboardType: TextInputType.number,
-        maxLength: maxLength,
-        onChanged: _handleFieldChanged,
-        style: const TextStyle(
-          color: Colors.black,
-          fontSize: 16,
-          fontFamily: 'Gmarket Sans TTF',
-          fontWeight: FontWeight.w500,
-        ),
-        decoration: InputDecoration(
-          counterText: '',
-          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(width: 1, color: Color(0xFFD2D2D2)),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(width: 1, color: Color(0xFFD2D2D2)),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(width: 1, color: Color(0xFFFF5A8D)),
-          ),
-        ),
+    return Focus(
+      onFocusChange: (_) {
+        if (mounted) setState(() {});
+      },
+      child: Builder(
+        builder: (context) {
+          final focused = Focus.of(context).hasFocus;
+          return Container(
+            height: healthDp(context, 40),
+            alignment: Alignment.center,
+            decoration: ShapeDecoration(
+              shape: RoundedRectangleBorder(
+                side: BorderSide(
+                  width: healthDp(context, 1),
+                  color: focused
+                      ? const Color(0xFFFF5A8D)
+                      : const Color(0xFFD2D2D2),
+                ),
+                borderRadius: BorderRadius.circular(healthDp(context, 10)),
+              ),
+            ),
+            child: Center(
+              child: TextFormField(
+                controller: controller,
+                focusNode: focusNode,
+                keyboardType: TextInputType.number,
+                textInputAction: nextFocus != null
+                    ? TextInputAction.next
+                    : TextInputAction.done,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(maxLength),
+                ],
+                maxLength: maxLength,
+                textAlign: TextAlign.center,
+                textAlignVertical: TextAlignVertical.center,
+                onChanged: (value) {
+                  _handleFieldChanged(value);
+                  if (value.length >= maxLength) {
+                    if (nextFocus != null) {
+                      nextFocus.requestFocus();
+                    } else {
+                      focusNode.unfocus();
+                    }
+                  } else if (value.isEmpty && previousFocus != null) {
+                    // 한 글자 지워 빈 칸이 되면 이전 필드로 (연속 입력 수정 UX)
+                    previousFocus.requestFocus();
+                  }
+                },
+                onFieldSubmitted: (_) {
+                  if (nextFocus != null) {
+                    nextFocus.requestFocus();
+                  } else {
+                    focusNode.unfocus();
+                  }
+                },
+                style: TextStyle(
+                  color: Colors.black,
+                  fontSize: healthSp(context, 16),
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w500,
+                  height: 1,
+                ),
+                decoration: const InputDecoration(
+                  counterText: '',
+                  isDense: true,
+                  isCollapsed: true,
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -1134,22 +1291,24 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 10),
+        SizedBox(height: healthDp(context, 10)),
         _buildFieldLabel('인증번호'),
-        const SizedBox(height: 10),
+        SizedBox(height: healthDp(context, 10)),
         Row(
           children: [
             Expanded(
               child: SizedBox(
-                height: 40,
+                height: healthDp(context, 40),
                 child: TextFormField(
                   controller: _verificationCodeController,
+                  focusNode: _verificationFocus,
                   keyboardType: TextInputType.number,
+                  textInputAction: TextInputAction.done,
                   enabled: _isCodeSent && !_isCodeExpired,
                   onChanged: _handleFieldChanged,
-                  style: const TextStyle(
-                    color: Color(0xFF1A1A1A),
-                    fontSize: 16,
+                  style: TextStyle(
+                    color: const Color(0xFF1A1A1A),
+                    fontSize: healthSp(context, 16),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w500,
                   ),
@@ -1164,76 +1323,88 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
                   },
                   decoration: InputDecoration(
                     hintText: '인증번호 6자리를 입력해 주세요',
-                    hintStyle: const TextStyle(
-                      color: Color(0xFFB0B0B0),
-                      fontSize: 14,
+                    hintStyle: TextStyle(
+                      color: const Color(0xFFB0B0B0),
+                      fontSize: healthSp(context, 14),
                       fontFamily: 'Gmarket Sans TTF',
                       fontWeight: FontWeight.w300,
                     ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: healthDp(context, 10),
+                      vertical: healthDp(context, 10),
+                    ),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(healthDp(context, 10)),
                       borderSide: BorderSide(
-                        width: 1,
+                        width: healthDp(context, 1),
                         color: _verificationErrorText != null
                             ? const Color(0xFFEF4444)
                             : const Color(0xFFD2D2D2),
                       ),
                     ),
                     enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(healthDp(context, 10)),
                       borderSide: BorderSide(
-                        width: 1,
+                        width: healthDp(context, 1),
                         color: _verificationErrorText != null
                             ? const Color(0xFFEF4444)
                             : const Color(0xFFD2D2D2),
                       ),
                     ),
                     focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(healthDp(context, 10)),
                       borderSide: BorderSide(
-                        width: 1,
+                        width: healthDp(context, 1),
                         color: _verificationErrorText != null
                             ? const Color(0xFFEF4444)
                             : const Color(0xFFFF5A8D),
                       ),
                     ),
                     disabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(width: 1, color: Color(0xFFD2D2D2)),
+                      borderRadius: BorderRadius.circular(healthDp(context, 10)),
+                      borderSide: BorderSide(
+                        width: healthDp(context, 1),
+                        color: const Color(0xFFD2D2D2),
+                      ),
                     ),
                     errorBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(width: 1, color: Color(0xFFEF4444)),
+                      borderRadius: BorderRadius.circular(healthDp(context, 10)),
+                      borderSide: BorderSide(
+                        width: healthDp(context, 1),
+                        color: const Color(0xFFEF4444),
+                      ),
                     ),
                     focusedErrorBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(width: 1, color: Color(0xFFEF4444)),
+                      borderRadius: BorderRadius.circular(healthDp(context, 10)),
+                      borderSide: BorderSide(
+                        width: healthDp(context, 1),
+                        color: const Color(0xFFEF4444),
+                      ),
                     ),
-                    errorStyle: const TextStyle(
-                      color: Color(0xFFEF4444),
-                      fontSize: 10,
+                    errorStyle: TextStyle(
+                      color: const Color(0xFFEF4444),
+                      fontSize: healthSp(context, 10),
                       fontFamily: 'Gmarket Sans TTF',
                     ),
                   ),
                 ),
               ),
             ),
-            const SizedBox(width: 20),
+            SizedBox(width: healthDp(context, 20)),
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
+                Icon(
                   Icons.access_time,
-                  size: 14,
-                  color: Color(0xFFFF5A8D),
+                  size: healthDp(context, 14),
+                  color: const Color(0xFFFF5A8D),
                 ),
-                const SizedBox(width: 2),
+                SizedBox(width: healthDp(context, 2)),
                 Text(
                   _remainingTimeText,
-                  style: const TextStyle(
-                    color: Color(0xFFFF5A8D),
-                    fontSize: 12,
+                  style: TextStyle(
+                    color: const Color(0xFFFF5A8D),
+                    fontSize: healthSp(context, 12),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w500,
                   ),
@@ -1251,12 +1422,12 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
               if (_verificationInfoText != null &&
                   _verificationInfoText!.trim().isNotEmpty &&
                   _verificationErrorText == null) ...[
-                const SizedBox(height: 10),
+                SizedBox(height: healthDp(context, 10)),
                 Text(
                   _verificationInfoText!,
-                  style: const TextStyle(
-                    color: Color(0xFF16A34A),
-                    fontSize: 12,
+                  style: TextStyle(
+                    color: const Color(0xFF16A34A),
+                    fontSize: healthSp(context, 12),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w500,
                   ),
@@ -1264,18 +1435,18 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
               ],
               if (_verificationErrorText != null &&
                   _verificationErrorText!.trim().isNotEmpty) ...[
-                const SizedBox(height: 14),
+                SizedBox(height: healthDp(context, 14)),
                 Text(
                   _verificationErrorText!,
-                  style: const TextStyle(
-                    color: Color(0xFFEF4444),
-                    fontSize: 12,
+                  style: TextStyle(
+                    color: const Color(0xFFEF4444),
+                    fontSize: healthSp(context, 12),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
-              const SizedBox(height: 10),
+              SizedBox(height: healthDp(context, 10)),
             ],
           ),
         ),
@@ -1303,38 +1474,31 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
           },
           borderRadius: BorderRadius.circular(healthDp(context, 10)),
           child: Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: healthDp(context, 12),
-              vertical: healthDp(context, 12),
+            padding: EdgeInsets.fromLTRB(
+              healthDp(context, 12),
+              healthDp(context, 12),
+              healthDp(context, 12),
+              _isPhoneCertExpanded ? 0 : healthDp(context, 12),
             ),
-            child: Column(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      '휴대폰 본인인증으로 찾기',
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: healthSp(context, 16),
-                        fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    Icon(
-                      _isPhoneCertExpanded
-                          ? Icons.keyboard_arrow_up
-                          : Icons.keyboard_arrow_down,
-                      size: healthDp(context, 18),
-                      color: Colors.black,
-                    ),
-                  ],
+                Text(
+                  '휴대폰 본인인증으로 찾기',
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: healthSp(context, 16),
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w500,
+                    height: 1,
+                  ),
                 ),
-                SizedBox(height: healthDp(context, 10)),
-                Divider(
-                  height: healthDp(context, 1),
-                  thickness: healthDp(context, 0.5),
-                  color: const Color(0xFFD2D2D2),
+                Icon(
+                  _isPhoneCertExpanded
+                      ? Icons.keyboard_arrow_up
+                      : Icons.keyboard_arrow_down,
+                  size: healthDp(context, 18),
+                  color: Colors.black,
                 ),
               ],
             ),
@@ -1347,14 +1511,20 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
               : CrossFadeState.showSecond,
           firstChild: Padding(
             padding: EdgeInsets.fromLTRB(
-              healthDp(context, 12),
+              healthDp(context, 10),
               0,
-              healthDp(context, 12),
-              healthDp(context, 12),
+              healthDp(context, 10),
+              healthDp(context, 10),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                SizedBox(height: healthDp(context, 10)),
+                Divider(
+                  height: healthDp(context, 1),
+                  thickness: healthDp(context, 0.5),
+                  color: const Color(0xFFD2D2D2),
+                ),
                 SizedBox(height: healthDp(context, 5)),
                 Text(
                   '본인 명의의 휴대폰으로 인증이 가능합니다.',
@@ -1363,7 +1533,7 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
                     fontSize: healthSp(context, 12),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w300,
-                    letterSpacing: -1.08,
+                    letterSpacing: healthSp(context, -1.08),
                   ),
                 ),
                 SizedBox(height: healthDp(context, 20)),
@@ -1409,43 +1579,4 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
       ],
     ));
   }
-
-  Widget _buildFindIdResultView() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        RegisteredAccountList(
-          accounts: _foundAccounts,
-          selectedIndex: _selectedFoundAccountIndex,
-          onSelect: (i) => setState(() => _selectedFoundAccountIndex = i),
-        ),
-        const SizedBox(height: 20),
-        FindAccountResultActions(
-          onPasswordFind: () {
-            if (_foundAccounts.isEmpty) return;
-            final i = _selectedFoundAccountIndex.clamp(0, _foundAccounts.length - 1);
-            _resetForTab(
-              _FindAccountTab.password,
-              prefillPasswordEmail: _foundAccounts[i],
-            );
-          },
-          onLogin: () {
-            if (_foundAccounts.isEmpty) {
-              Navigator.pushReplacementNamed(context, '/login');
-              return;
-            }
-            final i = _selectedFoundAccountIndex
-                .clamp(0, _foundAccounts.length - 1);
-            Navigator.pushReplacementNamed(
-              context,
-              '/login',
-              arguments: {'prefillEmail': _foundAccounts[i]},
-            );
-          },
-        ),
-      ],
-    );
-  }
-
-  // _buildMessageArea(): 요구사항에 의해 제거됨
 }

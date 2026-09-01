@@ -14,11 +14,13 @@ class AuthService {
   static const String _userKey = 'user_data';
   static const String _tokenKey = 'auth_token';
   static const String _isLoggedInKey = 'is_logged_in';
+  static const String _autoLoginKey = 'auto_login';
 
   // 로그인 상태 저장
   static Future<void> saveLoginData({
     required UserModel user,
     String? token, // String?으로 변경
+    bool autoLogin = true,
   }) async {
     final prefs = await SharedPreferences.getInstance();
 
@@ -32,6 +34,7 @@ class AuthService {
       await prefs.remove(_tokenKey); // 기존 토큰이 있다면 삭제
     }
     await prefs.setBool(_isLoggedInKey, true);
+    await prefs.setBool(_autoLoginKey, autoLogin);
 
     // 부가 동기화는 로그인 화면 전환을 막지 않는다.
     unawaited(RecentViewService.syncLocalToAccount(user.id));
@@ -41,6 +44,14 @@ class AuthService {
   // 로그인 상태 확인
   static Future<bool> isLoggedIn() async {
     final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_isLoggedInKey) ?? false;
+  }
+
+  /// 자동로그인 체크 여부. 키가 없으면 기존 로그인 세션은 유지한다.
+  static Future<bool> isAutoLoginEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getBool(_autoLoginKey);
+    if (saved != null) return saved;
     return prefs.getBool(_isLoggedInKey) ?? false;
   }
 
@@ -76,6 +87,7 @@ class AuthService {
     await prefs.remove(_userKey);
     await prefs.remove(_tokenKey);
     await prefs.remove(_isLoggedInKey);
+    await prefs.remove(_autoLoginKey);
   }
 
   /// 탈퇴/차단 등으로 세션이 유효한지 확인

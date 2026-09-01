@@ -118,74 +118,70 @@ class _FindAccountResultScreenState
           child: MobileAppLayoutWrapper(
             backgroundColor: Colors.white,
             appBar: HealthAppBar(
-              title: '아이디/비밀번호찾기',
-              titleFontSize: healthSp(context, 18),
+              title: '아이디/비밀번호 찾기',
+              titleFontSize: healthSp(context, 16),
               leadingIconSize: healthDp(context, 24),
             ),
             child: SafeArea(
               top: false,
               child: Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: healthDp(context, 27),
-                  vertical: healthDp(context, 20),
+                padding: EdgeInsets.fromLTRB(
+                  healthDp(context, 20),
+                  healthDp(context, 20),
+                  healthDp(context, 20),
+                  healthDp(context, 20),
                 ),
                 child: _isLoading
                     ? const Center(child: CircularProgressIndicator())
                     : _errorText != null
                         ? _buildErrorView()
                         : Column(
-                            crossAxisAlignment: CrossAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Expanded(
                                 child: SingleChildScrollView(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.center,
-                                    children: [
-                                      RegisteredAccountList(
-                                        accounts: _accounts,
-                                        selectedIndex: _selectedAccountIndex,
-                                        onSelect: (index) => setState(
-                                          () => _selectedAccountIndex = index,
-                                        ),
-                                      ),
-                                      SizedBox(
-                                        height: healthDp(context, 20),
-                                      ),
-                                      FindAccountResultActions(
-                                        onPasswordFind: () {
-                                          if (_accounts.isEmpty) return;
-                                          final i = _selectedAccountIndex
-                                              .clamp(0, _accounts.length - 1);
-                                          Navigator.pushReplacementNamed(
-                                            context,
-                                            '/find-account',
-                                            arguments: {
-                                              'tab': 'password',
-                                              'prefillEmail': _accounts[i],
-                                            },
-                                          );
-                                        },
-                                        onLogin: () {
-                                          if (_accounts.isEmpty) {
-                                            Navigator.pushReplacementNamed(
-                                                context, '/login');
-                                            return;
-                                          }
-                                          final i = _selectedAccountIndex
-                                              .clamp(0, _accounts.length - 1);
-                                          Navigator.pushReplacementNamed(
-                                            context,
-                                            '/login',
-                                            arguments: {
-                                              'prefillEmail': _accounts[i],
-                                            },
-                                          );
-                                        },
-                                      ),
-                                    ],
+                                  child: RegisteredAccountList(
+                                    accounts: _accounts,
+                                    selectedIndex: _selectedAccountIndex,
+                                    sectionTitle: '등록된 아이디',
+                                    topSpacing: 0,
+                                    onSelect: (index) => setState(
+                                      () => _selectedAccountIndex = index,
+                                    ),
                                   ),
                                 ),
+                              ),
+                              SizedBox(height: healthDp(context, 20)),
+                              FindAccountResultActions(
+                                onPasswordFind: () {
+                                  if (_accounts.isEmpty) return;
+                                  final i = _selectedAccountIndex
+                                      .clamp(0, _accounts.length - 1);
+                                  Navigator.pushReplacementNamed(
+                                    context,
+                                    '/find-account',
+                                    arguments: {
+                                      'tab': 'password',
+                                      'prefillEmail': _accounts[i],
+                                    },
+                                  );
+                                },
+                                onLogin: () {
+                                  if (_accounts.isEmpty) {
+                                    Navigator.pushReplacementNamed(
+                                        context, '/login');
+                                    return;
+                                  }
+                                  final i = _selectedAccountIndex
+                                      .clamp(0, _accounts.length - 1);
+                                  Navigator.pushReplacementNamed(
+                                    context,
+                                    '/login',
+                                    arguments: {
+                                      'prefillEmail': _accounts[i],
+                                    },
+                                  );
+                                },
                               ),
                             ],
                           ),
@@ -205,24 +201,29 @@ class _FindAccountResultScreenState
           Text(
             _errorText!,
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               color: Colors.black,
-              fontSize: 14,
+              fontSize: healthSp(context, 14),
               fontFamily: 'Gmarket Sans TTF',
               fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: healthDp(context, 16)),
           ElevatedButton(
             onPressed: _loadAccounts,
             style: ElevatedButton.styleFrom(
               elevation: 0,
               backgroundColor: const Color(0xFFFF5A8D),
+              minimumSize: Size(healthDp(context, 88), healthDp(context, 40)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(healthDp(context, 10)),
+              ),
             ),
-            child: const Text(
+            child: Text(
               '다시 시도',
               style: TextStyle(
                 color: Colors.white,
+                fontSize: healthSp(context, 14),
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: FontWeight.w500,
               ),

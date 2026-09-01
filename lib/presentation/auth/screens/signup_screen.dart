@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../core/utils/node_value_parser.dart';
 import '../../../core/validation/app_password_validator.dart';
@@ -8,13 +9,13 @@ import '../../../data/services/auth_service.dart';
 import '../../../data/services/pending_product_checkout.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/app_alert_dialog.dart';
+import '../../common/widgets/app_toast_overlay.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../health/health_common/widgets/health_app_bar.dart';
-import '../../user/healthprofile/screens/health_profile_list_screen.dart';
 import '../widgets/agreement_widget.dart';
 import '../widgets/kcp_cert.dart';
 
-enum _SignupStep { form, agreement, complete }
+enum _SignupStep { form, agreement }
 
 class SignupScreen extends StatefulWidget {
   final Map<String, dynamic>? certInfo;
@@ -33,11 +34,16 @@ class _SignupScreenState extends State<SignupScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _passwordConfirmController = TextEditingController();
+  final _emailFocus = FocusNode();
+  final _passwordFocus = FocusNode();
+  final _passwordConfirmFocus = FocusNode();
 
   bool _isLoading = false;
   bool _obscurePassword = true;
   bool _obscurePasswordConfirm = true;
   _SignupStep _step = _SignupStep.form;
+  String? _emailErrorText;
+  int _emailCheckSeq = 0;
 
   String? _certName;
   String? _certPhone;
@@ -50,6 +56,10 @@ class _SignupScreenState extends State<SignupScreen> {
       (_certPhone?.trim().isNotEmpty ?? false) &&
       (_certBirthday?.trim().isNotEmpty ?? false) &&
       (_certGender?.trim().isNotEmpty ?? false);
+
+  bool get _hasConfirmMismatch =>
+      _passwordConfirmController.text.isNotEmpty &&
+      _passwordConfirmController.text != _passwordController.text;
 
   bool get _canInputComplete {
     if (_isLoading || !_hasCert) return false;
@@ -79,11 +89,15 @@ class _SignupScreenState extends State<SignupScreen> {
     super.initState();
     void onFieldChanged() {
       if (!mounted) return;
+      if (_emailErrorText != null) {
+        _emailErrorText = null;
+      }
       setState(() {});
     }
     _emailController.addListener(onFieldChanged);
     _passwordController.addListener(onFieldChanged);
     _passwordConfirmController.addListener(onFieldChanged);
+    _emailFocus.addListener(_onEmailFocusChange);
 
     final initial = widget.certInfo;
     if (initial != null && initial.isNotEmpty) {
@@ -187,10 +201,50 @@ class _SignupScreenState extends State<SignupScreen> {
 
   @override
   void dispose() {
+    _emailFocus.removeListener(_onEmailFocusChange);
+    _emailFocus.dispose();
+    _passwordFocus.dispose();
+    _passwordConfirmFocus.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _passwordConfirmController.dispose();
     super.dispose();
+  }
+
+  bool _isValidEmailFormat(String email) {
+    return RegExp(r'^[\w\.-]+@([\w-]+\.)+[\w-]{2,}$').hasMatch(email);
+  }
+
+  void _onEmailFocusChange() {
+    if (!_emailFocus.hasFocus) {
+      _checkEmailDuplicate();
+    }
+  }
+
+  Future<void> _checkEmailDuplicate() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty) {
+      if (_emailErrorText != null) {
+        setState(() => _emailErrorText = null);
+      }
+      return;
+    }
+    if (!_isValidEmailFormat(email)) {
+      setState(() => _emailErrorText = '올바른 이메일 형식을 입력해주세요.');
+      return;
+    }
+
+    final seq = ++_emailCheckSeq;
+    final result = await AuthRepository.checkEmail(email: email.toLowerCase());
+    if (!mounted || seq != _emailCheckSeq) return;
+
+    if (result['exists'] == true) {
+      setState(() => _emailErrorText = '이미 있는 아이디입니다.');
+      return;
+    }
+    if (_emailErrorText != null) {
+      setState(() => _emailErrorText = null);
+    }
   }
 
   String? _readString(Map<String, dynamic>? source, List<String> keys) {
@@ -243,9 +297,21 @@ class _SignupScreenState extends State<SignupScreen> {
 
   Future<void> _handleInputComplete() async {
     FocusScope.of(context).unfocus();
-    if (!_formKey.currentState!.validate()) return;
 
     if (_certName == null || _certPhone == null || _certBirthday == null || _certGender == null) {
+      return;
+    }
+
+    await _checkEmailDuplicate();
+    if (!mounted) return;
+    if (_emailErrorText != null) return;
+
+    if (!isValidAppPassword(_passwordController.text)) {
+      AppToastOverlay.show(context, '비밀번호를 다시 입력해 주세요.');
+      return;
+    }
+
+    if (_passwordConfirmController.text.isEmpty || _hasConfirmMismatch) {
       return;
     }
 
@@ -254,18 +320,6 @@ class _SignupScreenState extends State<SignupScreen> {
     });
 
     try {
-      final email = _emailController.text.trim().toLowerCase();
-      final checkResult = await AuthRepository.checkEmail(email: email);
-      if (!mounted) return;
-
-      if (checkResult['success'] != true) {
-        return;
-      }
-
-      if (checkResult['exists'] == true) {
-        return;
-      }
-
       setState(() {
         _step = _SignupStep.agreement;
       });
@@ -323,9 +377,10 @@ class _SignupScreenState extends State<SignupScreen> {
 
         if (!mounted) return;
         if (PendingProductCheckout.navigateAfterAuth(context)) return;
-        setState(() {
-          _step = _SignupStep.complete;
-        });
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          '/signup-done',
+          (route) => false,
+        );
       } else {
         final errorMessage = result['error']?.toString() ?? '회원가입에 실패했습니다.';
         if (_isDuplicateEmailMessage(errorMessage) ||
@@ -347,12 +402,6 @@ class _SignupScreenState extends State<SignupScreen> {
   }
 
   void _handleBack() {
-    if (_step == _SignupStep.complete) {
-      if (PendingProductCheckout.navigateAfterAuth(context)) return;
-      Navigator.of(context)
-          .pushNamedAndRemoveUntil('/enter-home', (route) => false);
-      return;
-    }
     if (_step == _SignupStep.agreement) {
       setState(() {
         _step = _SignupStep.form;
@@ -360,28 +409,6 @@ class _SignupScreenState extends State<SignupScreen> {
       return;
     }
     Navigator.of(context).pop();
-  }
-
-  void _goHome() {
-    if (PendingProductCheckout.navigateAfterAuth(context)) return;
-    Navigator.of(context)
-          .pushNamedAndRemoveUntil('/enter-home', (route) => false);
-  }
-
-  void _goHealthDashboard() {
-    Navigator.of(context).pushNamed('/health');
-  }
-
-  void _goHealthQuestionnaire() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (context) => const HealthProfileListScreen()),
-    );
-  }
-
-  void _goShoppingMall() {
-    if (PendingProductCheckout.navigateAfterAuth(context)) return;
-    Navigator.of(context)
-          .pushNamedAndRemoveUntil('/enter-home', (route) => false);
   }
 
   @override
@@ -411,27 +438,23 @@ class _SignupScreenState extends State<SignupScreen> {
             appBar: HealthAppBar(
               title: '회원가입',
               onBack: _handleBack,
-              titleFontSize: healthSp(context, 18),
+              titleFontSize: healthSp(context, 16),
               leadingIconSize: healthDp(context, 24),
             ),
             child: SafeArea(
               top: false,
               child: Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: healthDp(context, 27),
-                  vertical: healthDp(context, 20),
+                padding: EdgeInsets.fromLTRB(
+                  healthDp(context, 20),
+                  0,
+                  healthDp(context, 20),
+                  healthDp(context, 20),
                 ),
                 child: switch (_step) {
                   _SignupStep.form => _buildFormStep(),
                   _SignupStep.agreement => AgreementWidget(
                       isLoading: _isLoading,
                       onNext: _handleAgreementNext,
-                    ),
-                  _SignupStep.complete => _SignupCompleteView(
-                      onGoHome: _goHome,
-                      onGoHealthDashboard: _goHealthDashboard,
-                      onGoHealthQuestionnaire: _goHealthQuestionnaire,
-                      onGoShoppingMall: _goShoppingMall,
                     ),
                 },
               ),
@@ -467,47 +490,44 @@ class _SignupScreenState extends State<SignupScreen> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         '환영합니다.',
                         style: TextStyle(
                           color: Colors.black,
-                          fontSize: 20,
+                          fontSize: healthSp(context, 20),
                           fontFamily: 'Gmarket Sans TTF',
                           fontWeight: FontWeight.w500,
-                          letterSpacing: -1.8,
+                          letterSpacing: healthSp(context, -1.8),
+                          height: 1,
                         ),
                       ),
-                      const SizedBox(height: 5),
-                      const Text(
+                      SizedBox(height: healthDp(context, 5)),
+                      Text(
                         '회원정보를 입력해주세요.\n만 14세 미만은 가입이 불가합니다.',
                         style: TextStyle(
                           color: Color(0xFF898686),
-                          fontSize: 16,
+                          fontSize: healthSp(context, 16),
                           fontFamily: 'Gmarket Sans TTF',
                           fontWeight: FontWeight.w300,
-                          letterSpacing: -1.44,
+                          letterSpacing: healthSp(context, -1.44),
+                          height: 1,
                         ),
                       ),
-                      const SizedBox(height: 10),
-                      _ReadonlyField(
-                        label: '이름',
-                        value: _certName ?? '',
-                      ),
-                      const SizedBox(height: 10),
-                      _ReadonlyField(
-                        label: '생년월일',
-                        value: _formatBirthday(_certBirthday),
-                      ),
-                      const SizedBox(height: 10),
-                      _GenderReadonlyField(gender: _certGender),
-                      const SizedBox(height: 10),
-                      _PhoneReadonlyField(segments: phone),
-                      const SizedBox(height: 10),
+                      SizedBox(height: healthDp(context, 30)),
                       _SignupTextField(
                         label: '아이디(이메일)',
                         controller: _emailController,
+                        focusNode: _emailFocus,
+                        textInputAction: TextInputAction.next,
+                        onFieldSubmitted: (_) =>
+                            _passwordFocus.requestFocus(),
                         hintText: '이메일을 입력해주세요',
                         keyboardType: TextInputType.emailAddress,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(
+                            RegExp(r'[a-zA-Z0-9@._\-+]'),
+                          ),
+                        ],
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
                             return '이메일을 입력해주세요.';
@@ -518,10 +538,14 @@ class _SignupScreenState extends State<SignupScreen> {
                           return null;
                         },
                       ),
-                      const SizedBox(height: 10),
+                      SizedBox(height: healthDp(context, 10)),
                       _SignupTextField(
                         label: '비밀번호',
                         controller: _passwordController,
+                        focusNode: _passwordFocus,
+                        textInputAction: TextInputAction.next,
+                        onFieldSubmitted: (_) =>
+                            _passwordConfirmFocus.requestFocus(),
                         hintText: '비밀번호를 입력해주세요',
                         obscureText: _obscurePassword,
                         suffix: IconButton(
@@ -530,9 +554,16 @@ class _SignupScreenState extends State<SignupScreen> {
                               _obscurePassword = !_obscurePassword;
                             });
                           },
+                          padding: EdgeInsets.zero,
+                          visualDensity: VisualDensity.compact,
+                          constraints: BoxConstraints(
+                            minWidth: healthDp(context, 40),
+                            minHeight: healthDp(context, 40),
+                          ),
                           icon: Icon(
                             _obscurePassword ? Icons.visibility_off : Icons.visibility,
                             color: const Color(0xFF898686),
+                            size: healthDp(context, 20),
                           ),
                         ),
                         validator: (value) {
@@ -546,21 +577,34 @@ class _SignupScreenState extends State<SignupScreen> {
                         },
                         helperText: '*8~16자/문자,숫자,특수문자 모두 혼용',
                       ),
-                      const SizedBox(height: 10),
+                      SizedBox(height: healthDp(context, 10)),
                       _SignupTextField(
                         label: '비밀번호 확인',
                         controller: _passwordConfirmController,
+                        focusNode: _passwordConfirmFocus,
+                        textInputAction: TextInputAction.done,
                         hintText: '비밀번호를 다시 입력해주세요',
                         obscureText: _obscurePasswordConfirm,
+                        hasError: _hasConfirmMismatch,
+                        errorText: _hasConfirmMismatch
+                            ? '비밀번호가 일치하지 않습니다.'
+                            : null,
                         suffix: IconButton(
                           onPressed: () {
                             setState(() {
                               _obscurePasswordConfirm = !_obscurePasswordConfirm;
                             });
                           },
+                          padding: EdgeInsets.zero,
+                          visualDensity: VisualDensity.compact,
+                          constraints: BoxConstraints(
+                            minWidth: healthDp(context, 40),
+                            minHeight: healthDp(context, 40),
+                          ),
                           icon: Icon(
                             _obscurePasswordConfirm ? Icons.visibility_off : Icons.visibility,
                             color: const Color(0xFF898686),
+                            size: healthDp(context, 20),
                           ),
                         ),
                         validator: (value) {
@@ -573,6 +617,15 @@ class _SignupScreenState extends State<SignupScreen> {
                           return null;
                         },
                       ),
+                      SizedBox(height: healthDp(context, 10)),
+                      _PhoneReadonlyField(segments: phone),
+                      SizedBox(height: healthDp(context, 10)),
+                      _ReadonlyField(
+                        label: '생년월일',
+                        value: _formatBirthday(_certBirthday),
+                      ),
+                      SizedBox(height: healthDp(context, 10)),
+                      _GenderReadonlyField(gender: _certGender),
                     ],
                   ),
                 ],
@@ -580,10 +633,10 @@ class _SignupScreenState extends State<SignupScreen> {
             ),
           ),
         ),
-        const SizedBox(height: 20),
+        SizedBox(height: healthDp(context, 20)),
         SizedBox(
           width: double.infinity,
-          height: 40,
+          height: healthDp(context, 40),
           child: ElevatedButton(
             onPressed: _canInputComplete ? _handleInputComplete : null,
             style: ElevatedButton.styleFrom(
@@ -592,14 +645,14 @@ class _SignupScreenState extends State<SignupScreen> {
                   _canInputComplete ? const Color(0xFFFF5A8D) : const Color(0xFFD2D2D2),
               disabledBackgroundColor: const Color(0xFFD2D2D2),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(healthDp(context, 10)),
               ),
             ),
-            child: const Text(
+            child: Text(
               '입력완료',
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 20,
+                fontSize: healthSp(context, 20),
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: FontWeight.w500,
               ),
@@ -619,7 +672,13 @@ class _SignupTextField extends StatelessWidget {
   final Widget? suffix;
   final String? helperText;
   final TextInputType? keyboardType;
+  final List<TextInputFormatter>? inputFormatters;
   final String? Function(String?)? validator;
+  final bool hasError;
+  final String? errorText;
+  final FocusNode? focusNode;
+  final TextInputAction? textInputAction;
+  final ValueChanged<String>? onFieldSubmitted;
 
   const _SignupTextField({
     required this.label,
@@ -629,7 +688,13 @@ class _SignupTextField extends StatelessWidget {
     this.suffix,
     this.helperText,
     this.keyboardType,
+    this.inputFormatters,
     this.validator,
+    this.hasError = false,
+    this.errorText,
+    this.focusNode,
+    this.textInputAction,
+    this.onFieldSubmitted,
   });
 
   @override
@@ -639,60 +704,108 @@ class _SignupTextField extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             color: Colors.black,
-            fontSize: 16,
+            fontSize: healthSp(context, 16),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w500,
+            height: 1,
           ),
         ),
-        const SizedBox(height: 10),
-        TextFormField(
-          controller: controller,
-          keyboardType: keyboardType,
-          obscureText: obscureText,
-          validator: validator,
-          style: const TextStyle(
-            color: Color(0xFF1A1A1A),
-            fontSize: 16,
-            fontFamily: 'Gmarket Sans TTF',
-            fontWeight: FontWeight.w500,
+        SizedBox(height: healthDp(context, 5)),
+        SizedBox(
+          height: healthDp(context, 40),
+          child: TextFormField(
+            controller: controller,
+            focusNode: focusNode,
+            keyboardType: keyboardType,
+            textInputAction: textInputAction,
+            onFieldSubmitted: onFieldSubmitted,
+            inputFormatters: inputFormatters,
+            obscureText: obscureText,
+            validator: validator,
+            textAlignVertical: TextAlignVertical.center,
+            style: TextStyle(
+              color: Color(0xFF1A1A1A),
+              fontSize: healthSp(context, 16),
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w500,
+              height: 1,
+            ),
+            decoration: InputDecoration(
+              hintText: hintText,
+              hintStyle: TextStyle(
+                color: Color(0xFFB8B8B8),
+                fontSize: healthSp(context, 14),
+                fontFamily: 'Gmarket Sans TTF',
+                fontWeight: FontWeight.w300,
+                height: 1,
+              ),
+              isDense: true,
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: healthDp(context, 10),
+                vertical: healthDp(context, 11),
+              ),
+              suffixIcon: suffix,
+              suffixIconConstraints: suffix == null
+                  ? null
+                  : BoxConstraints(
+                      minWidth: healthDp(context, 40),
+                      minHeight: healthDp(context, 40),
+                    ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(healthDp(context, 10)),
+                borderSide: BorderSide(
+                  width: healthDp(context, 1),
+                  color: hasError
+                      ? const Color(0xFFFF5A8D)
+                      : const Color(0xFFD2D2D2),
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(healthDp(context, 10)),
+                borderSide: BorderSide(
+                  width: healthDp(context, 1),
+                  color: const Color(0xFFFF5A8D),
+                ),
+              ),
+              errorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(healthDp(context, 10)),
+                borderSide: BorderSide(
+                  width: healthDp(context, 1),
+                  color: const Color(0xFFFF5A8D),
+                ),
+              ),
+              focusedErrorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(healthDp(context, 10)),
+                borderSide: BorderSide(
+                  width: healthDp(context, 1),
+                  color: const Color(0xFFFF5A8D),
+                ),
+              ),
+              errorStyle: const TextStyle(height: 0, fontSize: 0),
+            ),
           ),
-          decoration: InputDecoration(
-            hintText: hintText,
-            hintStyle: const TextStyle(
-              color: Color(0xFFB8B8B8),
-              fontSize: 14,
+        ),
+        if (errorText != null) ...[
+          SizedBox(height: healthDp(context, 2)),
+          Text(
+            errorText!,
+            style: TextStyle(
+              color: Color(0xFFFF5A8D),
+              fontSize: healthSp(context, 10),
               fontFamily: 'Gmarket Sans TTF',
               fontWeight: FontWeight.w300,
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-            suffixIcon: suffix,
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(width: 1, color: Color(0xFFD2D2D2)),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(width: 1, color: Color(0xFFFF5A8D)),
-            ),
-            errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(width: 1, color: Color(0xFFE53935)),
-            ),
-            focusedErrorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(width: 1, color: Color(0xFFE53935)),
-            ),
           ),
-        ),
+        ],
         if (helperText != null) ...[
-          const SizedBox(height: 2),
+          SizedBox(height: healthDp(context, 2)),
           Text(
             helperText!,
-            style: const TextStyle(
+            style: TextStyle(
               color: Color(0xFF898686),
-              fontSize: 10,
+              fontSize: healthSp(context, 10),
               fontFamily: 'Gmarket Sans TTF',
               fontWeight: FontWeight.w300,
             ),
@@ -719,30 +832,35 @@ class _ReadonlyField extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             color: Colors.black,
-            fontSize: 16,
+            fontSize: healthSp(context, 16),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w500,
+            height: 1,
           ),
         ),
-        const SizedBox(height: 10),
+        SizedBox(height: healthDp(context, 5)),
         Container(
           width: double.infinity,
-          height: 40,
-          padding: const EdgeInsets.symmetric(horizontal: 10),
+          height: healthDp(context, 40),
+          padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
           alignment: Alignment.centerLeft,
           decoration: ShapeDecoration(
+            color: const Color(0xFFF5F5F5),
             shape: RoundedRectangleBorder(
-              side: const BorderSide(width: 1, color: Color(0xFFD2D2D2)),
-              borderRadius: BorderRadius.circular(10),
+              side: BorderSide(
+                width: healthDp(context, 1),
+                color: const Color(0xFFD2D2D2),
+              ),
+              borderRadius: BorderRadius.circular(healthDp(context, 10)),
             ),
           ),
           child: Text(
             value,
-            style: const TextStyle(
-              color: Color(0xFF1A1A1A),
-              fontSize: 16,
+            style: TextStyle(
+              color: Color(0xFF898686),
+              fontSize: healthSp(context, 16),
               fontFamily: 'Gmarket Sans TTF',
               fontWeight: FontWeight.w500,
             ),
@@ -765,26 +883,27 @@ class _PhoneReadonlyField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           '휴대폰 번호',
           style: TextStyle(
             color: Colors.black,
-            fontSize: 16,
+            fontSize: healthSp(context, 16),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w500,
+            height: 1,
           ),
         ),
-        const SizedBox(height: 10),
+        SizedBox(height: healthDp(context, 5)),
         Row(
           children: [
             Expanded(child: _PhoneBox(text: segments[0])),
-            const SizedBox(width: 7),
+            SizedBox(width: healthDp(context, 7)),
             const _PhoneDivider(),
-            const SizedBox(width: 7),
+            SizedBox(width: healthDp(context, 7)),
             Expanded(child: _PhoneBox(text: segments[1])),
-            const SizedBox(width: 7),
+            SizedBox(width: healthDp(context, 7)),
             const _PhoneDivider(),
-            const SizedBox(width: 7),
+            SizedBox(width: healthDp(context, 7)),
             Expanded(child: _PhoneBox(text: segments[2])),
           ],
         ),
@@ -803,19 +922,23 @@ class _PhoneBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 40,
+      height: healthDp(context, 40),
       alignment: Alignment.center,
       decoration: ShapeDecoration(
+        color: const Color(0xFFF5F5F5),
         shape: RoundedRectangleBorder(
-          side: const BorderSide(width: 1, color: Color(0xFFD2D2D2)),
-          borderRadius: BorderRadius.circular(10),
+          side: BorderSide(
+            width: healthDp(context, 1),
+            color: const Color(0xFFD2D2D2),
+          ),
+          borderRadius: BorderRadius.circular(healthDp(context, 10)),
         ),
       ),
       child: Text(
         text,
-        style: const TextStyle(
-          color: Colors.black,
-          fontSize: 16,
+        style: TextStyle(
+          color: Color(0xFF898686),
+          fontSize: healthSp(context, 16),
           fontFamily: 'Gmarket Sans TTF',
           fontWeight: FontWeight.w500,
         ),
@@ -830,8 +953,8 @@ class _PhoneDivider extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 15,
-      height: 1,
+      width: healthDp(context, 15),
+      height: healthDp(context, 1),
       color: const Color(0xFFD9D9D9),
     );
   }
@@ -852,16 +975,17 @@ class _GenderReadonlyField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           '성별',
           style: TextStyle(
             color: Color(0xFF1A1A1A),
-            fontSize: 16,
+            fontSize: healthSp(context, 16),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w500,
+            height: 1,
           ),
         ),
-        const SizedBox(height: 10),
+        SizedBox(height: healthDp(context, 5)),
         Row(
           children: [
             Expanded(
@@ -870,7 +994,7 @@ class _GenderReadonlyField extends StatelessWidget {
                 selected: isFemale,
               ),
             ),
-            const SizedBox(width: 10),
+            SizedBox(width: healthDp(context, 10)),
             Expanded(
               child: _GenderOption(
                 label: '남',
@@ -896,225 +1020,25 @@ class _GenderOption extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 40,
+      height: healthDp(context, 40),
       alignment: Alignment.center,
       decoration: ShapeDecoration(
         color: selected ? const Color(0x0CFF5A8D) : Colors.white,
         shape: RoundedRectangleBorder(
           side: BorderSide(
-            width: 1,
+            width: healthDp(context, 1),
             color: selected ? const Color(0xFFFF5A8D) : const Color(0xFFD2D2D2),
           ),
-          borderRadius: BorderRadius.circular(7),
+          borderRadius: BorderRadius.circular(healthDp(context, 7)),
         ),
       ),
       child: Text(
         label,
         style: TextStyle(
           color: selected ? const Color(0xFFFF5A8D) : const Color(0xFF898383),
-          fontSize: 14,
+          fontSize: healthSp(context, 14),
           fontFamily: 'Gmarket Sans TTF',
           fontWeight: FontWeight.w500,
-        ),
-      ),
-    );
-  }
-}
-
-class _SignupCompleteView extends StatelessWidget {
-  final VoidCallback onGoHome;
-  final VoidCallback onGoHealthDashboard;
-  final VoidCallback onGoHealthQuestionnaire;
-  final VoidCallback onGoShoppingMall;
-
-  const _SignupCompleteView({
-    required this.onGoHome,
-    required this.onGoHealthDashboard,
-    required this.onGoHealthQuestionnaire,
-    required this.onGoShoppingMall,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Expanded(
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const Align(
-                  alignment: Alignment.centerLeft,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '회원 가입 완료 !',
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontSize: 20,
-                          fontFamily: 'Gmarket Sans TTF',
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      SizedBox(height: 5),
-                      Text(
-                        '회원가입을 진심으로 축하드립니다.\n보미오라만의 다양한 서비스를 만나보세요.',
-                        style: TextStyle(
-                          color: Color(0xFF898686),
-                          fontSize: 16,
-                          fontFamily: 'Gmarket Sans TTF',
-                          fontWeight: FontWeight.w300,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
-                _BenefitCard(
-                  title: '문진표',
-                  subtitle: '나의 건강 상태 확인하기',
-                  icon: Icons.assignment_rounded,
-                  iconBackground: Color(0xFFEFF6FF),
-                  iconColor: Color(0xFF2563EB),
-                  onTap: onGoHealthQuestionnaire,
-                ),
-                const SizedBox(height: 10),
-                const _BenefitCard(
-                  title: '비대면 진료',
-                  subtitle: '집에서 편하게 받는 진료',
-                  icon: Icons.medical_services_rounded,
-                  iconBackground: Color(0xFFECFDF5),
-                  iconColor: Color(0xFF10B981),
-                ),
-                const SizedBox(height: 10),
-                _BenefitCard(
-                  title: '쇼핑몰',
-                  subtitle: '맞춤 영양제 및 건강 용품',
-                  icon: Icons.shopping_bag_rounded,
-                  iconBackground: Color(0xFFFFF7ED),
-                  iconColor: Color(0xFFF97316),
-                  onTap: onGoShoppingMall,
-                ),
-                const SizedBox(height: 10),
-                _BenefitCard(
-                  title: '건강 대시보드',
-                  subtitle: '나의 건강 데이터를 한눈에',
-                  icon: Icons.monitor_heart_rounded,
-                  iconBackground: Color(0xFFFAF5FF),
-                  iconColor: Color(0xFF9333EA),
-                  onTap: onGoHealthDashboard,
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 20),
-        SizedBox(
-          width: double.infinity,
-          height: 40,
-          child: ElevatedButton(
-            onPressed: onGoHome,
-            style: ElevatedButton.styleFrom(
-              elevation: 0,
-              backgroundColor: const Color(0xFFFF5A8D),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            child: const Text(
-              '홈으로 이동',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontFamily: 'Gmarket Sans TTF',
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _BenefitCard extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  final Color iconBackground;
-  final Color iconColor;
-  final VoidCallback? onTap;
-
-  const _BenefitCard({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-    required this.iconBackground,
-    required this.iconColor,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(10),
-        decoration: ShapeDecoration(
-          color: Colors.white,
-          shape: RoundedRectangleBorder(
-            side: const BorderSide(width: 1, color: Color(0x7FD2D2D2)),
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: ShapeDecoration(
-                color: iconBackground,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: Icon(icon, size: 24, color: iconColor),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      color: Color(0xFF1E293B),
-                      fontSize: 16,
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w500,
-                      height: 1.75,
-                    ),
-                  ),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(
-                      color: Color(0xFF94A3B8),
-                      fontSize: 12,
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w300,
-                      height: 1.67,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(
-              Icons.chevron_right_rounded,
-              size: 24,
-              color: Color(0xFF94A3B8),
-            ),
-          ],
         ),
       ),
     );

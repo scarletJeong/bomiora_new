@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/constants/app_assets.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
@@ -61,139 +62,158 @@ class FindAccountNotFoundScreen extends StatelessWidget {
             backgroundColor: Colors.white,
             appBar: HealthAppBar(
               title: '아이디/비밀번호찾기',
-              titleFontSize: healthSp(context, 18),
+              titleFontSize: healthSp(context, 16),
               leadingIconSize: healthDp(context, 24),
             ),
             child: SafeArea(
               top: false,
               child: Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: healthDp(context, 27),
-                  vertical: healthDp(context, 20),
+                padding: EdgeInsets.fromLTRB(
+                  healthDp(context, 20),
+                  healthDp(context, 20),
+                  healthDp(context, 20),
+                  healthDp(context, 20),
                 ),
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const SizedBox(height: 8),
-                SizedBox(
-                  width: 128,
-                  height: 128,
-                  child: Image.asset(
-                    AppAssets.loginFail,
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        decoration: ShapeDecoration(
-                          color: const Color(0x19FF5C8F),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(9999),
-                          ),
-                        ),
-                        child: const Icon(
-                          Icons.search_off_rounded,
-                          size: 56,
-                          color: Color(0xFFFF5C8F),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(10),
-                  child: const Column(
-                    children: [
-                      Text(
-                        '일치하는 정보가 없습니다.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontSize: 16,
-                          fontFamily: 'Gmarket Sans TTF',
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      SizedBox(height: 10),
-                      Text(
-                        '입력하신 정보로 가입된 아이디를\n찾을 수 없습니다. 다시 확인해 주세요.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontSize: 14,
-                          fontFamily: 'Gmarket Sans TTF',
-                          fontWeight: FontWeight.w300,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 28),
-                Row(
+                child: Column(
                   children: [
                     Expanded(
-                      child: SizedBox(
-                        height: 40,
-                        child: OutlinedButton(
-                          onPressed: () => _onRetry(context),
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(
-                              width: 0.5,
-                              color: Color(0xFFD2D2D2),
+                      child: SingleChildScrollView(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Builder(
+                              builder: (context) {
+                                final circle = healthDp(context, 128);
+                                final iconW = healthDp(context, 50);
+                                final iconH = iconW * 85 / 89;
+                                return SizedBox(
+                                  width: circle,
+                                  height: circle,
+                                  child: Stack(
+                                    alignment: Alignment.center,
+                                    children: [
+                                      const DecoratedBox(
+                                        decoration: ShapeDecoration(
+                                          color: Color(0x19FF5C8F),
+                                          shape: CircleBorder(),
+                                        ),
+                                        child: SizedBox.expand(),
+                                      ),
+                                      SvgPicture.asset(
+                                        AppAssets.loginFail,
+                                        width: iconW,
+                                        height: iconH,
+                                        fit: BoxFit.contain,
+                                        alignment: Alignment.center,
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
                             ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
+                            SizedBox(height: healthDp(context, 10)),
+                            Container(
+                              width: double.infinity,
+                              padding: EdgeInsets.all(healthDp(context, 10)),
+                              child: Column(
+                                children: [
+                                  Text(
+                                    '일치하는 정보가 없습니다.',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: Colors.black,
+                                      fontSize: healthSp(context, 16),
+                                      fontFamily: 'Gmarket Sans TTF',
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  SizedBox(height: healthDp(context, 10)),
+                                  Text(
+                                    '입력하신 정보로 가입된 아이디를\n찾을 수 없습니다. 다시 확인해 주세요.',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: Colors.black,
+                                      fontSize: healthSp(context, 14),
+                                      fontFamily: 'Gmarket Sans TTF',
+                                      fontWeight: FontWeight.w300,
+                                      height: 1,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                          child: const Text(
-                            '다시 찾기',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: Color(0xFF898686),
-                              fontSize: 16,
-                              fontFamily: 'Gmarket Sans TTF',
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
+                          ],
                         ),
                       ),
                     ),
-                    const SizedBox(width: 20),
-                    Expanded(
-                      child: SizedBox(
-                        height: 40,
-                        child: ElevatedButton(
-                          onPressed: () => _onSignup(context),
-                          style: ElevatedButton.styleFrom(
-                            elevation: 0,
-                            backgroundColor: const Color(0xFFFF5A8D),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                          child: const Text(
-                            '회원가입 하기',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontFamily: 'Gmarket Sans TTF',
-                              fontWeight: FontWeight.w500,
+                    SizedBox(height: healthDp(context, 20)),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: SizedBox(
+                            height: healthDp(context, 40),
+                            child: OutlinedButton(
+                              onPressed: () => _onRetry(context),
+                              style: OutlinedButton.styleFrom(
+                                side: BorderSide(
+                                  width: healthDp(context, 0.5),
+                                  color: const Color(0xFFD2D2D2),
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(
+                                    healthDp(context, 10),
+                                  ),
+                                ),
+                              ),
+                              child: Text(
+                                '다시 찾기',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: const Color(0xFF898686),
+                                  fontSize: healthSp(context, 16),
+                                  fontFamily: 'Gmarket Sans TTF',
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
                             ),
                           ),
                         ),
-                      ),
+                        SizedBox(width: healthDp(context, 20)),
+                        Expanded(
+                          child: SizedBox(
+                            height: healthDp(context, 40),
+                            child: ElevatedButton(
+                              onPressed: () => _onSignup(context),
+                              style: ElevatedButton.styleFrom(
+                                elevation: 0,
+                                backgroundColor: const Color(0xFFFF5A8D),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(
+                                    healthDp(context, 10),
+                                  ),
+                                ),
+                              ),
+                              child: Text(
+                                '회원가입 하기',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: healthSp(context, 16),
+                                  fontFamily: 'Gmarket Sans TTF',
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
-              ],
+              ),
             ),
           ),
         ),
       ),
-    ),
-  ),
-));
+    );
   }
 }

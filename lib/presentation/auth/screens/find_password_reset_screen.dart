@@ -22,9 +22,16 @@ class FindPasswordResetScreen extends StatefulWidget {
 class _FindPasswordResetScreenState extends State<FindPasswordResetScreen> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmController = TextEditingController();
+  final FocusNode _passwordFocus = FocusNode();
+  final FocusNode _confirmFocus = FocusNode();
   bool _isSubmitting = false;
   bool _obscureNewPassword = true;
   bool _obscureConfirmPassword = true;
+  /// 새 비밀번호 칸을 벗어난 뒤에만 규칙 위반 테두리/안내색 표시
+  bool _showPasswordRuleError = false;
+
+  static const Color _kHelperMuted = Color(0xFF898686);
+  static const Color _kError = Color(0xFFEF4444);
 
   String get _email => (widget.resetInfo?['email'] ?? '').toString().trim();
   String get _identifier =>
@@ -44,7 +51,7 @@ class _FindPasswordResetScreenState extends State<FindPasswordResetScreen> {
           .toString()
           .trim();
 
-  bool get _hasPasswordRuleError =>
+  bool get _passwordFailsRule =>
       _passwordController.text.isNotEmpty &&
       !isValidAppPassword(_passwordController.text);
 
@@ -69,9 +76,35 @@ class _FindPasswordResetScreenState extends State<FindPasswordResetScreen> {
       !_isSubmitting;
 
   @override
+  void initState() {
+    super.initState();
+    _passwordFocus.addListener(_onPasswordFocusChange);
+  }
+
+  void _onPasswordFocusChange() {
+    if (_passwordFocus.hasFocus) return;
+    // 다음 칸으로 넘어간 뒤: 문제 있으면 에러, 없으면 해제
+    final show = _passwordFailsRule;
+    if (_showPasswordRuleError == show) return;
+    setState(() => _showPasswordRuleError = show);
+  }
+
+  void _onPasswordChanged() {
+    setState(() {
+      // 고쳐서 규칙 통과하면 즉시 빨간 테두리/안내색 제거
+      if (_showPasswordRuleError && !_passwordFailsRule) {
+        _showPasswordRuleError = false;
+      }
+    });
+  }
+
+  @override
   void dispose() {
+    _passwordFocus.removeListener(_onPasswordFocusChange);
     _passwordController.dispose();
     _confirmController.dispose();
+    _passwordFocus.dispose();
+    _confirmFocus.dispose();
     super.dispose();
   }
 
@@ -137,100 +170,115 @@ class _FindPasswordResetScreenState extends State<FindPasswordResetScreen> {
             backgroundColor: Colors.white,
             appBar: HealthAppBar(
               title: '비밀번호 재설정',
-              titleFontSize: healthSp(context, 18),
+              titleFontSize: healthSp(context, 16),
               leadingIconSize: healthDp(context, 24),
             ),
             child: SafeArea(
               top: false,
               child: Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: healthDp(context, 27),
-                  vertical: healthDp(context, 20),
+                padding: EdgeInsets.fromLTRB(
+                  healthDp(context, 20),
+                  healthDp(context, 20),
+                  healthDp(context, 20),
+                  healthDp(context, 20),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    SizedBox(height: healthDp(context, 5)),
                     Expanded(
                       child: SingleChildScrollView(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                      _buildPasswordSection(
-                        title: '새 비밀번호를 입력해 주세요',
-                        controller: _passwordController,
-                        obscureText: _obscureNewPassword,
-                        onToggleObscure: () => setState(
-                          () => _obscureNewPassword = !_obscureNewPassword,
+                            _buildPasswordSection(
+                              title: '새 비밀번호를 입력해 주세요',
+                              controller: _passwordController,
+                              focusNode: _passwordFocus,
+                              textInputAction: TextInputAction.next,
+                              onSubmitted: (_) => _confirmFocus.requestFocus(),
+                              onChanged: _onPasswordChanged,
+                              obscureText: _obscureNewPassword,
+                              onToggleObscure: () => setState(
+                                () => _obscureNewPassword =
+                                    !_obscureNewPassword,
+                              ),
+                              hasError: _showPasswordRuleError,
+                              helperText: '*8~16자/문자,숫자,특수문자 모두 혼용',
+                              helperColor: _showPasswordRuleError
+                                  ? _kError
+                                  : _kHelperMuted,
+                            ),
+                            SizedBox(height: healthDp(context, 20)),
+                            _buildPasswordSection(
+                              title: '새 비밀번호를 다시 한번 입력해 주세요',
+                              controller: _confirmController,
+                              focusNode: _confirmFocus,
+                              textInputAction: TextInputAction.done,
+                              onSubmitted: (_) {
+                                if (_canSubmit) _handleSubmit();
+                              },
+                              obscureText: _obscureConfirmPassword,
+                              onToggleObscure: () => setState(
+                                () => _obscureConfirmPassword =
+                                    !_obscureConfirmPassword,
+                              ),
+                              hasError: _hasConfirmMismatch,
+                              helperText: _hasConfirmMismatch
+                                  ? '비밀번호가 일치하지 않습니다.'
+                                  : null,
+                              helperColor: _kError,
+                            ),
+                          ],
                         ),
-                        hasError: _hasPasswordRuleError,
-                        helperText: _hasPasswordRuleError
-                            ? '*8~16자/문자,숫자,특수문자 모두 혼용'
-                            : '*8~16자/문자,숫자,특수문자 모두 혼용',
-                        helperColor: const Color(0xFF898686),
                       ),
-                      SizedBox(height: healthDp(context, 20)),
-                      _buildPasswordSection(
-                        title: '새 비밀번호를 다시 한번 입력해 주세요',
-                        controller: _confirmController,
-                        obscureText: _obscureConfirmPassword,
-                        onToggleObscure: () => setState(
-                          () => _obscureConfirmPassword = !_obscureConfirmPassword,
-                        ),
-                        hasError: _hasConfirmMismatch,
-                        helperText: _hasConfirmMismatch
-                            ? '비밀번호가 일치하지 않습니다.'
-                            : null,
-                        helperColor: const Color(0xFFEF4444),
-                      ),
-                      const SizedBox(height: 24),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 40,
-                        child: ElevatedButton(
-                          onPressed: _canSubmit ? _handleSubmit : null,
-                          style: ElevatedButton.styleFrom(
-                            elevation: 0,
-                            backgroundColor: _canSubmit
-                                ? const Color(0xFFFF5A8D)
-                                : const Color(0xFFD2D2D2),
-                            disabledBackgroundColor: const Color(0xFFD2D2D2),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
+                    ),
+                    SizedBox(height: healthDp(context, 20)),
+                    SizedBox(
+                      width: double.infinity,
+                      height: healthDp(context, 40),
+                      child: ElevatedButton(
+                        onPressed: _canSubmit ? _handleSubmit : null,
+                        style: ElevatedButton.styleFrom(
+                          elevation: 0,
+                          backgroundColor: _canSubmit
+                              ? const Color(0xFFFF5A8D)
+                              : const Color(0xFFD2D2D2),
+                          disabledBackgroundColor: const Color(0xFFD2D2D2),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(
+                              healthDp(context, 10),
                             ),
                           ),
-                          child: _isSubmitting
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor:
-                                        AlwaysStoppedAnimation<Color>(Colors.white),
-                                  ),
-                                )
-                              : const Text(
-                                  '변경하기',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 20,
-                                    fontFamily: 'Gmarket Sans TTF',
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
                         ),
+                        child: _isSubmitting
+                            ? SizedBox(
+                                width: healthDp(context, 18),
+                                height: healthDp(context, 18),
+                                child: const CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white),
+                                ),
+                              )
+                            : Text(
+                                '변경하기',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: healthSp(context, 20),
+                                  fontFamily: 'Gmarket Sans TTF',
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
-            ],
+            ),
           ),
         ),
       ),
-    ),
-  ),
-));
+    );
   }
 
   Widget _buildPasswordSection({
@@ -241,6 +289,10 @@ class _FindPasswordResetScreenState extends State<FindPasswordResetScreen> {
     required bool hasError,
     required String? helperText,
     required Color helperColor,
+    FocusNode? focusNode,
+    TextInputAction textInputAction = TextInputAction.next,
+    ValueChanged<String>? onSubmitted,
+    VoidCallback? onChanged,
   }) {
     return SizedBox(
       width: double.infinity,
@@ -249,29 +301,39 @@ class _FindPasswordResetScreenState extends State<FindPasswordResetScreen> {
         children: [
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               color: Colors.black,
-              fontSize: 18,
+              fontSize: healthSp(context, 16),
               fontFamily: 'Gmarket Sans TTF',
               fontWeight: FontWeight.w500,
+              height: 1,
             ),
           ),
-          const SizedBox(height: 5),
+          SizedBox(height: healthDp(context, 10)),
           TextField(
             controller: controller,
+            focusNode: focusNode,
             obscureText: obscureText,
-            onChanged: (_) => setState(() {}),
-            style: const TextStyle(
+            textInputAction: textInputAction,
+            onSubmitted: onSubmitted,
+            onChanged: (_) {
+              if (onChanged != null) {
+                onChanged();
+              } else {
+                setState(() {});
+              }
+            },
+            style: TextStyle(
               color: Colors.black,
-              fontSize: 16,
+              fontSize: healthSp(context, 16),
               fontFamily: 'Gmarket Sans TTF',
               fontWeight: FontWeight.w500,
             ),
             decoration: InputDecoration(
               isDense: true,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 10,
-                vertical: 12,
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: healthDp(context, 10),
+                vertical: healthDp(context, 12),
               ),
               suffixIcon: IconButton(
                 onPressed: onToggleObscure,
@@ -280,46 +342,40 @@ class _FindPasswordResetScreenState extends State<FindPasswordResetScreen> {
                       ? Icons.visibility_outlined
                       : Icons.visibility_off_outlined,
                   color: const Color(0xFF898686),
-                  size: 22,
+                  size: healthDp(context, 22),
                 ),
                 tooltip: obscureText ? '비밀번호 표시' : '비밀번호 숨기기',
               ),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(healthDp(context, 10)),
                 borderSide: BorderSide(
-                  width: 1,
-                  color: hasError
-                      ? const Color(0xFFEF4444)
-                      : const Color(0xFFD2D2D2),
+                  width: healthDp(context, 1),
+                  color: hasError ? _kError : const Color(0xFFD2D2D2),
                 ),
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(healthDp(context, 10)),
                 borderSide: BorderSide(
-                  width: 1,
-                  color: hasError
-                      ? const Color(0xFFEF4444)
-                      : const Color(0xFFD2D2D2),
+                  width: healthDp(context, 1),
+                  color: hasError ? _kError : const Color(0xFFD2D2D2),
                 ),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(healthDp(context, 10)),
                 borderSide: BorderSide(
-                  width: 1,
-                  color: hasError
-                      ? const Color(0xFFEF4444)
-                      : const Color(0xFFFF5A8D),
+                  width: healthDp(context, 1),
+                  color: hasError ? _kError : const Color(0xFFFF5A8D),
                 ),
               ),
             ),
           ),
           if (helperText != null) ...[
-            const SizedBox(height: 2),
+            SizedBox(height: healthDp(context, 2)),
             Text(
               helperText,
               style: TextStyle(
                 color: helperColor,
-                fontSize: 10,
+                fontSize: healthSp(context, 10),
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: FontWeight.w300,
               ),

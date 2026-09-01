@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../health/health_common/health_responsive_scale.dart';
+
 /// 아이디 찾기 결과 — 등록된 이메일(아이디) 선택 리스트
 class RegisteredAccountList extends StatelessWidget {
   const RegisteredAccountList({
@@ -22,16 +24,17 @@ class RegisteredAccountList extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (topSpacing > 0) SizedBox(height: topSpacing),
+        if (topSpacing > 0) SizedBox(height: healthDp(context, topSpacing)),
         if (sectionTitle != null) ...[
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 10),
+          Padding(
+            padding: EdgeInsets.only(bottom: healthDp(context, 20)),
             child: Text(
               sectionTitle!,
-              style: const TextStyle(
+              textAlign: TextAlign.left,
+              style: TextStyle(
                 color: Colors.black,
-                fontSize: 16,
+                fontSize: healthSp(context, 16),
+                height: 1,
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: FontWeight.w500,
               ),
@@ -43,13 +46,13 @@ class RegisteredAccountList extends StatelessWidget {
             final isSelected = index == selectedIndex;
             return Padding(
               padding: EdgeInsets.only(
-                bottom: index == accounts.length - 1 ? 0 : 5,
+                bottom: index == accounts.length - 1 ? 0 : healthDp(context, 5),
               ),
               child: Material(
                 color: Colors.transparent,
                 child: InkWell(
                   onTap: () => onSelect(index),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(healthDp(context, 12)),
                   child: _RegisteredAccountTile(
                     email: accounts[index],
                     selected: isSelected,
@@ -77,17 +80,17 @@ class _RegisteredAccountTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(healthDp(context, 16)),
       decoration: ShapeDecoration(
         color: selected ? const Color(0x0CFF5C8F) : Colors.white,
         shape: RoundedRectangleBorder(
           side: BorderSide(
-            width: 1,
+            width: healthDp(context, 1),
             color: selected
                 ? const Color(0xFFFF5C8F)
                 : const Color(0xFFD2D2D2),
           ),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(healthDp(context, 12)),
         ),
       ),
       child: Row(
@@ -98,29 +101,35 @@ class _RegisteredAccountTile extends StatelessWidget {
               email,
               style: TextStyle(
                 color: Colors.black,
-                fontSize: 16,
+                fontSize: healthSp(context, 16),
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: selected ? FontWeight.w500 : FontWeight.w300,
               ),
             ),
           ),
           Container(
-            width: 24,
-            height: 24,
-            decoration: ShapeDecoration(
+            width: healthDp(context, 20),
+            height: healthDp(context, 20),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
               color: selected ? const Color(0xFFFF5C8F) : Colors.white,
-              shape: RoundedRectangleBorder(
-                side: BorderSide(
-                  width: 2,
-                  color: selected
-                      ? const Color(0xFFFF5C8F)
-                      : const Color(0xFFD2D2D2),
-                ),
-                borderRadius: BorderRadius.circular(9999),
+              shape: BoxShape.circle,
+              border: Border.all(
+                width: healthDp(context, 1),
+                color: selected
+                    ? const Color(0xFFFF5C8F)
+                    : const Color(0xFFD2D2D2),
               ),
             ),
             child: selected
-                ? const Icon(Icons.check, size: 16, color: Colors.white)
+                ? Container(
+                    width: healthDp(context, 6.25),
+                    height: healthDp(context, 6.25),
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                    ),
+                  )
                 : null,
           ),
         ],

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../health/health_common/health_responsive_scale.dart';
 import 'location_service_popup.dart';
 import 'marketing_consent_popup.dart';
 import 'privacy_collection_popup.dart';
@@ -67,7 +68,10 @@ class _AgreementWidgetState extends State<AgreementWidget> {
   void _toggleMarketing(bool value) {
     setState(() {
       _marketing = value;
-      if (!value) {
+      if (value) {
+        _marketingEmail = true;
+        _marketingSms = true;
+      } else {
         _marketingEmail = false;
         _marketingSms = false;
       }
@@ -112,11 +116,12 @@ class _AgreementWidgetState extends State<AgreementWidget> {
 
   @override
   Widget build(BuildContext context) {
-    const captionStyle = TextStyle(
-      color: Color(0xFF898686),
-      fontSize: 14,
+    final captionStyle = TextStyle(
+      color: const Color(0xFF898686),
+      fontSize: healthSp(context, 14),
       fontFamily: 'Gmarket Sans TTF',
       fontWeight: FontWeight.w300,
+      height: 1,
     );
 
     return Column(
@@ -129,50 +134,59 @@ class _AgreementWidgetState extends State<AgreementWidget> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    SizedBox(height: healthDp(context, 20)),
+                    Text(
                       '약관동의',
                       style: TextStyle(
                         color: Colors.black,
-                        fontSize: 18,
+                        fontSize: healthSp(context, 20),
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w500,
+                        height: 1,
                       ),
                     ),
-                    const SizedBox(height: 5),
-                    const Text('약관에 동의해주세요.', style: captionStyle),
-                    const SizedBox(height: 20),
+                    SizedBox(height: healthDp(context, 4)),
+                    Text('약관에 동의해주세요.', style: captionStyle),
+                    SizedBox(height: healthDp(context, 20)),
                     Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: healthDp(context, 1),
+                        vertical: healthDp(context, 10),
+                      ),
                       decoration: ShapeDecoration(
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius:
+                              BorderRadius.circular(healthDp(context, 10)),
                         ),
                       ),
                       child: _AgreementRow(
                         value: _allChecked,
                         title: '약관 전체 동의',
-                        titleStyle: const TextStyle(
+                        titleStyle: TextStyle(
                           color: Colors.black,
-                          fontSize: 14,
+                          fontSize: healthSp(context, 14),
                           fontFamily: 'Gmarket Sans TTF',
                           fontWeight: FontWeight.w500,
+                          height: 1,
                         ),
                         onChanged: _toggleAll,
                       ),
                     ),
-                    const SizedBox(height: 10),
                     Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: healthDp(context, 10),
+                      ),
                       decoration: ShapeDecoration(
                         color: Colors.white,
                         shape: RoundedRectangleBorder(
-                          side: const BorderSide(
-                            width: 1,
-                            color: Color(0xFFD2D2D2),
+                          side: BorderSide(
+                            width: healthDp(context, 1),
+                            color: const Color(0xFFD2D2D2),
                           ),
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius:
+                              BorderRadius.circular(healthDp(context, 10)),
                         ),
                       ),
                       child: Column(
@@ -195,16 +209,10 @@ class _AgreementWidgetState extends State<AgreementWidget> {
                             onChanged: (value) => setState(() => _privacy = value),
                             onViewPressed: _showAgreementPopup,
                           ),
-                          _AgreementTableRow(
-                            value: _location,
-                            requiredLabel: '[선택]',
-                            title: '위치기반서비스 이용약관',
-                            popupType: AgreementPopupType.location,
-                            onChanged: (value) => setState(() => _location = value),
-                            onViewPressed: _showAgreementPopup,
-                          ),
                           Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            padding: EdgeInsets.only(
+                              bottom: healthDp(context, 10),
+                            ),
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -218,9 +226,10 @@ class _AgreementWidgetState extends State<AgreementWidget> {
                                   onChanged: _toggleMarketing,
                                   onViewPressed: _showAgreementPopup,
                                 ),
-                                const SizedBox(height: 10),
                                 Padding(
-                                  padding: const EdgeInsets.only(left: 24),
+                                  padding: EdgeInsets.only(
+                                    left: healthDp(context, 24),
+                                  ),
                                   child: Row(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
@@ -231,7 +240,7 @@ class _AgreementWidgetState extends State<AgreementWidget> {
                                           onChanged: (value) => _toggleMarketingDetail(true, value),
                                         ),
                                       ),
-                                      const SizedBox(width: 10),
+                                      SizedBox(width: healthDp(context, 10)),
                                       Expanded(
                                         child: _NestedAgreementOption(
                                           value: _marketingSms,
@@ -254,10 +263,10 @@ class _AgreementWidgetState extends State<AgreementWidget> {
             ),
           ),
         ),
-        const SizedBox(height: 20),
+        SizedBox(height: healthDp(context, 20)),
         SizedBox(
           width: double.infinity,
-          height: 40,
+          height: healthDp(context, 40),
           child: ElevatedButton(
             onPressed: !_canProceed || widget.isLoading
                 ? null
@@ -268,23 +277,23 @@ class _AgreementWidgetState extends State<AgreementWidget> {
                   _canProceed ? const Color(0xFFFF5A8D) : const Color(0xFFD2D2D2),
               disabledBackgroundColor: const Color(0xFFD2D2D2),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(healthDp(context, 10)),
               ),
             ),
             child: widget.isLoading
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
+                ? SizedBox(
+                    width: healthDp(context, 18),
+                    height: healthDp(context, 18),
+                    child: const CircularProgressIndicator(
                       strokeWidth: 2,
                       valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                     ),
                   )
-                : const Text(
+                : Text(
                     '다음',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 20,
+                      fontSize: healthSp(context, 20),
                       fontFamily: 'Gmarket Sans TTF',
                       fontWeight: FontWeight.w500,
                     ),
@@ -315,8 +324,12 @@ class _AgreementRow extends StatelessWidget {
       onTap: () => onChanged(!value),
       child: Row(
         children: [
-          _CheckboxBox(value: value, size: 18),
-          const SizedBox(width: 8),
+          _CheckboxBox(
+            value: value,
+            size: healthDp(context, 18),
+            borderRadius: healthDp(context, 4),
+          ),
+          SizedBox(width: healthDp(context, 8)),
           Expanded(child: Text(title, style: titleStyle)),
         ],
       ),
@@ -347,13 +360,13 @@ class _AgreementTableRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 10),
+      padding: EdgeInsets.symmetric(vertical: healthDp(context, 10)),
       decoration: showDivider
-          ? const BoxDecoration(
+          ? BoxDecoration(
               border: Border(
                 bottom: BorderSide(
-                  width: 0.5,
-                  color: Color(0xFFD2D2D2),
+                  width: healthDp(context, 0.5),
+                  color: const Color(0xFFD2D2D2),
                 ),
               ),
             )
@@ -362,9 +375,12 @@ class _AgreementTableRow extends StatelessWidget {
         children: [
           InkWell(
             onTap: () => onChanged(!value),
-            child: _CheckboxBox(value: value, size: 16),
+            child: _CheckboxBox(
+              value: value,
+              size: healthDp(context, 16),
+            ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: healthDp(context, 8)),
           Expanded(
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -376,20 +392,20 @@ class _AgreementTableRow extends StatelessWidget {
                       children: [
                         Text(
                           requiredLabel,
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: Color(0xFF898686),
-                            fontSize: 12,
+                            fontSize: healthSp(context, 12),
                             fontFamily: 'Gmarket Sans TTF',
                             fontWeight: FontWeight.w300,
                           ),
                         ),
-                        const SizedBox(width: 2),
+                        SizedBox(width: healthDp(context, 2)),
                         Expanded(
                           child: Text(
                             title,
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: Colors.black,
-                              fontSize: 12,
+                              fontSize: healthSp(context, 12),
                               fontFamily: 'Gmarket Sans TTF',
                               fontWeight: FontWeight.w300,
                             ),
@@ -399,16 +415,17 @@ class _AgreementTableRow extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: healthDp(context, 8)),
                 GestureDetector(
                   onTap: () => onViewPressed(popupType),
-                  child: const Text(
+                  child: Text(
                     '보기',
                     style: TextStyle(
-                      color: Color(0xFF898686),
-                      fontSize: 12,
+                      color: const Color(0xFF898686),
+                      fontSize: healthSp(context, 10),
                       fontFamily: 'Gmarket Sans TTF',
                       fontWeight: FontWeight.w300,
+                      decoration: TextDecoration.underline,
                     ),
                   ),
                 ),
@@ -438,14 +455,14 @@ class _NestedAgreementOption extends StatelessWidget {
       onTap: () => onChanged(!value),
       child: Row(
         children: [
-          _CheckboxBox(value: value, size: 16),
-          const SizedBox(width: 8),
+          _CheckboxBox(value: value, size: healthDp(context, 16)),
+          SizedBox(width: healthDp(context, 8)),
           Flexible(
             child: Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 color: Colors.black,
-                fontSize: 12,
+                fontSize: healthSp(context, 12),
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: FontWeight.w300,
               ),
@@ -460,10 +477,12 @@ class _NestedAgreementOption extends StatelessWidget {
 class _CheckboxBox extends StatelessWidget {
   final bool value;
   final double size;
+  final double? borderRadius;
 
   const _CheckboxBox({
     required this.value,
     required this.size,
+    this.borderRadius,
   });
 
   @override
@@ -472,20 +491,22 @@ class _CheckboxBox extends StatelessWidget {
       width: size,
       height: size,
       decoration: ShapeDecoration(
-        color: value ? const Color(0xFFFF5A8D) : Colors.white,
+        color: Colors.white,
         shape: RoundedRectangleBorder(
           side: BorderSide(
-            width: 1,
+            width: healthDp(context, 1),
             color: value ? const Color(0xFFFF5A8D) : const Color(0xFFD2D2D2),
           ),
-          borderRadius: BorderRadius.circular(2),
+          borderRadius: BorderRadius.circular(
+            borderRadius ?? healthDp(context, 2),
+          ),
         ),
       ),
       child: value
           ? Icon(
               Icons.check,
-              size: size - 5,
-              color: Colors.white,
+              size: size - healthDp(context, 5),
+              color: const Color(0xFFFF5A8D),
             )
           : null,
     );

@@ -12,12 +12,14 @@ import 'presentation/auth/screens/find_password_reset_screen.dart';
 import 'core/navigation/app_navigator_key.dart';
 import 'presentation/auth/widgets/kcp_cert.dart';
 import 'presentation/auth/screens/signup_screen.dart';
+import 'presentation/auth/screens/signup_done_screen.dart';
 import 'presentation/auth/screens/social_signup_screen.dart';
 import 'data/services/kakao_auth_service.dart';
 import 'data/services/naver_auth_service.dart';
 import 'data/services/fcm_service_stub.dart'
     if (dart.library.io) 'data/services/fcm_service.dart';
 import 'presentation/common/widgets/mobile_layout_wrapper.dart';
+import 'presentation/health/health_common/widgets/health_app_bar.dart';
 import 'presentation/shopping/screens/product_detail_screen.dart';
 import 'presentation/shopping/screens/product_detail_general_screen.dart';
 import 'presentation/shopping/screens/product_list_screen.dart';
@@ -261,6 +263,7 @@ class _BomioraAppState extends State<BomioraApp> {
               as Map<String, dynamic>?;
           return SignupScreen(certInfo: args);
         },
+        '/signup-done': (context) => const SignupDoneScreen(),
         '/social-signup': (context) {
           final args = ModalRoute.of(context)?.settings.arguments
               as Map<String, dynamic>?;
@@ -458,12 +461,7 @@ class _TemporaryBlockedScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        foregroundColor: Colors.black,
-        title: Text(featureLabel),
-      ),
+      appBar: HealthAppBar(title: featureLabel),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),

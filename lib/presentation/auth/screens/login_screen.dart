@@ -38,11 +38,18 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
+    _loadAutoLoginPref();
     if (kIsWeb) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _resumeNaverWebAuthIfNeeded();
       });
     }
+  }
+
+  Future<void> _loadAutoLoginPref() async {
+    final enabled = await AuthService.isAutoLoginEnabled();
+    if (!mounted) return;
+    setState(() => _autoLogin = enabled);
   }
   @override
   void didChangeDependencies() {
@@ -106,206 +113,182 @@ class _LoginScreenState extends State<LoginScreen> {
             showSideNav: false,
             backgroundColor: Colors.white,
             child: SafeArea(
-              child: SingleChildScrollView(
-                padding: EdgeInsets.symmetric(
-                  horizontal: healthDp(context, 27),
-                  vertical: healthDp(context, 20),
-                ),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    minHeight: MediaQuery.sizeOf(context).height -
-                        healthDp(context, 40),
-                  ),
-                  child: Align(
-                    alignment: Alignment.topCenter,
-                    child: Form(
-                      key: _formKey,
-                      child: Container(
-                        width: double.infinity,
-                        constraints:
-                            const BoxConstraints(maxWidth: 650),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final padH = healthDp(context, 20);
+                  final padV = healthDp(context, 20);
+                  final centerGap = healthDp(context, 10);
+                  final minH = (constraints.maxHeight - padV * 2)
+                      .clamp(0.0, double.infinity);
+                  final half = ((minH - centerGap) / 2)
+                      .clamp(0.0, double.infinity);
+
+                  return SingleChildScrollView(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: padH,
+                      vertical: padV,
+                    ),
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(minHeight: minH),
+                      child: Form(
+                        key: _formKey,
                         child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            // 375 기준 로고 위 간격(기존 체감값): 331
-                            SizedBox(height: healthDp(context, 130)),
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(
-                                healthDp(context, 37),
+                            ConstrainedBox(
+                              constraints: BoxConstraints(minHeight: half),
+                              child: Align(
+                                alignment: Alignment.bottomCenter,
+                                child: _buildLoginUpper(),
                               ),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.center,
-                                children: [
-                                  SvgPicture.asset(
-                                    AppAssets.bomioraPinkLogo,
-                                    height: healthDp(context, 22),
-                                    fit: BoxFit.contain,
+                            ),
+                            if (_loginErrorText != null) ...[
+                              SizedBox(height: healthDp(context, 4)),
+                              ConstrainedBox(
+                                constraints:
+                                    const BoxConstraints(maxWidth: 650),
+                                child: Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    _loginErrorText!,
+                                    style: TextStyle(
+                                      color: const Color(0xFFEF4444),
+                                      fontSize: healthSp(context, 12),
+                                      fontFamily: 'Gmarket Sans TTF',
+                                      fontWeight: FontWeight.w500,
+                                    ),
                                   ),
-                                  SizedBox(height: healthDp(context, 40)),
-                                  Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      _buildInputField(
-                                        controller: _emailController,
-                                        hintText: '이메일',
-                                        keyboardType:
-                                            TextInputType.emailAddress,
-                                        validator: (value) {
-                                          if (value == null ||
-                                              value.trim().isEmpty) {
-                                            return '이메일을 입력해주세요';
-                                          }
-                                          return null;
-                                        },
-                                      ),
-                                      SizedBox(height: healthDp(context, 10)),
-                                      _buildPasswordField(),
-                                      AnimatedSize(
-                                        duration: const Duration(
-                                            milliseconds: 180),
-                                        curve: Curves.easeInOut,
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            if (_loginErrorText != null) ...[
-                                              SizedBox(
-                                                  height: healthDp(
-                                                      context, 14)),
-                                              Text(
-                                                _loginErrorText!,
-                                                style: TextStyle(
-                                                  color: const Color(
-                                                      0xFFEF4444),
-                                                  fontSize: healthSp(
-                                                      context, 12),
-                                                  fontFamily:
-                                                      'Gmarket Sans TTF',
-                                                  fontWeight:
-                                                      FontWeight.w500,
-                                                ),
-                                              ),
-                                            ],
-                                            SizedBox(
-                                              height: healthDp(
-                                                context,
-                                                _loginErrorText != null
-                                                    ? 14
-                                                    : 10,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      InkWell(
-                                        onTap: _isLoading
-                                            ? null
-                                            : () => setState(() =>
-                                                _autoLogin = !_autoLogin),
-                                        borderRadius:
-                                            BorderRadius.circular(
-                                          healthDp(context, 6),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            AnimatedContainer(
-                                              duration: const Duration(
-                                                  milliseconds: 150),
-                                              width:
-                                                  healthDp(context, 20),
-                                              height:
-                                                  healthDp(context, 20),
-                                              decoration: ShapeDecoration(
-                                                color: _autoLogin
-                                                    ? const Color(
-                                                        0xFFFF5A8D)
-                                                    : Colors.white,
-                                                shape:
-                                                    RoundedRectangleBorder(
-                                                  side: BorderSide(
-                                                    width: healthDp(
-                                                        context, 0.5),
-                                                    color: _autoLogin
-                                                        ? const Color(
-                                                            0xFFFF5A8D)
-                                                        : const Color(
-                                                            0xFF898383),
-                                                  ),
-                                                  borderRadius:
-                                                      BorderRadius.circular(
-                                                    healthDp(context, 4),
-                                                  ),
-                                                ),
-                                              ),
-                                              child: _autoLogin
-                                                  ? Icon(
-                                                      Icons.check,
-                                                      size: healthDp(
-                                                          context, 14),
-                                                      color: Colors.white,
-                                                    )
-                                                  : null,
-                                            ),
-                                            SizedBox(
-                                                width: healthDp(context, 4)),
-                                            Text(
-                                              '자동로그인',
-                                              style: TextStyle(
-                                                color: const Color(
-                                                    0xFF898383),
-                                                fontSize:
-                                                    healthSp(context, 12),
-                                                fontFamily:
-                                                    'Gmarket Sans TTF',
-                                                fontWeight:
-                                                    FontWeight.w500,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      SizedBox(height: healthDp(context, 24)),
-                                      _buildLoginButton(),
-                                      SizedBox(height: healthDp(context, 20)),
-                                      _buildLinkRow(),
-                                    ],
-                                  ),
-                                  SizedBox(height: healthDp(context, 48)),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      _buildSocialIconButton(
-                                        imagePath: AppAssets.loginNaver,
-                                        onTap: _isLoading ? null : _handleNaverLogin,
-                                      ),
-                                      SizedBox(width: healthDp(context, 10)),
-                                      _buildSocialIconButton(
-                                        imagePath: AppAssets.loginKakao,
-                                        onTap: _isLoading
-                                            ? null
-                                            : _handleKakaoLogin,
-                                      ),
-                                    ],
-                                  ),
-                                  SizedBox(height: healthDp(context, 6)),
-                                ],
+                                ),
+                              ),
+                            ],
+                            SizedBox(height: centerGap),
+                            ConstrainedBox(
+                              constraints: BoxConstraints(minHeight: half),
+                              child: Align(
+                                alignment: Alignment.topCenter,
+                                child: _buildLoginLower(),
                               ),
                             ),
                           ],
                         ),
                       ),
                     ),
-                  ),
-                ),
+                  );
+                },
               ),
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildLoginUpper() {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 650),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          SvgPicture.asset(
+            AppAssets.bomioraPinkLogo,
+            height: healthDp(context, 22),
+            fit: BoxFit.contain,
+          ),
+          SizedBox(height: healthDp(context, 40)),
+          _buildInputField(
+            controller: _emailController,
+            hintText: '이메일',
+            keyboardType: TextInputType.emailAddress,
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return '이메일을 입력해주세요';
+              }
+              return null;
+            },
+          ),
+          SizedBox(height: healthDp(context, 10)),
+          _buildPasswordField(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLoginLower() {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 650),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          InkWell(
+            onTap: _isLoading
+                ? null
+                : () => setState(() => _autoLogin = !_autoLogin),
+            borderRadius: BorderRadius.circular(healthDp(context, 6)),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  width: healthDp(context, 20),
+                  height: healthDp(context, 20),
+                  decoration: ShapeDecoration(
+                    color: _autoLogin
+                        ? const Color(0xFFFF5A8D)
+                        : Colors.white,
+                    shape: RoundedRectangleBorder(
+                      side: BorderSide(
+                        width: healthDp(context, 0.5),
+                        color: _autoLogin
+                            ? const Color(0xFFFF5A8D)
+                            : const Color(0xFF898383),
+                      ),
+                      borderRadius:
+                          BorderRadius.circular(healthDp(context, 4)),
+                    ),
+                  ),
+                  child: _autoLogin
+                      ? Icon(
+                          Icons.check,
+                          size: healthDp(context, 14),
+                          color: Colors.white,
+                        )
+                      : null,
+                ),
+                SizedBox(width: healthDp(context, 4)),
+                Text(
+                  '자동로그인',
+                  style: TextStyle(
+                    color: const Color(0xFF898383),
+                    fontSize: healthSp(context, 12),
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: healthDp(context, 24)),
+          _buildLoginButton(),
+          SizedBox(height: healthDp(context, 20)),
+          _buildLinkRow(),
+          SizedBox(height: healthDp(context, 48)),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _buildSocialIconButton(
+                imagePath: AppAssets.loginNaver,
+                onTap: _isLoading ? null : _handleNaverLogin,
+              ),
+              SizedBox(width: healthDp(context, 10)),
+              _buildSocialIconButton(
+                imagePath: AppAssets.loginKakao,
+                onTap: _isLoading ? null : _handleKakaoLogin,
+              ),
+            ],
+          ),
+          SizedBox(height: healthDp(context, 6)),
+        ],
       ),
     );
   }
@@ -362,7 +345,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
         final token = NodeValueParser.asString(userData['token']); // token이 없으면 null이 됨
 
-        await AuthService.saveLoginData(user: user, token: token); // token을 String?으로 전달
+        await AuthService.saveLoginData(
+          user: user,
+          token: token,
+          autoLogin: _autoLogin,
+        );
 
         if (!mounted) return;
         
@@ -385,7 +372,7 @@ class _LoginScreenState extends State<LoginScreen> {
       } else {
         if (mounted) {
           setState(() {
-            _loginErrorText = '아이디 혹은 비밀번호가 일치하지 않습니다.';
+            _loginErrorText = '* 아이디 혹은 비밀번호가 일치하지 않습니다.';
           });
         }
       }
@@ -548,6 +535,7 @@ class _LoginScreenState extends State<LoginScreen> {
             icon: Icon(
               _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
               color: const Color(0xFF898383),
+              size: healthDp(context, 22),
             ),
             onPressed: () {
               setState(() {
@@ -597,6 +585,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  // 아이디/비밀번호 찾기, 회원가입 링크
   Widget _buildLinkRow() {
     return SizedBox(
       width: double.infinity,
@@ -679,18 +668,13 @@ class _LoginScreenState extends State<LoginScreen> {
     required VoidCallback? onTap,
   }) {
     final size = healthDp(context, 54);
-    return InkWell(
+    return GestureDetector(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(size / 2),
-      child: SizedBox(
+      child: SvgPicture.asset(
+        imagePath,
         width: size,
         height: size,
-        child: SvgPicture.asset(
-          imagePath,
-          width: size,
-          height: size,
-          fit: BoxFit.contain,
-        ),
+        fit: BoxFit.fill,
       ),
     );
   }
@@ -719,7 +703,11 @@ class _LoginScreenState extends State<LoginScreen> {
     final user = UserModel.fromJson(userJson);
     final token = NodeValueParser.asString(userData['token']);
 
-    await AuthService.saveLoginData(user: user, token: token);
+    await AuthService.saveLoginData(
+      user: user,
+      token: token,
+      autoLogin: _autoLogin,
+    );
 
     if (!mounted) return;
 

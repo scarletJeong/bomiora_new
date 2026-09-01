@@ -83,7 +83,13 @@ abstract final class AppAssets {
   static const String loginApple = '${_img}login_apple.svg'; 
 
   // 아이디/비밀번호 찾기 실패 아이콘
-  static const String loginFail = '${_img}login_fail.png';
+  static const String loginFail = '${_img}login_fail.svg';
+
+  // 회원가입 완료 아이콘
+  static const String signupComplete = '${_img}signup_complete_health_profile.svg'; //문진표바로가기
+  static const String signupCompleteHealthProduct = '${_img}signup_complete_health.svg'; //비대면진료 제품 바로가기
+  static const String signupCompleteShopping = '${_img}signup_complete_shopping.svg'; //쇼핑몰 바로가기
+  static const String signupCompleteHealthDashboard = '${_img}signup_complete_health_dashboard.svg'; //건강대시보드 바로가기
 
 
   /* 3. 제품 상세보기 */
