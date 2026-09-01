@@ -126,6 +126,10 @@ class _SplashScreenState extends State<SplashScreen> {
   Future<void> _ensureSession() async {
     var loggedIn = await AuthService.isLoggedIn();
     if (!loggedIn) return;
+    if (!await AuthService.isAutoLoginEnabled()) {
+      await AuthService.logout();
+      return;
+    }
     final active = await AuthService.isSessionActive();
     if (!active) {
       await AuthService.logout();
@@ -274,14 +278,11 @@ class _SplashViewState extends State<SplashView> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(healthDp(context, 37)),
-                    child: SvgPicture.asset(
-                      AppAssets.splashIcon,
-                      width: logoW,
-                      height: logoH,
-                      fit: BoxFit.contain,
-                    ),
+                  SvgPicture.asset(
+                    AppAssets.splashIcon,
+                    width: logoW,
+                    height: logoH,
+                    fit: BoxFit.contain,
                   ),
                   SizedBox(height: gap),
                   Row(
