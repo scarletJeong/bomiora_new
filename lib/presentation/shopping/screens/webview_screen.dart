@@ -82,29 +82,6 @@ class _WebViewScreenState extends State<WebViewScreen> {
   @override
   Widget build(BuildContext context) {
     return MobileAppLayoutWrapper(
-      appBar: AppBar(
-        title: Text(widget.title),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            Navigator.pop(context); // 이전 페이지로 돌아가기
-          },
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(_useIframe ? Icons.open_in_new : Icons.web),
-            onPressed: () {
-              setState(() {
-                _useIframe = !_useIframe;
-              });
-            },
-            tooltip: _useIframe ? '외부 브라우저로 열기' : '앱 내에서 보기',
-          ),
-        ],
-      ),
       child: _useIframe ? _buildIframeView() : _buildExternalView(),
     );
   }

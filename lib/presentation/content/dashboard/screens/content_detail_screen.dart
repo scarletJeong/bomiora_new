@@ -229,7 +229,6 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
       return MobileAppLayoutWrapper(
         appBar: HealthAppBar(
           title: _appBarTitle,
-          centerTitle: false,
         ),
         backgroundColor: Colors.white,
         child: Center(
@@ -246,7 +245,6 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
       return MobileAppLayoutWrapper(
         appBar: HealthAppBar(
           title: _appBarTitle,
-          centerTitle: false,
         ),
         backgroundColor: Colors.white,
         child: Center(
@@ -270,7 +268,6 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
     return MobileAppLayoutWrapper(
       appBar: HealthAppBar(
         title: _appBarTitle,
-        centerTitle: false,
       ),
       backgroundColor: Colors.white,
       child: Column(

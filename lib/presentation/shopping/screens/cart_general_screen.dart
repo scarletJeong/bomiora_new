@@ -624,7 +624,6 @@ class _CartScreenState extends State<CartScreen> {
         backgroundColor: Colors.white,
         appBar: HealthAppBar(
           title: '일반상품 장바구니',
-          centerTitle: false,
           onBack: _handleBackNavigation,
           actions: const [],
         ),

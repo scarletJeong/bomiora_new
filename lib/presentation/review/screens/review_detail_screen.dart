@@ -98,7 +98,7 @@ class _ReviewDetailScreenState extends State<ReviewDetailScreen> {
 
     return MobileAppLayoutWrapper(
       backgroundColor: Colors.white,
-      appBar: HealthAppBar(title: title, centerTitle: false),
+      appBar: HealthAppBar(title: title),
       child: SingleChildScrollView(
         padding: EdgeInsets.fromLTRB(
           padH,

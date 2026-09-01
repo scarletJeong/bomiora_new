@@ -23,13 +23,11 @@ export '../health_profile_prescription_booking_args.dart';
 
 class HealthProfileListScreen extends StatefulWidget {
   final String appBarTitle;
-  final bool appBarCenterTitle;
   final HealthProfilePrescriptionBookingArgs? prescriptionBooking;
 
   const HealthProfileListScreen({
     super.key,
     this.appBarTitle = '문진표',
-    this.appBarCenterTitle = false,
     this.prescriptionBooking,
   });
 
@@ -166,7 +164,6 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
       child: MobileAppLayoutWrapper(
         appBar: HealthAppBar(
           title: widget.appBarTitle,
-          centerTitle: widget.appBarCenterTitle,
           titleFontSize: healthSp(context, 16),
           leadingIconSize: healthDp(context, 24),
           bottom: _isPrescriptionBooking

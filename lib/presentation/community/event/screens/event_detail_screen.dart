@@ -88,7 +88,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontFamily: _font),
       child: MobileAppLayoutWrapper(
-        appBar: const HealthAppBar(title: '이벤트', centerTitle: false),
+        appBar: const HealthAppBar(title: '이벤트'),
         child: _buildBody(context),
       ),
     );

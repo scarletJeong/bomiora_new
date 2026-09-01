@@ -7,8 +7,8 @@ import '../../../core/constants/app_assets.dart';
 import '../../../data/models/product/product_model.dart';
 import '../../../data/repositories/product/product_category_catalog.dart';
 import '../../../data/repositories/product/product_repository.dart';
-import '../../common/widgets/app_bar_menu.dart';
 import '../../common/widgets/appbar_menutap.dart';
+import '../../health/health_common/widgets/health_app_bar.dart';
 import '../../common/widgets/centered_empty_state.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/app_footer.dart';
@@ -177,7 +177,7 @@ class _ProductMainGeneralScreenState extends State<ProductMainGeneralScreen> {
 
     return MobileAppLayoutWrapper(
       scaffoldKey: _pageScaffoldKey,
-      appBar: AppBarMenu(
+      appBar: HealthAppBar.logo(
         onMenuPressed: () => _pageScaffoldKey.currentState?.openDrawer(),
       ),
       drawer: AppBarMenuTapDrawer(

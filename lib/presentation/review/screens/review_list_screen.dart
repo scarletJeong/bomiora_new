@@ -104,7 +104,6 @@ class _ReviewListScreenState extends State<ReviewListScreen> {
     return MobileAppLayoutWrapper(
       appBar: const HealthAppBar(
         title: '리뷰 페이지',
-        centerTitle: false,
       ),
       child: _loading && _reviews.isEmpty
           ? const Center(child: CircularProgressIndicator())

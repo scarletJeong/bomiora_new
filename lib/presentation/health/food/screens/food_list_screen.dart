@@ -123,7 +123,6 @@ class _TodayDietScreenState extends State<TodayDietScreen>
         backgroundColor: Colors.white,
         appBar: HealthAppBar(
           title: '식사 기록',
-          centerTitle: false,
           leadingIconSize: healthDp(context, 24),
         ),
         child: MediaQuery(

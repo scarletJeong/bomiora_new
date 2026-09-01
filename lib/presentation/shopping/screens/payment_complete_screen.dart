@@ -295,7 +295,6 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
                     ? '진료예약완료 _ 04 예약 대기중'
                     : '진료예약완료 _ 04 예약완료')
                 : '주문 완료',
-            centerTitle: false,
             onBack: _handleBlockedBack,
             bottom: isRx
                 ? PrescriptionBookingProgressBar.asAppBarBottom(

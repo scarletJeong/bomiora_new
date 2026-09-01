@@ -889,7 +889,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
           title: widget.showPrescriptionBookingProgress
               ? '진료예약 중 _ 03 주문/결제'
               : '주문/결제',
-          centerTitle: false,
           bottom: widget.showPrescriptionBookingProgress
               ? PreferredSize(
                   preferredSize: const Size.fromHeight(

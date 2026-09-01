@@ -11,7 +11,6 @@ class TermsOfServiceScreen extends StatelessWidget {
     return MobileAppLayoutWrapper(
       appBar: const HealthAppBar(
         title: '서비스 이용약관',
-        centerTitle: false,
       ),
       child: SingleChildScrollView(
         padding: EdgeInsets.all(healthDp(context, 20)),

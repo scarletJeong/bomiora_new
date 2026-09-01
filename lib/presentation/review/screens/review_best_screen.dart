@@ -172,7 +172,6 @@ class _ReviewBestScreenState extends State<ReviewBestScreen> {
     return MobileAppLayoutWrapper(
       appBar: const HealthAppBar(
         title: '베스트 리뷰',
-        centerTitle: false,
       ),
       child: _loading && _reviews.isEmpty
           ? const Center(child: CircularProgressIndicator(color: _pink))

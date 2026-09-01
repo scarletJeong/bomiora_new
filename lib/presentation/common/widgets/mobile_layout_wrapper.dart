@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../health/health_common/health_responsive_scale.dart';
 import 'navi_bar.dart';
 
 /// [MobileAppLayoutWrapper] 패널 가로 폭 안에 스낵바를 표시합니다.
@@ -98,8 +99,10 @@ class MobileLayoutWrapper extends StatelessWidget {
     required double contentWidth,
     required Widget child,
   }) {
+    final media = MediaQuery.of(context);
     return MediaQuery(
-      data: MediaQuery.of(context).copyWith(
+      data: media.copyWith(
+        size: Size(contentWidth, media.size.height),
         textScaler: const TextScaler.linear(1.0),
       ),
       child: Container(
@@ -237,6 +240,7 @@ class MobileAppLayoutWrapper extends StatelessWidget {
   }) {
     return Scaffold(
       key: scaffoldKey,
+      primary: appBar is! HealthResponsivePreferredSizeWidget,
       backgroundColor: backgroundColor ?? Colors.white,
       appBar: wrappedAppBar ?? appBar,
       drawer: drawer,
@@ -253,8 +257,24 @@ class MobileAppLayoutWrapper extends StatelessWidget {
     required PreferredSizeWidget? wrappedAppBar,
     required PreferredSizeWidget? appBar,
   }) {
+    final media = MediaQuery.of(context);
+    PreferredSizeWidget? panelAppBar = wrappedAppBar;
+    if (appBar is HealthResponsivePreferredSizeWidget) {
+      panelAppBar = PreferredSize(
+        preferredSize: appBar.preferredSizeForWidth(contentWidth),
+        child: MediaQuery(
+          data: media.copyWith(
+            size: Size(contentWidth, media.size.height),
+            padding: media.padding.copyWith(top: 0),
+          ),
+          child: appBar,
+        ),
+      );
+    }
+
     return MediaQuery(
-      data: MediaQuery.of(context).copyWith(
+      data: media.copyWith(
+        size: Size(contentWidth, media.size.height),
         textScaler: const TextScaler.linear(1.0),
       ),
       child: Container(
@@ -275,7 +295,7 @@ class MobileAppLayoutWrapper extends StatelessWidget {
         child: LayoutScaffoldMessenger(
           maxWidth: maxWidth,
           child: _innerScaffold(
-            wrappedAppBar: wrappedAppBar,
+            wrappedAppBar: panelAppBar,
             appBar: appBar,
           ),
         ),

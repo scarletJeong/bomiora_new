@@ -117,7 +117,6 @@ class _CartIntegrationScreenState extends State<CartIntegrationScreen> {
         backgroundColor: Colors.white,
         appBar: HealthAppBar(
           title: '장바구니',
-          centerTitle: false,
           onBack: _handleBackNavigation,
           actions: const [],
         ),

@@ -25,7 +25,6 @@ class PrescriptionProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return HealthProfileListScreen(
       appBarTitle: '진료 예약 중 _ 01 문진표',
-      appBarCenterTitle: false,
       prescriptionBooking: HealthProfilePrescriptionBookingArgs(
         productId: productId,
         productName: productName,

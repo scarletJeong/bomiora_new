@@ -17,7 +17,6 @@ class PrivacyPolicyScreen extends StatelessWidget {
     return MobileAppLayoutWrapper(
       appBar: const HealthAppBar(
         title: '개인정보 처리방침',
-        centerTitle: false,
       ),
       child: SingleChildScrollView(
         child: Column(

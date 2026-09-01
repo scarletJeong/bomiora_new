@@ -5,8 +5,8 @@ import '../../../../core/constants/app_assets.dart';
 import '../../../../core/utils/image_url_helper.dart';
 import '../../../../data/repositories/content/content_category_catalog.dart';
 import '../../../../data/services/content_service.dart';
-import '../../../common/widgets/app_bar_menu.dart';
 import '../../../common/widgets/appbar_menutap.dart';
+import '../../../health/health_common/widgets/health_app_bar.dart';
 import '../../../common/widgets/centered_empty_state.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/navi_bar.dart';
@@ -157,7 +157,7 @@ class _ContentListScreenState extends State<ContentListScreen> {
         ),
         child: MobileAppLayoutWrapper(
           scaffoldKey: _scaffoldKey,
-          appBar: AppBarMenu(
+          appBar: HealthAppBar.logo(
             onMenuPressed: () => _scaffoldKey.currentState?.openDrawer(),
           ),
           drawer: AppBarMenuTapDrawer(

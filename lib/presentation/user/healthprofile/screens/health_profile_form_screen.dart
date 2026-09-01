@@ -963,7 +963,6 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                 ? '진료 예약 중 _ 01 문진표'
                 : (isSubsetEdit ? '$appBarEditTitle 수정' : '문진표'),
             titleFontSize: healthSp(context, isPrescriptionBooking ? 16 : 18),
-            centerTitle: false,
             leadingIconSize: healthDp(context, 24),
             onBack: () => _popAllHealthProfileFormRoutes(context),
             bottom: isPrescriptionBooking

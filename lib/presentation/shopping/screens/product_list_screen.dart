@@ -4,8 +4,8 @@ import '../../../data/repositories/product/product_category_catalog.dart';
 import '../../../data/repositories/product/product_repository.dart';
 import '../../../data/models/product/product_model.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
-import '../../common/widgets/app_bar_menu.dart';
 import '../../common/widgets/appbar_menutap.dart';
+import '../../health/health_common/widgets/health_app_bar.dart';
 import '../../common/widgets/app_footer.dart';
 import '../../common/widgets/centered_empty_state.dart';
 import '../../common/widgets/navi_bar.dart';
@@ -239,7 +239,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
   Widget build(BuildContext context) {
     return MobileAppLayoutWrapper(
       scaffoldKey: _scaffoldKey,
-      appBar: AppBarMenu(
+      appBar: HealthAppBar.logo(
         onMenuPressed: () => _scaffoldKey.currentState?.openDrawer(),
       ),
       drawer: AppBarMenuTapDrawer(

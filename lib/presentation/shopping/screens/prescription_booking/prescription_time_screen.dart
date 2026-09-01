@@ -1102,7 +1102,6 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
     return MobileAppLayoutWrapper(
       appBar: HealthAppBar(
         title: '진료 예약 중 _ 02 날짜/시간',
-        centerTitle: false,
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(
             PrescriptionBookingProgressBar.preferredHeight,

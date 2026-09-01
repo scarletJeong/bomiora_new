@@ -98,7 +98,7 @@ class _EventListScreenState extends State<EventListScreen> {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontFamily: _font),
       child: MobileAppLayoutWrapper(
-        appBar: const HealthAppBar(title: '이벤트', centerTitle: false),
+        appBar: const HealthAppBar(title: '이벤트'),
         child: Padding(
           padding: EdgeInsets.fromLTRB(
             healthDp(context, 27),

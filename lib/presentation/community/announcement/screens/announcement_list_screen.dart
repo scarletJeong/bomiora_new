@@ -87,7 +87,7 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
   @override
   Widget build(BuildContext context) {
     return MobileAppLayoutWrapper(
-      appBar: const HealthAppBar(title: '공지사항', centerTitle: false),
+      appBar: const HealthAppBar(title: '공지사항'),
       child: RefreshIndicator(
         onRefresh: () => _load(page: 1),
         child: ListView(

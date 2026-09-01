@@ -95,7 +95,6 @@ class _NotificationSettingsScreenState
       child: MobileAppLayoutWrapper(
         appBar: const HealthAppBar(
           title: '알림 설정',
-          centerTitle: false,
         ),
         child: _loading
             ? Center(

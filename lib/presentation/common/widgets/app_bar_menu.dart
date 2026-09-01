@@ -22,7 +22,8 @@ enum AppBarMenuActionsStyle { home, myPage }
 /// 좌우 패딩 `5`, 좌측 메뉴·우측 액션 아이콘 `19.82`, 액션 당김(겹침) `12`,
 /// 로고는 패딩 안 전체 폭 기준 [Stack] + [Center]로 **화면 가로 정중앙**.
 /// 모든 길이·간격은 [healthDp] / [healthAppBarTotalHeight]로 스케일합니다.
-class AppBarMenu extends StatefulWidget implements PreferredSizeWidget {
+class AppBarMenu extends StatefulWidget
+    implements HealthResponsivePreferredSizeWidget {
   final VoidCallback onMenuPressed;
   /// 지정 시 검색 아이콘 탭 동작 (미지정이면 무동작)
   final VoidCallback? onSearchPressed;
@@ -36,18 +37,11 @@ class AppBarMenu extends StatefulWidget implements PreferredSizeWidget {
   });
 
   @override
-  Size get preferredSize {
-    final views = WidgetsBinding.instance.platformDispatcher.views;
-    if (views.isEmpty) {
-      return Size.fromHeight(healthAppBarTotalHeightForWidth(375));
-    }
-    final v = views.first;
-    final logicalW = v.physicalSize.width / v.devicePixelRatio;
-    final topInset = healthStatusBarTopInsetForView(v);
-    return Size.fromHeight(
-      healthAppBarTotalHeightForWidth(logicalW) + topInset,
-    );
-  }
+  Size get preferredSize => healthAppBarPreferredSize();
+
+  @override
+  Size preferredSizeForWidth(double width) =>
+      healthAppBarPreferredSize(width: width);
 
   @override
   State<AppBarMenu> createState() => _AppBarMenuState();

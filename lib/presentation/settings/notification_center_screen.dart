@@ -215,7 +215,6 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
       child: MobileAppLayoutWrapper(
         appBar: HealthAppBar(
           title: '알림센터',
-          centerTitle: false,
           actions: [
             Padding(
               padding: EdgeInsets.only(right: healthDp(context, 27)),

@@ -313,13 +313,6 @@ class _KcpPayWebViewScreenState extends State<KcpPayWebViewScreen> {
                   barrierDismissible: false,
                   builder: (dialogContext) {
                     return Scaffold(
-                      appBar: AppBar(
-                        title: const Text('결제 인증'),
-                        leading: IconButton(
-                          icon: const Icon(Icons.close),
-                          onPressed: () => Navigator.pop(dialogContext),
-                        ),
-                      ),
                       body: InAppWebView(
                         windowId: createWindowAction.windowId,
                         initialSettings: InAppWebViewSettings(

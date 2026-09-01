@@ -5,8 +5,8 @@ import '../../../data/models/product/product_model.dart';
 import '../../../data/repositories/product/product_repository.dart';
 import '../../../data/services/banner_service.dart';
 import '../../user/myPage/screens/my_page_screen.dart';
-import '../../common/widgets/app_bar_menu.dart';
 import '../../common/widgets/appbar_menutap.dart';
+import '../../health/health_common/widgets/health_app_bar.dart';
 import '../../common/widgets/navi_bar.dart';
 import '../../common/widgets/app_footer.dart';
 import '../../health/health_common/health_responsive_scale.dart';
@@ -99,11 +99,11 @@ class _HomeScreenState extends State<HomeScreen> {
       key: _scaffoldKey,
       backgroundColor: Colors.white,
       extendBodyBehindAppBar: false,
-      appBar: AppBarMenu(
+      appBar: HealthAppBar.logo(
         onMenuPressed: () => _scaffoldKey.currentState?.openDrawer(),
         actionsStyle: _currentIndex == 1
-            ? AppBarMenuActionsStyle.myPage
-            : AppBarMenuActionsStyle.home,
+            ? HealthAppBarActionsStyle.myPage
+            : HealthAppBarActionsStyle.home,
       ),
       drawer: AppBarMenuTapDrawer(
         onHealthDashboardTap: () {

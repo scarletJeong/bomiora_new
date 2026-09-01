@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../common/widgets/app_bar_menu.dart';
 import '../../common/widgets/appbar_menutap.dart';
+import '../../health/health_common/widgets/health_app_bar.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/app_footer.dart';
 import '../../common/widgets/navi_bar.dart';
@@ -25,7 +25,7 @@ class _BomioraIntroduceScreenState extends State<BomioraIntroduceScreen> {
 
     return MobileAppLayoutWrapper(
       scaffoldKey: _scaffoldKey,
-      appBar: AppBarMenu(
+      appBar: HealthAppBar.logo(
         onMenuPressed: () => _scaffoldKey.currentState?.openDrawer(),
       ),
       drawer: AppBarMenuTapDrawer(

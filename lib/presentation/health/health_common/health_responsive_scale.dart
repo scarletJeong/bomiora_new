@@ -2,6 +2,12 @@ import 'dart:ui' show FlutterView;
 
 import 'package:flutter/material.dart';
 
+/// 실제 앱 콘텐츠 패널 폭을 기준으로 높이를 계산하는 AppBar 계약.
+abstract interface class HealthResponsivePreferredSizeWidget
+    implements PreferredSizeWidget {
+  Size preferredSizeForWidth(double width);
+}
+
 /// Health 화면 전용 텍스트 스케일.
 ///
 /// - 375 기준: 1.0
@@ -25,11 +31,12 @@ double healthDp(BuildContext context, double base) {
   return base * healthTextScaleByWidth(width);
 }
 
-/// AppBar 콘텐츠 영역 높이 (375 기준 52, [healthAppBarTotalHeightBase]와 동일).
-const double healthAppBarToolbarHeightBase = 52;
-
-/// AppBar 전체 높이 (375 기준 52).
+/// 공통 AppBar 전체 높이 (375 기준).
+/// 뒤로가기·로고 앱바([HealthAppBar])가 같이 씁니다.
 const double healthAppBarTotalHeightBase = 52;
+
+/// AppBar 콘텐츠 영역 높이 ([healthAppBarTotalHeightBase]와 동일).
+const double healthAppBarToolbarHeightBase = healthAppBarTotalHeightBase;
 
 /// 레거시 상단 여백 (미사용, 총 높이는 [healthAppBarTotalHeightBase]만 사용).
 const double healthAppBarTopGapBase = 0;
@@ -37,20 +44,22 @@ const double healthAppBarTopGapBase = 0;
 double healthAppBarTopGap(BuildContext context) =>
     healthDp(context, healthAppBarTopGapBase);
 
-/// AppBar 콘텐츠 영역 높이 (375 기준 52).
+/// AppBar 콘텐츠 영역 높이.
+/// 페이지마다 패널 폭이 달라도 모든 AppBar가 정확히 같은 높이를 사용합니다.
 double healthAppBarHeight(BuildContext context) =>
-    healthDp(context, healthAppBarToolbarHeightBase);
+    healthAppBarToolbarHeightBase;
 
 /// 건강 AppBar 제목 위·아래 패딩 (375 기준 5).
 double healthAppBarTitlePaddingV(BuildContext context) => healthDp(context, 5);
 
-/// AppBar 전체 높이 (375 기준 52).
+/// AppBar 툴바 높이 (상태바 제외).
+/// 제목·아이콘은 반응형으로 커지지만 툴바 자체는 항상 52입니다.
 double healthAppBarTotalHeight(BuildContext context) =>
-    healthDp(context, healthAppBarTotalHeightBase);
+    healthAppBarTotalHeightBase;
 
-/// [PreferredSize] 등 context 없이 전체 높이 (폭 클램프 규칙 동일).
+/// [PreferredSize] 등 context 없이 사용하는 고정 툴바 높이.
 double healthAppBarTotalHeightForWidth(double layoutWidth) =>
-    healthAppBarTotalHeightBase * healthTextScaleByWidth(layoutWidth);
+    healthAppBarTotalHeightBase;
 
 /// 상태바·노치 등 상단 시스템 UI 여백 (Material [AppBar]와 동일 기준).
 double healthStatusBarTopInset(BuildContext context) =>
@@ -59,6 +68,30 @@ double healthStatusBarTopInset(BuildContext context) =>
 /// [PreferredSize] 등 context 없을 때 view 기준 상단 inset.
 double healthStatusBarTopInsetForView(FlutterView view) =>
     view.viewPadding.top / view.devicePixelRatio;
+
+/// Scaffold가 [MediaQuery.padding.top]을 슬롯에 따로 더하므로,
+/// [preferredSize]에는 툴바(+ bottom)만 넣고 상태바 inset은 넣지 않습니다.
+Size healthAppBarPreferredSize({
+  double? width,
+  double bottomHeight = 0,
+}) {
+  final views = WidgetsBinding.instance.platformDispatcher.views;
+  var resolvedWidth = width ?? 375.0;
+  if (width == null && views.isNotEmpty) {
+    final view = views.first;
+    final dpr = view.devicePixelRatio;
+    final physicalW = view.physicalSize.width;
+    if (dpr > 0 &&
+        physicalW > 0 &&
+        physicalW.isFinite &&
+        dpr.isFinite) {
+      resolvedWidth = physicalW / dpr;
+    }
+  }
+  return Size.fromHeight(
+    healthAppBarTotalHeightForWidth(resolvedWidth) + bottomHeight,
+  );
+}
 
 /// 커스텀 AppBar: 툴바 + 상단 inset.
 double healthAppBarTotalHeightWithInset(BuildContext context) =>

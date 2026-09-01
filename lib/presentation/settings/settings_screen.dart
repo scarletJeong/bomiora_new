@@ -26,7 +26,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return MobileAppLayoutWrapper(
       appBar: const HealthAppBar(
         title: '설정',
-        centerTitle: false,
       ),
       child: ListView(
         padding: EdgeInsets.fromLTRB(

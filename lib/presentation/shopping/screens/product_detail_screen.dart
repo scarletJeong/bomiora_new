@@ -672,7 +672,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SizedBox(
-              height: topInset + kToolbarHeight + healthDp(context, 0),
+              height: topInset + healthAppBarTotalHeight(context),
             ),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1312,7 +1312,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       child: SafeArea(
         bottom: false,
         child: SizedBox(
-          height: kToolbarHeight,
+          height: healthAppBarTotalHeight(context),
           child: Row(
             children: [
               _detailAppBarIconButton(

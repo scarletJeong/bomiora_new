@@ -178,7 +178,7 @@ class _SearchListScreenState extends State<SearchListScreen> {
   @override
   Widget build(BuildContext context) {
     return MobileAppLayoutWrapper(
-      appBar: const HealthAppBar(title: '검색', centerTitle: false),
+      appBar: const HealthAppBar(title: '검색'),
       child: _initialLoad && _loading
           ? const Center(child: CircularProgressIndicator(color: _pink))
           : _error != null
