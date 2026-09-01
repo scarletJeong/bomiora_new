@@ -29,3 +29,7 @@ bool isKcpPopupClosed(Object? popup) {
 bool closeKcpPopup(Object? popup) {
   return false;
 }
+
+bool closeNamedKcpPopup() {
+  return false;
+}

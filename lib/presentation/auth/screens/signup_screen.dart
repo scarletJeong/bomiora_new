@@ -43,6 +43,9 @@ class _SignupScreenState extends State<SignupScreen> {
   bool _obscurePasswordConfirm = true;
   _SignupStep _step = _SignupStep.form;
   String? _emailErrorText;
+  String? _emailSuccessText;
+  String? _verifiedEmail;
+  bool _isCheckingEmail = false;
   int _emailCheckSeq = 0;
 
   String? _certName;
@@ -61,10 +64,19 @@ class _SignupScreenState extends State<SignupScreen> {
       _passwordConfirmController.text.isNotEmpty &&
       _passwordConfirmController.text != _passwordController.text;
 
+  bool get _isEmailVerified {
+    final email = _emailController.text.trim().toLowerCase();
+    return _verifiedEmail != null && _verifiedEmail == email;
+  }
+
+  bool get _canCheckEmail {
+    if (_isLoading || _isCheckingEmail || _isEmailVerified) return false;
+    return _isValidEmailFormat(_emailController.text.trim());
+  }
+
   bool get _canInputComplete {
-    if (_isLoading || !_hasCert) return false;
-    return _emailController.text.trim().isNotEmpty &&
-        _passwordController.text.isNotEmpty &&
+    if (_isLoading || !_hasCert || !_isEmailVerified) return false;
+    return _passwordController.text.isNotEmpty &&
         _passwordConfirmController.text.isNotEmpty;
   }
 
@@ -89,15 +101,12 @@ class _SignupScreenState extends State<SignupScreen> {
     super.initState();
     void onFieldChanged() {
       if (!mounted) return;
-      if (_emailErrorText != null) {
-        _emailErrorText = null;
-      }
       setState(() {});
     }
-    _emailController.addListener(onFieldChanged);
+
+    _emailController.addListener(_onEmailChanged);
     _passwordController.addListener(onFieldChanged);
     _passwordConfirmController.addListener(onFieldChanged);
-    _emailFocus.addListener(_onEmailFocusChange);
 
     final initial = widget.certInfo;
     if (initial != null && initial.isNotEmpty) {
@@ -153,6 +162,8 @@ class _SignupScreenState extends State<SignupScreen> {
         opaque: false,
         barrierDismissible: false,
         barrierColor: const Color(0x991A1A1A),
+        transitionDuration: Duration.zero,
+        reverseTransitionDuration: Duration.zero,
         pageBuilder: (context, animation, secondaryAnimation) {
           return const KcpCertWebViewScreen(
             flow: 'signup',
@@ -201,7 +212,7 @@ class _SignupScreenState extends State<SignupScreen> {
 
   @override
   void dispose() {
-    _emailFocus.removeListener(_onEmailFocusChange);
+    _emailController.removeListener(_onEmailChanged);
     _emailFocus.dispose();
     _passwordFocus.dispose();
     _passwordConfirmFocus.dispose();
@@ -215,35 +226,73 @@ class _SignupScreenState extends State<SignupScreen> {
     return RegExp(r'^[\w\.-]+@([\w-]+\.)+[\w-]{2,}$').hasMatch(email);
   }
 
-  void _onEmailFocusChange() {
-    if (!_emailFocus.hasFocus) {
-      _checkEmailDuplicate();
-    }
+  void _onEmailChanged() {
+    if (!mounted) return;
+    final email = _emailController.text.trim().toLowerCase();
+    setState(() {
+      if (_verifiedEmail != null && _verifiedEmail != email) {
+        _verifiedEmail = null;
+        _emailSuccessText = null;
+        _passwordController.clear();
+        _passwordConfirmController.clear();
+      }
+      if (_emailErrorText != null) {
+        _emailErrorText = null;
+      }
+    });
   }
 
   Future<void> _checkEmailDuplicate() async {
     final email = _emailController.text.trim();
     if (email.isEmpty) {
-      if (_emailErrorText != null) {
-        setState(() => _emailErrorText = null);
-      }
+      setState(() {
+        _emailErrorText = '이메일을 입력해주세요.';
+        _emailSuccessText = null;
+        _verifiedEmail = null;
+      });
       return;
     }
     if (!_isValidEmailFormat(email)) {
-      setState(() => _emailErrorText = '올바른 이메일 형식을 입력해주세요.');
+      setState(() {
+        _emailErrorText = '올바른 이메일 형식을 입력해주세요.';
+        _emailSuccessText = null;
+        _verifiedEmail = null;
+      });
       return;
     }
 
     final seq = ++_emailCheckSeq;
+    setState(() {
+      _isCheckingEmail = true;
+      _emailErrorText = null;
+      _emailSuccessText = null;
+    });
+
     final result = await AuthRepository.checkEmail(email: email.toLowerCase());
     if (!mounted || seq != _emailCheckSeq) return;
 
-    if (result['exists'] == true) {
-      setState(() => _emailErrorText = '이미 있는 아이디입니다.');
-      return;
-    }
-    if (_emailErrorText != null) {
-      setState(() => _emailErrorText = null);
+    setState(() {
+      _isCheckingEmail = false;
+      if (result['exists'] == true) {
+        _emailErrorText = '이미 있는 아이디입니다. 다른 아이디를 입력해 주세요.';
+        _emailSuccessText = null;
+        _verifiedEmail = null;
+        return;
+      }
+      if (result['success'] != true) {
+        _emailErrorText =
+            (result['error'] ?? '아이디 확인 중 오류가 발생했습니다.').toString();
+        _emailSuccessText = null;
+        _verifiedEmail = null;
+        return;
+      }
+      _emailErrorText = null;
+      _emailSuccessText = '사용 가능한 아이디입니다.';
+      _verifiedEmail = email.toLowerCase();
+    });
+
+    if (_isEmailVerified && mounted) {
+      _passwordFocus.requestFocus();
     }
   }
 
@@ -272,10 +321,16 @@ class _SignupScreenState extends State<SignupScreen> {
   String? _normalizeGender(String? value) {
     if (value == null || value.isEmpty) return null;
     final normalized = value.trim().toUpperCase();
-    if (normalized == 'M' || normalized == 'MALE' || normalized == '1' || normalized == '01') {
+    if (normalized == 'M' ||
+        normalized == 'MALE' ||
+        normalized == '1' ||
+        normalized == '01') {
       return 'M';
     }
-    if (normalized == 'F' || normalized == 'FEMALE' || normalized == '2' || normalized == '02') {
+    if (normalized == 'F' ||
+        normalized == 'FEMALE' ||
+        normalized == '2' ||
+        normalized == '02') {
       return 'F';
     }
     return null;
@@ -284,7 +339,11 @@ class _SignupScreenState extends State<SignupScreen> {
   List<String> _phoneSegments(String? phone) {
     final digits = _normalizePhone(phone) ?? '';
     if (digits.length == 11) {
-      return [digits.substring(0, 3), digits.substring(3, 7), digits.substring(7)];
+      return [
+        digits.substring(0, 3),
+        digits.substring(3, 7),
+        digits.substring(7)
+      ];
     }
     return [digits, '', ''];
   }
@@ -298,13 +357,17 @@ class _SignupScreenState extends State<SignupScreen> {
   Future<void> _handleInputComplete() async {
     FocusScope.of(context).unfocus();
 
-    if (_certName == null || _certPhone == null || _certBirthday == null || _certGender == null) {
+    if (_certName == null ||
+        _certPhone == null ||
+        _certBirthday == null ||
+        _certGender == null) {
       return;
     }
 
-    await _checkEmailDuplicate();
-    if (!mounted) return;
-    if (_emailErrorText != null) return;
+    if (!_isEmailVerified) {
+      AppToastOverlay.show(context, '아이디 중복확인을 해 주세요.');
+      return;
+    }
 
     if (!isValidAppPassword(_passwordController.text)) {
       AppToastOverlay.show(context, '비밀번호를 다시 입력해 주세요.');
@@ -356,7 +419,8 @@ class _SignupScreenState extends State<SignupScreen> {
       if (result['success'] == true) {
         final resultData = result['data'];
         final dataMap = resultData is Map<String, dynamic>
-            ? NodeValueParser.normalizeMap(Map<String, dynamic>.from(resultData))
+            ? NodeValueParser.normalizeMap(
+                Map<String, dynamic>.from(resultData))
             : <String, dynamic>{};
         final userRaw = dataMap['user'];
         final userJson = NodeValueParser.normalizeMap(
@@ -364,8 +428,7 @@ class _SignupScreenState extends State<SignupScreen> {
               ? Map<String, dynamic>.from(userRaw)
               : <String, dynamic>{},
         );
-        final userId =
-            NodeValueParser.asString(userJson['mb_id']) ??
+        final userId = NodeValueParser.asString(userJson['mb_id']) ??
             NodeValueParser.asString(userJson['id']) ??
             '';
         userJson['id'] = userId;
@@ -419,8 +482,7 @@ class _SignupScreenState extends State<SignupScreen> {
       primaryTextTheme:
           baseTheme.primaryTextTheme.apply(fontFamily: 'Gmarket Sans TTF'),
     );
-    final textScale =
-        healthTextScaleByWidth(MediaQuery.sizeOf(context).width);
+    final textScale = healthTextScaleByWidth(MediaQuery.sizeOf(context).width);
 
     return Theme(
       data: gmarketTheme,
@@ -518,9 +580,10 @@ class _SignupScreenState extends State<SignupScreen> {
                         label: '아이디(이메일)',
                         controller: _emailController,
                         focusNode: _emailFocus,
-                        textInputAction: TextInputAction.next,
-                        onFieldSubmitted: (_) =>
-                            _passwordFocus.requestFocus(),
+                        textInputAction: TextInputAction.done,
+                        onFieldSubmitted: (_) {
+                          if (_canCheckEmail) _checkEmailDuplicate();
+                        },
                         hintText: '이메일을 입력해주세요',
                         keyboardType: TextInputType.emailAddress,
                         inputFormatters: [
@@ -528,95 +591,147 @@ class _SignupScreenState extends State<SignupScreen> {
                             RegExp(r'[a-zA-Z0-9@._\-+]'),
                           ),
                         ],
+                        hasError: _emailErrorText != null,
+                        errorText: _emailErrorText,
+                        helperText: _emailSuccessText,
+                        helperColor: const Color(0xFF16A34A),
+                        trailing: SizedBox(
+                          width: healthDp(context, 76),
+                          height: healthDp(context, 40),
+                          child: ElevatedButton(
+                            onPressed:
+                                _canCheckEmail ? _checkEmailDuplicate : null,
+                            style: ElevatedButton.styleFrom(
+                              elevation: 0,
+                              backgroundColor: _canCheckEmail
+                                  ? const Color(0xFFFF5A8D)
+                                  : const Color(0xFFD2D2D2),
+                              disabledBackgroundColor: const Color(0xFFD2D2D2),
+                              padding: EdgeInsets.zero,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(
+                                  healthDp(context, 10),
+                                ),
+                              ),
+                            ),
+                            child: _isCheckingEmail
+                                ? SizedBox(
+                                    width: healthDp(context, 16),
+                                    height: healthDp(context, 16),
+                                    child: const CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.white,
+                                      ),
+                                    ),
+                                  )
+                                : Text(
+                                    '중복확인',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: healthSp(context, 13),
+                                      fontFamily: 'Gmarket Sans TTF',
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                          ),
+                        ),
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
                             return '이메일을 입력해주세요.';
                           }
-                          if (!RegExp(r'^[\w\.-]+@([\w-]+\.)+[\w-]{2,}$').hasMatch(value.trim())) {
+                          if (!RegExp(r'^[\w\.-]+@([\w-]+\.)+[\w-]{2,}$')
+                              .hasMatch(value.trim())) {
                             return '올바른 이메일 형식을 입력해주세요.';
                           }
                           return null;
                         },
                       ),
-                      SizedBox(height: healthDp(context, 10)),
-                      _SignupTextField(
-                        label: '비밀번호',
-                        controller: _passwordController,
-                        focusNode: _passwordFocus,
-                        textInputAction: TextInputAction.next,
-                        onFieldSubmitted: (_) =>
-                            _passwordConfirmFocus.requestFocus(),
-                        hintText: '비밀번호를 입력해주세요',
-                        obscureText: _obscurePassword,
-                        suffix: IconButton(
-                          onPressed: () {
-                            setState(() {
-                              _obscurePassword = !_obscurePassword;
-                            });
+                      if (_isEmailVerified) ...[
+                        SizedBox(height: healthDp(context, 10)),
+                        _SignupTextField(
+                          label: '비밀번호',
+                          controller: _passwordController,
+                          focusNode: _passwordFocus,
+                          textInputAction: TextInputAction.next,
+                          onFieldSubmitted: (_) =>
+                              _passwordConfirmFocus.requestFocus(),
+                          hintText: '비밀번호를 입력해주세요',
+                          obscureText: _obscurePassword,
+                          suffix: IconButton(
+                            onPressed: () {
+                              setState(() {
+                                _obscurePassword = !_obscurePassword;
+                              });
+                            },
+                            padding: EdgeInsets.zero,
+                            visualDensity: VisualDensity.compact,
+                            constraints: BoxConstraints(
+                              minWidth: healthDp(context, 40),
+                              minHeight: healthDp(context, 40),
+                            ),
+                            icon: Icon(
+                              _obscurePassword
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
+                              color: const Color(0xFF898686),
+                              size: healthDp(context, 20),
+                            ),
+                          ),
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return '비밀번호를 입력해주세요.';
+                            }
+                            if (!isValidAppPassword(value)) {
+                              return '8~16자/문자,숫자,특수문자를 모두 포함해주세요.';
+                            }
+                            return null;
                           },
-                          padding: EdgeInsets.zero,
-                          visualDensity: VisualDensity.compact,
-                          constraints: BoxConstraints(
-                            minWidth: healthDp(context, 40),
-                            minHeight: healthDp(context, 40),
-                          ),
-                          icon: Icon(
-                            _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                            color: const Color(0xFF898686),
-                            size: healthDp(context, 20),
-                          ),
+                          helperText: '*8~16자/문자,숫자,특수문자 모두 혼용',
                         ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return '비밀번호를 입력해주세요.';
-                          }
-                          if (!isValidAppPassword(value)) {
-                            return '8~16자/문자,숫자,특수문자를 모두 포함해주세요.';
-                          }
-                          return null;
-                        },
-                        helperText: '*8~16자/문자,숫자,특수문자 모두 혼용',
-                      ),
-                      SizedBox(height: healthDp(context, 10)),
-                      _SignupTextField(
-                        label: '비밀번호 확인',
-                        controller: _passwordConfirmController,
-                        focusNode: _passwordConfirmFocus,
-                        textInputAction: TextInputAction.done,
-                        hintText: '비밀번호를 다시 입력해주세요',
-                        obscureText: _obscurePasswordConfirm,
-                        hasError: _hasConfirmMismatch,
-                        errorText: _hasConfirmMismatch
-                            ? '비밀번호가 일치하지 않습니다.'
-                            : null,
-                        suffix: IconButton(
-                          onPressed: () {
-                            setState(() {
-                              _obscurePasswordConfirm = !_obscurePasswordConfirm;
-                            });
+                        SizedBox(height: healthDp(context, 10)),
+                        _SignupTextField(
+                          label: '비밀번호 확인',
+                          controller: _passwordConfirmController,
+                          focusNode: _passwordConfirmFocus,
+                          textInputAction: TextInputAction.done,
+                          hintText: '비밀번호를 다시 입력해주세요',
+                          obscureText: _obscurePasswordConfirm,
+                          hasError: _hasConfirmMismatch,
+                          errorText:
+                              _hasConfirmMismatch ? '비밀번호가 일치하지 않습니다.' : null,
+                          suffix: IconButton(
+                            onPressed: () {
+                              setState(() {
+                                _obscurePasswordConfirm =
+                                    !_obscurePasswordConfirm;
+                              });
+                            },
+                            padding: EdgeInsets.zero,
+                            visualDensity: VisualDensity.compact,
+                            constraints: BoxConstraints(
+                              minWidth: healthDp(context, 40),
+                              minHeight: healthDp(context, 40),
+                            ),
+                            icon: Icon(
+                              _obscurePasswordConfirm
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
+                              color: const Color(0xFF898686),
+                              size: healthDp(context, 20),
+                            ),
+                          ),
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return '비밀번호 확인을 입력해주세요.';
+                            }
+                            if (value != _passwordController.text) {
+                              return '비밀번호가 일치하지 않습니다.';
+                            }
+                            return null;
                           },
-                          padding: EdgeInsets.zero,
-                          visualDensity: VisualDensity.compact,
-                          constraints: BoxConstraints(
-                            minWidth: healthDp(context, 40),
-                            minHeight: healthDp(context, 40),
-                          ),
-                          icon: Icon(
-                            _obscurePasswordConfirm ? Icons.visibility_off : Icons.visibility,
-                            color: const Color(0xFF898686),
-                            size: healthDp(context, 20),
-                          ),
                         ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return '비밀번호 확인을 입력해주세요.';
-                          }
-                          if (value != _passwordController.text) {
-                            return '비밀번호가 일치하지 않습니다.';
-                          }
-                          return null;
-                        },
-                      ),
+                      ],
                       SizedBox(height: healthDp(context, 10)),
                       _PhoneReadonlyField(segments: phone),
                       SizedBox(height: healthDp(context, 10)),
@@ -641,8 +756,9 @@ class _SignupScreenState extends State<SignupScreen> {
             onPressed: _canInputComplete ? _handleInputComplete : null,
             style: ElevatedButton.styleFrom(
               elevation: 0,
-              backgroundColor:
-                  _canInputComplete ? const Color(0xFFFF5A8D) : const Color(0xFFD2D2D2),
+              backgroundColor: _canInputComplete
+                  ? const Color(0xFFFF5A8D)
+                  : const Color(0xFFD2D2D2),
               disabledBackgroundColor: const Color(0xFFD2D2D2),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(healthDp(context, 10)),
@@ -679,6 +795,8 @@ class _SignupTextField extends StatelessWidget {
   final FocusNode? focusNode;
   final TextInputAction? textInputAction;
   final ValueChanged<String>? onFieldSubmitted;
+  final Widget? trailing;
+  final Color? helperColor;
 
   const _SignupTextField({
     required this.label,
@@ -695,6 +813,8 @@ class _SignupTextField extends StatelessWidget {
     this.focusNode,
     this.textInputAction,
     this.onFieldSubmitted,
+    this.trailing,
+    this.helperColor,
   });
 
   @override
@@ -715,76 +835,97 @@ class _SignupTextField extends StatelessWidget {
         SizedBox(height: healthDp(context, 5)),
         SizedBox(
           height: healthDp(context, 40),
-          child: TextFormField(
-            controller: controller,
-            focusNode: focusNode,
-            keyboardType: keyboardType,
-            textInputAction: textInputAction,
-            onFieldSubmitted: onFieldSubmitted,
-            inputFormatters: inputFormatters,
-            obscureText: obscureText,
-            validator: validator,
-            textAlignVertical: TextAlignVertical.center,
-            style: TextStyle(
-              color: Color(0xFF1A1A1A),
-              fontSize: healthSp(context, 16),
-              fontFamily: 'Gmarket Sans TTF',
-              fontWeight: FontWeight.w500,
-              height: 1,
-            ),
-            decoration: InputDecoration(
-              hintText: hintText,
-              hintStyle: TextStyle(
-                color: Color(0xFFB8B8B8),
-                fontSize: healthSp(context, 14),
-                fontFamily: 'Gmarket Sans TTF',
-                fontWeight: FontWeight.w300,
-                height: 1,
-              ),
-              isDense: true,
-              contentPadding: EdgeInsets.symmetric(
-                horizontal: healthDp(context, 10),
-                vertical: healthDp(context, 11),
-              ),
-              suffixIcon: suffix,
-              suffixIconConstraints: suffix == null
-                  ? null
-                  : BoxConstraints(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: controller,
+                  focusNode: focusNode,
+                  keyboardType: keyboardType,
+                  textInputAction: textInputAction,
+                  onFieldSubmitted: onFieldSubmitted,
+                  inputFormatters: inputFormatters,
+                  obscureText: obscureText,
+                  expands: !obscureText,
+                  minLines: obscureText ? 1 : null,
+                  maxLines: obscureText ? 1 : null,
+                  validator: validator,
+                  textAlignVertical: TextAlignVertical.center,
+                  style: TextStyle(
+                    color: Color(0xFF1A1A1A),
+                    fontSize: healthSp(context, 16),
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w500,
+                    height: 1,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: hintText,
+                    hintStyle: TextStyle(
+                      color: Color(0xFFB8B8B8),
+                      fontSize: healthSp(context, 14),
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w300,
+                      height: 1,
+                    ),
+                    isDense: true,
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: healthDp(context, 10),
+                      vertical: 0,
+                    ),
+                    constraints: BoxConstraints.tightFor(
+                      height: healthDp(context, 40),
+                    ),
+                    suffixIcon: suffix,
+                    suffixIconConstraints: BoxConstraints(
                       minWidth: healthDp(context, 40),
                       minHeight: healthDp(context, 40),
+                      maxWidth: healthDp(context, 40),
+                      maxHeight: healthDp(context, 40),
                     ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(healthDp(context, 10)),
-                borderSide: BorderSide(
-                  width: healthDp(context, 1),
-                  color: hasError
-                      ? const Color(0xFFFF5A8D)
-                      : const Color(0xFFD2D2D2),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius:
+                          BorderRadius.circular(healthDp(context, 10)),
+                      borderSide: BorderSide(
+                        width: healthDp(context, 1),
+                        color: hasError
+                            ? const Color(0xFFFF5A8D)
+                            : const Color(0xFFD2D2D2),
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius:
+                          BorderRadius.circular(healthDp(context, 10)),
+                      borderSide: BorderSide(
+                        width: healthDp(context, 1),
+                        color: const Color(0xFFFF5A8D),
+                      ),
+                    ),
+                    errorBorder: OutlineInputBorder(
+                      borderRadius:
+                          BorderRadius.circular(healthDp(context, 10)),
+                      borderSide: BorderSide(
+                        width: healthDp(context, 1),
+                        color: const Color(0xFFFF5A8D),
+                      ),
+                    ),
+                    focusedErrorBorder: OutlineInputBorder(
+                      borderRadius:
+                          BorderRadius.circular(healthDp(context, 10)),
+                      borderSide: BorderSide(
+                        width: healthDp(context, 1),
+                        color: const Color(0xFFFF5A8D),
+                      ),
+                    ),
+                    errorStyle: const TextStyle(height: 0, fontSize: 0),
+                  ),
                 ),
               ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(healthDp(context, 10)),
-                borderSide: BorderSide(
-                  width: healthDp(context, 1),
-                  color: const Color(0xFFFF5A8D),
-                ),
-              ),
-              errorBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(healthDp(context, 10)),
-                borderSide: BorderSide(
-                  width: healthDp(context, 1),
-                  color: const Color(0xFFFF5A8D),
-                ),
-              ),
-              focusedErrorBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(healthDp(context, 10)),
-                borderSide: BorderSide(
-                  width: healthDp(context, 1),
-                  color: const Color(0xFFFF5A8D),
-                ),
-              ),
-              errorStyle: const TextStyle(height: 0, fontSize: 0),
-            ),
+              if (trailing != null) ...[
+                SizedBox(width: healthDp(context, 8)),
+                trailing!,
+              ],
+            ],
           ),
         ),
         if (errorText != null) ...[
@@ -804,7 +945,7 @@ class _SignupTextField extends StatelessWidget {
           Text(
             helperText!,
             style: TextStyle(
-              color: Color(0xFF898686),
+              color: helperColor ?? const Color(0xFF898686),
               fontSize: healthSp(context, 10),
               fontFamily: 'Gmarket Sans TTF',
               fontWeight: FontWeight.w300,

@@ -636,6 +636,8 @@ class _LoginScreenState extends State<LoginScreen> {
         opaque: false,
         barrierDismissible: false,
         barrierColor: const Color(0x991A1A1A),
+        transitionDuration: Duration.zero,
+        reverseTransitionDuration: Duration.zero,
         pageBuilder: (context, animation, secondaryAnimation) {
           return const KcpCertWebViewScreen(
             flow: 'signup',
@@ -657,8 +659,15 @@ class _LoginScreenState extends State<LoginScreen> {
 
     await Navigator.push<void>(
       context,
-      MaterialPageRoute<void>(
-        builder: (context) => SignupScreen(certInfo: cert),
+      PageRouteBuilder<void>(
+        transitionDuration: const Duration(milliseconds: 120),
+        reverseTransitionDuration: const Duration(milliseconds: 120),
+        pageBuilder: (context, animation, secondaryAnimation) {
+          return SignupScreen(certInfo: cert);
+        },
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
       ),
     );
   }

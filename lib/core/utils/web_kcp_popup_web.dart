@@ -32,8 +32,9 @@ Object? openKcpHtmlPopupWindow(String htmlText) {
     if (headIdx >= 0) {
       final headEnd = base.indexOf('>', headIdx);
       if (headEnd >= 0) {
-        injected =
-            base.substring(0, headEnd + 1) + blockScript + base.substring(headEnd + 1);
+        injected = base.substring(0, headEnd + 1) +
+            blockScript +
+            base.substring(headEnd + 1);
       } else {
         injected = blockScript + base;
       }
@@ -117,6 +118,18 @@ bool isKcpPopupClosed(Object? popup) {
 bool closeKcpPopup(Object? popup) {
   if (popup is! html.WindowBase) return false;
   try {
+    popup.close();
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+/// KCP PC 표준창은 `auth_popup` 이름으로 열립니다.
+/// 콜백의 인라인 자동 종료 스크립트가 CSP에 막혀도 부모 창에서 직접 닫습니다.
+bool closeNamedKcpPopup() {
+  try {
+    final popup = html.window.open('', 'auth_popup', '');
     popup.close();
     return true;
   } catch (_) {

@@ -8,6 +8,7 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 import '../../../core/navigation/app_navigator_key.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/utils/web_kcp_popup.dart';
 import '../../../data/repositories/auth/auth_repository.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../health/health_common/health_responsive_scale.dart';
@@ -30,7 +31,14 @@ bool _kcpResultIndicatesCertDone(Map<String, dynamic> data) {
 }
 
 String _extractMbDupinfo(Map<String, dynamic> data) {
-  for (final k in ['mb_dupinfo', 'mbDupinfo', 'dupinfo', 'dupInfo', 'DI', 'di']) {
+  for (final k in [
+    'mb_dupinfo',
+    'mbDupinfo',
+    'dupinfo',
+    'dupInfo',
+    'DI',
+    'di'
+  ]) {
     final v = data[k]?.toString().trim();
     if (v != null && v.isNotEmpty) return v;
   }
@@ -118,7 +126,8 @@ String _hardenKcpHtmlForSingleWindow(String html) {
   if (headIdx >= 0) {
     final headEnd = out.indexOf('>', headIdx);
     if (headEnd >= 0) {
-      out = out.substring(0, headEnd + 1) + injected + out.substring(headEnd + 1);
+      out =
+          out.substring(0, headEnd + 1) + injected + out.substring(headEnd + 1);
       debugPrint('[KCP] hardenKcpHtml: script injected after <head>');
       return out;
     }
@@ -134,8 +143,10 @@ class KcpCertWebViewScreen extends StatefulWidget {
     super.key,
     this.flow = 'signup',
     this.email,
+
     /// true: 회원가입 부모 위에 뜬 모달 — 성공 시 [Navigator.pop]으로 [certInfo] 전달, 취소 시 `null`
     this.popResultToParent = false,
+
     /// true: 하얀 배경 대신 반투명 딤 + 카드(원래 화면이 비치도록)
     this.overlayStyle = false,
   });
@@ -152,6 +163,7 @@ class KcpCertWebViewScreen extends StatefulWidget {
 class _KcpCertWebViewScreenState extends State<KcpCertWebViewScreen> {
   Timer? _pollingTimer;
   Timer? _kcpCallbackCloseTimer;
+  Timer? _webWindowReturnTimer;
 
   bool _hasNavigated = false;
   bool _blockBack = false;
@@ -161,6 +173,7 @@ class _KcpCertWebViewScreenState extends State<KcpCertWebViewScreen> {
   String? _initialHtml;
   String? _requestToken;
   String? _errorMessage;
+
   /// 웹: 콜백 URL에 대해 shouldOverride→loadUrl이 중복 호출되는 것 방지
   String? _lastWebCallbackHandledUrl;
 
@@ -181,7 +194,10 @@ class _KcpCertWebViewScreenState extends State<KcpCertWebViewScreen> {
       );
     }
     if (kIsWeb) {
-      _webPostMessage.start(_onKcpWebPostMessage);
+      _webPostMessage.start(
+        _onKcpWebPostMessage,
+        onWindowReturned: _onKcpWindowReturned,
+      );
       debugPrint('[KCP] init: window postMessage 리스너 등록 (KCP_CERT_DONE)');
     }
     _initializeKcpRequest();
@@ -201,6 +217,23 @@ class _KcpCertWebViewScreenState extends State<KcpCertWebViewScreen> {
       return;
     }
     unawaited(_pollKcpResult());
+  }
+
+  /// KCP 팝업이 닫히거나 화면이 전환될 때 부모 창이 다시 포커스를 받는다.
+  /// 인증 도중에도 일시적으로 포커스가 돌아올 수 있으므로 즉시 취소하지 않고,
+  /// 서버 콜백이 반영될 시간을 충분히 준 뒤 계속 pending일 때만 취소로 본다.
+  void _onKcpWindowReturned() {
+    if (!mounted || _hasNavigated || _requestToken == null) return;
+    _webWindowReturnTimer?.cancel();
+    debugPrint('[KCP] 부모 창 복귀 → 완료 결과 반영 대기');
+    _webWindowReturnTimer = Timer(const Duration(seconds: 3), () async {
+      if (!mounted || _hasNavigated) return;
+      debugPrint('[KCP] 부모 창 복귀 3초 후 최종 결과 확인');
+      await _pollKcpResult();
+      if (!mounted || _hasNavigated) return;
+      debugPrint('[KCP] 유예 후에도 결과 pending → 인증 취소로 처리');
+      _cancelKcpCert(reason: 'popup_window_closed');
+    });
   }
 
   Future<void> _initializeKcpRequest() async {
@@ -283,7 +316,8 @@ class _KcpCertWebViewScreenState extends State<KcpCertWebViewScreen> {
       if (keyNav != null) {
         keyNav.pushReplacementNamed(routeName, arguments: arguments);
       } else {
-        Navigator.of(context).pushReplacementNamed(routeName, arguments: arguments);
+        Navigator.of(context)
+            .pushReplacementNamed(routeName, arguments: arguments);
       }
     }
 
@@ -369,6 +403,8 @@ class _KcpCertWebViewScreenState extends State<KcpCertWebViewScreen> {
     _pollingTimer = null;
     _kcpCallbackCloseTimer?.cancel();
     _kcpCallbackCloseTimer = null;
+    _webWindowReturnTimer?.cancel();
+    _webWindowReturnTimer = null;
 
     if (widget.popResultToParent || widget.overlayStyle) {
       _popKcpCertOverlay(null);
@@ -377,37 +413,6 @@ class _KcpCertWebViewScreenState extends State<KcpCertWebViewScreen> {
     if (Navigator.of(context).canPop()) {
       Navigator.of(context).maybePop();
     }
-  }
-
-  Widget _buildCloseButton() {
-    return SafeArea(
-      child: Align(
-        alignment: Alignment.topRight,
-        child: Padding(
-          padding: EdgeInsets.only(
-            top: healthDp(context, 8),
-            right: healthDp(context, 8),
-          ),
-          child: Material(
-            color: Colors.black.withValues(alpha: 0.45),
-            shape: const CircleBorder(),
-            child: InkWell(
-              customBorder: const CircleBorder(),
-              onTap: () => _cancelKcpCert(reason: 'close_button'),
-              child: SizedBox(
-                width: healthDp(context, 40),
-                height: healthDp(context, 40),
-                child: Icon(
-                  Icons.close,
-                  color: Colors.white,
-                  size: healthDp(context, 22),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
   }
 
   Widget _buildWebViewOrError() {
@@ -499,7 +504,8 @@ class _KcpCertWebViewScreenState extends State<KcpCertWebViewScreen> {
               return NavigationActionPolicy.ALLOW;
             }
             _lastWebCallbackHandledUrl = s;
-            debugPrint('[KCP] shouldOverrideUrlLoading(web): callback → loadUrl 동일 WebView');
+            debugPrint(
+                '[KCP] shouldOverrideUrlLoading(web): callback → loadUrl 동일 WebView');
             await controller.loadUrl(urlRequest: URLRequest(url: url));
             return NavigationActionPolicy.CANCEL;
           }
@@ -522,7 +528,8 @@ class _KcpCertWebViewScreenState extends State<KcpCertWebViewScreen> {
         if (url != null) {
           final scheme = url.scheme.toLowerCase();
           if (scheme == 'tel' || scheme == 'mailto' || scheme == 'sms') {
-            debugPrint('[KCP] shouldOverrideUrlLoading: CANCEL (scheme=$scheme)');
+            debugPrint(
+                '[KCP] shouldOverrideUrlLoading: CANCEL (scheme=$scheme)');
             return NavigationActionPolicy.CANCEL;
           }
         }
@@ -553,7 +560,8 @@ class _KcpCertWebViewScreenState extends State<KcpCertWebViewScreen> {
             action: JsAlertResponseAction.CONFIRM,
           );
         }
-        debugPrint('[KCP] onJsAlert: 기본 처리(미차단) msg=${msg.length > 80 ? "${msg.substring(0, 80)}…" : msg}');
+        debugPrint(
+            '[KCP] onJsAlert: 기본 처리(미차단) msg=${msg.length > 80 ? "${msg.substring(0, 80)}…" : msg}');
         return JsAlertResponse(
           handledByClient: false,
           action: JsAlertResponseAction.CONFIRM,
@@ -572,7 +580,8 @@ class _KcpCertWebViewScreenState extends State<KcpCertWebViewScreen> {
         // KCP 페이지에서 window.open을 호출해 새창을 띄우는 경우가 있어,
         // 동일 WebView에서 열리도록 window.open을 덮어쓴다.
         try {
-          await controller.evaluateJavascript(source: _kcpSingleWindowUserScriptSource);
+          await controller.evaluateJavascript(
+              source: _kcpSingleWindowUserScriptSource);
           debugPrint('[KCP] onLoadStop: window.open 주입 스크립트 실행 OK');
         } catch (e) {
           debugPrint('[KCP] onLoadStop: 주입 스크립트 실패(무시): $e');
@@ -582,7 +591,8 @@ class _KcpCertWebViewScreenState extends State<KcpCertWebViewScreen> {
         await _detectCallbackPage(controller, url);
       },
       onReceivedError: (controller, request, error) {
-        debugPrint('[KCP] onReceivedError: ${error.description} url=${request.url}');
+        debugPrint(
+            '[KCP] onReceivedError: ${error.description} url=${request.url}');
         if (mounted) {
           debugPrint('[KCP] onReceivedError: ${error.description}');
         }
@@ -600,18 +610,7 @@ class _KcpCertWebViewScreenState extends State<KcpCertWebViewScreen> {
       outerBackgroundColor: isOverlay ? Colors.transparent : null,
       backgroundColor: isOverlay ? Colors.transparent : null,
       showShadow: !isOverlay,
-      child: isOverlay
-          ? Stack(
-              children: [
-                // 오버레이 모드: 카드 UI 없이 WebView를 그대로 표시
-                // (KCP 창이 같은 WebView에서 열리므로, 숨기면 아무것도 안 뜸)
-                Positioned.fill(child: _buildWebViewOrError()),
-                // 팝업을 닫아도 폴링만 남는 경우 대비 — 수동 취소로 이전 화면 복귀
-                if (!_hasNavigated && !_obscureWebViewAfterKcpCallback)
-                  _buildCloseButton(),
-              ],
-            )
-          : _buildWebViewOrError(),
+      child: _buildWebViewOrError(),
     );
 
     if (!widget.popResultToParent) {
@@ -806,16 +805,17 @@ class _KcpCertWebViewScreenState extends State<KcpCertWebViewScreen> {
           debugPrint('[KCP] completion notice: poll 후 unmounted');
           return;
         }
-        await Future.delayed(const Duration(milliseconds: 350));
         if (!mounted) {
-          debugPrint('[KCP] completion notice: delay 후 unmounted');
+          debugPrint('[KCP] completion notice: poll 후 재확인 unmounted');
           return;
         }
         if (_lastCertInfo != null) {
-          debugPrint('[KCP] certInfo after notice/poll; poll branch handles close.');
+          debugPrint(
+              '[KCP] certInfo after notice/poll; poll branch handles close.');
           return;
         }
-        debugPrint('[KCP] still no certInfo after notice; ensure polling continues.');
+        debugPrint(
+            '[KCP] still no certInfo after notice; ensure polling continues.');
         _startPollingResult();
       } else {
         debugPrint('[KCP] _detectCallbackPage: completion notice 아님');
@@ -878,7 +878,8 @@ class _KcpCertWebViewScreenState extends State<KcpCertWebViewScreen> {
           })();
         '''),
       );
-      debugPrint('[KCP] _scheduleKcpCallbackPageAutoClose: window.close 주입(unawaited)');
+      debugPrint(
+          '[KCP] _scheduleKcpCallbackPageAutoClose: window.close 주입(unawaited)');
     } catch (e) {
       debugPrint('[KCP] _scheduleKcpCallbackPageAutoClose: 주입 실패 $e');
     }
@@ -946,7 +947,8 @@ class _KcpCertWebViewScreenState extends State<KcpCertWebViewScreen> {
       final statusNorm = status.trim().toLowerCase();
       final certDone = _kcpResultIndicatesCertDone(data);
       final success = _isTruthy(data['success']);
-      debugPrint('[KCP] poll status=$status certDone=$certDone success=$success');
+      debugPrint(
+          '[KCP] poll status=$status certDone=$certDone success=$success');
 
       final stillPending =
           (statusNorm == 'pending' || statusNorm == 'processing') && !certDone;
@@ -972,6 +974,10 @@ class _KcpCertWebViewScreenState extends State<KcpCertWebViewScreen> {
       if (doneOk) {
         debugPrint('[KCP] _pollKcpResult: 인증 완료 분기 (doneOk)');
         _hasNavigated = true;
+        if (kIsWeb) {
+          final closed = closeNamedKcpPopup();
+          debugPrint('[KCP] auth_popup 자동 닫기 결과=$closed');
+        }
         final mbDup = _extractMbDupinfo(data);
 
         final certInfo = <String, dynamic>{
@@ -987,35 +993,21 @@ class _KcpCertWebViewScreenState extends State<KcpCertWebViewScreen> {
           'kcp_raw': data,
         };
         _lastCertInfo = certInfo;
-        debugPrint('[KCP] cert completed. mb_dupinfo=${mbDup.isEmpty ? "-" : mbDup}');
-
-        if (widget.popResultToParent && mounted) {
-          // WebView/iframe을 즉시 가려 사용자에게는 곧 닫힘으로 보이게 한다.
-          setState(() => _obscureWebViewAfterKcpCallback = true);
-          debugPrint('[KCP] _pollKcpResult: obscureWebView (popToParent)');
-        } else {
-          debugPrint(
-            '[KCP] _pollKcpResult: obscure 스킵 popToParent=${widget.popResultToParent} mounted=$mounted',
-          );
-        }
-
-        // 짧은 대기 후 오버레이 닫기(웹에서 Navigator 타이밍 이슈 완화).
-        await Future.delayed(const Duration(milliseconds: 350));
-        if (!mounted) {
-          debugPrint('[KCP] _pollKcpResult: delay 후 unmounted');
-          return;
-        }
+        debugPrint(
+            '[KCP] cert completed. mb_dupinfo=${mbDup.isEmpty ? "-" : mbDup}');
 
         if (widget.popResultToParent) {
           debugPrint('[KCP] _pollKcpResult: popResultToParent 처리');
           if (mbDup.isNotEmpty) {
             Map<String, dynamic> dup;
             try {
-              debugPrint('[KCP] checkDupInfo start (mb_dupinfo len=${mbDup.length})');
+              debugPrint(
+                  '[KCP] checkDupInfo start (mb_dupinfo len=${mbDup.length})');
               dup = await AuthRepository.checkDupInfo(mbDupinfo: mbDup).timeout(
                 const Duration(seconds: 8),
                 onTimeout: () {
-                  debugPrint('[KCP] checkDupInfo timeout (8s) — treat as not duplicate');
+                  debugPrint(
+                      '[KCP] checkDupInfo timeout (8s) — treat as not duplicate');
                   return <String, dynamic>{
                     'success': true,
                     'exists': false,
@@ -1065,9 +1057,13 @@ class _KcpCertWebViewScreenState extends State<KcpCertWebViewScreen> {
         if (widget.flow == 'find-password') {
           debugPrint('[KCP] _pollKcpResult: flow find-password');
           final email = (widget.email ?? '').trim();
-          final certName = (data['name'] ?? certInfo['name'] ?? '').toString().trim();
-          final certPhone = (data['phone'] ?? certInfo['phone'] ?? '').toString().trim();
-          final mbDup = (certInfo['mb_dupinfo'] ?? certInfo['mbDupinfo'] ?? '').toString().trim();
+          final certName =
+              (data['name'] ?? certInfo['name'] ?? '').toString().trim();
+          final certPhone =
+              (data['phone'] ?? certInfo['phone'] ?? '').toString().trim();
+          final mbDup = (certInfo['mb_dupinfo'] ?? certInfo['mbDupinfo'] ?? '')
+              .toString()
+              .trim();
 
           final result = await AuthRepository.forgotPassword(
             name: certName,
@@ -1148,6 +1144,7 @@ class _KcpCertWebViewScreenState extends State<KcpCertWebViewScreen> {
   void dispose() {
     debugPrint('[KCP] dispose: 타이머 정리');
     _webPostMessage.stop();
+    _webWindowReturnTimer?.cancel();
     _pollingTimer?.cancel();
     _kcpCallbackCloseTimer?.cancel();
     super.dispose();
