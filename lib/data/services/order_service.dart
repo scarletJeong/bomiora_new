@@ -147,8 +147,8 @@ class OrderService {
   }) async {
     try {
       final response = await ApiClient.post(
-        '/api/orders/$odId/confirm',
-        {'mbId': mbId},
+        '/api/orders/${Uri.encodeComponent(odId)}/confirm',
+        {'mbId': mbId, 'mb_id': mbId},
       );
 
       if (response.statusCode == 200) {

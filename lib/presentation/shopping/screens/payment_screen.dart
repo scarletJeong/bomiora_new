@@ -18,6 +18,7 @@ import '../../../data/models/coupon/coupon_model.dart';
 import '../../../data/models/user/user_model.dart';
 import '../../../data/services/address_service.dart';
 import '../../../data/services/auth_service.dart';
+import '../../../data/services/cart_service.dart';
 import '../../../data/services/coupon_service.dart';
 import '../../../data/services/point_service.dart';
 import '../../user/delivery/widgets/delivery_address_change_popup_ver2.dart';
@@ -638,6 +639,35 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
     final cartIds = widget.cartItems.map((e) => e.ctId).toList();
     if (cartIds.isEmpty) return;
+
+    final expectedGoodsAmount = widget.cartItems.fold<int>(
+      0,
+      (sum, item) => sum + item.lineAmount,
+    );
+    final stockCheck = await CartService.validateCheckout(
+      ctIds: cartIds,
+      expectedGoodsAmount: expectedGoodsAmount,
+    );
+    if (!mounted) return;
+    if (stockCheck['success'] != true) {
+      await showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('결제할 수 없습니다'),
+          content: Text(
+            stockCheck['message']?.toString() ??
+                '재고 또는 금액이 변경되었습니다. 장바구니를 확인해 주세요.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('확인'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
 
     setState(() {
       _submitting = true;

@@ -801,20 +801,37 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
         return;
       }
 
-      Future.microtask(() {
+      Future.microtask(() async {
+        final args = {
+          'backToProductId': widget.productId,
+          'initialTabIndex': 0,
+        };
         try {
           final navigator = appNavigatorKey.currentState;
           if (navigator != null) {
             navigator.pushNamedAndRemoveUntil(
               '/cart',
               (route) => false,
-              arguments: {
-                'backToProductId': widget.productId,
-                'initialTabIndex': 0,
-              },
+              arguments: args,
             );
+            return;
           }
         } catch (_) {}
+
+        if (!mounted) return;
+        try {
+          Navigator.of(context).pushNamedAndRemoveUntil(
+            '/cart',
+            (route) => false,
+            arguments: args,
+          );
+        } catch (_) {
+          if (!mounted) return;
+          AppToastOverlay.show(
+            context,
+            '예약이 저장되었습니다. 장바구니에서 결제를 이어가 주세요.',
+          );
+        }
       });
     } catch (_) {
       // ignored
@@ -1120,9 +1137,9 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
       child: DefaultTextStyle.merge(
         style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
         child: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
                 controller: _scrollController,
                 padding: EdgeInsets.fromLTRB(
                   healthDp(context, 27),
@@ -1130,23 +1147,23 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
                   healthDp(context, 27),
                   healthDp(context, 20),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '1. 가능한 날짜를 선택해주세요',
-                      style: TextStyle(
-                        fontSize: healthSp(context, 14),
-                        fontFamily: 'Gmarket Sans TTF',
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '1. 가능한 날짜를 선택해주세요',
+                    style: TextStyle(
+                      fontSize: healthSp(context, 14),
+                      fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w500,
-                      ),
                     ),
-                    SizedBox(height: healthDp(context, 12)),
+                  ),
+                  SizedBox(height: healthDp(context, 12)),
                     ValueListenableBuilder<DateTime?>(
                       valueListenable: _selectedDate,
                       builder: (context, selectedDate, _) {
                         return Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: _availableDates.map((date) {
                             final isSelected = selectedDate != null &&
                                 selectedDate.year == date.year &&
@@ -1163,80 +1180,80 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
                               '토',
                               '일'
                             ];
-                            final weekday = weekdays[date.weekday - 1];
+                      final weekday = weekdays[date.weekday - 1];
                             return GestureDetector(
                               behavior: HitTestBehavior.opaque,
                               onTap: () => _selectDate(date),
-                              child: Container(
-                                width: healthDp(context, 40),
-                                height: healthDp(context, 54.17),
-                                decoration: ShapeDecoration(
-                                  color: isSelected
-                                      ? const Color(0x0CFF5A8D)
-                                      : Colors.white,
-                                  shape: RoundedRectangleBorder(
-                                    side: BorderSide(
-                                      width: isSelected
-                                          ? healthDp(context, 1)
-                                          : healthDp(context, 0.5),
-                                      color: isSelected
-                                          ? const Color(0xFFFF5A8D)
-                                          : const Color(0xFFD2D2D2),
-                                    ),
+                        child: Container(
+                          width: healthDp(context, 40),
+                          height: healthDp(context, 54.17),
+                          decoration: ShapeDecoration(
+                            color: isSelected
+                                ? const Color(0x0CFF5A8D)
+                                : Colors.white,
+                            shape: RoundedRectangleBorder(
+                              side: BorderSide(
+                                width: isSelected
+                                    ? healthDp(context, 1)
+                                    : healthDp(context, 0.5),
+                                color: isSelected
+                                    ? const Color(0xFFFF5A8D)
+                                    : const Color(0xFFD2D2D2),
+                              ),
                                     borderRadius: BorderRadius.circular(
                                       healthDp(context, 18.33),
-                                    ),
-                                  ),
+                            ),
+                          ),
                                 ),
                                 child: FittedBox(
                                   fit: BoxFit.scaleDown,
-                                  child: Column(
+                          child: Column(
                                     mainAxisSize: MainAxisSize.min,
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      if (isToday)
-                                        Text(
-                                          '오늘',
-                                          style: TextStyle(
-                                            color: isSelected
-                                                ? const Color(0xFFFF5A8D)
-                                                : const Color(0xFF1A1A1A),
-                                            fontSize: healthSp(context, 10),
-                                            fontFamily: 'Gmarket Sans TTF',
-                                            fontWeight: FontWeight.w300,
-                                          ),
-                                        ),
-                                      if (isToday)
-                                        SizedBox(height: healthDp(context, 2)),
-                                      Text(
-                                        '${date.day}',
-                                        style: TextStyle(
-                                          color: isSelected
-                                              ? const Color(0xFFFF5A8D)
-                                              : const Color(0xFF1A1A1A),
-                                          fontSize: healthSp(context, 12),
-                                          fontFamily: 'Gmarket Sans TTF',
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                      SizedBox(height: healthDp(context, 4)),
-                                      Text(
-                                        weekday,
-                                        style: TextStyle(
-                                          color: isSelected
-                                              ? const Color(0xFFFF5A8D)
-                                              : const Color(0xFF1A1A1A),
-                                          fontSize: healthSp(context, 10),
-                                          fontFamily: 'Gmarket Sans TTF',
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ],
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              if (isToday)
+                                Text(
+                                  '오늘',
+                                  style: TextStyle(
+                                    color: isSelected
+                                        ? const Color(0xFFFF5A8D)
+                                        : const Color(0xFF1A1A1A),
+                                    fontSize: healthSp(context, 10),
+                                    fontFamily: 'Gmarket Sans TTF',
+                                    fontWeight: FontWeight.w300,
                                   ),
                                 ),
+                                      if (isToday)
+                                        SizedBox(height: healthDp(context, 2)),
+                              Text(
+                                '${date.day}',
+                                style: TextStyle(
+                                  color: isSelected
+                                      ? const Color(0xFFFF5A8D)
+                                      : const Color(0xFF1A1A1A),
+                                  fontSize: healthSp(context, 12),
+                                  fontFamily: 'Gmarket Sans TTF',
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
-                            );
-                          }).toList(),
+                                      SizedBox(height: healthDp(context, 4)),
+                              Text(
+                                weekday,
+                                style: TextStyle(
+                                  color: isSelected
+                                      ? const Color(0xFFFF5A8D)
+                                      : const Color(0xFF1A1A1A),
+                                  fontSize: healthSp(context, 10),
+                                  fontFamily: 'Gmarket Sans TTF',
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                                  ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
                         );
                       },
                     ),
@@ -1250,77 +1267,77 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            SizedBox(height: healthDp(context, 32)),
-                            Text(
-                              '2. 시간을 선택해주세요',
-                              style: TextStyle(
+                  SizedBox(height: healthDp(context, 32)),
+                  Text(
+                    '2. 시간을 선택해주세요',
+                    style: TextStyle(
                                 color: Colors.black,
-                                fontSize: healthSp(context, 14),
+                      fontSize: healthSp(context, 14),
                                 fontWeight: FontWeight.w500,
-                                fontFamily: 'Gmarket Sans TTF',
-                              ),
-                            ),
-                            SizedBox(height: healthDp(context, 12)),
+                      fontFamily: 'Gmarket Sans TTF',
+                    ),
+                  ),
+                  SizedBox(height: healthDp(context, 12)),
                             if (times.isEmpty)
-                              Container(
-                                width: double.infinity,
-                                padding: EdgeInsets.all(healthDp(context, 16)),
-                                decoration: BoxDecoration(
-                                  color: Colors.grey[100],
+                    Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.all(healthDp(context, 16)),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[100],
                                   borderRadius: BorderRadius.circular(
                                     healthDp(context, 10),
                                   ),
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    '예약 가능한 시간이 없습니다',
-                                    style: TextStyle(
-                                      fontSize: healthSp(context, 14),
-                                      color: Colors.grey,
-                                      fontFamily: 'Gmarket Sans TTF',
-                                    ),
-                                  ),
-                                ),
-                              )
-                            else
+                      ),
+                      child: Center(
+                        child: Text(
+                          '예약 가능한 시간이 없습니다',
+                          style: TextStyle(
+                            fontSize: healthSp(context, 14),
+                            color: Colors.grey,
+                            fontFamily: 'Gmarket Sans TTF',
+                          ),
+                        ),
+                      ),
+                    )
+                  else
                               ValueListenableBuilder<String?>(
                                 valueListenable: _selectedTime,
                                 builder: (context, selectedTime, _) {
                                   return GridView.builder(
-                                    shrinkWrap: true,
+                      shrinkWrap: true,
                                     physics:
                                         const NeverScrollableScrollPhysics(),
                                     gridDelegate:
                                         SliverGridDelegateWithFixedCrossAxisCount(
-                                      crossAxisCount: 4,
-                                      mainAxisExtent: healthDp(context, 42),
-                                      crossAxisSpacing: healthDp(context, 10),
-                                      mainAxisSpacing: healthDp(context, 10),
-                                    ),
+                        crossAxisCount: 4,
+                        mainAxisExtent: healthDp(context, 42),
+                        crossAxisSpacing: healthDp(context, 10),
+                        mainAxisSpacing: healthDp(context, 10),
+                      ),
                                     itemCount: times.length,
-                                    itemBuilder: (context, index) {
+                      itemBuilder: (context, index) {
                                       final time = times[index];
                                       final isSelected = selectedTime == time;
                                       return GestureDetector(
                                         behavior: HitTestBehavior.opaque,
                                         onTap: () => _selectTime(time),
-                                        child: Container(
-                                          width: double.infinity,
-                                          padding: EdgeInsets.symmetric(
-                                            horizontal: healthDp(context, 5),
-                                            vertical: healthDp(context, 10),
-                                          ),
-                                          decoration: ShapeDecoration(
-                                            color: isSelected
-                                                ? const Color(0x0CFF5A8D)
-                                                : Colors.white,
-                                            shape: RoundedRectangleBorder(
-                                              side: BorderSide(
-                                                width: healthDp(context, 1),
-                                                color: isSelected
-                                                    ? const Color(0xFFFF5A8D)
-                                                    : const Color(0xFFD2D2D2),
-                                              ),
+                          child: Container(
+                            width: double.infinity,
+                            padding: EdgeInsets.symmetric(
+                              horizontal: healthDp(context, 5),
+                              vertical: healthDp(context, 10),
+                            ),
+                            decoration: ShapeDecoration(
+                              color: isSelected
+                                  ? const Color(0x0CFF5A8D)
+                                  : Colors.white,
+                              shape: RoundedRectangleBorder(
+                                side: BorderSide(
+                                  width: healthDp(context, 1),
+                                  color: isSelected
+                                      ? const Color(0xFFFF5A8D)
+                                      : const Color(0xFFD2D2D2),
+                                ),
                                               borderRadius:
                                                   BorderRadius.circular(
                                                 healthDp(context, 10),
@@ -1329,16 +1346,16 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
                                           ),
                                           alignment: Alignment.center,
                                           child: Text(
-                                            time,
-                                            textAlign: TextAlign.center,
-                                            style: TextStyle(
-                                              color: isSelected
-                                                  ? const Color(0xFFFF5A8D)
-                                                  : const Color(0xFF1A1A1A),
-                                              fontSize: healthSp(context, 12),
-                                              fontFamily: 'Gmarket Sans TTF',
-                                              fontWeight: FontWeight.w500,
-                                            ),
+                                  time,
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: isSelected
+                                        ? const Color(0xFFFF5A8D)
+                                        : const Color(0xFF1A1A1A),
+                                    fontSize: healthSp(context, 12),
+                                    fontFamily: 'Gmarket Sans TTF',
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                           ),
                                         ),
                                       );
@@ -1361,33 +1378,33 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
                           return const SizedBox.shrink();
                         }
                         return Column(
-                          children: [
+                        children: [
                             SizedBox(height: healthDp(context, 30)),
                             _buildContactSection(),
                           ],
                         );
                       },
-                    ),
-                  ],
-                ),
-              ),
+                                ),
+                              ],
+                            ),
             ),
-            Container(
-              padding: EdgeInsets.fromLTRB(
-                healthDp(context, 27),
-                0,
-                healthDp(context, 27),
-                healthDp(context, 20),
-              ),
-              color: Colors.white,
-              child: Row(
-                children: [
-                  SizedBox(
+          ),
+          Container(
+            padding: EdgeInsets.fromLTRB(
+              healthDp(context, 27),
+              0,
+              healthDp(context, 27),
+              healthDp(context, 20),
+            ),
+            color: Colors.white,
+            child: Row(
+              children: [
+                SizedBox(
                     width: healthDp(context, 72),
-                    height: healthDp(context, 40),
-                    child: FilledButton.tonal(
-                      onPressed: () => Navigator.pop(context),
-                      style: FilledButton.styleFrom(
+                  height: healthDp(context, 40),
+                  child: FilledButton.tonal(
+                    onPressed: () => Navigator.pop(context),
+                    style: FilledButton.styleFrom(
                         minimumSize: Size(
                           healthDp(context, 72),
                           healthDp(context, 40),
@@ -1397,33 +1414,33 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
                           healthDp(context, 40),
                         ),
                         padding: EdgeInsets.zero,
-                        backgroundColor: const Color(0x26D2D2D2),
-                        shape: RoundedRectangleBorder(
+                      backgroundColor: const Color(0x26D2D2D2),
+                      shape: RoundedRectangleBorder(
                           borderRadius:
                               BorderRadius.circular(healthDp(context, 7)),
-                        ),
                       ),
-                      child: Text(
-                        '이전',
-                        style: TextStyle(
-                          color: const Color(0xFF898686),
+                    ),
+                    child: Text(
+                      '이전',
+                      style: TextStyle(
+                        color: const Color(0xFF898686),
                           fontSize: healthSp(context, 14),
-                          fontFamily: 'Gmarket Sans TTF',
-                          fontWeight: FontWeight.w500,
-                        ),
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ),
-                  SizedBox(width: healthDp(context, 10)),
-                  Expanded(
-                    child: SizedBox(
-                      height: healthDp(context, 40),
+                ),
+                SizedBox(width: healthDp(context, 10)),
+                Expanded(
+                  child: SizedBox(
+                    height: healthDp(context, 40),
                       child: ValueListenableBuilder<bool>(
                         valueListenable: _canProceedListenable,
                         builder: (context, canProceed, _) {
                           return ElevatedButton(
                             onPressed: canProceed ? _nextStep : null,
-                            style: ElevatedButton.styleFrom(
+                      style: ElevatedButton.styleFrom(
                               minimumSize: Size(
                                 double.infinity,
                                 healthDp(context, 40),
@@ -1433,11 +1450,11 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
                                 healthDp(context, 40),
                               ),
                               padding: EdgeInsets.zero,
-                              backgroundColor: const Color(0xFFFF5A8D),
-                              foregroundColor: Colors.white,
+                        backgroundColor: const Color(0xFFFF5A8D),
+                        foregroundColor: Colors.white,
                               disabledBackgroundColor: const Color(0xFFFF5A8D)
                                   .withValues(alpha: 0.4),
-                              shape: RoundedRectangleBorder(
+                        shape: RoundedRectangleBorder(
                                 borderRadius:
                                     BorderRadius.circular(healthDp(context, 7)),
                               ),
@@ -1453,23 +1470,23 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
                                     ),
                                   )
                                 : Text(
-                                    '다음',
-                                    style: TextStyle(
-                                      color: Colors.white,
+                        '다음',
+                        style: TextStyle(
+                          color: Colors.white,
                                       fontSize: healthSp(context, 14),
-                                      fontFamily: 'Gmarket Sans TTF',
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
+                          fontFamily: 'Gmarket Sans TTF',
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                           );
                         },
-                      ),
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
+          ),
+        ],
         ),
       ),
     );

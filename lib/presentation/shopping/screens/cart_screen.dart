@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../health/health_common/widgets/health_app_bar.dart';
@@ -46,10 +48,12 @@ class _CartScreenState extends State<CartScreen> {
   bool isRefreshing = false; // 새로고침 중인지 (캐시된 데이터 표시 중)
   String? errorMessage;
   int shippingCost = 0; // 배송비
+  int _selectedShippingCost = 0;
   int totalPrice = 0; // 총구매금액
   Set<int> selectedItems = {}; // 선택된 아이템의 ctId 집합
   bool selectAll = false; // 현재 탭의 전체 선택 상태
   final ScrollController _scrollController = ScrollController();
+  Timer? _shippingDebounce;
 
   List<CartLineGroup> get _displayedGroups =>
       cartGroupsForTab(cartItems, prescriptionTab: true);
@@ -66,20 +70,53 @@ class _CartScreenState extends State<CartScreen> {
     return selectedItems.intersection(_displayedItemIds);
   }
 
+  Set<int> get _availableDisplayedItemIds {
+    return _displayedCartItems
+        .where((item) => item.isAvailable)
+        .map((item) => item.ctId)
+        .toSet();
+  }
+
+  bool get _hasSoldOutItems =>
+      _displayedCartItems.any((item) => !item.isAvailable);
+
   static const String _selectionCtKind = 'prescription';
 
   void _applySelectionFromServer() {
     selectedItems = _displayedCartItems
-        .where((item) => item.ctSelect)
+        .where((item) => item.ctSelect && item.isAvailable)
         .map((item) => item.ctId)
         .toSet();
-    selectAll = _displayedCartItems.isNotEmpty &&
-        _displayedItemIds.difference(selectedItems).isEmpty;
+    final available = _availableDisplayedItemIds;
+    selectAll = available.isNotEmpty &&
+        available.difference(selectedItems).isEmpty;
+  }
+
+  void _scheduleShippingRefresh() {
+    _shippingDebounce?.cancel();
+    _shippingDebounce = Timer(const Duration(milliseconds: 250), () {
+      _refreshSelectedShipping();
+    });
+  }
+
+  Future<void> _refreshSelectedShipping() async {
+    final ids = _displayedCartItems
+        .where((item) => selectedItems.contains(item.ctId) && item.isAvailable)
+        .map((item) => item.ctId)
+        .toList();
+    final cost = ids.isEmpty
+        ? 0
+        : await CartService.getShippingCost(ctIds: ids);
+    if (!mounted) return;
+    setState(() => _selectedShippingCost = cost);
   }
 
   Future<void> _persistCartSelection() async {
+    _scheduleShippingRefresh();
     final result = await CartService.syncCartSelection(
-      selectedCtIds: _selectedDisplayedItemIds.toList(),
+      selectedCtIds: _selectedDisplayedItemIds
+          .where((id) => _availableDisplayedItemIds.contains(id))
+          .toList(),
       ctKind: _selectionCtKind,
     );
     if (!mounted || result['success'] == true) return;
@@ -122,6 +159,7 @@ class _CartScreenState extends State<CartScreen> {
 
   @override
   void dispose() {
+    _shippingDebounce?.cancel();
     _scrollController.dispose();
     super.dispose();
   }
@@ -173,6 +211,7 @@ class _CartScreenState extends State<CartScreen> {
           isLoading = false;
           isRefreshing = false;
         });
+        unawaited(_refreshSelectedShipping());
       } else {
         final message = result['message']?.toString() ?? '';
         setState(() {
@@ -278,6 +317,36 @@ class _CartScreenState extends State<CartScreen> {
     _loadCart(showCachedData: true);
   }
 
+  Future<void> _deleteSoldOutItems() async {
+    if (!await _ensureLoggedIn(message: '장바구니 수정은 로그인 후 이용할 수 있습니다.')) {
+      return;
+    }
+    final toDelete = <int>{};
+    for (final g in _displayedGroups) {
+      if (!g.parent.isAvailable) {
+        toDelete.add(g.parent.ctId);
+        toDelete.addAll(g.children.map((c) => c.ctId));
+      } else {
+        for (final c in g.children) {
+          if (!c.isAvailable) toDelete.add(c.ctId);
+        }
+      }
+    }
+    if (toDelete.isEmpty) return;
+
+    for (final ctId in toDelete) {
+      await CartService.removeCartItem(ctId);
+    }
+    if (!mounted) return;
+
+    AppToastOverlay.show(context, '품절·판매중지 상품이 삭제됐어요.');
+    setState(() {
+      selectedItems.removeAll(toDelete);
+    });
+    await _persistCartSelection();
+    _loadCart(showCachedData: true);
+  }
+
   // 선택된 아이템들의 총구매금액 계산
   int get selectedTotalPrice {
     int sum = 0;
@@ -289,20 +358,9 @@ class _CartScreenState extends State<CartScreen> {
     return sum;
   }
 
-  // 선택된 아이템의 배송비 계산 (현재는 간단히 전체 배송비를 사용)
-  // TODO: 선택된 아이템만으로 배송비를 계산하도록 백엔드 API 수정 필요
   int get selectedShippingCost {
-    // 현재 탭에서 선택된 아이템이 없으면 배송비 0
     if (_selectedDisplayedItemIds.isEmpty) return 0;
-    // 처방/일반이 혼합된 장바구니에서는 탭별 배송비를 백엔드가 내려주지 않으므로
-    // 다른 탭 금액이 섞여 보이지 않게 0으로 처리한다.
-    if (_displayedCartItems.length != cartItems.length) return 0;
-    // 선택된 아이템이 현재 탭 전체와 같으면 전체 배송비 사용
-    if (_selectedDisplayedItemIds.length == _displayedCartItems.length) {
-      return shippingCost;
-    }
-    // 일부만 선택한 경우도 전체 배송비를 사용 (추후 백엔드에서 재계산 필요)
-    return shippingCost;
+    return _selectedShippingCost;
   }
 
   int get finalPrice => selectedTotalPrice + selectedShippingCost;
@@ -332,9 +390,13 @@ class _CartScreenState extends State<CartScreen> {
     if (_selectedDisplayedItemIds.isEmpty) return;
 
     final selectedCartItems = _displayedCartItems
-        .where((item) => _selectedDisplayedItemIds.contains(item.ctId))
+        .where((item) =>
+            _selectedDisplayedItemIds.contains(item.ctId) && item.isAvailable)
         .toList();
-    if (selectedCartItems.isEmpty) return;
+    if (selectedCartItems.isEmpty) {
+      AppToastOverlay.show(context, '판매 가능한 상품을 선택해 주세요.');
+      return;
+    }
 
     final mainItem = selectedCartItems.firstWhere(
       (e) => !e.isSupplyAdd,
@@ -672,18 +734,22 @@ class _CartScreenState extends State<CartScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               _lightCheckbox(
-                value: _displayedCartItems.isNotEmpty &&
-                    _displayedItemIds.difference(selectedItems).isEmpty,
+                value: _availableDisplayedItemIds.isNotEmpty &&
+                    _availableDisplayedItemIds
+                        .difference(selectedItems)
+                        .isEmpty,
                 onChanged: (bool? value) {
                   setState(() {
                     final shouldSelect = value ?? false;
                     if (shouldSelect) {
-                      selectedItems.addAll(_displayedItemIds);
+                      selectedItems.addAll(_availableDisplayedItemIds);
                     } else {
                       selectedItems.removeAll(_displayedItemIds);
                     }
-                    selectAll = _displayedCartItems.isNotEmpty &&
-                        _displayedItemIds.difference(selectedItems).isEmpty;
+                    selectAll = _availableDisplayedItemIds.isNotEmpty &&
+                        _availableDisplayedItemIds
+                            .difference(selectedItems)
+                            .isEmpty;
                   });
                   _persistCartSelection();
                 },
@@ -701,6 +767,35 @@ class _CartScreenState extends State<CartScreen> {
             ],
           ),
           const Spacer(),
+          InkWell(
+            onTap: _hasSoldOutItems ? _deleteSoldOutItems : null,
+            borderRadius: BorderRadius.circular(healthDp(context, 50)),
+            child: Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: healthDp(context, 14),
+                vertical: healthDp(context, 10),
+              ),
+              clipBehavior: Clip.antiAlias,
+              decoration: ShapeDecoration(
+                color: const Color(0xFFF9F9F9),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(healthDp(context, 50)),
+                ),
+              ),
+              child: Text(
+                '품절삭제',
+                style: TextStyle(
+                  color: _hasSoldOutItems
+                      ? const Color(0xFF898686)
+                      : const Color(0xFFD2D2D2),
+                  fontSize: healthSp(context, 12),
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ),
+          SizedBox(width: healthDp(context, 6)),
           InkWell(
             onTap: _selectedDisplayedItemIds.isEmpty
                 ? null
@@ -736,7 +831,7 @@ class _CartScreenState extends State<CartScreen> {
 
   Widget _lightCheckbox({
     required bool value,
-    required ValueChanged<bool?> onChanged,
+    required ValueChanged<bool?>? onChanged,
   }) {
     const double checkboxBase = 18;
     final boxSize = healthDp(context, checkboxBase);
@@ -939,6 +1034,35 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
+  Widget _cartItemThumbnail(CartItem item) {
+    final thumb = CartItemThumbnail(
+      item: item,
+      size: healthDp(context, 60),
+    );
+    if (item.isAvailable) return thumb;
+    return Stack(
+      children: [
+        Opacity(opacity: 0.4, child: thumb),
+        Positioned.fill(
+          child: Center(
+            child: Text(
+              item.unavailableReason ?? '품절',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: healthSp(context, 10),
+                fontFamily: 'Gmarket Sans TTF',
+                fontWeight: FontWeight.w700,
+                shadows: const [
+                  Shadow(color: Colors.black54, blurRadius: 4),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildCartItemCard(CartItem item, {Widget? footer}) {
     final isSelected = selectedItems.contains(item.ctId);
     // ct_kind / it_kind / 예약정보 통합 판별 (ct_kind만 보면 회색선·레이아웃이 어긋남)
@@ -980,33 +1104,40 @@ class _CartScreenState extends State<CartScreen> {
                 child: Center(
                   child: _lightCheckbox(
                     value: isSelected,
-                    onChanged: (bool? value) {
-                      setState(() {
-                        final checked = value ?? false;
-                        if (checked) {
-                          selectedItems.add(item.ctId);
-                          for (final g in _displayedGroups) {
-                            if (g.parent.ctId == item.ctId) {
-                              for (final c in g.children) {
-                                selectedItems.add(c.ctId);
+                    onChanged: item.isAvailable
+                        ? (bool? value) {
+                            setState(() {
+                              final checked = value ?? false;
+                              if (checked) {
+                                selectedItems.add(item.ctId);
+                                for (final g in _displayedGroups) {
+                                  if (g.parent.ctId == item.ctId) {
+                                    for (final c in g.children) {
+                                      if (c.isAvailable) {
+                                        selectedItems.add(c.ctId);
+                                      }
+                                    }
+                                  }
+                                }
+                              } else {
+                                selectedItems.remove(item.ctId);
+                                for (final g in _displayedGroups) {
+                                  if (g.parent.ctId == item.ctId) {
+                                    for (final c in g.children) {
+                                      selectedItems.remove(c.ctId);
+                                    }
+                                  }
+                                }
                               }
-                            }
+                              selectAll =
+                                  _availableDisplayedItemIds.isNotEmpty &&
+                                      _availableDisplayedItemIds
+                                          .difference(selectedItems)
+                                          .isEmpty;
+                            });
+                            _persistCartSelection();
                           }
-                        } else {
-                          selectedItems.remove(item.ctId);
-                          for (final g in _displayedGroups) {
-                            if (g.parent.ctId == item.ctId) {
-                              for (final c in g.children) {
-                                selectedItems.remove(c.ctId);
-                              }
-                            }
-                          }
-                        }
-                        selectAll = _displayedCartItems.isNotEmpty &&
-                            _displayedItemIds.difference(selectedItems).isEmpty;
-                      });
-                      _persistCartSelection();
-                    },
+                        : null,
                   ),
                 ),
               ),
@@ -1023,10 +1154,7 @@ class _CartScreenState extends State<CartScreen> {
                             context,
                             '/product/${item.itId}',
                           ),
-                          child: CartItemThumbnail(
-                            item: item,
-                            size: healthDp(context, 60),
-                          ),
+                          child: _cartItemThumbnail(item),
                         ),
                         SizedBox(width: healthDp(context, 8)),
                         Expanded(
@@ -1048,7 +1176,9 @@ class _CartScreenState extends State<CartScreen> {
                               Text(
                                 item.itName,
                                 style: TextStyle(
-                                  color: const Color(0xFF1A1A1A),
+                                  color: item.isAvailable
+                                      ? const Color(0xFF1A1A1A)
+                                      : const Color(0xFF898686),
                                   fontSize: healthSp(context, 14),
                                   fontFamily: 'Gmarket Sans TTF',
                                   fontWeight: FontWeight.w500,
@@ -1057,6 +1187,18 @@ class _CartScreenState extends State<CartScreen> {
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                               ),
+                              if (!item.isAvailable) ...[
+                                SizedBox(height: healthDp(context, 4)),
+                                Text(
+                                  item.unavailableReason ?? '품절',
+                                  style: TextStyle(
+                                    color: const Color(0xFFFF5A8D),
+                                    fontSize: healthSp(context, 11),
+                                    fontFamily: 'Gmarket Sans TTF',
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
                               if (optionRow != null) ...[
                                 SizedBox(height: healthDp(context, 4)),
                                 optionRow,

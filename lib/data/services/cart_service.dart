@@ -656,6 +656,85 @@ class CartService {
     };
   }
 
+  static Future<int> getShippingCost({
+    required List<int> ctIds,
+    String ctStatus = '쇼핑',
+  }) async {
+    if (ctIds.isEmpty) return 0;
+    try {
+      final user = await AuthService.getUser();
+      if (user == null) return 0;
+
+      final ids = ctIds.where((id) => id > 0).join(',');
+      if (ids.isEmpty) return 0;
+
+      final response = await ApiClient.get(
+        '${ApiEndpoints.getCartShippingCost}?mb_id=${Uri.encodeComponent(user.id)}'
+        '&ct_ids=${Uri.encodeComponent(ids)}'
+        '&ct_status=${Uri.encodeComponent(ctStatus)}',
+      );
+      if (response.statusCode != 200) return 0;
+
+      final data = json.decode(response.body);
+      if (data is! Map) return 0;
+      if (data['success'] == false) return 0;
+      final raw = data['shipping_cost'];
+      if (raw is int) return raw;
+      return int.tryParse('$raw') ?? 0;
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  static Future<Map<String, dynamic>> validateCheckout({
+    required List<int> ctIds,
+    required int expectedGoodsAmount,
+  }) async {
+    try {
+      final user = await AuthService.getUser();
+      if (user == null) {
+        return {'success': false, 'message': '로그인이 필요합니다.'};
+      }
+      if (ctIds.isEmpty) {
+        return {'success': false, 'message': '결제할 상품이 없습니다.'};
+      }
+
+      final response = await ApiClient.post(
+        ApiEndpoints.cartCheckoutValidate,
+        {
+          'mb_id': user.id,
+          'ct_ids': ctIds,
+          'expected_goods_amount': expectedGoodsAmount,
+        },
+      );
+
+      Map<String, dynamic> body = {};
+      try {
+        final decoded = json.decode(response.body);
+        if (decoded is Map<String, dynamic>) body = decoded;
+      } catch (_) {}
+
+      if (response.statusCode == 200 && body['success'] == true) {
+        return {
+          'success': true,
+          'message': body['message']?.toString() ?? 'ok',
+          'goods_amount': body['goods_amount'],
+        };
+      }
+
+      return {
+        'success': false,
+        'message': body['message']?.toString() ??
+            '결제할 수 없는 상품이 있습니다. 장바구니를 확인해 주세요.',
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'message': '결제 전 상품 확인 중 오류가 발생했습니다.',
+      };
+    }
+  }
+
   /// 주문 ID(od_id) 생성
   static Future<Map<String, dynamic>> generateOrderId({
     required String productId,

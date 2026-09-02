@@ -27,6 +27,7 @@ import '../widgets/recommend_product_bottomup.dart';
 import '../utils/cart_navigation.dart';
 import 'prescription_booking/prescription_profile_screen.dart';
 import 'product_reviews_screen.dart';
+import '../../review/screens/review_detail_screen.dart';
 import '../utils/get_review.dart';
 import '../utils/product_detail_html_helper.dart';
 import '../utils/product_info_spec_helper.dart';
@@ -854,7 +855,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
           _visibleSupporterReviewCount += 8;
         });
       },
-      onReviewTap: (_) {},
+      onReviewTap: _openReviewDetail,
     );
   }
 
@@ -872,7 +873,19 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
           _visibleNormalReviewCount += 8;
         });
       },
-      onReviewTap: (_) {},
+      onReviewTap: _openReviewDetail,
+    );
+  }
+
+  void _openReviewDetail(ReviewModel review) {
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => ReviewDetailScreen(
+          review: review,
+          fromProductDetail: true,
+        ),
+      ),
     );
   }
 

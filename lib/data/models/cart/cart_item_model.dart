@@ -41,6 +41,9 @@ class CartItem {
   final int pointUsageRate;
   /// 결제 대상 선택 여부 (`bomiora_shop_cart.ct_select`)
   final bool ctSelect;
+  /// 품절·판매중지 여부 (서버 `is_available`)
+  final bool isAvailable;
+  final String? unavailableReason;
 
   CartItem({
     required this.ctId,
@@ -70,6 +73,8 @@ class CartItem {
     this.ctMbInf = '',
     this.pointUsageRate = 10,
     this.ctSelect = false,
+    this.isAvailable = true,
+    this.unavailableReason,
   });
 
   /// 추가상품: `parent` 컬럼(또는 legacy ct_kind=supply_add|)에 부모 it_id가 있음.
@@ -248,6 +253,12 @@ class CartItem {
         normalizedCtKind,
       ),
       ctSelect: _parseCtSelect(normalized['ct_select'] ?? normalized['ctSelect']),
+      isAvailable: _parseIsAvailable(
+        normalized['is_available'] ?? normalized['isAvailable'],
+      ),
+      unavailableReason: NodeValueParser.asString(
+        normalized['unavailable_reason'] ?? normalized['unavailableReason'],
+      ),
     );
   }
 
@@ -338,6 +349,15 @@ class CartItem {
       'point_usage_rate': pointUsageRate,
       'ct_select': ctSelect ? 1 : 0,
     };
+  }
+
+  static bool _parseIsAvailable(dynamic value) {
+    if (value == null) return true;
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    final s = value.toString().trim().toLowerCase();
+    if (s.isEmpty) return true;
+    return s != '0' && s != 'false' && s != 'n';
   }
 
   static bool _parseCtSelect(dynamic value) {

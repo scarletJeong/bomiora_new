@@ -34,7 +34,7 @@ class CartGroupGeneralCard extends StatelessWidget {
   final bool showBundleTotal;
   final Widget Function({
     required bool value,
-    required ValueChanged<bool?> onChanged,
+    required ValueChanged<bool?>? onChanged,
   })? buildCheckbox;
   final Widget Function({
     required int quantity,
@@ -70,7 +70,7 @@ class CartGroupGeneralCard extends StatelessWidget {
       _items.fold<int>(0, (sum, item) => sum + item.lineAmount);
 
   bool get _allSelected {
-    final ids = _items.map((e) => e.ctId).toSet();
+    final ids = _items.where((e) => e.isAvailable).map((e) => e.ctId).toSet();
     return ids.isNotEmpty && ids.difference(selectedItems).isEmpty;
   }
 
@@ -206,7 +206,7 @@ class _VendorProductCard extends StatelessWidget {
   final bool compactBottom;
   final Widget Function({
     required bool value,
-    required ValueChanged<bool?> onChanged,
+    required ValueChanged<bool?>? onChanged,
   })? buildCheckbox;
   final Widget Function({
     required int quantity,
@@ -234,6 +234,29 @@ class _VendorProductCard extends StatelessWidget {
   String get _subjectLabel => item.itSubject?.trim() ?? '';
 
   String get _optionText => item.ctOption.trim();
+
+  Widget _soldOutThumb(BuildContext context, Widget thumb) {
+    if (item.isAvailable) return thumb;
+    return Stack(
+      children: [
+        Opacity(opacity: 0.4, child: thumb),
+        Positioned.fill(
+          child: Center(
+            child: Text(
+              item.unavailableReason ?? '품절',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: healthSp(context, 10),
+                fontFamily: _kGmarketSans,
+                fontWeight: FontWeight.w700,
+                shadows: const [Shadow(color: Colors.black54, blurRadius: 4)],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 
   String get _qtyOptionLine {
     final optionParts = _optionText
@@ -271,7 +294,9 @@ class _VendorProductCard extends StatelessWidget {
           if (interactive && buildCheckbox != null) ...[
             buildCheckbox!(
               value: selected,
-              onChanged: (v) => onToggle(v ?? false),
+              onChanged: item.isAvailable
+                  ? (v) => onToggle(v ?? false)
+                  : null,
             ),
             SizedBox(width: healthDp(context, 5)),
           ],
@@ -288,9 +313,12 @@ class _VendorProductCard extends StatelessWidget {
                         children: [
                           GestureDetector(
                             onTap: interactive ? onOpenDetail : null,
-                            child: CartItemThumbnail(
-                              item: item,
-                              size: healthDp(context, readOnly ? 72 : 60),
+                            child: _soldOutThumb(
+                              context,
+                              CartItemThumbnail(
+                                item: item,
+                                size: healthDp(context, readOnly ? 72 : 60),
+                              ),
                             ),
                           ),
                           SizedBox(width: healthDp(context, readOnly ? 20 : 8)),
@@ -315,7 +343,7 @@ class _VendorProductCard extends StatelessWidget {
                                   child: Text(
                                     item.itName,
                                     style: TextStyle(
-                                      color: _kInk,
+                                      color: item.isAvailable ? _kInk : _kMuted,
                                       fontSize: healthSp(context, 14),
                                       fontFamily: _kGmarketSans,
                                       fontWeight: FontWeight.w500,
@@ -325,6 +353,18 @@ class _VendorProductCard extends StatelessWidget {
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
+                                if (!item.isAvailable) ...[
+                                  SizedBox(height: healthDp(context, 4)),
+                                  Text(
+                                    item.unavailableReason ?? '품절',
+                                    style: TextStyle(
+                                      color: const Color(0xFFFF5A8D),
+                                      fontSize: healthSp(context, 11),
+                                      fontFamily: _kGmarketSans,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
                                 if (readOnly) ...[
                                   SizedBox(height: healthDp(context, 5)),
                                   Text(

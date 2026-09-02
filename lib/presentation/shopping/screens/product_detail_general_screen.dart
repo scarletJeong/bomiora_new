@@ -32,6 +32,7 @@ import '../utils/product_detail_html_helper.dart';
 import '../utils/product_info_spec_helper.dart';
 import 'payment_screen.dart';
 import 'product_review_general_screen.dart';
+import '../../review/screens/review_detail_screen.dart';
 import '../../common/widgets/login_required_dialog.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 
@@ -730,7 +731,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
           _visibleSupporterReviewCount += 8;
         });
       },
-      onReviewTap: (_) {},
+      onReviewTap: _openReviewDetail,
     );
   }
 
@@ -808,7 +809,19 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
           _visibleNormalReviewCount += 8;
         });
       },
-      onReviewTap: (_) {},
+      onReviewTap: _openReviewDetail,
+    );
+  }
+
+  void _openReviewDetail(ReviewModel review) {
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => ReviewDetailScreen(
+          review: review,
+          fromProductDetail: true,
+        ),
+      ),
     );
   }
 
