@@ -250,6 +250,7 @@ class HealthSyncService {
       caloriesKcal: caloriesKcal != null && caloriesKcal > 0
           ? double.parse(caloriesKcal.toStringAsFixed(1))
           : null,
+      intervals: _buildStepIntervals(_filterType(points, HealthDataType.STEPS)),
     );
 
     final workouts = _buildWorkouts(points, heartPoints);
@@ -450,6 +451,25 @@ class HealthSyncService {
     }
     entries.sort((a, b) => b.date.compareTo(a.date));
     return entries;
+  }
+
+  static List<HealthStepInterval> _buildStepIntervals(
+    List<HealthDataPoint> points,
+  ) {
+    final out = <HealthStepInterval>[];
+    for (final p in points) {
+      final n = _numericValue(p)?.round() ?? 0;
+      if (n <= 0 || !p.dateTo.isAfter(p.dateFrom)) continue;
+      out.add(
+        HealthStepInterval(
+          start: p.dateFrom,
+          end: p.dateTo,
+          steps: n,
+          externalUid: p.uuid.isEmpty ? null : p.uuid,
+        ),
+      );
+    }
+    return out;
   }
 
   static List<HealthDataPoint> _filterType(

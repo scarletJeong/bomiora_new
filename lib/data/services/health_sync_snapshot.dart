@@ -36,19 +36,36 @@ class HealthActivitySnapshot {
   final double? distanceKm;
   final int? activeMinutes;
   final double? caloriesKcal;
+  final List<HealthStepInterval> intervals;
 
   const HealthActivitySnapshot({
     this.steps,
     this.distanceKm,
     this.activeMinutes,
     this.caloriesKcal,
+    this.intervals = const [],
   });
 
   bool get hasData =>
       (steps != null && steps! > 0) ||
       (distanceKm != null && distanceKm! > 0) ||
       (activeMinutes != null && activeMinutes! > 0) ||
-      (caloriesKcal != null && caloriesKcal! > 0);
+      (caloriesKcal != null && caloriesKcal! > 0) ||
+      intervals.isNotEmpty;
+}
+
+class HealthStepInterval {
+  final DateTime start;
+  final DateTime end;
+  final int steps;
+  final String? externalUid;
+
+  const HealthStepInterval({
+    required this.start,
+    required this.end,
+    required this.steps,
+    this.externalUid,
+  });
 }
 
 class HealthWorkoutSnapshot {

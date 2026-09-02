@@ -107,6 +107,9 @@ class ApiEndpoints {
   static const String weightRecords = '/api/health/weight';
   static const String menstrualCycleRecords = '/api/health/menstrual-cycle';
 
+  /// 건강앱(애플 건강 / Health Connect) 오늘 기록 저장
+  static const String healthSync = '/api/health/sync';
+
   /// 건강 대시보드 일괄 조회 (체중·혈압·혈당·심박·생리·걸음·목표)
   static String healthDashboard({
     required String mbId,

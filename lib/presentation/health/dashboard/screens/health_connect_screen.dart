@@ -5,9 +5,14 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../../core/constants/app_assets.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
+import '../../../common/widgets/login_required_dialog.dart';
 import '../../health_common/widgets/health_app_bar.dart';
 import '../../health_common/health_responsive_scale.dart';
+import '../../../../data/services/auth_service.dart';
 import '../../../../data/services/health_sync_service.dart';
+import '../../../../data/repositories/health/sync/health_app_sync_repository.dart';
+import '../../../../data/repositories/health/dashboard/health_dashboard_repository.dart';
+import '../../../../core/health/health_refresh_bus.dart';
 
 class HealthConnectScreen extends StatefulWidget {
   const HealthConnectScreen({super.key});
@@ -25,9 +30,13 @@ class _HealthConnectScreenState extends State<HealthConnectScreen> {
 
   bool _isConnected = false;
   bool _isSyncing = false;
+  bool _savedToServer = false;
   HealthSyncSnapshot? _snapshot;
 
   String get _providerLabel => _isIOS ? '애플 건강' : '삼성 헬스';
+
+  String get _providerApiValue =>
+      _isIOS ? 'apple_health' : 'google_health_connect';
 
   String get _guideText {
     if (_isIOS) {
@@ -49,7 +58,20 @@ class _HealthConnectScreenState extends State<HealthConnectScreen> {
 
   Future<void> _toggleConnection() async {
     if (_isConnected) {
-      setState(() => _isConnected = false);
+      setState(() {
+        _isConnected = false;
+        _savedToServer = false;
+      });
+      return;
+    }
+
+    final user = await AuthService.getUser();
+    if (!mounted) return;
+    if (user == null || user.id.trim().isEmpty) {
+      await showLoginRequiredDialog(
+        context,
+        message: '건강앱 연동은 로그인 후 이용할 수 있습니다.',
+      );
       return;
     }
 
@@ -57,22 +79,40 @@ class _HealthConnectScreenState extends State<HealthConnectScreen> {
     final result = await HealthSyncService.connectAndFetchToday();
     if (!mounted) return;
 
+    var savedToServer = false;
+    var message = result.message;
+    if (result.success && result.snapshot != null) {
+      final persist = await HealthAppSyncRepository.persistToday(
+        mbId: user.id,
+        provider: _providerApiValue,
+        snapshot: result.snapshot!,
+      );
+      savedToServer = persist.success;
+      if (persist.success) {
+        HealthDashboardRepository.invalidate(user.id);
+        notifyHealthDataChanged();
+        message = persist.hasStoredData
+            ? '오늘 건강 기록이 저장되었습니다.'
+            : persist.message;
+      } else {
+        message = persist.message;
+      }
+    }
+
+    if (!mounted) return;
     setState(() {
       _isSyncing = false;
       _isConnected = result.success;
+      _savedToServer = savedToServer;
       if (result.success) {
         _snapshot = result.snapshot;
       }
     });
 
-    if (!result.success && result.message.isNotEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(result.message)),
-      );
-    } else if (result.success && result.message.isNotEmpty) {
+    if (message.isNotEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(result.message),
+          content: Text(message),
           duration: const Duration(seconds: 2),
         ),
       );
@@ -248,9 +288,9 @@ class _HealthConnectScreenState extends State<HealthConnectScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            '동기화 미리보기 (오늘)',
-            style: TextStyle(
+          Text(
+            _savedToServer ? '오늘 기록에 저장됨' : '동기화 미리보기 (오늘)',
+            style: const TextStyle(
               fontSize: 13,
               fontFamily: 'Gmarket Sans TTF',
               fontWeight: FontWeight.w700,
