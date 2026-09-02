@@ -34,6 +34,7 @@ class _LoginScreenState extends State<LoginScreen> {
   String? _returnTo;
   bool _didApplyPrefillEmail = false;
   bool _naverWebResumeStarted = false;
+  bool _kakaoWebResumeStarted = false;
 
   @override
   void initState() {
@@ -41,6 +42,7 @@ class _LoginScreenState extends State<LoginScreen> {
     _loadAutoLoginPref();
     if (kIsWeb) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        _resumeKakaoWebAuthIfNeeded();
         _resumeNaverWebAuthIfNeeded();
       });
     }
@@ -795,56 +797,37 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  // 카카오 로그인 처리
   Future<void> _handleKakaoLogin() async {
     setState(() {
       _isLoading = true;
     });
 
     try {
-      final kakaoResult = await KakaoAuthService.login();
+      final kakaoResult = await KakaoAuthService.login(
+        returnToAfterLogin: _returnTo,
+      );
+
+      if (kakaoResult['needsRedirect'] == true) {
+        final redirectUrl = kakaoResult['redirectUrl']?.toString();
+        if (redirectUrl != null && redirectUrl.isNotEmpty) {
+          redirectBrowser(redirectUrl);
+        }
+        return;
+      }
 
       if (!kakaoResult['success']) {
         if (!mounted) return;
-        if (kakaoResult['needsServerAuth'] == true) {
+        final msg = kakaoResult['error']?.toString();
+        if (msg != null && msg.isNotEmpty) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('웹 환경에서는 카카오 로그인을 지원하지 않습니다.'),
-            ),
+            SnackBar(content: Text(msg)),
           );
         }
         return;
       }
 
       final kakaoData = kakaoResult['data'] as Map<String, dynamic>;
-      final kakaoId = kakaoData['kakaoId']?.toString() ?? '';
-      final email = kakaoData['email']?.toString();
-      final nickname = kakaoData['nickname']?.toString();
-
-      if (kakaoId.isEmpty) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('카카오 사용자 정보를 가져오지 못했습니다.')),
-        );
-        return;
-      }
-
-      final result = await AuthRepository.loginWithKakao(
-        kakaoId: kakaoId,
-        email: email,
-        nickname: nickname,
-        profileImageUrl: kakaoData['profileImageUrl']?.toString(),
-        accessToken: kakaoData['accessToken']?.toString(),
-      );
-
-      await _handleSocialAuthResult(
-        result,
-        provider: 'kakao',
-        identifier: kakaoId,
-        email: email,
-        nickname: nickname,
-        profileImageUrl: kakaoData['profileImageUrl']?.toString(),
-      );
+      await _completeKakaoLoginFromData(kakaoData);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -857,6 +840,88 @@ class _LoginScreenState extends State<LoginScreen> {
         });
       }
     }
+  }
+
+  Future<void> _resumeKakaoWebAuthIfNeeded() async {
+    if (!kIsWeb || _kakaoWebResumeStarted || !mounted) return;
+    _kakaoWebResumeStarted = true;
+
+    final authError = KakaoAuthService.peekWebAuthError();
+    if (authError != null && authError.isNotEmpty) {
+      KakaoAuthService.clearWebAuthQueryFromUrl();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(authError)),
+      );
+      return;
+    }
+
+    final token = KakaoAuthService.peekWebAuthToken();
+    if (token == null || token.isEmpty) {
+      _kakaoWebResumeStarted = false;
+      return;
+    }
+
+    KakaoAuthService.clearWebAuthQueryFromUrl();
+    setState(() => _isLoading = true);
+
+    try {
+      final kakaoResult = await KakaoAuthService.fetchWebAuthResult(token);
+      if (!kakaoResult['success']) {
+        if (!mounted) return;
+        final msg = kakaoResult['error']?.toString();
+        if (msg != null && msg.isNotEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(msg)),
+          );
+        }
+        return;
+      }
+
+      final kakaoData = kakaoResult['data'] as Map<String, dynamic>;
+      await _completeKakaoLoginFromData(kakaoData);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('카카오 로그인 오류: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+      _kakaoWebResumeStarted = false;
+    }
+  }
+
+  Future<void> _completeKakaoLoginFromData(Map<String, dynamic> kakaoData) async {
+    final kakaoId = kakaoData['kakaoId']?.toString() ?? '';
+    final email = kakaoData['email']?.toString();
+    final nickname = kakaoData['nickname']?.toString();
+
+    if (kakaoId.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('카카오 사용자 정보를 가져오지 못했습니다.')),
+      );
+      return;
+    }
+
+    final result = await AuthRepository.loginWithKakao(
+      kakaoId: kakaoId,
+      email: email,
+      nickname: nickname,
+      profileImageUrl: kakaoData['profileImageUrl']?.toString(),
+      accessToken: kakaoData['accessToken']?.toString(),
+    );
+
+    await _handleSocialAuthResult(
+      result,
+      provider: 'kakao',
+      identifier: kakaoId,
+      email: email,
+      nickname: nickname,
+      profileImageUrl: kakaoData['profileImageUrl']?.toString(),
+    );
   }
 
   Future<void> _resumeNaverWebAuthIfNeeded() async {

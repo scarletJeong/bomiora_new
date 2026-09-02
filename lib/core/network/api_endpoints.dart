@@ -4,7 +4,7 @@ class ApiEndpoints {
   static const String register = '/api/auth/register';
   static const String checkEmail = '/api/auth/check-email';
 
-  /// 본인인증 `mb_dupinfo`(또는 DI) 기준 기가입 여부 — 서버 미구현 시 404 등으로 무시 가능
+  /// 본인인증 `mb_dupinfo`(또는 DI) 기준 기가입 여부
   static const String checkDupInfo = '/api/auth/check-dup-info';
   static const String logout = '/api/auth/logout';
   static const String findId = '/api/auth/find-id';
@@ -20,6 +20,10 @@ class ApiEndpoints {
       '/api/auth/naver/authorize?returnTo=${Uri.encodeComponent(returnTo)}';
   static String naverOAuthResult(String token) =>
       '/api/auth/naver/result/$token';
+  static String kakaoOAuthAuthorize(String returnTo) =>
+      '/api/auth/kakao/authorize?returnTo=${Uri.encodeComponent(returnTo)}';
+  static String kakaoOAuthResult(String token) =>
+      '/api/auth/kakao/result/$token';
   static const String socialLogin = '/api/auth/social/login';
   static const String socialRegister = '/api/auth/social/register';
   static const String authSession = '/api/auth/session';
@@ -44,6 +48,8 @@ class ApiEndpoints {
   // 장바구니 관련 (기존 Cafe24 서버)
   static const String addToCart = '/api/cart/add';
   static const String getCart = '/api/cart';
+  static const String getCartShippingCost = '/api/cart/shipping-cost';
+  static const String cartCheckoutValidate = '/api/cart/checkout-validate';
   static const String getCartRecommend = '/api/cart/recommend';
   static const String updateCartItem = '/api/cart/update';
   static const String syncCartSelection = '/api/cart/select';

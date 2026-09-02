@@ -1,54 +1,134 @@
-import 'package:kakao_flutter_sdk/kakao_flutter_sdk.dart';
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:url_launcher/url_launcher.dart';
+import 'package:http/http.dart' as http;
+import 'package:kakao_flutter_sdk/kakao_flutter_sdk.dart';
+
+import '../../core/network/api_client.dart';
+import '../../core/network/api_endpoints.dart';
+import '../../core/utils/web_history.dart';
 
 class KakaoAuthService {
-  // 카카오 SDK 초기화
+  static const _kakaoAuthTokenKey = 'kakao_auth_token';
+  static const _kakaoAuthErrorKey = 'kakao_auth_error';
+
   static Future<void> initialize() async {
     try {
-      // 웹 환경에서는 JavaScript SDK를 사용하므로 별도 초기화 불필요
       if (kIsWeb) {
         return;
       }
-
-      // 모바일 환경: 카카오 SDK 초기화
-      // Native App Key는 AndroidManifest.xml과 Info.plist에 설정되어 있어야 함
-      // 실제 앱 키는 AndroidManifest.xml의 <meta-data android:name="com.kakao.sdk.AppKey" android:value="YOUR_APP_KEY" />
-      // 또는 Info.plist의 KAKAO_APP_KEY에 설정되어 있어야 함
       KakaoSdk.init();
-    } catch (e) {
-    }
+    } catch (_) {}
   }
 
-  // 카카오 로그인
-  static Future<Map<String, dynamic>> login() async {
+  static String buildWebOAuthReturnUrl({String? returnToAfterLogin}) {
+    final origin = Uri.base.origin;
+    final params = <String, String>{};
+    if (returnToAfterLogin != null && returnToAfterLogin.trim().isNotEmpty) {
+      params['returnTo'] = returnToAfterLogin.trim();
+    }
+    final loginUri =
+        Uri(path: '/login', queryParameters: params.isEmpty ? null : params);
+    return origin + loginUri.toString();
+  }
+
+  static String buildWebAuthorizeUrl({String? returnToAfterLogin}) {
+    final returnTo =
+        buildWebOAuthReturnUrl(returnToAfterLogin: returnToAfterLogin);
+    return '${ApiClient.baseUrl}${ApiEndpoints.kakaoOAuthAuthorize(returnTo)}';
+  }
+
+  static String? peekWebAuthToken() {
+    if (!kIsWeb) return null;
+    final token = Uri.base.queryParameters[_kakaoAuthTokenKey]?.trim();
+    return (token != null && token.isNotEmpty) ? token : null;
+  }
+
+  static String? peekWebAuthError() {
+    if (!kIsWeb) return null;
+    final error = Uri.base.queryParameters[_kakaoAuthErrorKey]?.trim();
+    return (error != null && error.isNotEmpty) ? error : null;
+  }
+
+  static void clearWebAuthQueryFromUrl() {
+    if (!kIsWeb) return;
+
+    final params = Map<String, String>.from(Uri.base.queryParameters);
+    params.remove(_kakaoAuthTokenKey);
+    params.remove(_kakaoAuthErrorKey);
+
+    final nextUri = Uri(
+      scheme: Uri.base.scheme,
+      host: Uri.base.host,
+      port: Uri.base.hasPort ? Uri.base.port : null,
+      path: Uri.base.path,
+      queryParameters: params.isEmpty ? null : params,
+      fragment: Uri.base.fragment.isEmpty ? null : Uri.base.fragment,
+    );
+    replaceBrowserUrl(nextUri.toString());
+  }
+
+  static Future<Map<String, dynamic>> fetchWebAuthResult(String token) async {
     try {
-      // 웹 환경: OAuth 리다이렉트 방식 사용
-      if (kIsWeb) {
-        return await _loginWeb();
-      }
+      final response = await http.get(
+        Uri.parse('${ApiClient.baseUrl}${ApiEndpoints.kakaoOAuthResult(token)}'),
+        headers: const {
+          'Accept': 'application/json',
+          'Cache-Control': 'no-cache',
+        },
+      );
 
-      // 카카오톡으로 로그인 시도
-      OAuthToken? token;
-      
+      Map<String, dynamic> body = {};
       try {
-        // 카카오톡 앱이 설치되어 있으면 카카오톡으로 로그인 시도
-        token = await UserApi.instance.loginWithKakaoTalk();
-      } catch (e) {
-        // 카카오톡 앱이 없거나 로그인 실패 시 카카오계정으로 로그인
-        token = await UserApi.instance.loginWithKakaoAccount();
-      }
+        final decoded = json.decode(response.body);
+        if (decoded is Map<String, dynamic>) {
+          body = decoded;
+        }
+      } catch (_) {}
 
-      if (token == null) {
+      if (response.statusCode != 200 || body['success'] != true) {
         return {
           'success': false,
-          'error': '카카오 로그인에 실패했습니다.',
+          'error': body['message']?.toString() ??
+              '카카오 로그인 결과를 가져오지 못했습니다.',
         };
       }
 
-      // 사용자 정보 가져오기
+      final data = body['data'];
+      if (data is! Map) {
+        return {
+          'success': false,
+          'error': '카카오 사용자 정보 형식이 올바르지 않습니다.',
+        };
+      }
+
+      return {
+        'success': true,
+        'data': Map<String, dynamic>.from(data),
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'error': '카카오 로그인 결과 조회 중 오류가 발생했습니다: $e',
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>> login({String? returnToAfterLogin}) async {
+    if (kIsWeb) {
+      return _loginWeb(returnToAfterLogin: returnToAfterLogin);
+    }
+
+    try {
+      late final OAuthToken token;
+      try {
+        token = await UserApi.instance.loginWithKakaoTalk();
+      } catch (_) {
+        token = await UserApi.instance.loginWithKakaoAccount();
+      }
+
       User user = await UserApi.instance.me();
-      
+
       return {
         'success': true,
         'data': {
@@ -73,70 +153,44 @@ class KakaoAuthService {
     }
   }
 
-  // 카카오 로그아웃
+  static Future<Map<String, dynamic>> _loginWeb({String? returnToAfterLogin}) async {
+    final url = buildWebAuthorizeUrl(returnToAfterLogin: returnToAfterLogin);
+    return {
+      'success': false,
+      'needsRedirect': true,
+      'redirectUrl': url,
+    };
+  }
+
   static Future<void> logout() async {
     try {
       if (kIsWeb) {
         return;
       }
-
       await UserApi.instance.logout();
-    } catch (e) {
-    }
+    } catch (_) {}
   }
 
-  // 카카오 계정 연결 해제
   static Future<void> unlink() async {
     try {
       if (kIsWeb) {
         return;
       }
-
       await UserApi.instance.unlink();
-    } catch (e) {
-    }
+    } catch (_) {}
   }
 
-
-  // 웹 환경 카카오 로그인 (서버 API를 통한 처리)
-  static Future<Map<String, dynamic>> _loginWeb() async {
-    try {
-      // 웹 환경에서는 서버 API를 통해 카카오 로그인을 처리
-      // 서버에서 카카오 OAuth를 처리하고 사용자 정보를 반환
-      // 여기서는 서버 API를 호출하는 방식으로 처리
-      
-      // 서버의 카카오 로그인 엔드포인트 호출
-      // 서버에서 카카오 OAuth URL로 리다이렉트하거나
-      // 팝업을 통해 카카오 로그인을 처리
-      
-      // 임시로 서버 API를 통해 처리
-      // 실제로는 서버에서 카카오 JavaScript SDK를 사용하여 처리
-      return {
-        'success': false,
-        'error': '웹 환경에서는 서버 API를 통해 카카오 로그인을 처리해야 합니다. 서버에 카카오 로그인 엔드포인트를 구현해주세요.',
-        'needsServerAuth': true,
-      };
-    } catch (e) {
-      return {
-        'success': false,
-        'error': '카카오 로그인 중 오류가 발생했습니다: $e',
-      };
-    }
-  }
-
-  // 에러 메시지 변환
   static String _getErrorMessage(KakaoException e) {
-    // KakaoException의 메시지를 직접 사용하거나, 기본 메시지 반환
     final errorMessage = e.toString();
-    
-    // 에러 메시지에 따라 사용자 친화적인 메시지로 변환
     if (errorMessage.contains('access_denied') || errorMessage.contains('권한')) {
       return '카카오 로그인 권한이 거부되었습니다.';
-    } else if (errorMessage.contains('authentication') || errorMessage.contains('인증')) {
+    } else if (errorMessage.contains('authentication') ||
+        errorMessage.contains('인증')) {
       return '카카오 인증에 실패했습니다.';
     } else if (errorMessage.contains('invalid') || errorMessage.contains('잘못')) {
       return '잘못된 요청입니다.';
-    } else if (errorMessage.contains('misconfigured') || errorMessage.contains('설정')) {
+    } else if (errorMessage.contains('misconfigured') ||
+        errorMessage.contains('설정')) {
       return '카카오 SDK 설정이 올바르지 않습니다.';
     } else {
       return '카카오 로그인 중 오류가 발생했습니다: ${e.toString()}';
