@@ -16,8 +16,15 @@ import '../../../../core/health/health_refresh_bus.dart';
 class BloodSugarInputScreen extends StatefulWidget {
   final BloodSugarRecord? record; // null이면 새 기록, 있으면 수정
   final DateTime? recordContextDate;
+  /// 새 기록일 때 기본 측정 유형 (공복/식후 카드에서 진입)
+  final String? initialMeasurementType;
 
-  const BloodSugarInputScreen({super.key, this.record, this.recordContextDate});
+  const BloodSugarInputScreen({
+    super.key,
+    this.record,
+    this.recordContextDate,
+    this.initialMeasurementType,
+  });
 
   @override
   State<BloodSugarInputScreen> createState() => _BloodSugarInputScreenState();
@@ -30,6 +37,7 @@ class _BloodSugarInputScreenState extends State<BloodSugarInputScreen> {
   DateTime _selectedDateTime = DateTime.now();
   String _selectedMeasurementType = '공복';
   bool _isSaving = false;
+  int? _editingRecordId;
 
   final List<String> _measurementTypes = ['공복', '식전', '식후', '취침전', '평상시'];
 
@@ -42,9 +50,18 @@ class _BloodSugarInputScreenState extends State<BloodSugarInputScreen> {
       _bloodSugarController.text = widget.record!.bloodSugar.toString();
       _selectedDateTime = widget.record!.measuredAt;
       _selectedMeasurementType = widget.record!.measurementType;
-    } else if (widget.recordContextDate != null) {
-      _selectedDateTime =
-          healthDefaultNewRecordDateTime(widget.recordContextDate!);
+      _editingRecordId = widget.record!.id;
+    } else {
+      final initialType = widget.initialMeasurementType?.trim();
+      if (initialType != null &&
+          initialType.isNotEmpty &&
+          _measurementTypes.contains(initialType)) {
+        _selectedMeasurementType = initialType;
+      }
+      if (widget.recordContextDate != null) {
+        _selectedDateTime =
+            healthDefaultNewRecordDateTime(widget.recordContextDate!);
+      }
     }
   }
 
@@ -115,22 +132,17 @@ class _BloodSugarInputScreenState extends State<BloodSugarInputScreen> {
       final bloodSugar = int.parse(_bloodSugarController.text);
 
       final record = BloodSugarRecord(
-        id: widget.record?.id,
+        id: _editingRecordId,
         mbId: user.id,
         measuredAt: _selectedDateTime,
         bloodSugar: bloodSugar,
         measurementType: _selectedMeasurementType,
       );
 
-      // API 호출
-      bool success;
-      if (widget.record == null) {
-        // 새 기록 추가
-        success = await BloodSugarRepository.addBloodSugarRecord(record);
-      } else {
-        // 기록 수정
-        success = await BloodSugarRepository.updateBloodSugarRecord(record);
-      }
+      // 측정 유형을 바꾸면 기존 공복 기록을 식후로 덮어쓰지 않고 새 기록으로 저장
+      final success = _editingRecordId == null
+          ? await BloodSugarRepository.addBloodSugarRecord(record)
+          : await BloodSugarRepository.updateBloodSugarRecord(record);
 
       if (mounted) {
         if (success) {
@@ -147,9 +159,30 @@ class _BloodSugarInputScreenState extends State<BloodSugarInputScreen> {
     }
   }
 
+  bool get _isEditingExisting => _editingRecordId != null;
+
+  void _onMeasurementTypeSelected(String type) {
+    if (type == _selectedMeasurementType) return;
+    setState(() {
+      _selectedMeasurementType = type;
+      final original = widget.record;
+      if (original == null) return;
+      if (type == original.measurementType) {
+        _editingRecordId = original.id;
+        _selectedDateTime = original.measuredAt;
+        _bloodSugarController.text = original.bloodSugar.toString();
+      } else {
+        // 다른 유형은 별도 입력이므로 기존 기록(공복 등)을 유지한 채 신규 저장
+        _editingRecordId = null;
+        _selectedDateTime = healthDefaultNewRecordDateTime(original.measuredAt);
+        _bloodSugarController.clear();
+      }
+    });
+  }
+
   void _onDeletePressed() {
     if (_isSaving) return;
-    if (widget.record == null) {
+    if (!_isEditingExisting) {
       Navigator.pop(context);
       return;
     }
@@ -173,14 +206,15 @@ class _BloodSugarInputScreenState extends State<BloodSugarInputScreen> {
 
   // 혈당 기록 삭제
   Future<void> _deleteRecord() async {
-    if (widget.record?.id == null) return;
+    final recordId = _editingRecordId;
+    if (recordId == null) return;
 
     setState(() => _isSaving = true);
 
     try {
       final success = await BloodSugarRepository.deleteBloodSugarRecord(
-        widget.record!.id!,
-        mbId: widget.record!.mbId,
+        recordId,
+        mbId: widget.record?.mbId,
       );
 
       if (mounted) {
@@ -283,7 +317,7 @@ class _BloodSugarInputScreenState extends State<BloodSugarInputScreen> {
   Widget _buildDateTimeCard() {
     final dateText = DateFormat('yyyy.MM.dd').format(_selectedDateTime);
     final timeText = DateFormat('HH:mm').format(_selectedDateTime);
-    final isEditMode = widget.record != null;
+    final isEditMode = _isEditingExisting;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -369,11 +403,7 @@ class _BloodSugarInputScreenState extends State<BloodSugarInputScreen> {
         final isSelected = _selectedMeasurementType == type;
         return Expanded(
           child: GestureDetector(
-            onTap: () {
-              setState(() {
-                _selectedMeasurementType = type;
-              });
-            },
+            onTap: () => _onMeasurementTypeSelected(type),
             child: Container(
               height: healthDp(context, 35),
               margin: EdgeInsets.only(right: healthDp(context, 8)),
@@ -499,7 +529,7 @@ class _BloodSugarInputScreenState extends State<BloodSugarInputScreen> {
                 ),
               ),
               child: Text(
-                widget.record == null ? '취소' : '삭제',
+                _isEditingExisting ? '삭제' : '취소',
                 textScaler: TextScaler.noScaling,
                 style: TextStyle(
                   fontFamily: 'Gmarket Sans TTF',
@@ -535,7 +565,7 @@ class _BloodSugarInputScreenState extends State<BloodSugarInputScreen> {
                       ),
                     )
                   : Text(
-                      widget.record == null ? '등록' : '수정',
+                      _isEditingExisting ? '수정' : '등록',
                       textScaler: TextScaler.noScaling,
                       style: TextStyle(
                         fontFamily: 'Gmarket Sans TTF',

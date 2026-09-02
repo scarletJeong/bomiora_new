@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
+import '../../health_common/health_responsive_scale.dart';
 import '../../health_common/widgets/health_app_bar.dart';
 import '../../../common/widgets/date_top_widget.dart';
 import '../../../common/widgets/btn_record.dart';
@@ -69,6 +70,7 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final textScale = healthTextScaleByWidth(MediaQuery.sizeOf(context).width);
     return MobileAppLayoutWrapper(
       backgroundColor: Colors.white,
       appBar: HealthAppBar(
@@ -82,38 +84,40 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
           ),
         ],
       ),
-      child: isLoading 
-        ? const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CircularProgressIndicator(),
-                SizedBox(height: 16),
-                Text('데이터를 불러오는 중...'),
-              ],
-            ),
-          )
-        : SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20),  // 좌우 20px 패딩
+      child: MediaQuery(
+        data: MediaQuery.of(context).copyWith(
+          textScaler: TextScaler.linear(textScale),
+        ),
+        child: isLoading
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const CircularProgressIndicator(),
+                  SizedBox(height: healthDp(context, 16)),
+                  Text(
+                    '데이터를 불러오는 중...',
+                    textScaler: TextScaler.noScaling,
+                    style: TextStyle(fontSize: healthSp(context, 14)),
+                  ),
+                ],
+              ),
+            )
+          : SingleChildScrollView(
+        padding: EdgeInsets.symmetric(horizontal: healthDp(context, 20)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 날짜 네비게이션
             _buildCurrentStatusSection(),
-            const SizedBox(height: 24),
-            
-            // 오늘의 총 걸음수
+            SizedBox(height: healthDp(context, 24)),
             _buildTotalStepsCard(),
-            const SizedBox(height: 20),
-            
-            // 거리와 칼로리 카드
+            SizedBox(height: healthDp(context, 20)),
             _buildSummaryCards(),
-            const SizedBox(height: 24),
-            
-            // 시간별 차트
+            SizedBox(height: healthDp(context, 24)),
             _buildChartSection(),
           ],
         ),
+      ),
       ),
     );
   }
@@ -132,10 +136,11 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
               setState(() {
                 selectedDate = newDate;
               });
+              _loadData();
             },
             secondaryColor: Colors.grey[400],
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: healthDp(context, 16)),
         ],
       ),
     );
@@ -149,52 +154,57 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
     final isIncrease = stepsDiff > 0;
     
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(healthDp(context, 24)),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(healthDp(context, 16)),
         boxShadow: [
           BoxShadow(
             color: Colors.grey.withOpacity(0.1),
             spreadRadius: 1,
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            blurRadius: healthDp(context, 8),
+            offset: Offset(0, healthDp(context, 2)),
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Center(
+          Center(
             child: Text(
               '오늘 총 걸음 수',
+              textScaler: TextScaler.noScaling,
               style: TextStyle(
-                fontSize: 16,
+                fontSize: healthSp(context, 16),
                 color: Colors.black,
               ),
               textAlign: TextAlign.center,
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: healthDp(context, 16)),
           Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Text(
                 '${PriceFormatter.format(totalSteps)} 걸음',
-                style: const TextStyle(
-                  fontSize: 32,
+                textScaler: TextScaler.noScaling,
+                style: TextStyle(
+                  fontSize: healthSp(context, 32),
                   fontWeight: FontWeight.bold,
                   color: Colors.red,
                 ),
                 textAlign: TextAlign.center,
               ),
               if (stepsDiff != 0) ...[
-                const SizedBox(height: 8),
+                SizedBox(height: healthDp(context, 8)),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: healthDp(context, 8),
+                    vertical: healthDp(context, 4),
+                  ),
                   decoration: BoxDecoration(
                     color: isIncrease ? Colors.red[50] : Colors.blue[50],
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(healthDp(context, 8)),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -202,14 +212,15 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                     children: [
                       Icon(
                         isIncrease ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-                        size: 16,
+                        size: healthDp(context, 16),
                         color: isIncrease ? Colors.red : Colors.blue,
                       ),
-                      const SizedBox(width: 2),
+                      SizedBox(width: healthDp(context, 2)),
                       Text(
                         '전날 대비 ${PriceFormatter.format(stepsDiff.abs())} ${isIncrease ? '↑' : '↓'}',
+                        textScaler: TextScaler.noScaling,
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: healthSp(context, 12),
                           color: isIncrease ? Colors.red : Colors.blue,
                           fontWeight: FontWeight.bold,
                         ),
@@ -247,7 +258,7 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
             comparisonColor: distanceDiff > 0 ? Colors.red : Colors.blue,
           ),
         ),
-        const SizedBox(width: 12),
+        SizedBox(width: healthDp(context, 12)),
         // 칼로리 카드
         Expanded(
           child: _buildSummaryCard(
@@ -275,16 +286,16 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
     Color? comparisonColor,
   }) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(healthDp(context, 16)),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(healthDp(context, 12)),
         boxShadow: [
           BoxShadow(
             color: Colors.grey.withOpacity(0.1),
             spreadRadius: 1,
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            blurRadius: healthDp(context, 8),
+            offset: Offset(0, healthDp(context, 2)),
           ),
         ],
       ),
@@ -294,23 +305,25 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
           Icon(
             icon,
             color: iconColor,
-            size: 24,
+            size: healthDp(context, 24),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: healthDp(context, 8)),
           Text(
             value,
-            style: const TextStyle(
-              fontSize: 18,
+            textScaler: TextScaler.noScaling,
+            style: TextStyle(
+              fontSize: healthSp(context, 18),
               fontWeight: FontWeight.bold,
               color: Colors.black,
             ),
           ),
           if (comparison != null) ...[
-            const SizedBox(height: 4),
+            SizedBox(height: healthDp(context, 4)),
             Text(
               comparison,
+              textScaler: TextScaler.noScaling,
               style: TextStyle(
-                fontSize: 12,
+                fontSize: healthSp(context, 12),
                 color: comparisonColor ?? Colors.grey[600],
                 fontWeight: FontWeight.w500,
               ),
@@ -324,37 +337,34 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
   // 차트 섹션
   Widget _buildChartSection() {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(healthDp(context, 20)),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(healthDp(context, 16)),
         boxShadow: [
           BoxShadow(
             color: Colors.grey.withOpacity(0.1),
             spreadRadius: 1,
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            blurRadius: healthDp(context, 8),
+            offset: Offset(0, healthDp(context, 2)),
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 차트 타입 선택 버튼
           Row(
             children: [
               _buildChartTypeButton('시간별', 'hourly'),
-              const SizedBox(width: 8),
+              SizedBox(width: healthDp(context, 8)),
               _buildChartTypeButton('일별', 'daily'),
-              const SizedBox(width: 8),
+              SizedBox(width: healthDp(context, 8)),
               _buildChartTypeButton('월별', 'monthly'),
             ],
           ),
-          const SizedBox(height: 20),
-          
-          // 차트
+          SizedBox(height: healthDp(context, 20)),
           SizedBox(
-            height: 200,
+            height: healthDp(context, 200),
             child: HourlyStepsChart(
               hourlySteps: todayStepsRecord?.hourlySteps ?? [],
               chartType: chartType,
@@ -376,15 +386,19 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
         });
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: EdgeInsets.symmetric(
+          horizontal: healthDp(context, 16),
+          vertical: healthDp(context, 8),
+        ),
         decoration: BoxDecoration(
           color: isSelected ? Colors.blue : Colors.grey[100],
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(healthDp(context, 8)),
         ),
         child: Text(
           label,
+          textScaler: TextScaler.noScaling,
           style: TextStyle(
-            fontSize: 14,
+            fontSize: healthSp(context, 14),
             color: isSelected ? Colors.white : Colors.grey[600],
             fontWeight: FontWeight.w500,
           ),

@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../health_common/health_responsive_scale.dart';
+
 const String _kStepsTooltipFont = 'Gmarket Sans TTF';
 
 Widget stepsTooltipValueText({
+  required BuildContext context,
   required String value,
   TextStyle? style,
 }) {
@@ -12,10 +15,11 @@ Widget stepsTooltipValueText({
     alignment: Alignment.center,
     child: Text(
       value,
+      textScaler: TextScaler.noScaling,
       style: style ??
-          const TextStyle(
+          TextStyle(
             color: Colors.black87,
-            fontSize: 14,
+            fontSize: healthSp(context, 14),
             fontFamily: _kStepsTooltipFont,
             fontWeight: FontWeight.w700,
           ),
@@ -39,9 +43,9 @@ class StepsChartTooltip extends StatelessWidget {
     required this.chartHeight,
   });
 
-  TextStyle get _headerStyle => TextStyle(
+  TextStyle _headerStyle(BuildContext context) => TextStyle(
         color: Colors.grey[700],
-        fontSize: 12,
+        fontSize: healthSp(context, 12),
         fontWeight: FontWeight.w400,
         fontFamily: _kStepsTooltipFont,
       );
@@ -80,7 +84,8 @@ class StepsChartTooltip extends StatelessWidget {
     final fmt = NumberFormat('#,###');
 
     return _positionedCard(
-      estimatedHeight: header.isNotEmpty ? 82 : 60,
+      context: context,
+      estimatedHeight: header.isNotEmpty ? healthDp(context, 82) : healthDp(context, 60),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
@@ -89,11 +94,15 @@ class StepsChartTooltip extends StatelessWidget {
             Text(
               header,
               textAlign: TextAlign.center,
-              style: _headerStyle,
+              textScaler: TextScaler.noScaling,
+              style: _headerStyle(context),
             ),
-          if (header.isNotEmpty) const SizedBox(height: 8),
+          if (header.isNotEmpty) SizedBox(height: healthDp(context, 8)),
           Center(
-            child: stepsTooltipValueText(value: '${fmt.format(stepsInt)} 보'),
+            child: stepsTooltipValueText(
+              context: context,
+              value: '${fmt.format(stepsInt)} 보',
+            ),
           ),
         ],
       ),
@@ -101,14 +110,15 @@ class StepsChartTooltip extends StatelessWidget {
   }
 
   Widget _positionedCard({
+    required BuildContext context,
     required Widget child,
     required double estimatedHeight,
   }) {
-    const margin = 6.0;
-    const minTooltipWidth = 72.0;
+    final margin = healthDp(context, 6);
+    final minTooltipWidth = healthDp(context, 72);
 
     double tooltipX = tooltipPosition!.dx;
-    double tooltipY = tooltipPosition!.dy - 60;
+    double tooltipY = tooltipPosition!.dy - healthDp(context, 60);
 
     if (tooltipX + minTooltipWidth + margin > chartWidth) {
       tooltipX = chartWidth - minTooltipWidth - margin;
@@ -116,9 +126,12 @@ class StepsChartTooltip extends StatelessWidget {
     if (tooltipX < margin) tooltipX = margin;
 
     var maxTooltipWidth = chartWidth - tooltipX - margin;
-    maxTooltipWidth = maxTooltipWidth.clamp(88.0, 240.0);
+    maxTooltipWidth = maxTooltipWidth.clamp(
+      healthDp(context, 88),
+      healthDp(context, 240),
+    );
 
-    if (tooltipY < 0) tooltipY = tooltipPosition!.dy + 20;
+    if (tooltipY < 0) tooltipY = tooltipPosition!.dy + healthDp(context, 20);
     if (tooltipY > chartHeight - estimatedHeight) {
       tooltipY = chartHeight - estimatedHeight;
     }
@@ -130,10 +143,13 @@ class StepsChartTooltip extends StatelessWidget {
         constraints: BoxConstraints(maxWidth: maxTooltipWidth),
         child: IntrinsicWidth(
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+            padding: EdgeInsets.symmetric(
+              horizontal: healthDp(context, 8),
+              vertical: healthDp(context, 7),
+            ),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(healthDp(context, 10)),
               border: Border.all(color: const Color(0xFFE5E7EB)),
             ),
             child: child,
@@ -143,4 +159,3 @@ class StepsChartTooltip extends StatelessWidget {
     );
   }
 }
-

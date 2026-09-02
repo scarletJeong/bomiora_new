@@ -353,9 +353,9 @@ class _HeartRateListScreenState extends State<HeartRateListScreen>
 
   Widget _buildDailyTooltipBubble(_DailyChartTooltip t) {
     const font = 'Gmarket Sans TTF';
-    const headerStyle = TextStyle(
-      color: Color(0xFF374151),
-      fontSize: 12,
+    final headerStyle = TextStyle(
+      color: const Color(0xFF374151),
+      fontSize: healthSp(context, 12),
       fontWeight: FontWeight.w400,
       fontFamily: font,
     );
@@ -383,13 +383,15 @@ class _HeartRateListScreenState extends State<HeartRateListScreen>
         Text(
           '${t.bucketHour}시',
           textAlign: TextAlign.center,
+          textScaler: TextScaler.noScaling,
           style: headerStyle,
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: healthDp(context, 8)),
       ];
       if (daily.isNotEmpty) {
         body.add(
           heartRateTooltipValueRowWithBadge(
+            context: context,
             badgeLabel: '일',
             badgeColor: heartRateTooltipDailyColor,
             value: rangeValueFor(daily),
@@ -397,11 +399,12 @@ class _HeartRateListScreenState extends State<HeartRateListScreen>
         );
       }
       if (daily.isNotEmpty && exercise.isNotEmpty) {
-        body.add(const SizedBox(height: 6));
+        body.add(SizedBox(height: healthDp(context, 6)));
       }
       if (exercise.isNotEmpty) {
         body.add(
           heartRateTooltipValueRowWithBadge(
+            context: context,
             badgeLabel: '운',
             badgeColor: heartRateTooltipExerciseColor,
             value: rangeValueFor(exercise),
@@ -410,10 +413,13 @@ class _HeartRateListScreenState extends State<HeartRateListScreen>
       }
 
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+        padding: EdgeInsets.symmetric(
+          horizontal: healthDp(context, 8),
+          vertical: healthDp(context, 7),
+        ),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(healthDp(context, 10)),
           border: Border.all(color: const Color(0xFFE5E7EB)),
         ),
         child: Column(
@@ -425,10 +431,13 @@ class _HeartRateListScreenState extends State<HeartRateListScreen>
     }
     final r = t.record!;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+      padding: EdgeInsets.symmetric(
+        horizontal: healthDp(context, 8),
+        vertical: healthDp(context, 7),
+      ),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(healthDp(context, 10)),
         border: Border.all(color: const Color(0xFFE5E7EB)),
       ),
       child: Column(
@@ -438,10 +447,12 @@ class _HeartRateListScreenState extends State<HeartRateListScreen>
           Text(
             '${r.measuredAt.hour}시',
             textAlign: TextAlign.center,
+            textScaler: TextScaler.noScaling,
             style: headerStyle,
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: healthDp(context, 8)),
           heartRateTooltipValueRowWithBadge(
+            context: context,
             badgeLabel: r.isExerciseForChart ? '운' : '일',
             badgeColor: r.isExerciseForChart
                 ? heartRateTooltipExerciseColor

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../health_responsive_scale.dart';
 import 'health_expanded_chart_layout.dart';
 
 /// 웹 확대 팝업 고정 크기 (Figma)
@@ -46,8 +47,7 @@ double _expandLayoutWidth(BuildContext context) {
 }
 
 double _expandTextScale(double layoutWidth) {
-  final scaled = layoutWidth / 375.0;
-  return scaled.clamp(1.0, kHealthWebExpandDialogWidth / 375.0);
+  return healthTextScaleByWidth(layoutWidth);
 }
 
 /// [StatefulBuilder] 안에서 [onRegisterRefresh]를 매 빌드마다 호출하면
@@ -176,12 +176,12 @@ Future<void> _openWebPopup({
                 clipBehavior: Clip.antiAlias,
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(healthDp(innerCtx, 20)),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withOpacity(0.18),
-                      blurRadius: 32,
-                      offset: const Offset(0, 8),
+                      blurRadius: healthDp(innerCtx, 32),
+                      offset: Offset(0, healthDp(innerCtx, 8)),
                     ),
                   ],
                 ),

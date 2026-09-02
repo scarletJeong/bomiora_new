@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../health_common/health_responsive_scale.dart';
+
 /// 일별 툴팁 시간 표기: `N시`
 String bloodSugarFormatKoreanTime(DateTime dt) {
   return '${dt.hour}시';
@@ -41,29 +43,29 @@ class BloodSugarTooltip extends StatelessWidget {
     required this.chartHeight,
   });
 
-  TextStyle get _timeStyle => TextStyle(
+  TextStyle _timeStyle(BuildContext context) => TextStyle(
         color: Colors.grey[700],
-        fontSize: 12,
+        fontSize: healthSp(context, 12),
         fontWeight: FontWeight.w400,
       );
 
   /// 체중 툴팁: 일·주는 회색, 월 첫 줄은 black87
-  TextStyle get _headerStyle {
+  TextStyle _headerStyle(BuildContext context) {
     if (selectedPeriod == '월') {
-      return const TextStyle(
+      return TextStyle(
         color: Colors.black87,
-        fontSize: 12,
+        fontSize: healthSp(context, 12),
         fontWeight: FontWeight.w400,
       );
     }
-    return _timeStyle;
+    return _timeStyle(context);
   }
 
-  static const TextStyle _valueStyle = TextStyle(
-    color: Colors.black87,
-    fontSize: 14,
-    fontWeight: FontWeight.w700,
-  );
+  TextStyle _valueStyle(BuildContext context) => TextStyle(
+        color: Colors.black87,
+        fontSize: healthSp(context, 14),
+        fontWeight: FontWeight.w700,
+      );
 
   String _headerLine(Map<String, dynamic> payload) {
     switch (selectedPeriod) {
@@ -106,7 +108,7 @@ class BloodSugarTooltip extends StatelessWidget {
     if (tooltipPosition == null) return const SizedBox.shrink();
 
     if (data['bloodSugarOverlapCluster'] == true) {
-      return _buildOverlapClusterTooltip();
+      return _buildOverlapClusterTooltip(context);
     }
 
     final bloodSugar = data['bloodSugar'];
@@ -117,8 +119,9 @@ class BloodSugarTooltip extends StatelessWidget {
       final header = _headerLine(data);
       final body = minSugar == maxSugar ? '$minSugar' : '$minSugar ~ $maxSugar';
       return _positionedCard(
-        minWidth: 120,
-        estimatedHeight: 56,
+        context: context,
+        minWidth: healthDp(context, 120),
+        estimatedHeight: healthDp(context, 56),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
@@ -126,13 +129,15 @@ class BloodSugarTooltip extends StatelessWidget {
             if (header.isNotEmpty)
               Text(
                 header,
-                style: _headerStyle,
+                textScaler: TextScaler.noScaling,
+                style: _headerStyle(context),
                 textAlign: TextAlign.center,
               ),
-            if (header.isNotEmpty) const SizedBox(height: 4),
+            if (header.isNotEmpty) SizedBox(height: healthDp(context, 4)),
             Text(
               body,
-              style: _valueStyle,
+              textScaler: TextScaler.noScaling,
+              style: _valueStyle(context),
               textAlign: TextAlign.center,
             ),
           ],
@@ -148,8 +153,9 @@ class BloodSugarTooltip extends StatelessWidget {
     final body = '$typeLine  $bloodSugar';
 
     return _positionedCard(
-      minWidth: 90,
-      estimatedHeight: 56,
+      context: context,
+      minWidth: healthDp(context, 90),
+      estimatedHeight: healthDp(context, 56),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -157,13 +163,15 @@ class BloodSugarTooltip extends StatelessWidget {
           if (header.isNotEmpty)
             Text(
               header,
-              style: _headerStyle,
+              textScaler: TextScaler.noScaling,
+              style: _headerStyle(context),
               textAlign: TextAlign.center,
             ),
-          if (header.isNotEmpty) const SizedBox(height: 4),
+          if (header.isNotEmpty) SizedBox(height: healthDp(context, 4)),
           Text(
             body,
-            style: _valueStyle,
+            textScaler: TextScaler.noScaling,
+            style: _valueStyle(context),
             textAlign: TextAlign.center,
           ),
         ],
@@ -171,7 +179,7 @@ class BloodSugarTooltip extends StatelessWidget {
     );
   }
 
-  Widget _buildOverlapClusterTooltip() {
+  Widget _buildOverlapClusterTooltip(BuildContext context) {
     final raw = data['overlapEntries'];
     if (raw is! List || raw.isEmpty) return const SizedBox.shrink();
 
@@ -186,9 +194,10 @@ class BloodSugarTooltip extends StatelessWidget {
     final header = _headerLine(data);
 
     return _positionedCard(
-      minWidth: 130,
-      estimatedHeight: 40.0 + entries.length * 26.0,
-      maxWidth: 220,
+      context: context,
+      minWidth: healthDp(context, 130),
+      estimatedHeight: healthDp(context, 40) + entries.length * healthDp(context, 26),
+      maxWidth: healthDp(context, 220),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -196,18 +205,20 @@ class BloodSugarTooltip extends StatelessWidget {
           if (header.isNotEmpty)
             Text(
               header,
-              style: _headerStyle,
+              textScaler: TextScaler.noScaling,
+              style: _headerStyle(context),
               textAlign: TextAlign.center,
             ),
-          if (header.isNotEmpty) const SizedBox(height: 4),
+          if (header.isNotEmpty) SizedBox(height: healthDp(context, 4)),
           ...entries.map((e) {
             final mRaw = e['measurementType']?.toString() ?? '';
             final label = mRaw.isEmpty ? '기타' : mRaw;
             return Padding(
-              padding: const EdgeInsets.only(bottom: 4),
+              padding: EdgeInsets.only(bottom: healthDp(context, 4)),
               child: Text(
                 '$label  ${e['bloodSugar']}',
-                style: _valueStyle,
+                textScaler: TextScaler.noScaling,
+                style: _valueStyle(context),
                 textAlign: TextAlign.center,
               ),
             );
@@ -218,18 +229,19 @@ class BloodSugarTooltip extends StatelessWidget {
   }
 
   Widget _positionedCard({
+    required BuildContext context,
     required Widget child,
     required double estimatedHeight,
     double minWidth = 110,
     double? maxWidth,
   }) {
     double tooltipX = tooltipPosition!.dx;
-    double tooltipY = tooltipPosition!.dy - 60;
+    double tooltipY = tooltipPosition!.dy - healthDp(context, 60);
 
     final clampW = maxWidth ?? minWidth;
     if (tooltipX < 0) tooltipX = 0;
     if (tooltipX > chartWidth - clampW) tooltipX = chartWidth - clampW;
-    if (tooltipY < 0) tooltipY = tooltipPosition!.dy + 20;
+    if (tooltipY < 0) tooltipY = tooltipPosition!.dy + healthDp(context, 20);
     if (tooltipY > chartHeight - estimatedHeight) {
       tooltipY = chartHeight - estimatedHeight;
     }
@@ -238,16 +250,22 @@ class BloodSugarTooltip extends StatelessWidget {
       left: tooltipX,
       top: tooltipY,
       child: Container(
-        constraints: BoxConstraints(minWidth: minWidth, maxWidth: maxWidth ?? 280),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        constraints: BoxConstraints(
+          minWidth: minWidth,
+          maxWidth: maxWidth ?? healthDp(context, 280),
+        ),
+        padding: EdgeInsets.symmetric(
+          horizontal: healthDp(context, 12),
+          vertical: healthDp(context, 8),
+        ),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(healthDp(context, 8)),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.12),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+              blurRadius: healthDp(context, 8),
+              offset: Offset(0, healthDp(context, 2)),
             ),
           ],
         ),

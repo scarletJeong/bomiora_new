@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../health_common/health_responsive_scale.dart';
+
 const String _kHeartRateTooltipFont = 'Gmarket Sans TTF';
 
 /// [heart_rate_period_chart.dart] 범례와 동일 색.
@@ -9,6 +11,7 @@ const Color heartRateTooltipExerciseColor = Color(0xFFFF8686);
 /// 혈압 차트 툴팁 [buildBloodPressureChartTooltip]과 동일 타이포·배지·카드·정렬.
 /// 시간대별(일) 차트 툴팁에서도 동일 배지 UI로 재사용.
 Widget heartRateTooltipValueRowWithBadge({
+  required BuildContext context,
   required String badgeLabel,
   required Color badgeColor,
   required String value,
@@ -23,35 +26,35 @@ Widget heartRateTooltipValueRowWithBadge({
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 16,
-          padding: const EdgeInsets.symmetric(vertical: 2),
+          width: healthDp(context, 16),
+          padding: EdgeInsets.symmetric(vertical: healthDp(context, 2)),
           decoration: ShapeDecoration(
             color: badgeColor,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(19),
+              borderRadius: BorderRadius.circular(healthDp(context, 19)),
             ),
           ),
           child: Center(
             child: Text(
               badgeLabel,
               textScaler: TextScaler.noScaling,
-              style: const TextStyle(
+              style: TextStyle(
                 color: Colors.white,
-                fontSize: 10,
+                fontSize: healthSp(context, 10),
                 fontFamily: _kHeartRateTooltipFont,
                 fontWeight: FontWeight.w500,
               ),
             ),
           ),
         ),
-        const SizedBox(width: 5),
+        SizedBox(width: healthDp(context, 5)),
         Text(
           value,
-          textScaler: valueTextScaler,
+          textScaler: valueTextScaler ?? TextScaler.noScaling,
           style: valueStyle ??
-              const TextStyle(
+              TextStyle(
                 color: Colors.black87,
-                fontSize: 14,
+                fontSize: healthSp(context, 14),
                 fontFamily: _kHeartRateTooltipFont,
                 fontWeight: FontWeight.w700,
               ),
@@ -79,23 +82,23 @@ class HeartRateTooltip extends StatelessWidget {
     required this.chartHeight,
   });
 
-  TextStyle get _subHeaderStyle => TextStyle(
+  TextStyle _subHeaderStyle(BuildContext context) => TextStyle(
         color: Colors.grey[700],
-        fontSize: 12,
+        fontSize: healthSp(context, 12),
         fontWeight: FontWeight.w400,
         fontFamily: _kHeartRateTooltipFont,
       );
 
-  TextStyle get _headerStyle {
+  TextStyle _headerStyle(BuildContext context) {
     if (selectedPeriod == '월' && useCalendarYearMonths) {
-      return const TextStyle(
+      return TextStyle(
         color: Colors.black87,
-        fontSize: 12,
+        fontSize: healthSp(context, 12),
         fontWeight: FontWeight.w400,
         fontFamily: _kHeartRateTooltipFont,
       );
     }
-    return _subHeaderStyle;
+    return _subHeaderStyle(context);
   }
 
   String _headerLine() {
@@ -149,6 +152,7 @@ class HeartRateTooltip extends StatelessWidget {
       bodyChildren.add(
         Center(
           child: heartRateTooltipValueRowWithBadge(
+            context: context,
             badgeLabel: '일',
             badgeColor: heartRateTooltipDailyColor,
             value: rangeText(segDaily),
@@ -157,12 +161,13 @@ class HeartRateTooltip extends StatelessWidget {
       );
     }
     if (segDaily != null && segExercise != null) {
-      bodyChildren.add(const SizedBox(height: 6));
+      bodyChildren.add(SizedBox(height: healthDp(context, 6)));
     }
     if (segExercise != null) {
       bodyChildren.add(
         Center(
           child: heartRateTooltipValueRowWithBadge(
+            context: context,
             badgeLabel: '운',
             badgeColor: heartRateTooltipExerciseColor,
             value: rangeText(segExercise),
@@ -173,11 +178,12 @@ class HeartRateTooltip extends StatelessWidget {
 
     if (bodyChildren.isEmpty) return const SizedBox.shrink();
 
-    const double tooltipH = 82.0;
+    final double tooltipH = healthDp(context, 82);
     final estimatedHeight =
-        tooltipH + (segDaily != null && segExercise != null ? 6.0 : 0.0);
+        tooltipH + (segDaily != null && segExercise != null ? healthDp(context, 6) : 0.0);
 
     return _positionedCard(
+      context: context,
       estimatedHeight: estimatedHeight,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -187,9 +193,10 @@ class HeartRateTooltip extends StatelessWidget {
             Text(
               header,
               textAlign: TextAlign.center,
-              style: _headerStyle,
+              textScaler: TextScaler.noScaling,
+              style: _headerStyle(context),
             ),
-          if (header.isNotEmpty) const SizedBox(height: 8),
+          if (header.isNotEmpty) SizedBox(height: healthDp(context, 8)),
           ...bodyChildren,
         ],
       ),
@@ -197,16 +204,17 @@ class HeartRateTooltip extends StatelessWidget {
   }
 
   Widget _positionedCard({
+    required BuildContext context,
     required Widget child,
     required double estimatedHeight,
   }) {
-    const margin = 6.0;
+    final margin = healthDp(context, 6);
     final bool isWeekly = selectedPeriod == '주';
-    final minTooltipWidth = isWeekly ? 74.0 : 124.0;
-    final minCardWidth = isWeekly ? 74.0 : 88.0;
+    final minTooltipWidth = healthDp(context, isWeekly ? 74 : 124);
+    final minCardWidth = healthDp(context, isWeekly ? 74 : 88);
 
     double tooltipX = tooltipPosition!.dx;
-    double tooltipY = tooltipPosition!.dy - 60;
+    double tooltipY = tooltipPosition!.dy - healthDp(context, 60);
 
     if (tooltipX + minTooltipWidth + margin > chartWidth) {
       tooltipX = chartWidth - minTooltipWidth - margin;
@@ -214,9 +222,9 @@ class HeartRateTooltip extends StatelessWidget {
     if (tooltipX < margin) tooltipX = margin;
 
     var maxTooltipWidth = chartWidth - tooltipX - margin;
-    maxTooltipWidth = maxTooltipWidth.clamp(minCardWidth, 240.0);
+    maxTooltipWidth = maxTooltipWidth.clamp(minCardWidth, healthDp(context, 240));
 
-    if (tooltipY < 0) tooltipY = tooltipPosition!.dy + 20;
+    if (tooltipY < 0) tooltipY = tooltipPosition!.dy + healthDp(context, 20);
     if (tooltipY > chartHeight - estimatedHeight) {
       tooltipY = chartHeight - estimatedHeight;
     }
@@ -230,10 +238,13 @@ class HeartRateTooltip extends StatelessWidget {
           maxWidth: maxTooltipWidth,
         ),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+          padding: EdgeInsets.symmetric(
+            horizontal: healthDp(context, 8),
+            vertical: healthDp(context, 7),
+          ),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(healthDp(context, 10)),
             border: Border.all(color: const Color(0xFFE5E7EB)),
           ),
           child: child,

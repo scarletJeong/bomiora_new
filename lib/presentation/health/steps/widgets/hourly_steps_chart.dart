@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../health_common/health_responsive_scale.dart';
 import '../../../../data/models/health/steps/steps_record_model.dart';
 
 class HourlyStepsChart extends StatelessWidget {
@@ -14,17 +15,78 @@ class HourlyStepsChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (chartType == 'hourly') {
-      return _buildHourlyChart();
+      return _buildHourlyChart(context);
     } else if (chartType == 'daily') {
-      return _buildDailyChart();
+      return _buildDailyChart(context);
     } else if (chartType == 'monthly') {
-      return _buildMonthlyChart();
+      return _buildMonthlyChart(context);
     }
-    return _buildHourlyChart();
+    return _buildHourlyChart(context);
+  }
+
+  Widget _buildScaledBarChart({
+    required BuildContext context,
+    required double maxY,
+    required List<double> yAxisValues,
+    required List<String> xLabels,
+    required CustomPainter painter,
+  }) {
+    return SizedBox(
+      height: healthDp(context, 200),
+      child: Row(
+        children: [
+          SizedBox(
+            width: healthDp(context, 50),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: yAxisValues.reversed.map((value) {
+                return Text(
+                  '${value.toInt()}',
+                  textScaler: TextScaler.noScaling,
+                  style: TextStyle(
+                    fontSize: healthSp(context, 12),
+                    color: Colors.grey[600],
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          SizedBox(width: healthDp(context, 8)),
+          Expanded(
+            child: Column(
+              children: [
+                Expanded(
+                  child: CustomPaint(
+                    painter: painter,
+                    child: const SizedBox.expand(),
+                  ),
+                ),
+                SizedBox(
+                  height: healthDp(context, 30),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: xLabels.map((label) {
+                      return Text(
+                        label,
+                        textScaler: TextScaler.noScaling,
+                        style: TextStyle(
+                          fontSize: healthSp(context, 10),
+                          color: Colors.grey[600],
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   // 시간별 차트
-  Widget _buildHourlyChart() {
+  Widget _buildHourlyChart(BuildContext context) {
     // 24시간 데이터 준비 (없는 시간은 0으로 채움)
     final List<HourlySteps> fullDayData = [];
     for (int hour = 0; hour < 24; hour++) {
@@ -55,70 +117,20 @@ class HourlyStepsChart extends StatelessWidget {
       yAxisValues = [0, 2500, 5000];
     }
 
-    return SizedBox(
-      height: 200,
-      child: Row(
-        children: [
-          // Y축 레이블 (왼쪽)
-          SizedBox(
-            width: 50,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: yAxisValues.reversed.map((value) {
-                return Text(
-                  value == maxY ? '${value.toInt()}' : '${value.toInt()}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[600],
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-          const SizedBox(width: 8),
-          
-          // 차트 영역
-          Expanded(
-            child: Column(
-              children: [
-                // 차트
-                Expanded(
-                  child: Container(
-                    child: CustomPaint(
-                      painter: BarChartPainter(
-                        data: fullDayData,
-                        maxY: maxY,
-                      ),
-                      child: Container(),
-                    ),
-                  ),
-                ),
-                // X축 라벨 (시간별: 00, 06, 12, 18, 24)
-                Container(
-                  height: 30,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: ['00', '06', '12', '18', '24'].map((hour) {
-                      return Text(
-                        hour,
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: Colors.grey[600],
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+    return _buildScaledBarChart(
+      context: context,
+      maxY: maxY,
+      yAxisValues: yAxisValues,
+      xLabels: const ['00', '06', '12', '18', '24'],
+      painter: BarChartPainter(
+        data: fullDayData,
+        maxY: maxY,
       ),
     );
   }
 
   // 일별 차트 (주간 데이터)
-  Widget _buildDailyChart() {
+  Widget _buildDailyChart(BuildContext context) {
     // 오늘 날짜 기준으로 -6일부터 오늘까지 7일 데이터 생성
     final now = DateTime.now();
     final weeklyData = <Map<String, dynamic>>[];
@@ -155,70 +167,20 @@ class HourlyStepsChart extends StatelessWidget {
       yAxisValues = [0, 10000, 20000, 30000];
     }
 
-    return SizedBox(
-      height: 200,
-      child: Row(
-        children: [
-          // Y축 레이블 (왼쪽)
-          SizedBox(
-            width: 50,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: yAxisValues.reversed.map((value) {
-                return Text(
-                  value == maxY ? '${value.toInt()}' : '${value.toInt()}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[600],
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-          const SizedBox(width: 8),
-          
-          // 차트 영역
-          Expanded(
-            child: Column(
-              children: [
-                // 차트
-                Expanded(
-                  child: Container(
-                    child: CustomPaint(
-                      painter: WeeklyBarChartPainter(
-                        data: weeklyData,
-                        maxY: maxY,
-                      ),
-                      child: Container(),
-                    ),
-                  ),
-                ),
-                // X축 라벨 (주간: 월/일 형식)
-                Container(
-                  height: 30,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: weekLabels.map((label) {
-                      return Text(
-                        label,
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: Colors.grey[600],
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+    return _buildScaledBarChart(
+      context: context,
+      maxY: maxY,
+      yAxisValues: yAxisValues,
+      xLabels: weekLabels,
+      painter: WeeklyBarChartPainter(
+        data: weeklyData,
+        maxY: maxY,
       ),
     );
   }
 
   // 월별 차트
-  Widget _buildMonthlyChart() {
+  Widget _buildMonthlyChart(BuildContext context) {
     // 월간 데이터 시뮬레이션 (월평균으로 계산)
     final monthlyData = [
       {'month': '1월', 'avgSteps': 8500},
@@ -249,64 +211,14 @@ class HourlyStepsChart extends StatelessWidget {
       yAxisValues = [0, 10000, 20000];
     }
 
-    return SizedBox(
-      height: 200,
-      child: Row(
-        children: [
-          // Y축 레이블 (왼쪽)
-          SizedBox(
-            width: 50,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: yAxisValues.reversed.map((value) {
-                return Text(
-                  value == maxY ? '${value.toInt()}' : '${value.toInt()}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[600],
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-          const SizedBox(width: 8),
-          
-          // 차트 영역
-          Expanded(
-            child: Column(
-              children: [
-                // 차트
-                Expanded(
-                  child: Container(
-                    child: CustomPaint(
-                      painter: MonthlyBarChartPainter(
-                        data: monthlyData,
-                        maxY: maxY,
-                      ),
-                      child: Container(),
-                    ),
-                  ),
-                ),
-                // X축 라벨 (월별: 1월~12월)
-                Container(
-                  height: 30,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: monthlyData.map((month) {
-                      return Text(
-                        month['month'] as String,
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: Colors.grey[600],
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+    return _buildScaledBarChart(
+      context: context,
+      maxY: maxY,
+      yAxisValues: yAxisValues,
+      xLabels: monthlyData.map((month) => month['month'] as String).toList(),
+      painter: MonthlyBarChartPainter(
+        data: monthlyData,
+        maxY: maxY,
       ),
     );
   }

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../health_responsive_scale.dart';
+
 /// 확대 차트 레이아웃 수치 — Figma·참고 코드 기준 폭 **650**.
 ///
 /// 웹 팝업 외곽은 1300px이어도, 탭·버튼·범례 수치는 **650 논리 폭** 기준으로만
@@ -32,7 +34,10 @@ class HealthExpandedChartMetrics {
 
   final double layoutWidth;
 
-  double get scale => layoutWidth / designWidth;
+  /// 650 디자인 수치를 [healthTextScaleByWidth]에 맞춤 (650에서 1.0).
+  double get scale =>
+      healthTextScaleByWidth(layoutWidth) /
+      healthTextScaleByWidth(designWidth);
 
   /// [atDesign650]: 650px 레이아웃 기준 수치.
   double d(double atDesign650) => atDesign650 * scale;

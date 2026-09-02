@@ -765,36 +765,46 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen>
         ? postMealRecord.bloodSugar - previousPostMeal.bloodSugar
         : null;
 
-    return GestureDetector(
-      onTap: _openSelectedSugarRecordEditor,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Expanded(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: GestureDetector(
+                onTap: () => _openSugarEditorForType('공복'),
                 child: _buildSugarSummaryCardNew(
                   label: '공복',
                   value: fastingRecord?.bloodSugar.toString() ?? '-',
                   headerColor:
                       _sugarHeaderColor(fastingRecord?.bloodSugar, '공복'),
-                  diffText: _sugarDiffText(fastingDiff),
+                  diffText: _sugarDiffText(
+                    hasToday: fastingRecord != null,
+                    diff: fastingDiff,
+                  ),
                   diffUp: _isDiffUp(fastingDiff),
                 ),
               ),
-              SizedBox(width: healthDp(context, 10)),
-              Expanded(
+            ),
+            SizedBox(width: healthDp(context, 10)),
+            Expanded(
+              child: GestureDetector(
+                onTap: () => _openSugarEditorForType('식후'),
                 child: _buildSugarSummaryCardNew(
                   label: '식후',
                   value: postMealRecord?.bloodSugar.toString() ?? '-',
                   headerColor:
                       _sugarHeaderColor(postMealRecord?.bloodSugar, '식후'),
-                  diffText: _sugarDiffText(postDiff),
+                  diffText: _sugarDiffText(
+                    hasToday: postMealRecord != null,
+                    diff: postDiff,
+                  ),
                   diffUp: _isDiffUp(postDiff),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
+        ),
           // 공복/식후 카드 ui 와 혈당 상태 색상 notice 부분 간격
           SizedBox(height: healthDp(context, 20)),
           Row(
@@ -818,8 +828,7 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen>
             ],
           ),
         ],
-      ),
-    );
+      );
   }
 
   List<BloodSugarRecord> _recordsForDate(DateTime date) {
@@ -835,8 +844,9 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen>
     return filtered.first;
   }
 
-  String _sugarDiffText(int? diff) {
-    if (diff == null) return '수치를 입력하세요';
+  String _sugarDiffText({required bool hasToday, int? diff}) {
+    if (!hasToday) return '수치를 입력하세요';
+    if (diff == null) return '전날 기록이 없어요';
     return '전날 대비 ${diff.abs()} mg/dL';
   }
 
@@ -855,6 +865,21 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen>
     if (bloodSugar < 140) return const Color(0xFF71D375);
     if (bloodSugar <= 199) return const Color(0xFFFFE78B);
     return const Color(0xFFFF6161);
+  }
+
+  Future<void> _openSugarEditorForType(String type) async {
+    final existing = _latestRecordByType(_recordsForDate(selectedDate), type);
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => existing != null
+            ? BloodSugarInputScreen(record: existing)
+            : BloodSugarInputScreen(
+                recordContextDate: selectedDate,
+                initialMeasurementType: type,
+              ),
+      ),
+    );
   }
 
   Future<void> _openSelectedSugarRecordEditor() async {
