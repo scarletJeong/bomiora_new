@@ -434,7 +434,18 @@ class _HealthYearMonthPickerDialogState
                       height: btnRowH,
                       child: FilledButton(
                         onPressed: () {
-                          Navigator.pop(context, DateTime(_year, _month, 1));
+                          var year = _year;
+                          var month = _month;
+                          if (_yearController.hasClients) {
+                            year = (_minYear + _yearController.selectedItem)
+                                .clamp(_minYear, _maxYear);
+                          }
+                          if (_monthController.hasClients) {
+                            final minM = _minMonthForYear(year);
+                            month = (minM + _monthController.selectedItem)
+                                .clamp(minM, _maxMonthForYear(year));
+                          }
+                          Navigator.pop(context, DateTime(year, month, 1));
                         },
                         style: FilledButton.styleFrom(
                           backgroundColor: const Color(0xFFFF5A8D),

@@ -295,7 +295,7 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen>
       var cur = start;
       while (!cur.isAfter(end)) {
         keys.add(key(cur));
-        cur = cur.add(const Duration(days: 1));
+        cur = DateTime(cur.year, cur.month, cur.day + 1);
       }
     }
     return keys;
@@ -864,7 +864,13 @@ class MenstrualCyclePainter extends CustomPainter {
         color: const Color(0xFFFF5A8D),
         roundEndCap: true,
         shouldPaintDay: (dayDate) {
-          final dayIndex = dayDate.difference(cycleStartDate).inDays + 1;
+          final start = DateTime(
+            cycleStartDate.year,
+            cycleStartDate.month,
+            cycleStartDate.day,
+          );
+          final day = DateTime(dayDate.year, dayDate.month, dayDate.day);
+          final dayIndex = day.difference(start).inDays + 1;
           return dayIndex >= 1 && dayIndex <= periodLength;
         },
       );

@@ -269,9 +269,15 @@ class MenstrualCycleRecord {
 
   /// 달력 표시용 종료일(없으면 계산용 periodLength로 계산)
   DateTime get displayPeriodEnd {
-    if (periodEndDate != null) return periodEndDate!;
+    if (periodEndDate != null) {
+      return DateTime(
+        periodEndDate!.year,
+        periodEndDate!.month,
+        periodEndDate!.day,
+      );
+    }
     final s = displayPeriodStart;
-    return s.add(Duration(days: periodLength - 1));
+    return DateTime(s.year, s.month, s.day + (periodLength - 1).clamp(0, 366));
   }
 }
 

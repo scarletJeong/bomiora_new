@@ -24,11 +24,11 @@ class MenstrualPhaseRecommendationItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final iconSize = compact ? healthDp(context, 20) : 20.0;
-    final gap = compact ? healthDp(context, 12) : 12.0;
-    final labelFs = compact ? healthSp(context, 12) : 13.0;
-    final messageFs = compact ? healthSp(context, 12) : 13.0;
-    final chevronSize = compact ? healthDp(context, 18) : 18.0;
+    final iconSize = healthDp(context, 20);
+    final gap = healthDp(context, 12);
+    final labelFs = healthSp(context, compact ? 12 : 13);
+    final messageFs = healthSp(context, compact ? 12 : 13);
+    final chevronSize = healthDp(context, 18);
 
     final isBomioraPick = tip.label == MenstrualPhaseTip.bomioraPickLabel;
     final messageColor =
@@ -67,7 +67,7 @@ class MenstrualPhaseRecommendationItem extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              SizedBox(height: compact ? healthDp(context, 4) : 4),
+              SizedBox(height: healthDp(context, 4)),
               Text(
                 tip.message,
                 textScaler: TextScaler.noScaling,
@@ -83,7 +83,7 @@ class MenstrualPhaseRecommendationItem extends StatelessWidget {
           ),
         ),
         if (tip.isTappable) ...[
-          SizedBox(width: compact ? healthDp(context, 4) : 4),
+          SizedBox(width: healthDp(context, 4)),
           Icon(
             Icons.chevron_right,
             size: chevronSize,
@@ -97,10 +97,10 @@ class MenstrualPhaseRecommendationItem extends StatelessWidget {
 
     return InkWell(
       onTap: () => navigateMenstrualPhaseLink(context, tip.linkTarget),
-      borderRadius: BorderRadius.circular(compact ? healthDp(context, 8) : 8),
+      borderRadius: BorderRadius.circular(healthDp(context, 8)),
       child: Padding(
         padding: EdgeInsets.symmetric(
-          vertical: compact ? healthDp(context, 2) : 2,
+          vertical: healthDp(context, 2),
         ),
         child: content,
       ),

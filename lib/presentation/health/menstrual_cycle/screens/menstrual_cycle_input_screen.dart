@@ -38,6 +38,7 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
 
   DateTime _focusedDay = DateTime.now();
   late final PageController _calendarPageController;
+  bool _isSyncingCalendarPage = false;
 
   static final DateTime _calendarFirstDay = DateTime(2020, 1, 1);
   static final DateTime _calendarLastDay = DateTime(2030, 12, 31);
@@ -81,7 +82,12 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         if (_calendarPageController.hasClients) {
+          _isSyncingCalendarPage = true;
           _calendarPageController.jumpToPage(_monthPageIndex(_focusedDay));
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            _isSyncingCalendarPage = false;
+          });
         }
       });
     }
@@ -137,7 +143,7 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
       final last = DateUtils.dateOnly(end);
       while (!current.isAfter(last)) {
         keys.add(_dayKey(current));
-        current = current.add(const Duration(days: 1));
+        current = DateTime(current.year, current.month, current.day + 1);
       }
     }
 
@@ -161,8 +167,18 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
     return keys;
   }
 
+  bool _isInsideCurrentSelection(DateTime d) {
+    if (_lastPeriodStart == null || _lastPeriodEnd == null) return false;
+    final dd = DateUtils.dateOnly(d);
+    final start = DateUtils.dateOnly(_lastPeriodStart!);
+    final end = DateUtils.dateOnly(_lastPeriodEnd!);
+    return !dd.isBefore(start) && !dd.isAfter(end);
+  }
+
   bool _isHistoricalEndpoint(DateTime d) {
     final dd = DateUtils.dateOnly(d);
+    // 지금 고른 구간 안에는 예전 주기의 시작/끝 원을 그리지 않음
+    if (_isInsideCurrentSelection(dd)) return false;
     for (final r in _historyRecords) {
       if (r.id != null &&
           _explicitEditRecordId != null &&
@@ -214,17 +230,17 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
     int baseCycle = _cycleLength;
     int basePeriod = 1;
 
-    if (widget.existingRecord != null) {
-      baseStart = widget.existingRecord!.lastPeriodStart;
-      baseCycle = widget.existingRecord!.cycleLength;
-      basePeriod = widget.existingRecord!.periodLength;
-    } else if (_lastPeriodStart != null) {
+    if (_lastPeriodStart != null) {
       baseStart = _lastPeriodStart;
       baseCycle = _cycleLength;
       basePeriod = (_lastPeriodEnd ?? _lastPeriodStart)!
               .difference(_lastPeriodStart!)
               .inDays +
           1;
+    } else if (widget.existingRecord != null) {
+      baseStart = widget.existingRecord!.lastPeriodStart;
+      baseCycle = widget.existingRecord!.cycleLength;
+      basePeriod = widget.existingRecord!.periodLength;
     } else if (_historyRecords.isNotEmpty) {
       final sorted = [..._historyRecords]
         ..sort((a, b) => b.lastPeriodStart.compareTo(a.lastPeriodStart));
@@ -236,7 +252,7 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
 
     if (baseStart == null || baseCycle <= 0 || basePeriod <= 0) return null;
     final s = DateUtils.dateOnly(baseStart.add(Duration(days: baseCycle)));
-    final e = DateUtils.dateOnly(s.add(Duration(days: basePeriod - 1)));
+    final e = DateTime(s.year, s.month, s.day + (basePeriod - 1).clamp(0, 366));
     return (start: s, end: e);
   }
 
@@ -338,8 +354,12 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
       return;
     }
 
-    // 범위 밖 날짜를 눌러도, displayPeriodStart가 가장 가까운 이력을 편집 대상으로 맞춘다.
-    if (widget.existingRecord != null) {
+    // 시작일을 새로 고를 때만 가까운 이력으로 편집 대상을 맞춘다.
+    // 종료일을 고를 때 바꾸면(예: 1일~24일) 27일 주기 쪽으로 id가 넘어가
+    // 그 구간이 사라지고, 덮인 예전 주기(1~5일) 끝점 원이 남는다.
+    final completingRange =
+        _lastPeriodStart != null && _lastPeriodEnd == null;
+    if (widget.existingRecord != null && !completingRange) {
       final nearest = _nearestRecordByDisplayStart(selectedDay);
       if (nearest?.id != null) {
         _explicitEditRecordId = nearest!.id;
@@ -368,7 +388,31 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
         _lastPeriodEnd = start;
         _lastPeriodStart = selectedDay;
       }
+      final rangeStart = DateUtils.dateOnly(_lastPeriodStart!);
+      final rangeEnd = DateUtils.dateOnly(_lastPeriodEnd!);
+      _explicitEditRecordId =
+          _bestRecordIdForSelection(rangeStart, rangeEnd) ??
+              _explicitEditRecordId;
     });
+  }
+
+  /// 고른 구간과 겹치는 이력 중, 시작일을 포함하는 행을 우선한다.
+  int? _bestRecordIdForSelection(DateTime rangeStart, DateTime rangeEnd) {
+    MenstrualCycleRecord? containingStart;
+    MenstrualCycleRecord? overlapping;
+    for (final r in _historyRecords) {
+      if (r.id == null) continue;
+      final start = DateUtils.dateOnly(r.displayPeriodStart);
+      final end = DateUtils.dateOnly(r.displayPeriodEnd);
+      final overlaps = !end.isBefore(rangeStart) && !start.isAfter(rangeEnd);
+      if (!overlaps) continue;
+      overlapping ??= r;
+      if (!rangeStart.isBefore(start) && !rangeStart.isAfter(end)) {
+        containingStart = r;
+        break;
+      }
+    }
+    return (containingStart ?? overlapping)?.id;
   }
 
   @override
@@ -476,6 +520,7 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
               return _buildMonthGrid(monthDay);
             },
             onPageChanged: (index) {
+              if (_isSyncingCalendarPage) return;
               final monthDay = _monthFromPageIndex(index);
               if (!mounted) return;
               setState(() {
@@ -790,16 +835,21 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
 
   void _moveToYearMonth(int year, int month) {
     final target = DateTime(year, month, 1);
-    final page = _monthPageIndex(target);
+    final page = _monthPageIndex(target).clamp(
+      0,
+      (_calendarLastDay.year - _calendarFirstDay.year) * 12 +
+          (_calendarLastDay.month - _calendarFirstDay.month),
+    );
+    _isSyncingCalendarPage = true;
     if (_calendarPageController.hasClients) {
-      _calendarPageController.animateToPage(
-        page,
-        duration: const Duration(milliseconds: 220),
-        curve: Curves.easeOutCubic,
-      );
+      _calendarPageController.jumpToPage(page);
     }
     setState(() {
       _focusedDay = target;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _isSyncingCalendarPage = false;
     });
   }
 
@@ -1198,8 +1248,10 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
               _matchExistingRecordForEdit(_lastPeriodStart!))
           : _matchExistingRecordForEdit(_lastPeriodStart!);
       if (matched != null) {
-        final periodLength =
-            _lastPeriodEnd!.difference(_lastPeriodStart!).inDays + 1;
+        final periodLength = DateUtils.dateOnly(_lastPeriodEnd!)
+                .difference(DateUtils.dateOnly(_lastPeriodStart!))
+                .inDays +
+            1;
         final allForLatest = <MenstrualCycleRecord>[
           ..._historyRecords,
           if (widget.existingRecord != null &&
@@ -1211,7 +1263,7 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
             latest != null && matched.id != null && latest.id == matched.id;
 
         // 최신 기록 수정은 계산 기준(lastPeriodStart)도 함께 변경해 재계산 반영.
-        // 과거 기록 수정은 표시용 날짜만 변경해 기존 계산 흐름 유지.
+        // 과거 기록도 선택 기간(periodLength)은 반드시 갱신한다.
         final record = isLatestRecord
             ? matched.copyWith(
                 mbId: user.id,
@@ -1225,13 +1277,16 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
                 mbId: user.id,
                 periodStartDate: _lastPeriodStart,
                 periodEndDate: _lastPeriodEnd,
+                periodLength: periodLength,
               );
         success =
             await MenstrualCycleRepository.updateMenstrualCycleRecord(record);
       } else {
         // 매칭되는 기존 시작일이 없으면 신규 입력
-        final periodLength =
-            _lastPeriodEnd!.difference(_lastPeriodStart!).inDays + 1;
+        final periodLength = DateUtils.dateOnly(_lastPeriodEnd!)
+                .difference(DateUtils.dateOnly(_lastPeriodStart!))
+                .inDays +
+            1;
         final record = MenstrualCycleRecord(
           mbId: user.id,
           lastPeriodStart: _lastPeriodStart!,
