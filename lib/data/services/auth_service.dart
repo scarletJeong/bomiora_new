@@ -345,6 +345,40 @@ class AuthService {
     }
   }
 
+  /// Cafe24 관리자(/adm/) 일회용 로그인 URL 발급
+  static Future<Map<String, dynamic>> issueAdminLoginToken() async {
+    try {
+      final user = await getUser();
+      if (user == null) {
+        return {'success': false, 'message': '로그인이 필요합니다.'};
+      }
+      if (!user.isAdmin) {
+        return {'success': false, 'message': '관리자 권한이 없습니다.'};
+      }
+
+      final response = await ApiClient.post(
+        ApiEndpoints.adminLoginToken,
+        {'mbId': user.id, 'mb_id': user.id},
+      );
+      final data = json.decode(response.body);
+      final loginUrl = data['loginUrl']?.toString() ?? '';
+      final ok = response.statusCode == 200 &&
+          data['success'] == true &&
+          loginUrl.isNotEmpty;
+      return {
+        'success': ok,
+        'loginUrl': loginUrl,
+        'message': data['message']?.toString() ??
+            (ok ? '' : '관리자 로그인 토큰 발급에 실패했습니다.'),
+      };
+    } catch (_) {
+      return {
+        'success': false,
+        'message': '관리자 페이지 연결에 실패했습니다.',
+      };
+    }
+  }
+
   /// 회원 탈퇴(Soft Delete)
   static Future<Map<String, dynamic>> withdrawMember({
     required String mbId,

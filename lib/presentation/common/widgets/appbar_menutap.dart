@@ -1,5 +1,6 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/constants/app_assets.dart';
 import '../../../core/utils/node_value_parser.dart';
@@ -13,6 +14,7 @@ import '../../../data/repositories/product/product_category_catalog.dart';
 import '../../shopping/utils/get_product.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../customer_service/screens/qa_list_screen.dart';
+import 'app_toast_overlay.dart';
 import 'cart_dropdown_menu.dart';
 import 'recent_product_card.dart';
 
@@ -170,6 +172,23 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
         'categoryName': top.label,
         'productKind': 'general',
       },
+    );
+  }
+
+  Future<void> _openAdminPage() async {
+    final result = await AuthService.issueAdminLoginToken();
+    final loginUrl = result['loginUrl']?.toString() ?? '';
+    if (result['success'] == true && loginUrl.isNotEmpty) {
+      await launchUrl(
+        Uri.parse(loginUrl),
+        mode: LaunchMode.externalApplication,
+      );
+      return;
+    }
+    if (!mounted) return;
+    AppToastOverlay.show(
+      context,
+      result['message']?.toString() ?? '관리자 페이지를 열 수 없습니다.',
     );
   }
 
@@ -669,6 +688,52 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
             ),
           ],
         ),
+        if (_user?.isAdmin == true) ...[
+          SizedBox(height: healthDp(context, 10)),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: SizedBox(
+              width: healthDp(context, 80),
+              height: healthDp(context, 32),
+              child: OutlinedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _openAdminPage();
+                },
+                style: OutlinedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: _brandPink,
+                  side: BorderSide(
+                    color: _brandPink,
+                    width: healthDp(context, 1),
+                  ),
+                  padding: EdgeInsets.zero,
+                  minimumSize: Size(
+                    healthDp(context, 80),
+                    healthDp(context, 32),
+                  ),
+                  fixedSize: Size(
+                    healthDp(context, 80),
+                    healthDp(context, 32),
+                  ),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(healthDp(context, 8)),
+                  ),
+                ),
+                child: Text(
+                  '관리자',
+                  style: TextStyle(
+                    fontFamily: _fontFamily,
+                    fontSize: healthSp(context, 13),
+                    fontWeight: FontWeight.w500,
+                    height: 1.2,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }

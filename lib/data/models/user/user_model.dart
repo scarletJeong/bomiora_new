@@ -138,4 +138,5 @@ class UserModel {
   }
 
   bool get isInfluencer => mbLevel == 5;
+  bool get isAdmin => mbLevel >= 6 && mbLevel <= 10;
 }

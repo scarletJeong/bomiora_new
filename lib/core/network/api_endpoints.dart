@@ -27,6 +27,7 @@ class ApiEndpoints {
   static const String socialLogin = '/api/auth/social/login';
   static const String socialRegister = '/api/auth/social/register';
   static const String authSession = '/api/auth/session';
+  static const String adminLoginToken = '/api/auth/admin-login-token';
   static const String profileUploadImage = '/api/user/profile/image';
 
   // 상품 관련 (기존 Cafe24 서버)
