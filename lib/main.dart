@@ -23,7 +23,6 @@ import 'presentation/health/health_common/widgets/health_app_bar.dart';
 import 'presentation/shopping/screens/product_detail_screen.dart';
 import 'presentation/shopping/screens/product_detail_general_screen.dart';
 import 'presentation/shopping/screens/product_list_screen.dart';
-import 'presentation/shopping/screens/product_main_general_screen.dart';
 import 'presentation/shopping/screens/bomiora_introduce_screen.dart';
 import 'presentation/shopping/screens/kcp_pay_webview_screen.dart';
 import 'presentation/shopping/screens/payment_complete_screen.dart';
@@ -177,7 +176,6 @@ class _BomioraAppState extends State<BomioraApp> {
         // (임시) 장바구니 페이지 접근 차단
         '/cart': (context) => const CartScreen(),
         '/bomiora-introduce': (context) => const BomioraIntroduceScreen(),
-        '/healthcare-store': (context) => const ProductMainGeneralScreen(),
         '/coupon': (context) => const CouponScreen(),
         '/my_reviews': (context) => const MyReviewsScreen(),
         '/profile': (context) => const HealthProfileListScreen(),
@@ -293,6 +291,8 @@ class _BomioraAppState extends State<BomioraApp> {
             opaque: false,
             barrierDismissible: false,
             barrierColor: const Color(0x991A1A1A),
+            transitionDuration: Duration.zero,
+            reverseTransitionDuration: Duration.zero,
             pageBuilder: (context, animation, secondaryAnimation) {
               return KcpCertWebViewScreen(
                 flow: (args['flow'] ?? 'signup').toString(),
