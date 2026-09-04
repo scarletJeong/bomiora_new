@@ -554,39 +554,6 @@ class ReviewService {
     }
   }
   
-  /// 리뷰 도움됨 증가
-  /// 
-  /// [isId] 리뷰 ID
-  /// [mbId] 회원 ID
-  static Future<Map<String, dynamic>> incrementReviewHelpful(int isId, String mbId) async {
-    try {
-      final response = await ApiClient.post(
-        '/api/user/reviews/$isId/helpful',
-        {'mbId': mbId},
-      );
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        
-        return {
-          'success': data['success'] ?? true,
-          'message': data['message'] ?? '도움이 돼요가 증가했습니다.',
-          'isGood': data['isGood'],
-        };
-      } else {
-        final errorData = json.decode(response.body);
-        return {
-          'success': false,
-          'message': errorData['message'] ?? '처리에 실패했습니다.',
-        };
-      }
-    } catch (e) {
-      return {
-        'success': false,
-        'message': '처리 중 오류가 발생했습니다: $e',
-      };
-    }
-  }
   
   /// 주문에 대한 리뷰 작성 여부 확인 (+ 작성 완료 itId 목록)
   /// 
