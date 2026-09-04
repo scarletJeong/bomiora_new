@@ -148,6 +148,7 @@ class OrderService {
         final data = _decodeBody(response);
         return {
           'success': true,
+          'cancelRequested': data['cancelRequested'] == true,
           'message': data['message'] ?? '주문이 취소되었습니다.',
         };
       } else {

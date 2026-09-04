@@ -75,7 +75,10 @@ class OrderFlowDialogs {
 
     if (!context.mounted) return false;
     if (result['success'] == true) {
-      await showOrderCancelSuccess(context);
+      await showOrderCancelSuccess(
+        context,
+        cancelRequested: result['cancelRequested'] == true,
+      );
       return true;
     }
 
@@ -96,7 +99,10 @@ class OrderFlowDialogs {
   }
 
   /// 2단계: 취소 완료 안내 (확인 한 번)
-  static Future<void> showOrderCancelSuccess(BuildContext context) {
+  static Future<void> showOrderCancelSuccess(
+    BuildContext context, {
+    bool cancelRequested = false,
+  }) {
     return showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -137,10 +143,15 @@ class OrderFlowDialogs {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  const Text(
-                    '주문이 취소되었습니다.\n'
-                    '자세한 내용은 주문 취소 페이지에서\n'
-                    '확인해 주세요.',
+                  Text(
+                    cancelRequested
+                        ? '취소 요청이 접수되었습니다.\n'
+                            '환불은 관리자 확인 후 처리됩니다.\n'
+                            '자세한 내용은 주문 취소 페이지에서\n'
+                            '확인해 주세요.'
+                        : '주문이 취소되었습니다.\n'
+                            '자세한 내용은 주문 취소 페이지에서\n'
+                            '확인해 주세요.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Color(0xFF898686),

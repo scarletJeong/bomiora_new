@@ -334,6 +334,32 @@ class _PaymentScreenState extends State<PaymentScreen> {
     return '';
   }
 
+  List<Map<String, dynamic>> _checkoutCouponPayload() {
+    final items = _selectedCoupons
+        .where((c) => c.id.trim().isNotEmpty)
+        .map<Map<String, dynamic>>(
+          (c) => {
+            'cp_id': c.id.trim(),
+            'discount': _discountForCoupon(c),
+          },
+        )
+        .toList();
+    final raw = items.fold<int>(0, (sum, e) => sum + (e['discount'] as int));
+    var remain = _couponDiscount;
+    if (raw <= 0 || raw == remain) return items;
+    for (var i = 0; i < items.length; i++) {
+      final current = items[i]['discount'] as int;
+      if (i == items.length - 1) {
+        items[i]['discount'] = remain < 0 ? 0 : remain;
+      } else {
+        final take = current > remain ? remain : current;
+        items[i]['discount'] = take;
+        remain -= take;
+      }
+    }
+    return items;
+  }
+
   int _discountForCoupon(Coupon coupon) {
     final base = _baseAmountForCoupon(coupon);
     if (base <= 0 || base < coupon.minimum) return 0;
@@ -685,6 +711,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
           'escrow_use': _useEscrow,
           'shipping_cost': widget.shippingCost,
           'coupon_discount': _couponDiscount,
+          'cp_ids': _selectedCoupons
+              .map((c) => c.id.trim())
+              .where((id) => id.isNotEmpty)
+              .toList(),
+          'coupons': _checkoutCouponPayload(),
           'used_point': _pointDiscount,
           'final_amount': _finalAmount,
           'goods_name': widget.cartItems.length == 1

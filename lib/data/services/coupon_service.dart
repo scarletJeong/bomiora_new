@@ -173,6 +173,8 @@ class CouponService {
         final data = json.decode(response.body);
         
         if (data['success'] == true) {
+          _availableCache.remove(mbId);
+          _availableCacheAt.remove(mbId);
           return {
             'success': true,
             'message': data['message'],
