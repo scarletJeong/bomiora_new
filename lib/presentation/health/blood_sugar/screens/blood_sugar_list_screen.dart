@@ -846,7 +846,7 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen>
 
   String _sugarDiffText({required bool hasToday, int? diff}) {
     if (!hasToday) return '수치를 입력하세요';
-    if (diff == null) return '전날 기록이 없어요';
+    if (diff == null) return '어제 기록이 없습니다';
     return '전날 대비 ${diff.abs()} mg/dL';
   }
 
