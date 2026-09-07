@@ -64,7 +64,7 @@ class _ReviewCardLayout {
       bodyFontSize: healthSp(context, 10),
       gridCrossSpacing: healthDp(context, 10),
       gridMainSpacing: healthDp(context, 10),
-      titleToGridGap: healthDp(context, 18),
+      titleToGridGap: healthDp(context, 20),
     );
   }
 }
@@ -109,7 +109,7 @@ class _ReviewSectionState extends State<ReviewSection> {
     return Container(
       width: double.infinity,
       padding: EdgeInsets.symmetric(
-        horizontal: healthDp(context, 24),
+        horizontal: healthDp(context, 20),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -178,6 +178,7 @@ class _ReviewSectionState extends State<ReviewSection> {
               ],
             ),
           ),
+          SizedBox(height: healthDp(context, 48)),
         ],
       ),
     );

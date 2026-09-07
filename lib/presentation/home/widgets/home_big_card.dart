@@ -5,7 +5,7 @@ import 'package:bomiora_app/presentation/health/health_common/health_responsive_
 /// Figma **375** 기준 수치에 [healthTextScaleByWidth]를 곱합니다
 /// ([healthDp]/[healthSp]와 동일 규칙).
 ///
-/// - 이미지: `317.31 × 172.43`, 모서리 `11.54`, `BoxFit.cover`
+/// - 이미지: `321 × 200`, 모서리 `11.54`, `BoxFit.cover`
 /// - 이미지 ↔ 텍스트 블록: `12`
 /// - 텍스트 블록: 폭 `317.31`, 고정 높이 `50.68`
 /// - 제목 ↔ 본문: `6.92`
@@ -43,8 +43,8 @@ class HomeBigCardLayout {
     double sc(double base375) => base375 * s;
 
     return HomeBigCardLayout(
-      cardW: sc(317.31),
-      imageH: sc(172.43),
+      cardW: sc(321),
+      imageH: sc(200),
       textPanelHeight: sc(50.68),
       radius: sc(11.54),
       columnGap: sc(12),

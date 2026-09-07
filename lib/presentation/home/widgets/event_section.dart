@@ -38,11 +38,9 @@ class EventSection extends StatelessWidget {
 
         return Container(
           width: double.infinity,
-          constraints: BoxConstraints(minHeight: healthDp(context, 191)),
           child: Padding(
             padding: EdgeInsets.symmetric(
-              horizontal: healthDp(context, 24),
-              vertical: healthDp(context, 24),
+              horizontal: healthDp(context, 20),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

@@ -13,11 +13,15 @@ class HomeSectionTitleRow extends StatelessWidget {
     required this.line1,
     required this.line2,
     this.trailing,
+    this.singleLine = false,
   });
 
   final String line1;
   final String line2;
   final Widget? trailing;
+
+  /// true면 [line1](w300) + [line2](w700)를 한 줄로 붙입니다.
+  final bool singleLine;
 
   @override
   Widget build(BuildContext context) {
@@ -25,6 +29,40 @@ class HomeSectionTitleRow extends StatelessWidget {
     final gapBarToTitle = healthDp(context, 10);
     final titleLineGap = healthDp(context, 1.15);
     final lineFs = healthSp(context, 16);
+
+    final lightStyle = TextStyle(
+      color: Colors.black,
+      fontSize: lineFs,
+      fontFamily: 'Gmarket Sans TTF',
+      fontWeight: FontWeight.w300,
+      height: 1.2,
+    );
+    final boldStyle = TextStyle(
+      color: Colors.black,
+      fontSize: lineFs,
+      fontFamily: 'Gmarket Sans TTF',
+      fontWeight: FontWeight.w700,
+      height: 1.2,
+    );
+
+    final title = singleLine
+        ? Text.rich(
+            TextSpan(
+              children: [
+                TextSpan(text: line1, style: lightStyle),
+                TextSpan(text: line2, style: boldStyle),
+              ],
+            ),
+          )
+        : Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(line1, style: lightStyle),
+              SizedBox(height: titleLineGap),
+              Text(line2, style: boldStyle),
+            ],
+          );
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -39,33 +77,7 @@ class HomeSectionTitleRow extends StatelessWidget {
                 color: Colors.black,
               ),
               SizedBox(width: gapBarToTitle),
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    line1,
-                    style: TextStyle(
-                      color: Colors.black,
-                      fontSize: lineFs,
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w300,
-                      height: 1.2,
-                    ),
-                  ),
-                  SizedBox(height: titleLineGap),
-                  Text(
-                    line2,
-                    style: TextStyle(
-                      color: Colors.black,
-                      fontSize: lineFs,
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w700,
-                      height: 1.2,
-                    ),
-                  ),
-                ],
-              ),
+              title,
             ],
           ),
         ),

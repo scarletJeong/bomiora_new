@@ -50,7 +50,7 @@ class _GuidebookSectionState extends State<GuidebookSection> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: EdgeInsets.symmetric(horizontal: healthDp(context, 24)),
+            padding: EdgeInsets.symmetric(horizontal: healthDp(context, 20)),
             child: HomeSectionTitleRow(
               line1: '건강',
               line2: '컨텐츠',
@@ -59,7 +59,7 @@ class _GuidebookSectionState extends State<GuidebookSection> {
               ),
             ),
           ),
-          SizedBox(height: healthDp(context, 12)),
+          SizedBox(height: healthDp(context, 20)),
           SizedBox(
             height: listH,
             child: FutureBuilder<List<Map<String, dynamic>>>(
@@ -78,7 +78,7 @@ class _GuidebookSectionState extends State<GuidebookSection> {
                 if (items.isEmpty) {
                   final iconSz = healthDp(context, 40);
                   return Padding(
-                    padding: EdgeInsets.symmetric(horizontal: healthDp(context, 24)),
+                    padding: EdgeInsets.symmetric(horizontal: healthDp(context, 20)),
                     child: Center(
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
@@ -107,7 +107,7 @@ class _GuidebookSectionState extends State<GuidebookSection> {
                 return WebDragScrollConfiguration(
                   child: ListView.separated(
                     scrollDirection: Axis.horizontal,
-                    padding: EdgeInsets.symmetric(horizontal: healthDp(context, 24)),
+                    padding: EdgeInsets.symmetric(horizontal: healthDp(context, 20)),
                     itemCount: items.length,
                     separatorBuilder: (_, __) =>
                         SizedBox(width: m.rowGapBetweenCards),
