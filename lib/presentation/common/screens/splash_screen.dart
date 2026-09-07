@@ -13,8 +13,6 @@ import '../../../data/services/banner_service.dart';
 import '../../../data/services/fcm_service_stub.dart'
     if (dart.library.io) '../../../data/services/fcm_service.dart';
 import '../../home/screens/home_screen.dart';
-import '../../shopping/widgets/product_banner_slider.dart'
-    show kSharedBannerHeightBase;
 import '../../health/health_common/health_responsive_scale.dart';
 import '../widgets/app_network_image.dart';
 import '../widgets/mobile_layout_wrapper.dart';
@@ -158,11 +156,9 @@ class _SplashScreenState extends State<SplashScreen> {
     final products = results[1] as List<Product>;
     if (!mounted) return;
 
-    final bannerH = healthDp(context, kSharedBannerHeightBase);
-    final layoutW = MediaQuery.sizeOf(context).width;
-    final scale = healthTextScaleByWidth(layoutW);
-    final productImageW = 150 * scale;
-    final productImageH = 170 * scale;
+    final bannerH = healthDp(context, 220);
+    final productImageW = healthDp(context, 150);
+    final productImageH = healthDp(context, 170);
 
     final jobs = <Future<void>>[];
 
@@ -184,7 +180,7 @@ class _SplashScreenState extends State<SplashScreen> {
     for (final p in products) {
       final url = p.displayImageUrl.trim();
       if (url.isEmpty) continue;
-      // ProductSection 카드와 동일 키
+      // ProductMainCard와 동일 키
       jobs.add(
         AppNetworkImage.precacheUrl(
           context,

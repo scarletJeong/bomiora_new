@@ -552,24 +552,25 @@ class _HomeScreenState extends State<HomeScreen> {
     final products = _productsByCategory[cacheKey] ?? const <Product>[];
     final displayProducts = products.take(_kCategoryMaxDisplay).toList();
     final showMoreOnLast = products.length >= _kCategoryMaxDisplay;
-    final gap = healthDp(context, 12);
-    final innerW = MediaQuery.sizeOf(context).width - hPad * 2;
-    final cardW = (innerW - gap) / 2;
+    final cardW = ProductCardWithSubscription.preferredCardWidth(context);
     final cardH =
         ProductCardWithSubscription.preferredMainAxisExtent(context);
     final tabFs = healthSp(context, 12);
 
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: hPad),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const HomeSectionTitleRow(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: hPad),
+          child: const HomeSectionTitleRow(
             line1: '건강을',
             line2: '채우는 시간',
           ),
-          SizedBox(height: healthDp(context, 20)),
-          WebDragScrollConfiguration(
+        ),
+        SizedBox(height: healthDp(context, 20)),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: hPad),
+          child: WebDragScrollConfiguration(
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
@@ -600,21 +601,16 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ),
-          SizedBox(height: healthDp(context, 20)),
-          ClipRect(
-            child: SizedBox(
-              height: cardH,
-              child: _buildCategoryCarousel(
-                products: products,
-                displayProducts: displayProducts,
-                showMoreOnLast: showMoreOnLast,
-                cardW: cardW,
-                cardH: cardH,
-              ),
-            ),
-          ),
-        ],
-      ),
+        ),
+        SizedBox(height: healthDp(context, 20)),
+        _buildCategoryCarousel(
+          products: products,
+          displayProducts: displayProducts,
+          showMoreOnLast: showMoreOnLast,
+          cardW: cardW,
+          cardH: cardH,
+        ),
+      ],
     );
   }
 
@@ -676,7 +672,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return _horizontalProductRow(
       height: cardH,
-      padded: false,
       itemCount: displayProducts.length,
       itemBuilder: (_, index) {
         final product = displayProducts[index];
