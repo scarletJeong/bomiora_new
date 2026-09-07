@@ -3,6 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/constants/app_assets.dart';
 import '../../../data/services/recent_search_service.dart';
+import '../../common/widgets/app_blur_backdrop.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import 'search_list_screen.dart';
 
@@ -13,9 +14,12 @@ class SearchPopup {
   static Future<void> show(BuildContext context) {
     return showDialog<void>(
       context: context,
-      barrierDismissible: true,
-      barrierColor: const Color(0x991A1A1A),
-      builder: (ctx) => const _SearchPopupDialog(),
+      barrierDismissible: false,
+      barrierColor: Colors.transparent,
+      builder: (ctx) => AppBlurBackdrop(
+        onDismiss: () => Navigator.of(ctx).pop(),
+        child: const _SearchPopupDialog(),
+      ),
     );
   }
 }

@@ -32,13 +32,14 @@ class AppToastOverlay {
         final screenW = MediaQuery.sizeOf(ctx).width;
         final contentW = MobileAppLayoutWrapper.contentWidthOf(ctx);
         final panelLeft = (screenW - contentW) / 2;
-        final hPad = 27 * healthTextScaleByWidth(contentW);
+        final scale = healthTextScaleByWidth(contentW);
+        final toastW = 301 * scale;
         final bottomInset = MediaQuery.paddingOf(ctx).bottom;
-        final bottomPad = 24 * healthTextScaleByWidth(contentW);
+        final bottomPad = 24 * scale;
 
         return Positioned(
-          left: panelLeft + hPad,
-          width: contentW - hPad * 2,
+          left: panelLeft + (contentW - toastW) / 2,
+          width: toastW,
           bottom: bottomInset + bottomPad,
           child: MediaQuery(
             data: MediaQuery.of(ctx).copyWith(
@@ -73,37 +74,49 @@ class _AppToastBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final iconSize = healthDp(context, 10);
     return Container(
-      width: double.infinity,
-      height: healthDp(context, 40),
+      width: healthDp(context, 301),
+      height: healthDp(context, 49),
       padding: EdgeInsets.all(healthDp(context, 10)),
       clipBehavior: Clip.antiAlias,
       decoration: ShapeDecoration(
-        color: const Color(0xFF050505),
+        color: Colors.black.withValues(alpha: 0.40),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(healthDp(context, 10)),
+          borderRadius: BorderRadius.circular(healthDp(context, 14)),
         ),
+        shadows: const [
+          BoxShadow(
+            color: Color(0x33000000),
+            blurRadius: 12,
+            offset: Offset(0, 4),
+          ),
+        ],
       ),
       child: Row(
         children: [
-          SvgPicture.asset(
-            AppAssets.commonToastOverlay,
-            width: iconSize,
-            height: iconSize,
+          SizedBox(
+            width: healthDp(context, 30),
+            height: healthDp(context, 30),
+            child: Center(
+              child: SvgPicture.asset(
+                AppAssets.commonToastOverlay,
+                width: healthDp(context, 20),
+                height: healthDp(context, 20),
+              ),
+            ),
           ),
-          SizedBox(width: healthDp(context, 10)),
+          SizedBox(width: healthDp(context, 4)),
           Expanded(
             child: Text(
               message,
-              maxLines: 1,
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: Colors.white,
-                fontSize: healthSp(context, 13),
+                fontSize: healthSp(context, 12),
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: FontWeight.w500,
-                height: 1.23,
+                height: 1.33,
               ),
             ),
           ),
