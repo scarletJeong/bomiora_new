@@ -156,22 +156,24 @@ class _SplashScreenState extends State<SplashScreen> {
     final products = results[1] as List<Product>;
     if (!mounted) return;
 
+    final bannerW = MediaQuery.sizeOf(context).width;
     final bannerH = healthDp(context, 220);
     final productImageW = healthDp(context, 150);
     final productImageH = healthDp(context, 170);
 
     final jobs = <Future<void>>[];
 
-    for (final b in banners) {
-      final url = ImageUrlHelper.resolveSiteAssetUrl(b.imageUrl);
+    for (final b in banners.take(2)) {
+      final url = ImageUrlHelper.resolveBannerImageUrl(b.imageUrl);
       if (url.isEmpty) continue;
       // BannerSlider의 AppNetworkImage와 동일 키
       jobs.add(
         AppNetworkImage.precacheUrl(
           context,
           url,
-          width: double.infinity,
+          width: bannerW,
           height: bannerH,
+          decodeWidthLogical: bannerW,
           decodeHeightLogical: bannerH,
         ),
       );

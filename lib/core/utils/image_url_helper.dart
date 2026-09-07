@@ -145,6 +145,30 @@ class ImageUrlHelper {
     return convertToLocalUrl('$_cafe24EventImageBase$raw');
   }
 
+  static const _cafe24BannerImageBase =
+      'https://bomiora0.mycafe24.com/data/banner/';
+
+  /// DB `image_path` (`banner/...`, `assets/...`, 절대 URL)
+  static String resolveBannerImageUrl(String? path) {
+    if (path == null || path.isEmpty) return '';
+    var raw = path.trim();
+    if (raw.isEmpty || isBrowserBlobOrInvalidImageUrl(raw)) return '';
+    if (raw.startsWith('http://') || raw.startsWith('https://')) {
+      return convertToLocalUrl(raw);
+    }
+    raw = raw.replaceFirst(RegExp(r'^/+'), '');
+    if (raw.startsWith('assets/')) {
+      return resolveSiteAssetUrl(raw);
+    }
+    if (raw.startsWith('data/banner/')) {
+      return convertToLocalUrl('${imageBaseUrl}/$raw');
+    }
+    if (raw.startsWith('banner/')) {
+      return convertToLocalUrl('$_cafe24BannerImageBase${raw.substring('banner/'.length)}');
+    }
+    return convertToLocalUrl('$_cafe24BannerImageBase$raw');
+  }
+
   /// 정적 사이트 에셋 (`assets/img/...`, `main_banner/...`) — `data/item`과 별도
   static String resolveSiteAssetUrl(String? path) {
     if (path == null || path.isEmpty) return '';

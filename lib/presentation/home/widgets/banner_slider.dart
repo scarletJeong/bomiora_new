@@ -1,5 +1,6 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/utils/image_url_helper.dart';
 import '../../../data/models/home/banner_model.dart';
@@ -17,7 +18,7 @@ class BannerSlider extends StatefulWidget {
   /// 홈에서 우선 프리패치한 Future를 넘기면 중복 요청을 피함
   final Future<List<BannerModel>>? bannersFuture;
 
-  /// 첫 배너(핑크) 표시 준비 시 1회
+  /// 첫 배너 표시 준비 시 1회
   final VoidCallback? onPrimaryImageSettled;
 
   @override
@@ -25,10 +26,8 @@ class BannerSlider extends StatefulWidget {
 }
 
 class _BannerSliderState extends State<BannerSlider> {
-  static const Color _primaryBannerColor = Color(0xFFFF5A8D);
-
-  /// 핑크 1장 + 서버 이미지 1장
-  static const int _maxServerBanners = 1;
+  static const Color _fallbackColor = Color(0xFFFF5A8D);
+  static const int _maxBanners = 2;
 
   int _currentIndex = 0;
   late PageController _pageController;
@@ -72,16 +71,30 @@ class _BannerSliderState extends State<BannerSlider> {
     super.dispose();
   }
 
-  List<BannerModel> _serverBanners(List<BannerModel> apiBanners) {
+  List<BannerModel> _visibleBanners(List<BannerModel> apiBanners) {
     return apiBanners
         .where((b) => b.imageUrl.trim().isNotEmpty)
-        .take(_maxServerBanners)
+        .take(_maxBanners)
         .toList();
   }
 
-  Widget _buildPinkPage(double bannerH) {
+  Future<void> _onTapBanner(BannerModel banner) async {
+    final raw = banner.linkUrl.trim();
+    if (raw.isEmpty) return;
+
+    if (raw.startsWith('/')) {
+      Navigator.pushNamed(context, raw);
+      return;
+    }
+
+    final uri = Uri.tryParse(raw);
+    if (uri == null) return;
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  Widget _buildFallbackPage(double bannerH) {
     return ColoredBox(
-      color: _primaryBannerColor,
+      color: _fallbackColor,
       child: SizedBox(
         width: double.infinity,
         height: bannerH,
@@ -89,31 +102,31 @@ class _BannerSliderState extends State<BannerSlider> {
     );
   }
 
-  Widget _buildServerPage(
+  Widget _buildImagePage(
     BuildContext context,
     BannerModel banner,
-    double bannerH,
-  ) {
-    final imageUrl = ImageUrlHelper.resolveSiteAssetUrl(banner.imageUrl);
-    if (imageUrl.isEmpty) {
-      return ColoredBox(
-        color: Colors.grey[200]!,
-        child: SizedBox(width: double.infinity, height: bannerH),
-      );
-    }
+    double bannerH, {
+    VoidCallback? onSettled,
+  }) {
+    final imageUrl = ImageUrlHelper.resolveBannerImageUrl(banner.imageUrl);
+    final bannerW = MediaQuery.sizeOf(context).width;
+    final image = imageUrl.isEmpty
+        ? _buildFallbackPage(bannerH)
+        : AppNetworkImage(
+            url: imageUrl,
+            fit: BoxFit.fill,
+            width: bannerW,
+            height: bannerH,
+            decodeWidthLogical: bannerW,
+            decodeHeightLogical: bannerH,
+            onSettled: onSettled,
+            errorBuilder: (_, __, ___) => _buildFallbackPage(bannerH),
+          );
 
-    return AppNetworkImage(
-      url: imageUrl,
-      fit: BoxFit.cover,
-      width: double.infinity,
-      height: bannerH,
-      decodeHeightLogical: bannerH,
-      errorBuilder: (_, __, ___) => ColoredBox(
-        color: Colors.grey[200]!,
-        child: const Center(
-          child: Icon(Icons.broken_image_outlined),
-        ),
-      ),
+    if (banner.linkUrl.trim().isEmpty) return image;
+    return GestureDetector(
+      onTap: () => _onTapBanner(banner),
+      child: image,
     );
   }
 
@@ -128,10 +141,10 @@ class _BannerSliderState extends State<BannerSlider> {
     return FutureBuilder<List<BannerModel>>(
       future: _bannersFuture,
       builder: (context, snapshot) {
-        final serverBanners = _serverBanners(
+        final banners = _visibleBanners(
           snapshot.data ?? const <BannerModel>[],
         );
-        final pageCount = 1 + serverBanners.length;
+        final pageCount = banners.isEmpty ? 1 : banners.length;
 
         WidgetsBinding.instance.addPostFrameCallback((_) {
           _notifyPrimarySettled();
@@ -151,8 +164,9 @@ class _BannerSliderState extends State<BannerSlider> {
 
         return Container(
           height: bannerH,
-          decoration: BoxDecoration(
-            color: Colors.white,
+          width: double.infinity,
+          color: Colors.white,
+          foregroundDecoration: BoxDecoration(
             border: Border(
               bottom: BorderSide(
                 color: const Color(0xFFFF5A8D),
@@ -182,13 +196,14 @@ class _BannerSliderState extends State<BannerSlider> {
                   },
                   itemCount: pageCount,
                   itemBuilder: (context, index) {
-                    if (index == 0) {
-                      return _buildPinkPage(bannerH);
+                    if (banners.isEmpty) {
+                      return _buildFallbackPage(bannerH);
                     }
-                    return _buildServerPage(
+                    return _buildImagePage(
                       context,
-                      serverBanners[index - 1],
+                      banners[index],
                       bannerH,
+                      onSettled: index == 0 ? _notifyPrimarySettled : null,
                     );
                   },
                 ),
