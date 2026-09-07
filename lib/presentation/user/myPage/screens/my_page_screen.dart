@@ -184,9 +184,9 @@ class _MyPageScreenState extends State<MyPageScreen> {
               children: [
                 Padding(
                       padding: EdgeInsets.fromLTRB(
-                        healthDp(context, 27),
-                        healthDp(context, 24),
-                        healthDp(context, 27),
+                        healthDp(context, 20),
+                        healthDp(context, 20),
+                        healthDp(context, 20),
                         0,
                       ),
                       child: Column(
@@ -338,13 +338,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
     );
   }
 
-  Widget _buildPersonalInfoAction() {
-    final textStyle = TextStyle(
-      color: const Color(0xFFD2D2D2),
-      fontSize: healthSp(context, 8),
-      fontWeight: FontWeight.w700,
-    );
-
+  Widget _buildPersonalInfoChip() {
     return InkWell(
       onTap: () {
         Navigator.push(
@@ -354,34 +348,29 @@ class _MyPageScreenState extends State<MyPageScreen> {
           ),
         ).then((_) => _loadCurrentUser());
       },
-      borderRadius: BorderRadius.circular(healthDp(context, 8)),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Container(
-            width: healthDp(context, 1),
-            height: healthDp(context, 33),
-            color: const Color(0xFFD2D2D2),
+      borderRadius: BorderRadius.circular(healthDp(context, 20)),
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: healthDp(context, 8),
+          vertical: healthDp(context, 5),
+        ),
+        decoration: ShapeDecoration(
+          shape: RoundedRectangleBorder(
+            side: BorderSide(
+              width: healthDp(context, 1),
+              color: const Color(0xFFF1F1F1),
+            ),
+            borderRadius: BorderRadius.circular(healthDp(context, 20)),
           ),
-          SizedBox(width: healthDp(context, 10)),
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              SvgPicture.asset(
-                AppAssets.mypagePersonalInfoSettingsIcon,
-                width: healthDp(context, 24),
-                height: healthDp(context, 24),
-                fit: BoxFit.contain,
-              ),
-              Text(
-                '개인정보수정',
-                style: textStyle,
-              ),
-            ],
+        ),
+        child: Text(
+          '개인정보 수정',
+          style: TextStyle(
+            color: const Color(0xFF898686),
+            fontSize: healthSp(context, 12),
+            fontWeight: FontWeight.w500,
           ),
-        ],
+        ),
       ),
     );
   }
@@ -414,22 +403,35 @@ class _MyPageScreenState extends State<MyPageScreen> {
   }
 
   Widget _buildProfileHeader() {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Expanded(
-          child: Row(
-            children: [
-              _buildProfileAvatar(
-                child: ClipRRect(
-                  borderRadius:
-                      BorderRadius.circular(healthDp(context, 45)),
-                  child: _buildProfilePhotoIcon(),
-                ),
-              ),
-              SizedBox(width: healthDp(context, 10)),
-              Expanded(
-                child: Column(
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(healthDp(context, 10)),
+      decoration: ShapeDecoration(
+        shape: RoundedRectangleBorder(
+          side: BorderSide(
+            width: healthDp(context, 1),
+            color: const Color(0x7FD2D2D2),
+          ),
+          borderRadius: BorderRadius.circular(healthDp(context, 10)),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          _buildProfileAvatar(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(healthDp(context, 45)),
+              child: _buildProfilePhotoIcon(),
+            ),
+          ),
+          SizedBox(width: healthDp(context, 10)),
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Column(
+                  mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
@@ -440,10 +442,9 @@ class _MyPageScreenState extends State<MyPageScreen> {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              color: Colors.black,
+                              color: const Color(0xFF1A1A1E),
                               fontSize: healthSp(context, 16),
                               fontWeight: FontWeight.w500,
-                              height: 1,
                             ),
                           ),
                         ),
@@ -453,7 +454,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                         ],
                       ],
                     ),
-                    SizedBox(height: healthDp(context, 5)),
+                    SizedBox(height: healthDp(context, 4)),
                     Text(
                       _currentUser?.email ?? '',
                       maxLines: 1,
@@ -462,18 +463,17 @@ class _MyPageScreenState extends State<MyPageScreen> {
                         color: const Color(0xFF898686),
                         fontSize: healthSp(context, 12),
                         fontWeight: FontWeight.w300,
-                        height: 1,
                       ),
                     ),
                   ],
                 ),
-              ),
-            ],
+                SizedBox(height: healthDp(context, 10)),
+                _buildPersonalInfoChip(),
+              ],
+            ),
           ),
-        ),
-        SizedBox(width: healthDp(context, 8)),
-        _buildPersonalInfoAction(),
-      ],
+        ],
+      ),
     );
   }
 
@@ -631,7 +631,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                               ],
                             ),
                           ),
-                          SizedBox(height: healthDp(context, 4)),
+                          SizedBox(height: healthDp(context, 10)),
                           Text(
                             label,
                             maxLines: 1,
@@ -660,8 +660,8 @@ class _MyPageScreenState extends State<MyPageScreen> {
       children: [
         statCard(
           icon: AppAssets.deliveryMain,
-          iconWidth375: 35.85,
-          iconHeight375: 23.33,
+          iconWidth375: 32,
+          iconHeight375: 32,
           value: orderVal,
           unit: '건',
           label: '주문/배송내역',
@@ -670,8 +670,8 @@ class _MyPageScreenState extends State<MyPageScreen> {
         SizedBox(width: healthDp(context, 14)),
         statCard(
           icon: AppAssets.couponMain,
-          iconWidth375: 34.59,
-          iconHeight375: 21.84,
+          iconWidth375: 32,
+          iconHeight375: 32,
           value: couponVal,
           unit: '장',
           label: '쿠폰',
@@ -680,8 +680,8 @@ class _MyPageScreenState extends State<MyPageScreen> {
         SizedBox(width: healthDp(context, 14)),
         statCard(
           icon: AppAssets.pointMain,
-          iconWidth375: 22.5,
-          iconHeight375: 22.5,
+          iconWidth375: 32,
+          iconHeight375: 32,
           value: pointVal,
           unit: 'P',
           label: '포인트',
