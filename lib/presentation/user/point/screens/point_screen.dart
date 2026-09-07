@@ -9,6 +9,7 @@ import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/centered_empty_state.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
+import '../widgets/point_info_bottomup.dart';
 
 class PointScreen extends StatefulWidget {
   const PointScreen({super.key});
@@ -22,14 +23,16 @@ class _PointScreenState extends State<PointScreen> {
   int? _currentPoint;
   List<PointHistory> _pointHistory = [];
   List<PointHistory> _displayedHistory = [];
-  int _displayCount = 5;
+  static const int _initialDisplayCount = 7;
+  static const int _loadMoreStep = 5;
+  int _displayCount = _initialDisplayCount;
+  int _selectedHistoryTab = 0;
   bool _isLoading = true;
 
   static const Color _pink = Color(0xFFFF5A8D);
   static const Color _border = Color(0x7FD2D2D2);
-  static const Color _textMain = Color(0xFF1A1A1A);
+  static const Color _textMain = Color(0xFF1A1A1E);
   static const Color _textSub = Color(0xFF898686);
-  static const Color _warnRed = Color(0xFFEF4444);
   static const Color _loadMoreBorder = Color(0xFFD2D2D2);
 
   @override
@@ -83,21 +86,40 @@ class _PointScreenState extends State<PointScreen> {
       final history = await PointService.getPointHistory(_currentUser!.id);
       setState(() {
         _pointHistory = history;
-        _displayCount = 5;
+        _displayCount = _initialDisplayCount;
         _updateDisplayedHistory();
       });
     } catch (e) {}
   }
 
+  List<PointHistory> get _filteredHistory {
+    if (_selectedHistoryTab == 1) {
+      return _pointHistory.where((h) => h.changeAmount >= 0).toList();
+    }
+    if (_selectedHistoryTab == 2) {
+      return _pointHistory.where((h) => h.changeAmount < 0).toList();
+    }
+    return _pointHistory;
+  }
+
   void _updateDisplayedHistory() {
     setState(() {
-      _displayedHistory = _pointHistory.take(_displayCount).toList();
+      _displayedHistory = _filteredHistory.take(_displayCount).toList();
+    });
+  }
+
+  void _onHistoryTabSelected(int index) {
+    if (_selectedHistoryTab == index) return;
+    setState(() {
+      _selectedHistoryTab = index;
+      _displayCount = _initialDisplayCount;
+      _displayedHistory = _filteredHistory.take(_displayCount).toList();
     });
   }
 
   void _loadMore() {
     setState(() {
-      _displayCount += 5;
+      _displayCount += _loadMoreStep;
       _updateDisplayedHistory();
     });
   }
@@ -143,254 +165,141 @@ class _PointScreenState extends State<PointScreen> {
   }
 
   Widget _buildContent() {
-    return SingleChildScrollView(
-      child: Padding(
-        padding: EdgeInsets.only(
-          left: healthDp(context, 27),
-          right: healthDp(context, 27),
-          bottom: healthDp(context, 20),
-          top: healthDp(context, 20),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildCurrentPointCard(),
-            SizedBox(height: healthDp(context, 20)),
-            if (_displayedHistory.isEmpty)
-              Padding(
-                padding: EdgeInsets.symmetric(vertical: healthDp(context, 40)),
-                child: CenteredEmptyState(
-                  iconWidget: _currentUser == null
-                      ? null
-                      : CenteredEmptyState.assetIcon(
-                          context,
-                          AppAssets.emptyPointIcon,
-                        ),
-                  message: '포인트 내역이 없습니다.',
+    return Padding(
+      //padding: EdgeInsets.all(healthDp(context, 20)),
+      padding: EdgeInsets.symmetric(horizontal: healthDp(context, 20), vertical: healthDp(context, 10)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildAvailablePointSection(),
+          SizedBox(height: healthDp(context, 20)),
+          _buildHistoryTabs(),
+          if (_displayedHistory.isEmpty)
+            Expanded(
+              child: CenteredEmptyState(
+                iconWidget: CenteredEmptyState.assetIcon(
+                  context,
+                  AppAssets.emptyPointIcon,
                 ),
-              )
-            else ...[
-              ..._displayedHistory.map(_buildHistoryCard),
-              if (_displayedHistory.length < _pointHistory.length) ...[
-                SizedBox(height: healthDp(context, 10)),
-                _buildLoadMoreButton(),
-              ],
-            ],
-          ],
-        ),
+                message: _currentUser == null
+                    ? '로그인 후 이용 가능합니다.'
+                    : '포인트 내역이 없습니다.',
+                trailing: _currentUser == null
+                    ? null
+                    : [
+                        Text(
+                          '첫 구매를 하거나 리뷰를 남기면\n포인트가 쌓여요',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: const Color(0xFF898686),
+                            fontSize: healthSp(context, 12),
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontWeight: FontWeight.w300,
+                          ),
+                        ),
+                      ],
+              ),
+            )
+          else
+            Expanded(
+              child: ListView(
+                padding: EdgeInsets.only(top: healthDp(context, 24)),
+                children: [
+                  ..._displayedHistory.map(_buildHistoryCard),
+                  if (_displayedHistory.length < _filteredHistory.length) ...[
+                    SizedBox(height: healthDp(context, 20)),
+                    _buildLoadMoreButton(),
+                  ],
+                ],
+              ),
+            ),
+        ],
       ),
     );
   }
 
-  Widget _buildCurrentPointCard() {
+  Widget _buildAvailablePointSection() {
     final pointText = PointService.formatPoint(_currentPoint ?? 0);
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.only(
-        top: healthDp(context, 0),
-        bottom: healthDp(context, 10),
-      ),
-      decoration: ShapeDecoration(
-        shape: RoundedRectangleBorder(
-          side: BorderSide(width: healthDp(context, 1), color: _border),
-          borderRadius: BorderRadius.circular(healthDp(context, 7)),
-        ),
-      ),
+      padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Opacity(
-            opacity: 0.80,
-            child: SizedBox(
-              width: double.infinity,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SizedBox(
-                    width: healthDp(context, 106),
-                    child: Center(
-                      child: SvgPicture.asset(
-                        AppAssets.pointIcon,
-                        width: healthDp(context, 80),
-                        height: healthDp(context, 80),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
           Row(
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              GestureDetector(
-                onTap: _showPointUsageInfoSheet,
-                behavior: HitTestBehavior.opaque,
-                child: Padding(
-                  padding: EdgeInsets.only(right: healthDp(context, 4)),
-                  child: SvgPicture.asset(
-                    AppAssets.guideIcon,
-                    width: healthDp(context, 14),
-                    height: healthDp(context, 14),
-                  ),
-                ),
-              ),
               Text(
-                '포인트',
+                '사용 가능한 포인트',
                 style: TextStyle(
                   color: _textMain,
                   fontSize: healthSp(context, 14),
                   fontWeight: FontWeight.w500,
                 ),
               ),
-              SizedBox(width: healthDp(context, 2)),
-              Text(
-                pointText,
-                style: TextStyle(
-                  color: _pink,
-                  fontSize: healthSp(context, 14),
-                  fontWeight: FontWeight.w700,
+              SizedBox(width: healthDp(context, 4)),
+              GestureDetector(
+                onTap: () => showPointInfoBottomUp(context),
+                behavior: HitTestBehavior.opaque,
+                child: SvgPicture.asset(
+                  AppAssets.guideIcon,
+                  width: healthDp(context, 16),
+                  height: healthDp(context, 16),
                 ),
               ),
             ],
           ),
+          SizedBox(height: healthDp(context, 8)),
+          Text(
+            '$pointText P',
+            style: TextStyle(
+              color: _pink,
+              fontSize: healthSp(context, 19),
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Future<void> _showPointUsageInfoSheet() async {
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      isDismissible: true,
-      enableDrag: true,
-      backgroundColor: Colors.transparent,
-      barrierColor: Colors.black.withValues(alpha: 0.35),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(healthDp(context, 16)),
-        ),
-      ),
-      builder: (sheetContext) {
-        final bottomPad = MediaQuery.paddingOf(sheetContext).bottom;
-        final screenWidth = MediaQuery.sizeOf(sheetContext).width;
-
-        return _dismissiblePointInfoSheetShell(
-          context: sheetContext,
-          child: SizedBox(
-            width: screenWidth,
-            child: _buildPointInfoSheetContent(sheetContext, bottomPad),
-          ),
-        );
-      },
-    );
-  }
-
-  /// 옵션 바텀업과 동일 — 배경(딤)은 barrier, 시트만 드래그·슬라이드
-  Widget _dismissiblePointInfoSheetShell({
-    required BuildContext context,
-    required Widget child,
-  }) {
-    return GestureDetector(
-      onTap: () => Navigator.of(context).pop(),
-      behavior: HitTestBehavior.opaque,
-      child: Align(
-        alignment: Alignment.bottomCenter,
+  Widget _buildHistoryTabs() {
+    Widget tab(int index, String label) {
+      final selected = _selectedHistoryTab == index;
+      return Expanded(
         child: GestureDetector(
-          onTap: () {},
-          behavior: HitTestBehavior.deferToChild,
-          child: child,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPointInfoSheetContent(BuildContext context, double bottomPad) {
-    final radius = healthDp(context, 16);
-
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.fromLTRB(
-        healthDp(context, 27),
-        healthDp(context, 16),
-        healthDp(context, 27),
-        healthDp(context, 24) + bottomPad,
-      ),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(radius)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x19000000),
-            blurRadius: 10,
-            offset: Offset(0, 8),
-            spreadRadius: -6,
-          ),
-          BoxShadow(
-            color: Color(0x19000000),
-            blurRadius: 25,
-            offset: Offset(0, 20),
-            spreadRadius: -5,
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Center(
-            child: Container(
-              width: healthDp(context, 40),
-              height: healthDp(context, 4),
-              margin: EdgeInsets.only(bottom: healthDp(context, 16)),
-              decoration: BoxDecoration(
-                color: const Color(0xFFD9D9D9),
-                borderRadius: BorderRadius.circular(healthDp(context, 2)),
+          onTap: () => _onHistoryTabSelected(index),
+          behavior: HitTestBehavior.opaque,
+          child: Container(
+            padding: EdgeInsets.only(bottom: healthDp(context, 10)),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(
+                  width: healthDp(context, 1),
+                  color: selected ? _pink : Colors.transparent,
+                ),
+              ),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              label,
+              style: TextStyle(
+                color: selected ? _pink : _textSub,
+                fontSize: healthSp(context, 14),
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
               ),
             ),
           ),
-          Text(
-            '포인트 이용 안내',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: _textMain,
-              fontSize: healthSp(context, 16),
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          SizedBox(height: healthDp(context, 16)),
-          Text(
-            '*100P = 100원 입니다.(1P = 1원)',
-            style: TextStyle(
-              color: _textMain,
-              fontSize: healthSp(context, 12),
-              fontWeight: FontWeight.w300,
-              height: 1.5,
-            ),
-          ),
-          SizedBox(height: healthDp(context, 8)),
-          Text(
-            '*2025년 8월 8일 이후 지급된 포인트는 지급일자 기준으로\n1년 후 자동소멸됩니다.',
-            style: TextStyle(
-              color: _textMain,
-              fontSize: healthSp(context, 12),
-              fontWeight: FontWeight.w300,
-              height: 1.5,
-            ),
-          ),
-          SizedBox(height: healthDp(context, 8)),
-          Text(
-            '*할인 적용 및 프로모션 페이지를 통한 결제 시\n포인트 사용이 불가합니다.(중복 할인 불가)',
-            style: TextStyle(
-              color: _warnRed,
-              fontSize: healthSp(context, 12),
-              fontWeight: FontWeight.w300,
-              height: 1.5,
-            ),
-          ),
-        ],
-      ),
+        ),
+      );
+    }
+
+    return Row(
+      children: [
+        tab(0, '전체'),
+        tab(1, '적립'),
+        tab(2, '사용'),
+      ],
     );
   }
 
@@ -435,9 +344,9 @@ class _PointScreenState extends State<PointScreen> {
                 ),
               ],
             ),
-            SizedBox(height: healthDp(context, 8)),
+            SizedBox(height: healthDp(context, 10)),
             Container(height: healthDp(context, 1), color: _border),
-            SizedBox(height: healthDp(context, 8)),
+            SizedBox(height: healthDp(context, 10)),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -455,7 +364,7 @@ class _PointScreenState extends State<PointScreen> {
                 Text(
                   amountText,
                   style: TextStyle(
-                    color: _pink,
+                    color: changeAmount >= 0 ? _pink : _textMain,
                     fontSize: healthSp(context, 12),
                     fontWeight: FontWeight.w700,
                   ),
@@ -489,7 +398,7 @@ class _PointScreenState extends State<PointScreen> {
           textAlign: TextAlign.center,
           style: TextStyle(
             color: _textSub,
-            fontSize: healthSp(context, 16),
+            fontSize: healthSp(context, 14),
             fontWeight: FontWeight.w500,
           ),
         ),
