@@ -9,7 +9,8 @@ enum HealthAppBarActionsStyle { home, myPage }
 enum _HealthAppBarVariant { back, logo }
 
 /// 앱 전역 공통 AppBar.
-/// 375 기준 높이 [healthAppBarTotalHeightBase](52).
+/// 로고 앱바 375 기준 [healthAppBarTotalHeightBase](60),
+/// 뒤로가기 앱바 375 기준 [healthBackAppBarTotalHeightBase](50).
 /// 뒤로가기: 제목은 버튼 오른쪽 왼쪽 정렬 / 로고: [HealthAppBar.logo].
 class HealthAppBar extends StatelessWidget
     implements HealthResponsivePreferredSizeWidget {
@@ -57,15 +58,21 @@ class HealthAppBar extends StatelessWidget
         leadingIconSize = null,
         showLeading = true;
 
+  double get _toolbarHeight => _variant == _HealthAppBarVariant.back
+      ? healthBackAppBarTotalHeightBase
+      : healthAppBarTotalHeightBase;
+
   @override
   Size get preferredSize => healthAppBarPreferredSize(
         bottomHeight: bottom?.preferredSize.height ?? 0,
+        toolbarHeight: _toolbarHeight,
       );
 
   @override
   Size preferredSizeForWidth(double width) => healthAppBarPreferredSize(
         width: width,
         bottomHeight: bottom?.preferredSize.height ?? 0,
+        toolbarHeight: _toolbarHeight,
       );
 
   @override
@@ -83,7 +90,7 @@ class HealthAppBar extends StatelessWidget
   }
 
   Widget _buildBackBar(BuildContext context) {
-    final barH = healthAppBarTotalHeight(context);
+    final barH = healthBackAppBarTotalHeightBase;
     final iconSize = (leadingIconSize ?? healthDp(context, 24)).clamp(0.0, barH);
     final leadingSlot = healthDp(context, 40);
     final titleGap = healthDp(context, 4);
@@ -105,6 +112,7 @@ class HealthAppBar extends StatelessWidget
 
     return healthAppBarChrome(
       context: context,
+      toolbarHeight: barH,
       bottom: bottom,
       toolbar: Padding(
         padding: EdgeInsets.symmetric(horizontal: healthDp(context, 5)),
@@ -156,9 +164,10 @@ Widget healthAppBarChrome({
   required BuildContext context,
   required Widget toolbar,
   PreferredSizeWidget? bottom,
+  double? toolbarHeight,
 }) {
   final topInset = healthStatusBarTopInset(context);
-  final barH = healthAppBarTotalHeight(context);
+  final barH = toolbarHeight ?? healthAppBarTotalHeight(context);
   final bottomH = bottom?.preferredSize.height ?? 0;
   return SizedBox(
     height: barH + topInset + bottomH,

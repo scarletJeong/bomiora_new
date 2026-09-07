@@ -17,8 +17,8 @@ import 'cart_dropdown_menu.dart';
 /// 홈: 검색·알림·장바구니 / 마이페이지: 장바구니·설정
 enum AppBarMenuActionsStyle { home, myPage }
 
-/// [HealthAppBar]와 동일한 전체 높이(375 기준 52).
-/// 아이콘·로고는 52 높이 안에서 세로 중앙 배치.
+/// [HealthAppBar]와 동일한 전체 높이(375 기준 60).
+/// 아이콘·로고는 60 높이 안에서 세로 중앙 배치.
 /// 좌우 패딩 `5`, 좌측 메뉴·우측 액션 아이콘 `19.82`, 액션 당김(겹침) `12`,
 /// 로고는 패딩 안 전체 폭 기준 [Stack] + [Center]로 **화면 가로 정중앙**.
 /// 모든 길이·간격은 [healthDp] / [healthAppBarTotalHeight]로 스케일합니다.

@@ -31,9 +31,11 @@ double healthDp(BuildContext context, double base) {
   return base * healthTextScaleByWidth(width);
 }
 
-/// 공통 AppBar 전체 높이 (375 기준).
-/// 뒤로가기·로고 앱바([HealthAppBar])가 같이 씁니다.
-const double healthAppBarTotalHeightBase = 52;
+/// 로고 앱바 전체 높이 (375 기준).
+const double healthAppBarTotalHeightBase = 60;
+
+/// 뒤로가기 앱바 전체 높이 (375 기준).
+const double healthBackAppBarTotalHeightBase = 50;
 
 /// AppBar 콘텐츠 영역 높이 ([healthAppBarTotalHeightBase]와 동일).
 const double healthAppBarToolbarHeightBase = healthAppBarTotalHeightBase;
@@ -53,7 +55,7 @@ double healthAppBarHeight(BuildContext context) =>
 double healthAppBarTitlePaddingV(BuildContext context) => healthDp(context, 5);
 
 /// AppBar 툴바 높이 (상태바 제외).
-/// 제목·아이콘은 반응형으로 커지지만 툴바 자체는 항상 52입니다.
+/// 제목·아이콘은 반응형으로 커지지만 툴바 자체는 항상 60입니다.
 double healthAppBarTotalHeight(BuildContext context) =>
     healthAppBarTotalHeightBase;
 
@@ -74,6 +76,7 @@ double healthStatusBarTopInsetForView(FlutterView view) =>
 Size healthAppBarPreferredSize({
   double? width,
   double bottomHeight = 0,
+  double? toolbarHeight,
 }) {
   final views = WidgetsBinding.instance.platformDispatcher.views;
   var resolvedWidth = width ?? 375.0;
@@ -89,7 +92,8 @@ Size healthAppBarPreferredSize({
     }
   }
   return Size.fromHeight(
-    healthAppBarTotalHeightForWidth(resolvedWidth) + bottomHeight,
+    (toolbarHeight ?? healthAppBarTotalHeightForWidth(resolvedWidth)) +
+        bottomHeight,
   );
 }
 
