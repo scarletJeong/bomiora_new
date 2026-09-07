@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
-import '../../../../data/services/auth_service.dart';
-import '../../../../core/constants/app_assets.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
+import 'cancel_member_done_screen.dart';
 
 class Cancel2MemberScreen extends StatefulWidget {
   const Cancel2MemberScreen({super.key});
@@ -16,7 +14,6 @@ class Cancel2MemberScreen extends StatefulWidget {
 class _Cancel2MemberScreenState extends State<Cancel2MemberScreen> {
   final TextEditingController _etcController = TextEditingController();
   int? _selectedIndex;
-  bool _isSubmitting = false;
 
   final List<String> _reasons = const [
     '서비스 이용이 불편해요',
@@ -43,43 +40,17 @@ class _Cancel2MemberScreenState extends State<Cancel2MemberScreen> {
   bool get _isEtcSelected => _selectedIndex == _reasons.length - 1;
 
   bool get _canWithdraw {
-    if (_selectedIndex == null || _isSubmitting) return false;
+    if (_selectedIndex == null) return false;
     if (_isEtcSelected && _etcController.text.trim().isEmpty) return false;
     return true;
   }
 
-  Future<void> _onWithdraw() async {
+  void _onWithdraw() {
     if (!_canWithdraw) return;
-
-    final user = await AuthService.getUser();
-    if (user == null) {
-      if (!mounted) return;
-      return;
-    }
-
-    final reason = _reasons[_selectedIndex!];
-    final fullReason = _isEtcSelected
-        ? '기타:${_etcController.text.trim()}'
-        : reason;
-
-    setState(() => _isSubmitting = true);
-    final result = await AuthService.withdrawMember(
-      mbId: user.id,
-      reason: fullReason,
-    );
-    if (!mounted) return;
-    setState(() => _isSubmitting = false);
-
-    if (result['success'] != true) {
-      return;
-    }
-
-    await AuthService.logout();
-    if (!mounted) return;
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const CancelMemberCompleteScreen(),
+        builder: (context) => const CancelMemberDoneScreen(),
       ),
     );
   }
@@ -89,20 +60,24 @@ class _Cancel2MemberScreenState extends State<Cancel2MemberScreen> {
     return MobileAppLayoutWrapper(
       appBar: HealthAppBar(
         title: '회원 탈퇴',
-        titleFontSize: healthSp(context, 18),
+        titleFontSize: healthSp(context, 16),
         leadingIconSize: healthDp(context, 24),
       ),
       child: DefaultTextStyle.merge(
         style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
-        child: SafeArea(
-          child: SingleChildScrollView(
-            padding: EdgeInsets.symmetric(
-              horizontal: healthDp(context, 27),
-              vertical: healthDp(context, 20),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                padding: EdgeInsets.fromLTRB(
+                  healthDp(context, 20),
+                  healthDp(context, 10),
+                  healthDp(context, 20),
+                  healthDp(context, 20),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
                 Text(
                   '탈퇴하시는 이유가 궁금해요',
                   textAlign: TextAlign.left,
@@ -111,6 +86,7 @@ class _Cancel2MemberScreenState extends State<Cancel2MemberScreen> {
                     fontSize: healthSp(context, 18),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w500,
+                    height: 1,
                   ),
                 ),
                 SizedBox(height: healthDp(context, 10)),
@@ -122,6 +98,7 @@ class _Cancel2MemberScreenState extends State<Cancel2MemberScreen> {
                     fontSize: healthSp(context, 12),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w500,
+                    height: 1.2,
                   ),
                 ),
                 SizedBox(height: healthDp(context, 14)),
@@ -175,8 +152,20 @@ class _Cancel2MemberScreenState extends State<Cancel2MemberScreen> {
                     ),
                   ),
                 ],
-                SizedBox(height: healthDp(context, 48)),
-                Row(
+                  ],
+                ),
+              ),
+            ),
+            SafeArea(
+              top: false,
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  healthDp(context, 20),
+                  healthDp(context, 10),
+                  healthDp(context, 20),
+                  healthDp(context, 10),
+                ),
+                child: Row(
                   children: [
                     Expanded(
                       child: SizedBox(
@@ -215,8 +204,8 @@ class _Cancel2MemberScreenState extends State<Cancel2MemberScreen> {
                           onPressed: _canWithdraw ? _onWithdraw : null,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFFFF5A8D),
-                            disabledBackgroundColor:
-                                const Color(0xFFFF5A8D).withOpacity(0.4),
+                            disabledBackgroundColor: const Color(0xFFD2D2D2),
+                            disabledForegroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
                               borderRadius:
                                   BorderRadius.circular(healthDp(context, 10)),
@@ -224,7 +213,7 @@ class _Cancel2MemberScreenState extends State<Cancel2MemberScreen> {
                             elevation: 0,
                           ),
                           child: Text(
-                            _isSubmitting ? '처리중...' : '탈퇴하기',
+                            '탈퇴하기',
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: healthSp(context, 16),
@@ -237,9 +226,9 @@ class _Cancel2MemberScreenState extends State<Cancel2MemberScreen> {
                     ),
                   ],
                 ),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );
@@ -285,7 +274,7 @@ class _ReasonTile extends StatelessWidget {
                 title,
                 style: TextStyle(
                   color: const Color(0xFF0F172A),
-                  fontSize: healthSp(context, 16),
+                  fontSize: healthSp(context, 14),
                   fontFamily: 'Gmarket Sans TTF',
                   fontWeight: FontWeight.w500,
                   height: 1.50,
@@ -346,148 +335,6 @@ class _RadioDot extends StatelessWidget {
           color: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(9999),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class CancelMemberCompleteScreen extends StatelessWidget {
-  const CancelMemberCompleteScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    void goHome() {
-      Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
-    }
-
-    return MobileAppLayoutWrapper(
-      appBar: HealthAppBar(
-        title: '회원 탈퇴',
-        titleFontSize: healthSp(context, 18),
-        leadingIconSize: healthDp(context, 24),
-        onBack: goHome,
-      ),
-      child: DefaultTextStyle.merge(
-        style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
-        child: PopScope(
-          canPop: false,
-          onPopInvoked: (didPop) {
-            if (didPop) return;
-            goHome();
-          },
-          child: SafeArea(
-            child: Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: healthDp(context, 27),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  SizedBox(height: healthDp(context, 12)),
-                  Padding(
-                    padding: EdgeInsets.symmetric(
-                      vertical: healthDp(context, 32),
-                    ),
-                    child: Center(
-                      child: SizedBox(
-                        width: healthDp(context, 192),
-                        height: healthDp(context, 192),
-                        child: Stack(
-                          children: [
-                            Positioned.fill(
-                              child: Container(
-                                decoration: ShapeDecoration(
-                                  color: const Color(0x0CFF5C8F),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(9999),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            Positioned(
-                              left: healthDp(context, 16),
-                              top: healthDp(context, 16),
-                              child: Container(
-                                width: healthDp(context, 160),
-                                height: healthDp(context, 160),
-                                decoration: ShapeDecoration(
-                                  color: const Color(0x19FF5C8F),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(9999),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            Align(
-                              alignment: Alignment.center,
-                              child: SizedBox(
-                                width: healthDp(context, 120),
-                                height: healthDp(context, 120),
-                                child: SvgPicture.asset(
-                                  AppAssets.cancelMemberIcon,
-                                  width: healthDp(context, 120),
-                                  height: healthDp(context, 120),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: healthDp(context, 14)),
-                  Text(
-                    '탈퇴가 완료되었습니다',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: const Color(0xFF1A1A1A),
-                      fontSize: healthSp(context, 20),
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  SizedBox(height: healthDp(context, 10)),
-                  Text(
-                    '그동안 보미오라를 이용해 주셔서 감사합니다.\n더 발전된 모습으로 다시 만날 수 있기를 바랍니다.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: const Color(0xFF898686),
-                      fontSize: healthSp(context, 12),
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w500,
-                      height: 1.2,
-                    ),
-                  ),
-                  SizedBox(height: healthDp(context, 30)),
-                  SizedBox(
-                    height: healthDp(context, 40),
-                    child: ElevatedButton(
-                      onPressed: goHome,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFFF5A8D),
-                        shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(healthDp(context, 10)),
-                        ),
-                        elevation: 0,
-                      ),
-                      child: Text(
-                        '메인으로 이동',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: healthSp(context, 16),
-                          fontFamily: 'Gmarket Sans TTF',
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const Spacer(),
-                ],
-              ),
-            ),
           ),
         ),
       ),

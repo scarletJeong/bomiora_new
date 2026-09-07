@@ -7,7 +7,7 @@ import '../../../../data/services/point_service.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
-import 'cancel_2_member_screen.dart';
+import 'cancel_member_2_screen.dart';
 
 /// 회원탈퇴 화면
 class CancelMemberScreen extends StatefulWidget {
@@ -82,20 +82,24 @@ class _CancelMemberScreenState extends State<CancelMemberScreen> {
     return MobileAppLayoutWrapper(
       appBar: HealthAppBar(
         title: '회원 탈퇴',
-        titleFontSize: healthSp(context, 18),
+        titleFontSize: healthSp(context, 16),
         leadingIconSize: healthDp(context, 24),
       ),
       child: DefaultTextStyle.merge(
         style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
-        child: SafeArea(
-          child: SingleChildScrollView(
-            padding: EdgeInsets.symmetric(
-              horizontal: healthDp(context, 27),
-              vertical: healthDp(context, 20),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                padding: EdgeInsets.fromLTRB(
+                  healthDp(context, 20),
+                  healthDp(context, 10),
+                  healthDp(context, 20),
+                  healthDp(context, 20),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
@@ -115,7 +119,7 @@ class _CancelMemberScreenState extends State<CancelMemberScreen> {
                         size: healthDp(context, 30),
                       ),
                     ),
-                    SizedBox(height: healthDp(context, 10)),
+                    SizedBox(height: healthDp(context, 20)),
                     Text(
                       '회원 탈퇴 전 확인해 주세요',
                       textAlign: TextAlign.center,
@@ -211,7 +215,7 @@ class _CancelMemberScreenState extends State<CancelMemberScreen> {
                     ],
                   ),
                 ),
-                SizedBox(height: healthDp(context, 10)),
+                SizedBox(height: healthDp(context, 4)),
                 InkWell(
                   onTap: () => setState(() => _agreed = !_agreed),
                   borderRadius: BorderRadius.circular(healthDp(context, 8)),
@@ -226,9 +230,7 @@ class _CancelMemberScreenState extends State<CancelMemberScreen> {
                           shape: RoundedRectangleBorder(
                             side: BorderSide(
                               width: healthDp(context, 1),
-                              color: _agreed
-                                  ? const Color(0xFFFF5A8D)
-                                  : const Color(0xFFD2D2D2),
+                              color: const Color(0xFFD2D2D2),
                             ),
                             borderRadius:
                                 BorderRadius.circular(healthDp(context, 4)),
@@ -258,8 +260,20 @@ class _CancelMemberScreenState extends State<CancelMemberScreen> {
                     ],
                   ),
                 ),
-                SizedBox(height: healthDp(context, 48)),
-                Row(
+                  ],
+                ),
+              ),
+            ),
+            SafeArea(
+              top: false,
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  healthDp(context, 20),
+                  healthDp(context, 10),
+                  healthDp(context, 20),
+                  healthDp(context, 10),
+                ),
+                child: Row(
                   children: [
                     Expanded(
                       child: SizedBox(
@@ -298,8 +312,8 @@ class _CancelMemberScreenState extends State<CancelMemberScreen> {
                           onPressed: _agreed ? _onNextStep : null,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFFFF5A8D),
-                            disabledBackgroundColor:
-                                const Color(0xFFFF5A8D).withOpacity(0.4),
+                            disabledBackgroundColor: const Color(0xFFD2D2D2),
+                            disabledForegroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
                               borderRadius:
                                   BorderRadius.circular(healthDp(context, 10)),
@@ -320,9 +334,9 @@ class _CancelMemberScreenState extends State<CancelMemberScreen> {
                     ),
                   ],
                 ),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );

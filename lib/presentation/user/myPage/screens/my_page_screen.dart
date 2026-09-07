@@ -363,13 +363,23 @@ class _MyPageScreenState extends State<MyPageScreen> {
             borderRadius: BorderRadius.circular(healthDp(context, 20)),
           ),
         ),
-        child: Text(
-          '개인정보 수정',
-          style: TextStyle(
-            color: const Color(0xFF898686),
-            fontSize: healthSp(context, 12),
-            fontWeight: FontWeight.w500,
-          ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '개인정보 수정',
+              style: TextStyle(
+                color: const Color(0xFF898686),
+                fontSize: healthSp(context, 12),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            Icon(
+              Icons.chevron_right,
+              size: healthDp(context, 16),
+              color: const Color(0xFF898686),
+            ),
+          ],
         ),
       ),
     );
