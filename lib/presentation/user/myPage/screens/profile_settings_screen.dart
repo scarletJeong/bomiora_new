@@ -40,8 +40,19 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   Timer? _verifyTimer;
   int _secondsLeft = 0;
   bool _passwordMismatch = false;
+  bool _obscureNewPassword = true;
+  bool _obscureConfirmPassword = true;
+  bool _contactOtpVerifiedSuccess = false;
 
   static const String _contactOtpPurpose = 'profile_phone';
+  static final List<TextInputFormatter> _digitsOnlyFormatters = [
+    FilteringTextInputFormatter.digitsOnly,
+  ];
+  static final List<TextInputFormatter> _nicknameFormatters = [
+    FilteringTextInputFormatter.allow(
+      RegExp(r'[a-zA-Z0-9ㄱ-ㅎㅏ-ㅣ가-힣]'),
+    ),
+  ];
   String _originalPhoneDigits = '';
   String _originalNickname = '';
   static const int _nicknameChangeIntervalMonths = 6;
@@ -95,6 +106,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
       _contactPhoneVerified = true;
       _contactOtpToken = null;
       _contactOtpErrorText = null;
+      _contactOtpVerifiedSuccess = false;
       _verificationController.clear();
       _secondsLeft = 0;
       _verifyTimer?.cancel();
@@ -168,6 +180,68 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     return '${date.year}.$m.$d';
   }
 
+  TextStyle _inputHintStyle(BuildContext context) {
+    return TextStyle(
+      color: const Color(0xFF898686),
+      fontSize: healthSp(context, 14),
+      fontFamily: 'Gmarket Sans TTF',
+      fontWeight: FontWeight.w300,
+      height: 1,
+    );
+  }
+
+  TextStyle _hintWarningStyle(
+    BuildContext context, {
+    Color color = const Color(0xFF898686),
+  }) {
+    return TextStyle(
+      color: color,
+      fontSize: healthSp(context, 10),
+      fontFamily: 'Gmarket Sans TTF',
+      fontWeight: FontWeight.w300,
+      height: 1,
+    );
+  }
+
+  bool get _confirmOtpActive =>
+      !_contactPhoneVerified &&
+      _contactOtpToken != null &&
+      _contactOtpToken!.isNotEmpty;
+
+  ButtonStyle _confirmOtpButtonStyle() {
+    final pink = _confirmOtpActive || _contactOtpVerifying;
+    return ElevatedButton.styleFrom(
+      backgroundColor:
+          pink ? const Color(0xFFFF5A8D) : const Color(0xFFD2D2D2),
+      disabledBackgroundColor:
+          pink ? const Color(0xFFFF5A8D) : const Color(0xFFD2D2D2),
+      disabledForegroundColor: Colors.white,
+      elevation: 0,
+      padding: EdgeInsets.symmetric(horizontal: healthDp(context, 20)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(healthDp(context, 10)),
+      ),
+    );
+  }
+
+  Widget _passwordVisibilityIcon({
+    required bool obscure,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: EdgeInsets.only(left: healthDp(context, 8)),
+        child: Icon(
+          obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+          size: healthDp(context, 18),
+          color: const Color(0xFF898686),
+        ),
+      ),
+    );
+  }
+
   void _showNicknameChangeLimitToast() {
     AppToastOverlay.show(context, '닉네임은 6개월에 1번만 변경 가능합니다.');
   }
@@ -222,17 +296,19 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   void _onPhoneDigitsChanged() {
     final entered = _enteredPhoneDigits;
     if (entered != _originalPhoneDigits) {
-      if (_contactPhoneVerified) {
+      if (_contactPhoneVerified || _contactOtpVerifiedSuccess) {
         setState(() {
           _contactPhoneVerified = false;
           _contactOtpToken = null;
           _contactOtpErrorText = null;
+          _contactOtpVerifiedSuccess = false;
         });
       }
     } else {
       setState(() {
         _contactPhoneVerified = true;
         _contactOtpErrorText = null;
+        _contactOtpVerifiedSuccess = false;
       });
     }
   }
@@ -262,6 +338,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
       _contactOtpErrorText = null;
       _contactPhoneVerified = false;
       _contactOtpToken = null;
+      _contactOtpVerifiedSuccess = false;
     });
     final send = await AuthRepository.otpSend(
       purpose: _contactOtpPurpose,
@@ -336,6 +413,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
       _contactOtpToken = null;
       _secondsLeft = 0;
       _contactOtpErrorText = null;
+      _contactOtpVerifiedSuccess = true;
     });
     _verifyTimer?.cancel();
   }
@@ -381,7 +459,9 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
       final result = await AuthService.updateProfile(
         mbId: _currentUser!.id,
         name: _currentUser!.name,
-        nickname: _nicknameController.text.trim(),
+        nickname: _nicknameController.text
+            .trim()
+            .replaceAll(RegExp(r'[^a-zA-Z0-9ㄱ-ㅎㅏ-ㅣ가-힣]'), ''),
         phone: phone,
       );
       
@@ -473,10 +553,11 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           alignment: Alignment.center,
           child: TextField(
             controller: controller,
-            keyboardType: TextInputType.number,
-            inputFormatters: [
-              FilteringTextInputFormatter.digitsOnly,
-            ],
+            keyboardType: const TextInputType.numberWithOptions(
+              decimal: false,
+              signed: false,
+            ),
+            inputFormatters: _digitsOnlyFormatters,
             maxLength: maxLength,
             textAlign: TextAlign.center,
             onChanged: (_) => _onPhoneDigitsChanged(),
@@ -536,9 +617,9 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         Expanded(
           child: SingleChildScrollView(
             padding: EdgeInsets.fromLTRB(
-              healthDp(context, 27),
               healthDp(context, 20),
-              healthDp(context, 27),
+              healthDp(context, 20),
+              healthDp(context, 20),
               0,
             ),
             child: Column(
@@ -547,7 +628,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                 _buildProfileFormContent(
                   buildPhoneRow: buildPhoneRow,
                 ),
-                SizedBox(height: healthDp(context, 40)),
+                SizedBox(height: healthDp(context, 20)),
                 _buildWithdrawMemberLink(),
               ],
             ),
@@ -557,10 +638,10 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           top: false,
           child: Padding(
             padding: EdgeInsets.fromLTRB(
-              healthDp(context, 27),
-              healthDp(context, 4),
-              healthDp(context, 27),
-              healthDp(context, 16),
+              healthDp(context, 20),
+              healthDp(context, 0),
+              healthDp(context, 20),
+              healthDp(context, 0),
             ),
             child: SizedBox(
               width: double.infinity,
@@ -613,14 +694,15 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                 '회원탈퇴',
                 style: TextStyle(
                   color: const Color(0xFF898686),
-                  fontSize: healthSp(context, 8),
-                  fontWeight: FontWeight.w300,
+                  fontSize: healthSp(context, 12),
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w500,
                 ),
               ),
               SizedBox(width: healthDp(context, 1)),
               Icon(
                 Icons.chevron_right,
-                size: healthDp(context, 10),
+                size: healthDp(context, 16),
                 color: const Color(0xFF898686),
               ),
             ],
@@ -643,7 +725,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
             uploading: _profileUploading,
             onAddPhoto: _pickAndUploadProfilePhoto,
           ),
-          SizedBox(height: healthDp(context, 20)),
+          SizedBox(height: healthDp(context, 16)),
 
           Text(
             '닉네임',
@@ -665,17 +747,13 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                 child: TextField(
                   controller: _nicknameController,
                   readOnly: !_canChangeNicknameNow(),
+                  inputFormatters: _nicknameFormatters,
                   decoration: InputDecoration(
                     border: InputBorder.none,
                     isCollapsed: true,
                     contentPadding: EdgeInsets.zero,
                     hintText: '닉네임을 입력해 주세요',
-                    hintStyle: TextStyle(
-                      color: Color(0xFF898686),
-                      fontSize: healthSp(context, 12),
-                      fontWeight: FontWeight.w500,
-                      height: 1,
-                    ),
+                    hintStyle: _inputHintStyle(context),
                   ),
                   style: TextStyle(
                     color: !_canChangeNicknameNow()
@@ -690,18 +768,13 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
             ),
           ),
           if (!_canChangeNicknameNow() && _nextNicknameChangeDate != null) ...[
-            SizedBox(height: healthDp(context, 6)),
+            SizedBox(height: healthDp(context, 4)),
             Text(
-              '닉네임은 6개월에 1번 변경할 수 있습니다. \n(다음 변경: ${_formatYmdDot(_nextNicknameChangeDate!)})',
-              style: TextStyle(
-                color: const Color(0xFF898686),
-                fontSize: healthSp(context, 11),
-                fontWeight: FontWeight.w500,
-                height: 1,
-              ),
+              '*닉네임은 6개월에 1번 변경할 수 있습니다. \n(다음 변경: ${_formatYmdDot(_nextNicknameChangeDate!)})',
+              style: _hintWarningStyle(context),
             ),
           ],
-          SizedBox(height: healthDp(context, 14)),
+          SizedBox(height: healthDp(context, 16)),
 
           Text(
             '연락처',
@@ -711,7 +784,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
               fontWeight: FontWeight.w500,
             ),
           ),
-          SizedBox(height: healthDp(context, 14)),
+          SizedBox(height: healthDp(context, 8)),
           Row(
             children: [
               Expanded(
@@ -720,7 +793,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                       buildPhoneRow(constraints.maxWidth),
                 ),
               ),
-              SizedBox(width: healthDp(context, 14)),
+              SizedBox(width: healthDp(context, 8)),
               SizedBox(
                 height: healthDp(context, 40),
                 child: ElevatedButton(
@@ -747,7 +820,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
               ),
             ],
           ),
-          SizedBox(height: healthDp(context, 10)),
+          SizedBox(height: healthDp(context, 8)),
           Row(
             children: [
               Expanded(
@@ -759,10 +832,11 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                   padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
                   child: TextField(
                     controller: _verificationController,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [
-                      FilteringTextInputFormatter.digitsOnly,
-                    ],
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: false,
+                      signed: false,
+                    ),
+                    inputFormatters: _digitsOnlyFormatters,
                     onChanged: (_) {
                       if (_contactOtpErrorText != null) {
                         setState(() => _contactOtpErrorText = null);
@@ -773,12 +847,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                       isCollapsed: true,
                       contentPadding: EdgeInsets.zero,
                       hintText: '인증번호를 입력해 주세요',
-                      hintStyle: TextStyle(
-                        color: Color(0xFF898686),
-                        fontSize: healthSp(context, 12),
-                        fontWeight: FontWeight.w500,
-                        height: 1,
-                      ),
+                      hintStyle: _inputHintStyle(context),
                     ),
                     style: TextStyle(
                       color: Colors.black,
@@ -815,18 +884,12 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
               SizedBox(
                 height: healthDp(context, 40),
                 child: ElevatedButton(
-                  onPressed: (_contactOtpVerifying || _contactOtpSending)
-                      ? null
-                      : _confirmContactChangeOtp,
-                  style: MyPageButtonStyles.pinkElevated(
-                    padding: EdgeInsets.symmetric(horizontal: healthDp(context, 20)),
-                  ).copyWith(
-                    shape: WidgetStatePropertyAll(
-                      RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(healthDp(context, 10)),
-                      ),
-                    ),
-                  ),
+                  onPressed: (_confirmOtpActive &&
+                          !_contactOtpVerifying &&
+                          !_contactOtpSending)
+                      ? _confirmContactChangeOtp
+                      : null,
+                  style: _confirmOtpButtonStyle(),
                   child: Text(
                     _contactOtpVerifying ? '확인 중…' : '확인',
                     style: TextStyle(
@@ -843,14 +906,22 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
             SizedBox(height: healthDp(context, 6)),
             Text(
               _contactOtpErrorText!,
+              style: _hintWarningStyle(context, color: const Color(0xFFEF4444)),
+            ),
+          ] else if (_contactOtpVerifiedSuccess) ...[
+            SizedBox(height: healthDp(context, 6)),
+            Text(
+              '인증번호가 확인되었습니다.',
               style: TextStyle(
-                color: Color(0xFFEF4444),
-                fontSize: healthSp(context, 12),
-                fontWeight: FontWeight.w500,
+                color: const Color(0xFF2FAF66),
+                fontSize: healthSp(context, 10),
+                fontFamily: 'Gmarket Sans TTF',
+                fontWeight: FontWeight.w300,
+                height: 1,
               ),
             ),
           ],
-          SizedBox(height: healthDp(context, 14)),
+          SizedBox(height: healthDp(context, 16)),
 
           Text(
             '비밀번호 설정',
@@ -858,81 +929,88 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
               color: Colors.black,
               fontSize: healthSp(context, 16),
               fontWeight: FontWeight.w500,
+              height: 1,
             ),
           ),
           SizedBox(height: healthDp(context, 8)),
           _InputBox(
             padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
-            child: TextField(
-              controller: _newPasswordController,
-              obscureText: true,
-              onChanged: (_) => _recomputePasswordMismatch(),
-              decoration: InputDecoration(
-                border: InputBorder.none,
-                isCollapsed: true,
-                contentPadding: EdgeInsets.zero,
-                hintText: '새 비밀번호를 입력해 주세요.',
-                hintStyle: TextStyle(
-                  color: Color(0xFF898686),
-                  fontSize: healthSp(context, 12),
-                  fontWeight: FontWeight.w500,
-                  height: 1,
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _newPasswordController,
+                    obscureText: _obscureNewPassword,
+                    onChanged: (_) => _recomputePasswordMismatch(),
+                    decoration: InputDecoration(
+                      border: InputBorder.none,
+                      isCollapsed: true,
+                      contentPadding: EdgeInsets.zero,
+                      hintText: '새 비밀번호를 입력해 주세요.',
+                      hintStyle: _inputHintStyle(context),
+                    ),
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: healthSp(context, 12),
+                      fontWeight: FontWeight.w500,
+                      height: 1,
+                    ),
+                  ),
                 ),
-              ),
-              style: TextStyle(
-                color: Colors.black,
-                fontSize: healthSp(context, 12),
-                fontWeight: FontWeight.w500,
-                height: 1,
-              ),
+                _passwordVisibilityIcon(
+                  obscure: _obscureNewPassword,
+                  onTap: () => setState(
+                    () => _obscureNewPassword = !_obscureNewPassword,
+                  ),
+                ),
+              ],
             ),
           ),
-          SizedBox(height: healthDp(context, 2)),
+          SizedBox(height: healthDp(context, 4)),
           Text(
             '*8~16자/문자,숫자,특수문자 모두 혼용',
-            style: TextStyle(
-              color: Color(0xFF898686),
-              fontSize: healthSp(context, 10),
-              fontWeight: FontWeight.w300,
-            ),
+            style: _hintWarningStyle(context),
           ),
-          SizedBox(height: healthDp(context, 10)),
+          SizedBox(height: healthDp(context, 8)),
           _InputBox(
             borderColor: _passwordMismatch ? const Color(0xFFEF4444) : const Color(0xFFD2D2D2),
             padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
-            child: TextField(
-              controller: _confirmPasswordController,
-              obscureText: true,
-              onChanged: (_) => _recomputePasswordMismatch(),
-              decoration: InputDecoration(
-                border: InputBorder.none,
-                isCollapsed: true,
-                contentPadding: EdgeInsets.zero,
-                hintText: '다시 한번 입력해 주세요.',
-                hintStyle: TextStyle(
-                  color: Color(0xFF898686),
-                  fontSize: healthSp(context, 12),
-                  fontWeight: FontWeight.w500,
-                  height: 1,
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _confirmPasswordController,
+                    obscureText: _obscureConfirmPassword,
+                    onChanged: (_) => _recomputePasswordMismatch(),
+                    decoration: InputDecoration(
+                      border: InputBorder.none,
+                      isCollapsed: true,
+                      contentPadding: EdgeInsets.zero,
+                      hintText: '다시 한번 입력해 주세요.',
+                      hintStyle: _inputHintStyle(context),
+                    ),
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: healthSp(context, 12),
+                      fontWeight: FontWeight.w500,
+                      height: 1,
+                    ),
+                  ),
                 ),
-              ),
-              style: TextStyle(
-                color: Colors.black,
-                fontSize: healthSp(context, 12),
-                fontWeight: FontWeight.w500,
-                height: 1,
-              ),
+                _passwordVisibilityIcon(
+                  obscure: _obscureConfirmPassword,
+                  onTap: () => setState(
+                    () => _obscureConfirmPassword = !_obscureConfirmPassword,
+                  ),
+                ),
+              ],
             ),
           ),
           if (_passwordMismatch) ...[
-            SizedBox(height: healthDp(context, 6)),
+            SizedBox(height: healthDp(context, 4)),
             Text(
               '비밀번호가 일치하지 않습니다',
-              style: TextStyle(
-                color: Color(0xFFEF4444),
-                fontSize: healthSp(context, 12),
-                fontWeight: FontWeight.w500,
-              ),
+              style: _hintWarningStyle(context, color: const Color(0xFFEF4444)),
             ),
           ],
       ],
@@ -1073,7 +1151,7 @@ class _ProfileHeader extends StatelessWidget {
               height: 1,
             ),
           ),
-          SizedBox(height: healthDp(context, 5)),
+          SizedBox(height: healthDp(context, 4)),
           Text(
             email,
             textAlign: TextAlign.center,
