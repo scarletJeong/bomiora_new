@@ -206,11 +206,9 @@ class Coupon {
     if (a != null && a.isNotEmpty) return a;
     switch (method) {
       case 0:
-        if (target.isNotEmpty) return '적용상품: $target 상품할인';
-        return '적용상품: 지정 상품 상품할인';
+        return '적용상품: 지정 상품';
       case 1:
-        if (target.isNotEmpty) return '적용상품: $target 상품할인';
-        return '적용상품: 지정 카테고리 상품할인';
+        return '적용상품: 지정 카테고리 상품 전체';
       case 2:
         return '적용상품: 주문 금액 할인';
       case 3:
