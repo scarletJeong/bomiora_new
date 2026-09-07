@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 
 import '../../../data/models/product/product_model.dart';
-import '../../common/widgets/product_card.dart';
+import '../../common/widgets/product_card_with_subscription.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 
 /// 상품 상세 tail·추천상품 등 섹션 제목 공통 스타일
@@ -22,7 +22,8 @@ TextStyle shoppingSectionTitleStyle(BuildContext context) => TextStyle(
   final cellWidth = inner > crossGap
       ? (inner - crossGap) / 2
       : (inner * 0.45).clamp(80.0, 200.0);
-  final cellHeight = ProductCatalogCard.preferredMainAxisExtent(context);
+  final cellHeight =
+      ProductCardWithSubscription.preferredMainAxisExtent(context);
   return (
     cellWidth: cellWidth,
     cellHeight: cellHeight,
@@ -523,6 +524,7 @@ class RecommendProductSection extends StatefulWidget {
   final int? maxItems;
   final double? itemsPerViewport;
   final double? horizontalGap;
+  final double? titleToItemsGap;
   final double cardScale;
   final double? leadingBarHeight;
 
@@ -546,6 +548,7 @@ class RecommendProductSection extends StatefulWidget {
     this.maxItems,
     this.itemsPerViewport,
     this.horizontalGap,
+    this.titleToItemsGap,
     this.cardScale = 1.0,
     this.leadingBarHeight,
   });
@@ -616,7 +619,7 @@ class _RecommendProductSectionState extends State<RecommendProductSection> {
                 ),
             ],
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: widget.titleToItemsGap ?? healthDp(context, 12)),
         ],
         if (recommended.isEmpty)
           Container(
@@ -637,7 +640,7 @@ class _RecommendProductSectionState extends State<RecommendProductSection> {
             children: [
               for (var i = 0; i < recommended.length; i++) ...[
                 if (i > 0) SizedBox(height: healthDp(context, 16)),
-                ProductCatalogCard(
+                ProductCardWithSubscription(
                   product: recommended[i],
                   onTap: () => widget.onProductTap(recommended[i]),
                 ),
@@ -658,9 +661,11 @@ class _RecommendProductSectionState extends State<RecommendProductSection> {
                   crossAxisSpacing: m.crossGap,
                   mainAxisSpacing: healthDp(context, 16),
                   mainAxisExtent:
-                      ProductCatalogCard.preferredMainAxisExtent(context),
+                      ProductCardWithSubscription.preferredMainAxisExtent(
+                    context,
+                  ),
                 ),
-                itemBuilder: (context, index) => ProductCatalogCard(
+                itemBuilder: (context, index) => ProductCardWithSubscription(
                   product: recommended[index],
                   onTap: () => widget.onProductTap(recommended[index]),
                 ),
@@ -681,7 +686,7 @@ class _RecommendProductSectionState extends State<RecommendProductSection> {
                       ? (inner - crossGap) / 2
                       : (inner * 0.45).clamp(80.0, 200.0));
               final baseCellHeight =
-                  ProductCatalogCard.preferredMainAxisExtent(context);
+                  ProductCardWithSubscription.preferredMainAxisExtent(context);
               final cellWidth = baseCellWidth * scale;
               final cellHeight = baseCellHeight * scale;
               return SizedBox(
@@ -705,7 +710,7 @@ class _RecommendProductSectionState extends State<RecommendProductSection> {
                             child: SizedBox(
                               width: baseCellWidth,
                               height: baseCellHeight,
-                              child: ProductCatalogCard(
+                              child: ProductCardWithSubscription(
                                 product: recommended[index],
                                 onTap: () =>
                                     widget.onProductTap(recommended[index]),

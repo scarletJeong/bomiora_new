@@ -43,11 +43,13 @@ class ProductCatalogCard extends StatelessWidget {
 
   final Product product;
   final VoidCallback onTap;
+  final VoidCallback? onImageSettled;
 
   const ProductCatalogCard({
     super.key,
     required this.product,
     required this.onTap,
+    this.onImageSettled,
   });
 
   /// 텍스트 `height: 1.2` 한 줄 높이 (레이아웃·extent 계산 공통)
@@ -175,6 +177,7 @@ class ProductCatalogCard extends StatelessWidget {
                         decodeHeightLogical: imageH,
                         fit: BoxFit.cover,
                         alignment: Alignment.center,
+                        onSettled: onImageSettled,
                         errorBuilder: (_, __, ___) => _placeholder(context),
                         loadingBuilder: (context, child, progress) {
                           if (progress == null) return child;
