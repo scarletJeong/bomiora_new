@@ -331,7 +331,7 @@ class ContentService {
     }
   }
 
-  /// 콘텐츠 추천 (엄지업) — [mbId] + 문진 [pfNo](없으면 0) 기준으로 글당 1회
+  /// 콘텐츠 추천 토글 (엄지업 설정/해제)
   static Future<Map<String, dynamic>> recommendContent(
     int id, {
     required String mbId,

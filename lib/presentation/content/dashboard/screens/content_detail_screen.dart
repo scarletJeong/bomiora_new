@@ -5,8 +5,9 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../../../../core/constants/app_assets.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/services/content_service.dart';
-import '../../../../data/services/health_profile_service.dart';
 import '../../../../data/services/wish_service.dart';
+import '../../../common/navigation/board_list_navigation.dart';
+import '../../../common/widgets/article_adjacent_nav.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
@@ -49,9 +50,10 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
   bool? _isWished;
   int _recommendCount = 0;
   bool? _userRecommended;
-  int _recommendPfNo = 0;
   bool _wishBusy = false;
   bool _recommendBusy = false;
+  String? _userId;
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -65,13 +67,18 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
     }
   }
 
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
   Future<void> _fetchDetail(int id) async {
     setState(() {
       _isLoading = true;
       _fetchError = null;
     });
     String? mbId;
-    // 상세 진입 시 문진표 전체 API를 타지 않음 (추천 시에만 pfNo 조회)
     const int pfNo = 0;
     try {
       final u = await AuthService.getUser();
@@ -80,16 +87,19 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
       }
     } catch (_) {}
     if (mounted) {
-      setState(() => _recommendPfNo = pfNo);
+      setState(() {
+        _userId = mbId;
+        if (mbId != null) {
+          _isWished = WishService.peekIsWished(mbId, '$id');
+        }
+      });
     }
-    final results = await Future.wait([
-      ContentService.getContentDetail(id, mbId: mbId, pfNo: pfNo),
-      WishService.isWished('$id'),
-    ]);
-    final result = results[0] as Map<String, dynamic>;
-    final wished = results[1] as bool;
+    final result = await ContentService.getContentDetail(
+      id,
+      mbId: mbId,
+      pfNo: pfNo,
+    );
     if (!mounted) return;
-    setState(() => _isWished = wished);
     if (result['success'] == true) {
       final data = result['data'] as Map<String, dynamic>? ?? const {};
       final prev = result['prev'] as Map<String, dynamic>?;
@@ -109,6 +119,17 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
         _nextTitle = next?['title']?.toString();
         _nextId = _toInt(next?['id']);
         _recommendCount = recCount;
+        if (data.containsKey('is_wished')) {
+          final w = data['is_wished'];
+          _isWished = w == true || w == 1 || w == '1' || w == 'true';
+          if (mbId != null) {
+            WishService.rememberWished(mbId, '$id', _isWished == true);
+          }
+        } else if (mbId != null) {
+          _isWished ??= WishService.peekIsWished(mbId, '$id') ?? false;
+        } else {
+          _isWished ??= false;
+        }
         if (data.containsKey('user_recommended')) {
           final ur = data['user_recommended'];
           _userRecommended = ur is bool
@@ -129,21 +150,25 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
   Future<void> _toggleWish() async {
     final id = _currentContentId;
     if (id == null || _wishBusy) return;
-    final user = await AuthService.getUser();
-    if (!mounted) return;
-    if (user == null) {
-      return;
-    }
+    final mbId = _userId;
+    if (mbId == null || mbId.isEmpty) return;
+
     final prev = _isWished == true;
     setState(() {
       _wishBusy = true;
-      _isWished = !prev; // 즉시 채워진/테두리 아이콘 반영
+      _isWished = !prev;
     });
     try {
-      final r = await WishService.addToWish('$id', wiItKind: 'content');
-      final wished = r['is_wished'] == true;
-      if (mounted) setState(() => _isWished = wished);
-    } catch (e) {
+      final r = await WishService.addToWish(
+        '$id',
+        wiItKind: 'content',
+        mbId: mbId,
+      );
+      if (!mounted) return;
+      if (r['success'] == false) {
+        setState(() => _isWished = prev);
+      }
+    } catch (_) {
       if (mounted) setState(() => _isWished = prev);
     } finally {
       if (mounted) setState(() => _wishBusy = false);
@@ -153,64 +178,44 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
   Future<void> _onRecommend() async {
     final id = _currentContentId;
     if (id == null || _recommendBusy) return;
-    if (_userRecommended == true) return;
-    final user = await AuthService.getUser();
-    if (!mounted) return;
-    if (user == null) {
-      return;
-    }
-    int pfNo = _recommendPfNo;
-    if (pfNo <= 0) {
-      try {
-        final hp = await HealthProfileService.getHealthProfile(user.id);
-        pfNo = hp?.pfNo ?? 0;
-        if (pfNo < 0) pfNo = 0;
-      } catch (_) {}
-      if (mounted) setState(() => _recommendPfNo = pfNo);
-    }
+    final mbId = _userId;
+    if (mbId == null || mbId.isEmpty) return;
+
+    final prevRecommended = _userRecommended == true;
     final prevCount = _recommendCount;
+    final nextRecommended = !prevRecommended;
+    final nextCount = (prevCount + (nextRecommended ? 1 : -1)).clamp(0, 999999);
     setState(() {
       _recommendBusy = true;
-      _userRecommended = true; // 즉시 채워진 아이콘 반영
-      _recommendCount = prevCount + 1;
+      _userRecommended = nextRecommended;
+      _recommendCount = nextCount;
     });
     try {
       final r = await ContentService.recommendContent(
         id,
-        mbId: user.id,
-        pfNo: pfNo,
+        mbId: mbId,
+        pfNo: 0,
       );
       if (!mounted) return;
       if (r['success'] == true) {
-        final c = r['recommend_count'];
-        final n = c is num
-            ? c.toInt()
-            : int.tryParse('$c') ?? _recommendCount;
-        setState(() {
-          _recommendCount = n;
-          _userRecommended = true;
-        });
-      } else {
-        if (r['already_recommended'] == true) {
-          final c = r['recommend_count'];
-          final n = c is num
-              ? c.toInt()
-              : int.tryParse('$c') ?? _recommendCount;
-          setState(() {
-            _recommendCount = n;
-            _userRecommended = true;
-          });
-        } else {
-          setState(() {
-            _userRecommended = false;
-            _recommendCount = prevCount;
-          });
+        final rec = r['recommended'];
+        if (rec is bool) {
+          _userRecommended = rec;
         }
+        final c = r['recommend_count'];
+        final n = c is num ? c.toInt() : int.tryParse('$c');
+        if (n != null) _recommendCount = n;
+        setState(() {});
+      } else {
+        setState(() {
+          _userRecommended = prevRecommended;
+          _recommendCount = prevCount;
+        });
       }
     } catch (_) {
       if (mounted) {
         setState(() {
-          _userRecommended = false;
+          _userRecommended = prevRecommended;
           _recommendCount = prevCount;
         });
       }
@@ -274,58 +279,59 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
-            child: SingleChildScrollView(
-              padding: EdgeInsets.fromLTRB(
-                healthDp(context, 27),
-                healthDp(context, 10),
-                healthDp(context, 27),
-                healthDp(context, 16),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _buildArticleHeader(context),
-                  SizedBox(height: healthDp(context, 20)),
-                  Container(
-                    height: healthDp(context, 1),
-                    color: const Color(0x7FD2D2D2),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                SingleChildScrollView(
+                  controller: _scrollController,
+                  padding: EdgeInsets.fromLTRB(
+                    healthDp(context, 27),
+                    healthDp(context, 10),
+                    healthDp(context, 27),
+                    healthDp(context, 20),
                   ),
-                  SizedBox(height: healthDp(context, 20)),
-                  if (_isLoading)
-                    Padding(
-                      padding: EdgeInsets.symmetric(
-                        vertical: healthDp(context, 24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _buildArticleHeader(context),
+                      SizedBox(height: healthDp(context, 20)),
+                      Container(
+                        height: healthDp(context, 1),
+                        color: const Color(0x7FD2D2D2),
                       ),
-                      child: const CircularProgressIndicator(
-                        color: Color(0xFFFF5A8D),
-                      ),
-                    ),
-                  SizedBox(height: healthDp(context, 16)),
-                  _buildBodyContent(context),
-                  SizedBox(height: healthDp(context, 24)),
-                  if (_prevId != null &&
-                      (_prevTitle?.trim().isNotEmpty ?? false))
-                    _buildPrevNextRow(
-                      context: context,
-                      label: '이전글',
-                      articleTitle: _prevTitle!,
-                      icon: Icons.keyboard_arrow_up,
-                      targetId: _prevId!,
-                    ),
-                  if (_prevId != null &&
-                      (_prevTitle?.trim().isNotEmpty ?? false))
-                    SizedBox(height: healthDp(context, 10)),
-                  if (_nextId != null &&
-                      (_nextTitle?.trim().isNotEmpty ?? false))
-                    _buildPrevNextRow(
-                      context: context,
-                      label: '다음글',
-                      articleTitle: _nextTitle!,
-                      icon: Icons.keyboard_arrow_down,
-                      targetId: _nextId!,
-                    ),
-                ],
-              ),
+                      SizedBox(height: healthDp(context, 20)),
+                      if (_isLoading)
+                        Padding(
+                          padding: EdgeInsets.symmetric(
+                            vertical: healthDp(context, 24),
+                          ),
+                          child: const CircularProgressIndicator(
+                            color: Color(0xFFFF5A8D),
+                          ),
+                        ),
+                      SizedBox(height: healthDp(context, 16)),
+                      _buildBodyContent(context),
+                    ],
+                  ),
+                ),
+                ArticleAdjacentNavOverlay(
+                  controller: _scrollController,
+                  previous: _prevId != null &&
+                          (_prevTitle?.trim().isNotEmpty ?? false)
+                      ? ArticleAdjacentItem(
+                          title: _prevTitle!,
+                          onTap: () => _openContent(_prevId!),
+                        )
+                      : null,
+                  next: _nextId != null &&
+                          (_nextTitle?.trim().isNotEmpty ?? false)
+                      ? ArticleAdjacentItem(
+                          title: _nextTitle!,
+                          onTap: () => _openContent(_nextId!),
+                        )
+                      : null,
+                ),
+              ],
             ),
           ),
           if (_currentContentId != null)
@@ -418,33 +424,19 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
             ),
           ),
           SizedBox(width: healthDp(context, 10)),
-          IgnorePointer(
-            ignoring: recommended,
-            child: GestureDetector(
-              onTap: (_recommendBusy ||
-                      _currentContentId == null ||
-                      recommended)
-                  ? null
-                  : _onRecommend,
-              behavior: HitTestBehavior.opaque,
-              child: Padding(
-                padding: EdgeInsets.all(healthDp(context, 0)),
-                child: (_recommendBusy && !recommended)
-                    ? SizedBox(
-                        width: iconSz,
-                        height: iconSz,
-                        child: const CircularProgressIndicator(
-                          strokeWidth: 1,
-                          color: _pink,
-                        ),
-                      )
-                    : _buildActionIcon(
-                        size: iconSz,
-                        filled: recommended,
-                        outlineAsset: AppAssets.thumbUpIcon,
-                        filledAsset: AppAssets.thumbUpIconFilled,
-                        filledSvg: _thumbFilledSvg,
-                      ),
+          GestureDetector(
+            onTap: (_recommendBusy || _currentContentId == null)
+                ? null
+                : _onRecommend,
+            behavior: HitTestBehavior.opaque,
+            child: Padding(
+              padding: EdgeInsets.all(healthDp(context, 0)),
+              child: _buildActionIcon(
+                size: iconSz,
+                filled: recommended,
+                outlineAsset: AppAssets.thumbUpIcon,
+                filledAsset: AppAssets.thumbUpIconFilled,
+                filledSvg: _thumbFilledSvg,
               ),
             ),
           ),
@@ -462,8 +454,11 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
           ],
           const Spacer(),
           GestureDetector(
-            onTap: () =>
-                Navigator.pushReplacementNamed(context, '/content/list'),
+            onTap: () => popToBoardList(
+              context,
+              '/content/list',
+              aliases: const ['/content'],
+            ),
             behavior: HitTestBehavior.opaque,
             child: Container(
               padding: EdgeInsets.symmetric(
@@ -505,57 +500,14 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
     );
   }
 
-  Widget _buildPrevNextRow({
-    required BuildContext context,
-    required String label,
-    required IconData icon,
-    required String articleTitle,
-    required int targetId,
-  }) {
-    return InkWell(
-      onTap: () => Navigator.pushReplacementNamed(
-        context,
-        '/content/detail',
-        arguments: {
-          'id': targetId,
-          if (_categoryLabel.isNotEmpty) 'category': _categoryLabel,
-        },
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: healthDp(context, 16), color: _textMuted),
-              SizedBox(width: healthDp(context, 2)),
-              Text(
-                label,
-                style: TextStyle(
-                  color: _textMuted,
-                  fontSize: healthSp(context, 12),
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(width: healthDp(context, 5)),
-          Expanded(
-            child: Text(
-              articleTitle,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: Colors.black,
-                fontSize: healthSp(context, 12),
-                fontFamily: 'Gmarket Sans TTF',
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ],
-      ),
+  void _openContent(int targetId) {
+    Navigator.pushReplacementNamed(
+      context,
+      '/content/detail',
+      arguments: {
+        'id': targetId,
+        if (_categoryLabel.isNotEmpty) 'category': _categoryLabel,
+      },
     );
   }
 
