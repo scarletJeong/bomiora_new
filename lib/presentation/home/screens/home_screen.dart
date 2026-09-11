@@ -7,6 +7,7 @@ import '../../../data/models/product/product_model.dart';
 import '../../../data/repositories/product/product_category_catalog.dart';
 import '../../../data/repositories/product/product_repository.dart';
 import '../../../data/services/banner_service.dart';
+import '../../common/widgets/app_clickable.dart';
 import '../../common/widgets/app_footer.dart';
 import '../../common/widgets/appbar_menutap.dart';
 import '../../common/widgets/navi_bar.dart';
@@ -750,9 +751,8 @@ class _CategoryTabChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    return AppClickable(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(healthDp(context, 4)),
       child: Container(
         padding: EdgeInsets.only(bottom: healthDp(context, 1)),
         decoration: BoxDecoration(

@@ -3,6 +3,8 @@ import '../../../../core/utils/date_formatter.dart';
 import '../../../../data/models/event/event_model.dart';
 import '../../../../data/services/event_service.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
+import '../../../common/navigation/board_list_navigation.dart';
+import '../../../common/widgets/article_adjacent_nav.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 
@@ -27,11 +29,18 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   bool _isLoading = true;
   String? _errorMessage;
   List<EventModel> _allEvents = [];
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
     _loadEventDetail();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadEventDetail() async {
@@ -140,189 +149,147 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     final prevEvent = _getPrevEvent();
     final nextEvent = _getNextEvent();
 
-    return SingleChildScrollView(
-      padding: EdgeInsets.fromLTRB(
-        healthDp(context, 27),
-        healthDp(context, 20),
-        healthDp(context, 27),
-        healthDp(context, 20),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Center(
-            child: Text(
-              _event!.wrSubject,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: const Color(0xFF1A1A1A),
-                fontSize: healthSp(context, 16),
-                fontFamily: _font,
-                fontWeight: FontWeight.w500,
-                letterSpacing: healthSp(context, -1.44),
-              ),
-            ),
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        SingleChildScrollView(
+          controller: _scrollController,
+          padding: EdgeInsets.fromLTRB(
+            healthDp(context, 27),
+            healthDp(context, 20),
+            healthDp(context, 27),
+            healthDp(context, 20),
           ),
-          SizedBox(height: healthDp(context, 10)),
-          Container(height: healthDp(context, 1), color: _kBorder),
-          SizedBox(height: healthDp(context, 30)),
-          if (imageUrl != null)
-            ClipRRect(
-              borderRadius: BorderRadius.circular(healthDp(context, 10)),
-              child: Image.network(
-                imageUrl,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
-                  height: healthDp(context, 240),
-                  color: const Color(0xFFF4F4F4),
-                  alignment: Alignment.center,
-                  child: Icon(
-                    Icons.broken_image_outlined,
-                    size: healthDp(context, 42),
-                    color: const Color(0xFF898686),
-                  ),
-                ),
-              ),
-            ),
-          if (imageUrl != null) SizedBox(height: healthDp(context, 24)),
-          if (plainText.isNotEmpty)
-            Text(
-              plainText,
-              style: TextStyle(
-                color: const Color(0xFF1A1A1A),
-                fontSize: healthSp(context, 14),
-                fontFamily: _font,
-                fontWeight: FontWeight.w500,
-                letterSpacing: healthSp(context, -0.56),
-                height: 1.5,
-              ),
-            ),
-          SizedBox(height: healthDp(context, 30)),
-          Text(
-            '이벤트 기간',
-            style: TextStyle(
-              color: const Color(0xFF1A1A1A),
-              fontSize: healthSp(context, 14),
-              fontFamily: _font,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          SizedBox(height: healthDp(context, 5)),
-          Padding(
-            padding: EdgeInsets.only(left: healthDp(context, 20)),
-            child: Text(
-              '- ${_periodText(_event!)}',
-              style: TextStyle(
-                color: const Color(0xFF1A1A1A),
-                fontSize: healthSp(context, 14),
-                fontFamily: _font,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-          SizedBox(height: healthDp(context, 20)),
-          if (prevEvent != null || nextEvent != null) ...[
-            if (prevEvent != null) ...[
-              Container(height: healthDp(context, 1), color: _kBorder),
-              _buildNavRow(
-                context,
-                label: '이전글',
-                event: prevEvent,
-                isPrev: true,
-              ),
-            ],
-            if (nextEvent != null) ...[
-              Container(height: healthDp(context, 1), color: _kBorder),
-              _buildNavRow(
-                context,
-                label: '다음글',
-                event: nextEvent,
-                isPrev: false,
-              ),
-            ],
-            Container(height: healthDp(context, 1), color: _kBorder),
-          ],
-          SizedBox(height: healthDp(context, 20)),
-          Align(
-            alignment: Alignment.centerRight,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(healthDp(context, 4)),
-              onTap: () => Navigator.pop(context),
-              child: Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: healthDp(context, 15),
-                  vertical: healthDp(context, 6),
-                ),
-                decoration: ShapeDecoration(
-                  color: _kPink,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(healthDp(context, 4)),
-                  ),
-                ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
                 child: Text(
-                  '목록',
+                  _event!.wrSubject,
+                  textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: Colors.white,
+                    color: const Color(0xFF1A1A1A),
+                    fontSize: healthSp(context, 16),
+                    fontFamily: _font,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: healthSp(context, -1.44),
+                  ),
+                ),
+              ),
+              SizedBox(height: healthDp(context, 10)),
+              Container(height: healthDp(context, 1), color: _kBorder),
+              SizedBox(height: healthDp(context, 30)),
+              if (imageUrl != null)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(healthDp(context, 10)),
+                  child: Image.network(
+                    imageUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(
+                      height: healthDp(context, 240),
+                      color: const Color(0xFFF4F4F4),
+                      alignment: Alignment.center,
+                      child: Icon(
+                        Icons.broken_image_outlined,
+                        size: healthDp(context, 42),
+                        color: const Color(0xFF898686),
+                      ),
+                    ),
+                  ),
+                ),
+              if (imageUrl != null) SizedBox(height: healthDp(context, 24)),
+              if (plainText.isNotEmpty)
+                Text(
+                  plainText,
+                  style: TextStyle(
+                    color: const Color(0xFF1A1A1A),
+                    fontSize: healthSp(context, 14),
+                    fontFamily: _font,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: healthSp(context, -0.56),
+                    height: 1.5,
+                  ),
+                ),
+              SizedBox(height: healthDp(context, 30)),
+              Text(
+                '이벤트 기간',
+                style: TextStyle(
+                  color: const Color(0xFF1A1A1A),
+                  fontSize: healthSp(context, 14),
+                  fontFamily: _font,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              SizedBox(height: healthDp(context, 5)),
+              Padding(
+                padding: EdgeInsets.only(left: healthDp(context, 20)),
+                child: Text(
+                  '- ${_periodText(_event!)}',
+                  style: TextStyle(
+                    color: const Color(0xFF1A1A1A),
                     fontSize: healthSp(context, 14),
                     fontFamily: _font,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
               ),
-            ),
+              SizedBox(height: healthDp(context, 20)),
+              Align(
+                alignment: Alignment.centerRight,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(healthDp(context, 4)),
+                  onTap: () => popToBoardList(context, '/event'),
+                  child: Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: healthDp(context, 15),
+                      vertical: healthDp(context, 6),
+                    ),
+                    decoration: ShapeDecoration(
+                      color: _kPink,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(healthDp(context, 4)),
+                      ),
+                    ),
+                    child: Text(
+                      '목록',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: healthSp(context, 14),
+                        fontFamily: _font,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+        ArticleAdjacentNavOverlay(
+          controller: _scrollController,
+          previous: prevEvent == null
+              ? null
+              : ArticleAdjacentItem(
+                  title: prevEvent.wrSubject,
+                  onTap: () => _openEvent(prevEvent.wrId),
+                ),
+          next: nextEvent == null
+              ? null
+              : ArticleAdjacentItem(
+                  title: nextEvent.wrSubject,
+                  onTap: () => _openEvent(nextEvent.wrId),
+                ),
+        ),
+      ],
     );
   }
 
-  Widget _buildNavRow(
-    BuildContext context, {
-    required String label,
-    required EventModel event,
-    required bool isPrev,
-  }) {
-    return InkWell(
-      onTap: () => Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => EventDetailScreen(wrId: event.wrId),
-        ),
-      ),
-      child: Padding(
-        padding: EdgeInsets.symmetric(vertical: healthDp(context, 12)),
-        child: Row(
-          children: [
-            Icon(
-              isPrev ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-              size: healthDp(context, 20),
-              color: const Color(0xFF898686),
-            ),
-            Text(
-              label,
-              style: TextStyle(
-                color: const Color(0xFF898686),
-                fontSize: healthSp(context, 14),
-                fontFamily: _font,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            SizedBox(width: healthDp(context, 10)),
-            Expanded(
-              child: Text(
-                event.wrSubject,
-                style: TextStyle(
-                  color: Colors.black,
-                  fontSize: healthSp(context, 14),
-                  fontFamily: _font,
-                  fontWeight: FontWeight.w500,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
+  void _openEvent(int wrId) {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EventDetailScreen(wrId: wrId),
+        settings: RouteSettings(name: '/event/$wrId'),
       ),
     );
   }

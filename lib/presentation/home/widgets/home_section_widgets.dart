@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../common/widgets/app_clickable.dart';
+import '../../health/health_common/health_responsive_scale.dart';
+
 import '../../health/health_common/health_responsive_scale.dart';
 import 'btn_more.dart';
 
@@ -198,7 +201,7 @@ class HomeListSectionRow extends StatelessWidget {
     );
     final tap = onTap;
     if (tap == null) return row;
-    return InkWell(onTap: tap, child: row);
+    return AppClickable(onTap: tap, child: row);
   }
 }
 

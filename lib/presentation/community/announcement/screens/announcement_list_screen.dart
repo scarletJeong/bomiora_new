@@ -8,6 +8,7 @@ import '../../../../data/services/announcement_service.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/centered_empty_state.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
+import '../../../common/widgets/app_clickable.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 import 'announcement_detail_screen.dart';
 
@@ -246,18 +247,18 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
         .replaceAll('\n', ' ')
         .replaceAll(RegExp(r'\s+'), ' ')
         .trim();
-    return InkWell(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => AnnouncementDetailScreen(announcementId: item.id),
-          settings: RouteSettings(name: '/announcement/${item.id}'),
+    return Padding(
+      padding: EdgeInsets.only(bottom: healthDp(context, 14)),
+      child: AppClickable(
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => AnnouncementDetailScreen(announcementId: item.id),
+            settings: RouteSettings(name: '/announcement/${item.id}'),
+          ),
         ),
-      ),
-      borderRadius: BorderRadius.circular(healthDp(context, 16)),
-      child: Container(
-        margin: EdgeInsets.only(bottom: healthDp(context, 14)),
-        padding: EdgeInsets.all(healthDp(context, 16)),
+        child: Container(
+          padding: EdgeInsets.all(healthDp(context, 16)),
         decoration: ShapeDecoration(
           shape: RoundedRectangleBorder(
             side: BorderSide(
@@ -319,6 +320,7 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
             ),
           ],
         ),
+        ),
       ),
     );
   }
@@ -337,9 +339,8 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
         ),
         ...pages.map((p) => Padding(
               padding: EdgeInsets.symmetric(horizontal: healthDp(context, 2)),
-              child: InkWell(
+              child: AppClickable(
                 onTap: p == _page ? null : () => _load(page: p),
-                borderRadius: BorderRadius.circular(healthDp(context, 7)),
                 child: Container(
                   width: healthDp(context, 30),
                   height: healthDp(context, 30),

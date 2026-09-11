@@ -3,6 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/constants/app_assets.dart';
 import '../../../data/services/content_service.dart';
+import '../../common/widgets/app_clickable.dart';
 import '../../common/widgets/web_dragscroll.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../content/dashboard/screens/content_detail_screen.dart';
@@ -162,7 +163,7 @@ class _GuidebookCard extends StatelessWidget {
     return SizedBox(
       width: m.cardW,
       height: m.imageH + m.columnGap + titleH,
-      child: InkWell(
+      child: AppClickable(
         onTap: onTap,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

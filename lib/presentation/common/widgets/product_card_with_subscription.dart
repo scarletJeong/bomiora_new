@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../data/models/product/product_model.dart';
 import '../../health/health_common/health_responsive_scale.dart';
+import 'app_clickable.dart';
 import 'app_network_image.dart';
 import 'product_card.dart';
 
@@ -87,7 +88,7 @@ class ProductCardWithSubscription extends StatelessWidget {
     final fsPrice = healthSp(context, 14);
     final descLetterSpacing = healthSp(context, -0.50);
 
-    return GestureDetector(
+    return AppClickable(
       onTap: onTap,
       child: Column(
         mainAxisSize: MainAxisSize.min,

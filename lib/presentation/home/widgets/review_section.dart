@@ -7,6 +7,7 @@ import '../../../data/models/review/main_home_review_model.dart';
 import '../../../data/services/review_service.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../review/screens/review_best_screen.dart';
+import '../../common/widgets/app_clickable.dart';
 import 'home_section_widgets.dart';
 
 /// 베스트 리뷰 화면과 동일 — `mr_img` 우선, 없으면 상품 썸네일
@@ -121,7 +122,7 @@ class _ReviewSectionState extends State<ReviewSection> {
           SizedBox(height: layout.titleToGridGap),
           _buildGridBody(context, layout),
           SizedBox(height: healthDp(context, 48)),
-          GestureDetector(
+          AppClickable(
             onTap: () {
               Navigator.push(
                 context,
@@ -130,7 +131,6 @@ class _ReviewSectionState extends State<ReviewSection> {
                 ),
               );
             },
-            behavior: HitTestBehavior.opaque,
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
@@ -242,7 +242,7 @@ class _ReviewSectionState extends State<ReviewSection> {
                 r.productImage!.trim().isNotEmpty
             ? ImageUrlHelper.getImageUrl(r.productImage)
             : null;
-        return GestureDetector(
+        return AppClickable(
           onTap: () {
             Navigator.push(
               context,

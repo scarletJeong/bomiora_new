@@ -1,3 +1,4 @@
+import 'package:bomiora_app/presentation/common/widgets/app_clickable.dart';
 import 'package:bomiora_app/presentation/health/health_common/health_responsive_scale.dart';
 import 'package:flutter/material.dart';
 
@@ -61,13 +62,6 @@ class BtnMore extends StatelessWidget {
 
     final tap = onTap;
     if (tap == null) return chip;
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: tap,
-        borderRadius: BorderRadius.circular(radius),
-        child: chip,
-      ),
-    );
+    return AppClickable(onTap: tap, child: chip);
   }
 }

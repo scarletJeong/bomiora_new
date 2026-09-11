@@ -7,6 +7,8 @@ import '../../../../data/models/announcement/announcement_model.dart';
 import '../../../../data/services/announcement_service.dart';
 import '../../../../data/services/content_service.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
+import '../../../common/navigation/board_list_navigation.dart';
+import '../../../common/widgets/article_adjacent_nav.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 
@@ -33,6 +35,7 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
   AnnouncementModel? _item;
   Map<String, dynamic>? _prev;
   Map<String, dynamic>? _next;
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -46,19 +49,47 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
       _error = null;
     });
 
-    final result = await AnnouncementService.getAnnouncementDetail(widget.announcementId);
+    final result = await AnnouncementService.getAnnouncementDetail(
+      widget.announcementId,
+    );
     if (!mounted) return;
 
     if (result['success'] == true) {
+      var prev = result['prev'] as Map<String, dynamic>?;
+      var next = result['next'] as Map<String, dynamic>?;
       setState(() {
         _item = result['item'] as AnnouncementModel?;
-        _prev = result['prev'] as Map<String, dynamic>?;
-        _next = result['next'] as Map<String, dynamic>?;
+        _prev = prev;
+        _next = next;
+        _loading = false;
       });
+      if (prev == null && next == null) {
+        final listResult = await AnnouncementService.getAnnouncements(
+          page: 1,
+          size: 80,
+        );
+        if (!mounted) return;
+        final adjacent = _adjacentFromList(
+          widget.announcementId,
+          (listResult['items'] as List<AnnouncementModel>?) ?? const [],
+        );
+        setState(() {
+          _prev = adjacent.$1;
+          _next = adjacent.$2;
+        });
+      }
     } else {
-      setState(() => _error = result['message']?.toString() ?? '공지사항을 불러오지 못했습니다.');
+      setState(() {
+        _error = result['message']?.toString() ?? '공지사항을 불러오지 못했습니다.';
+        _loading = false;
+      });
     }
-    setState(() => _loading = false);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   @override
@@ -97,105 +128,100 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
     final hasImage = item.imagePath != null && item.imagePath!.trim().isNotEmpty;
     final formattedTitle = _normalizeTitle(item.title);
 
-    return ListView(
-      padding: EdgeInsets.fromLTRB(
-        healthDp(context, 27),
-        healthDp(context, 20),
-        healthDp(context, 27),
-        healthDp(context, 20),
-      ),
+    final prevId = _adjacentId(_prev);
+    final nextId = _adjacentId(_next);
+    final prevTitle = (_prev?['title'] ?? '').toString().trim();
+    final nextTitle = (_next?['title'] ?? '').toString().trim();
+
+    return Stack(
+      fit: StackFit.expand,
       children: [
-        Text(
-          formattedTitle,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: _kText,
-            fontSize: healthSp(context, 14),
-            fontFamily: 'Gmarket Sans TTF',
-            fontWeight: FontWeight.w500,
-            letterSpacing: healthSp(context, -1.44),
+        ListView(
+          controller: _scrollController,
+          padding: EdgeInsets.fromLTRB(
+            healthDp(context, 27),
+            healthDp(context, 20),
+            healthDp(context, 27),
+            healthDp(context, 20),
           ),
-        ),
-        SizedBox(height: healthDp(context, 10)),
-        Container(height: healthDp(context, 1), color: _kBorder),
-        SizedBox(height: healthDp(context, 30)),
-        if (hasImage) ...[
-          ClipRRect(
-            borderRadius: BorderRadius.circular(healthDp(context, 12)),
-            child: Image.network(
-              ImageUrlHelper.getImageUrl(item.imagePath),
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(
-                height: healthDp(context, 180),
-                alignment: Alignment.center,
-                color: const Color(0xFFF6F6F6),
-                child: Icon(
-                  Icons.broken_image_outlined,
-                  color: _kMuted,
-                  size: healthDp(context, 32),
-                ),
-              ),
-            ),
-          ),
-          SizedBox(height: healthDp(context, 20)),
-        ],
-        _buildAnnouncementBody(context, item.content),
-        SizedBox(height: healthDp(context, 30)),
-        Container(height: healthDp(context, 1), color: _kBorder),
-        if (_prev != null || _next != null)
-          SizedBox(height: healthDp(context, 10)),
-        if (_prev != null) ...[
-          _buildAdjacentRow(
-            context,
-            label: '이전글',
-            title: (_prev?['title'] ?? '').toString(),
-            isPrev: true,
-            onTap: () => _moveToAdjacent(_adjacentId(_prev)),
-          ),
-          if (_next != null) SizedBox(height: healthDp(context, 10)),
-        ],
-        if (_next != null)
-          _buildAdjacentRow(
-            context,
-            label: '다음글',
-            title: (_next?['title'] ?? '').toString(),
-            isPrev: false,
-            onTap: () => _moveToAdjacent(_adjacentId(_next)),
-          ),
-        if (_prev != null || _next != null)
-          SizedBox(height: healthDp(context, 10)),
-        Container(height: healthDp(context, 1), color: _kBorder),
-        SizedBox(height: healthDp(context, 20)),
-        Align(
-          alignment: Alignment.centerRight,
-          child: FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: _kPink,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(healthDp(context, 4)),
-              ),
-              padding: EdgeInsets.symmetric(
-                horizontal: healthDp(context, 15),
-                vertical: healthDp(context, 8),
-              ),
-            ),
-            onPressed: () {
-              if (Navigator.canPop(context)) {
-                Navigator.pop(context);
-                return;
-              }
-              Navigator.pushNamed(context, '/announcement');
-            },
-            child: Text(
-              '목록',
+          children: [
+            Text(
+              formattedTitle,
+              textAlign: TextAlign.center,
               style: TextStyle(
+                color: _kText,
                 fontSize: healthSp(context, 14),
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: FontWeight.w500,
+                letterSpacing: healthSp(context, -1.44),
               ),
             ),
-          ),
+            SizedBox(height: healthDp(context, 10)),
+            Container(height: healthDp(context, 1), color: _kBorder),
+            SizedBox(height: healthDp(context, 30)),
+            if (hasImage) ...[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(healthDp(context, 12)),
+                child: Image.network(
+                  ImageUrlHelper.getImageUrl(item.imagePath),
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    height: healthDp(context, 180),
+                    alignment: Alignment.center,
+                    color: const Color(0xFFF6F6F6),
+                    child: Icon(
+                      Icons.broken_image_outlined,
+                      color: _kMuted,
+                      size: healthDp(context, 32),
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(height: healthDp(context, 20)),
+            ],
+            _buildAnnouncementBody(context, item.content),
+            SizedBox(height: healthDp(context, 30)),
+            Align(
+              alignment: Alignment.centerRight,
+              child: FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: _kPink,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(healthDp(context, 4)),
+                  ),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: healthDp(context, 15),
+                    vertical: healthDp(context, 8),
+                  ),
+                ),
+                onPressed: () => popToBoardList(context, '/announcement'),
+                child: Text(
+                  '목록',
+                  style: TextStyle(
+                    fontSize: healthSp(context, 14),
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        ArticleAdjacentNavOverlay(
+          controller: _scrollController,
+          previous: prevId != null && prevTitle.isNotEmpty
+              ? ArticleAdjacentItem(
+                  title: prevTitle,
+                  onTap: () => _moveToAdjacent(prevId),
+                )
+              : null,
+          next: nextId != null && nextTitle.isNotEmpty
+              ? ArticleAdjacentItem(
+                  title: nextTitle,
+                  onTap: () => _moveToAdjacent(nextId),
+                )
+              : null,
         ),
       ],
     );
@@ -260,59 +286,19 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
         .trim();
   }
 
-  Widget _buildAdjacentRow(
-    BuildContext context, {
-    required String label,
-    required String title,
-    required bool isPrev,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      child: SizedBox(
-        height: healthDp(context, 30),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Transform.rotate(
-              angle: isPrev ? 1.57 : -1.57,
-              child: Icon(
-                Icons.chevron_left_rounded,
-                size: healthDp(context, 12),
-                color: _kMuted,
-              ),
-            ),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: _kMuted,
-                fontSize: healthSp(context, 14),
-                fontFamily: 'Gmarket Sans TTF',
-                fontWeight: FontWeight.w500,
-                height: 1,
-              ),
-            ),
-            SizedBox(width: healthDp(context, 5)),
-            Expanded(
-              child: Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: Colors.black,
-                  fontSize: healthSp(context, 14),
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w500,
-                  letterSpacing: healthSp(context, -1.26),
-                  height: 1,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+  (Map<String, dynamic>?, Map<String, dynamic>?) _adjacentFromList(
+    int id,
+    List<AnnouncementModel> items,
+  ) {
+    final index = items.indexWhere((e) => e.id == id);
+    if (index < 0) return (null, null);
+    final prev = index > 0
+        ? {'id': items[index - 1].id, 'title': items[index - 1].title}
+        : null;
+    final next = index < items.length - 1
+        ? {'id': items[index + 1].id, 'title': items[index + 1].title}
+        : null;
+    return (prev, next);
   }
 
   int? _adjacentId(Map<String, dynamic>? raw) {
