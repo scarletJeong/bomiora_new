@@ -53,27 +53,26 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       final result = await Future.wait([
         EventService.getEventDetail(widget.wrId),
         EventService.getActiveEvents(),
-        EventService.getEndedEvents(),
       ]);
       final event = result[0] as EventModel?;
-      final active = result[1] as List<EventModel>;
-      final ended = result[2] as List<EventModel>;
-
-      if (!mounted) return;
-      final byId = <int, EventModel>{};
-      for (final e in active) {
-        byId[e.wrId] = e;
-      }
-      for (final e in ended) {
-        byId.putIfAbsent(e.wrId, () => e);
-      }
-      final all = byId.values.toList()
+      final active = (result[1] as List<EventModel>)
+          .where((e) => !e.isEnded)
+          .toList()
         ..sort((a, b) => b.wrId.compareTo(a.wrId));
 
-      if (event != null) {
+      if (!mounted) return;
+
+      if (event != null && event.isEnded) {
+        setState(() {
+          _errorMessage = '종료된 이벤트입니다.';
+          _event = null;
+          _allEvents = active;
+          _isLoading = false;
+        });
+      } else if (event != null) {
         setState(() {
           _event = event;
-          _allEvents = all;
+          _allEvents = active;
           _isLoading = false;
         });
       } else {
@@ -285,6 +284,14 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   }
 
   void _openEvent(int wrId) {
+    EventModel? target;
+    for (final e in _allEvents) {
+      if (e.wrId == wrId) {
+        target = e;
+        break;
+      }
+    }
+    if (target == null || target.isEnded) return;
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
@@ -294,18 +301,23 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     );
   }
 
+  List<EventModel> get _navEvents =>
+      _allEvents.where((e) => !e.isEnded).toList();
+
   EventModel? _getPrevEvent() {
     if (_event == null) return null;
-    final index = _allEvents.indexWhere((e) => e.wrId == _event!.wrId);
+    final list = _navEvents;
+    final index = list.indexWhere((e) => e.wrId == _event!.wrId);
     if (index <= 0) return null;
-    return _allEvents[index - 1];
+    return list[index - 1];
   }
 
   EventModel? _getNextEvent() {
     if (_event == null) return null;
-    final index = _allEvents.indexWhere((e) => e.wrId == _event!.wrId);
-    if (index == -1 || index >= _allEvents.length - 1) return null;
-    return _allEvents[index + 1];
+    final list = _navEvents;
+    final index = list.indexWhere((e) => e.wrId == _event!.wrId);
+    if (index == -1 || index >= list.length - 1) return null;
+    return list[index + 1];
   }
 
   String _periodText(EventModel event) {

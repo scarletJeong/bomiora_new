@@ -93,6 +93,23 @@ class EventModel {
     return null;
   }
 
+  /// 종료일(`wr_2`)·`is_active`·카테고리로 종료 여부 판단
+  bool get isEnded {
+    if (!isActive) return true;
+    final raw = (wr2 ?? '').trim();
+    if (raw.length >= 10) {
+      final y = int.tryParse(raw.substring(0, 4));
+      final m = int.tryParse(raw.substring(5, 7));
+      final d = int.tryParse(raw.substring(8, 10));
+      if (y != null && m != null && d != null) {
+        final n = DateTime.now();
+        final today = DateTime(n.year, n.month, n.day);
+        return today.isAfter(DateTime(y, m, d));
+      }
+    }
+    return (caName ?? '').contains('종료');
+  }
+
   /// 텍스트 내용 추출 (HTML 태그 제거)
   String getPlainText() {
     String text = wrContent

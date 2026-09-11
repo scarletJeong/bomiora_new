@@ -72,18 +72,7 @@ class _EventListScreenState extends State<EventListScreen> {
     return list;
   }
 
-  bool _isEventEnded(EventModel e) {
-    final end = DateDisplayFormatter.tryParseYmdFlexible(e.wr2);
-    if (end != null) {
-      final n = DateTime.now();
-      final today = DateTime(n.year, n.month, n.day);
-      final endDay = DateTime(end.year, end.month, end.day);
-      return today.isAfter(endDay);
-    }
-    final category = (e.caName ?? '').trim();
-    if (category.contains('종료')) return true;
-    return false;
-  }
+  bool _isEventEnded(EventModel e) => e.isEnded;
 
   List<EventModel> get _filteredEvents {
     final base = _mergeUniqueEvents();
@@ -280,13 +269,15 @@ class _EventListScreenState extends State<EventListScreen> {
   }) {
     final imageUrl = event.getImageUrl();
     final card = AppClickable(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => EventDetailScreen(wrId: event.wrId),
-          settings: RouteSettings(name: '/event/${event.wrId}'),
-        ),
-      ),
+      onTap: ended
+          ? null
+          : () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => EventDetailScreen(wrId: event.wrId),
+                  settings: RouteSettings(name: '/event/${event.wrId}'),
+                ),
+              ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
