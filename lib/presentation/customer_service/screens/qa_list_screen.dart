@@ -155,7 +155,16 @@ class QaListScreenState extends State<QaListScreen> {
       ),
     );
     if (!mounted) return;
-    if (result == true || result is int) {
+    if (result is int && result > 0) {
+      _loadContacts(preserveScroll: true);
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => QaDetailScreen(wrId: result),
+        ),
+      );
+      if (mounted) _loadContacts(preserveScroll: true);
+    } else if (result == true) {
       await _loadContacts();
     }
   }

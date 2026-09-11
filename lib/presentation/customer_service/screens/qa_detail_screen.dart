@@ -50,15 +50,24 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
     try {
       final payload = await QaService.getDetail(widget.wrId);
       if (payload != null) {
+        final replyMap = <int, List<QaInquiry>>{};
+        if (payload.repliesIncluded) {
+          replyMap[payload.inquiry.wrId] = payload.nestedReplies;
+        }
         setState(() {
           _inquiry = payload.inquiry;
           _thread = payload.thread;
           _rootWrId = payload.rootWrId;
           _resolvedImageUrl = null;
+          _repliesByWrId
+            ..clear()
+            ..addAll(replyMap);
           _isLoading = false;
         });
-        await _resolveProductCardExtras();
-        await _loadReplies();
+        _resolveProductCardExtras();
+        if (!payload.repliesIncluded) {
+          _loadReplies();
+        }
       } else {
         setState(() {
           _errorMessage = '문의를 불러오는데 실패했습니다.';
@@ -160,12 +169,35 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
   }
 
   List<String> _inquiryPhotoUrls(QaInquiry q) {
-    final html = q.wrContent;
-    return RegExp(r'''<img[^>]+src=["']([^"']+)["']''', caseSensitive: false)
-        .allMatches(html)
-        .map((m) => m.group(1)!.trim())
-        .where((e) => e.isNotEmpty)
-        .toList();
+    final seen = <String>{};
+    final urls = <String>[];
+
+    void add(String raw) {
+      final url = raw.trim();
+      if (url.isEmpty || !seen.add(url)) return;
+      urls.add(url);
+    }
+
+    for (final url in q.imageUrls) {
+      add(url);
+    }
+
+    var html = q.wrContent;
+    if (html.contains('&lt;') || html.contains('&quot;')) {
+      html = html
+          .replaceAll('&lt;', '<')
+          .replaceAll('&gt;', '>')
+          .replaceAll('&quot;', '"')
+          .replaceAll('&#39;', "'")
+          .replaceAll('&amp;', '&');
+    }
+    for (final match in RegExp(
+      r'''<img[^>]+src\s*=\s*["']([^"']+)["']''',
+      caseSensitive: false,
+    ).allMatches(html)) {
+      add(match.group(1) ?? '');
+    }
+    return urls;
   }
 
   Widget _qaPhotoThumb(BuildContext context, String url) {

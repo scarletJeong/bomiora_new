@@ -182,7 +182,17 @@ class _QaWriteScreenState extends State<QaWriteScreen> {
       if (!mounted) return;
       if (result['success'] == true) {
         AppToastOverlay.show(context, '작성하신 내용이 정상적으로 접수되었습니다.');
-        Navigator.pop(context, true);
+        final data = result['data'];
+        int? createdId;
+        if (data is Map) {
+          createdId = int.tryParse(
+            (data['wr_id'] ?? data['wrId'] ?? '').toString(),
+          );
+        }
+        Navigator.pop(
+          context,
+          (createdId != null && createdId > 0) ? createdId : true,
+        );
       } else {
         AppToastOverlay.show(
           context,

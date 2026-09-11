@@ -25,6 +25,8 @@ class QaInquiry {
   final int latestWrIsComment;
   /// 문의 종료 여부 (`wr_8` / `is_closed` 등)
   final bool isClosed;
+  /// 본문에 첨부된 이미지 URL (백엔드 `image_urls`)
+  final List<String> imageUrls;
   
   // 답변 여부 (wr_is_comment = 1 이면 답변 있음)
   bool get hasReply => wrIsComment == 1;
@@ -54,6 +56,7 @@ class QaInquiry {
     this.latestWrId = 0,
     this.latestWrIsComment = 0,
     this.isClosed = false,
+    this.imageUrls = const [],
   });
 
   static bool _parseIsClosed(Map<String, dynamic> normalized) {
@@ -73,6 +76,15 @@ class QaInquiry {
     final wrReplyRaw = NodeValueParser.asString(normalized['wr_reply'])?.trim() ?? '';
     final wr7Raw = NodeValueParser.asString(normalized['wr_7'])?.trim() ?? '';
     final mergedReply = wrReplyRaw.isNotEmpty ? wrReplyRaw : wr7Raw;
+
+    final imageUrls = <String>[];
+    final rawUrls = normalized['image_urls'] ?? normalized['imageUrls'];
+    if (rawUrls is List) {
+      for (final item in rawUrls) {
+        final url = item?.toString().trim() ?? '';
+        if (url.isNotEmpty) imageUrls.add(url);
+      }
+    }
 
     return QaInquiry(
       wrId: NodeValueParser.asInt(normalized['wr_id']) ?? 0,
@@ -96,6 +108,7 @@ class QaInquiry {
       latestWrIsComment:
           NodeValueParser.asInt(normalized['latest_wr_is_comment']) ?? 0,
       isClosed: _parseIsClosed(normalized),
+      imageUrls: imageUrls,
     );
   }
 

@@ -17,6 +17,7 @@ class QaDetailPayload {
     this.rootWrId,
     this.fallbackReplyText = '',
     this.fallbackReplyDatetime = '',
+    this.repliesIncluded = false,
   });
 
   final QaInquiry inquiry;
@@ -25,6 +26,8 @@ class QaDetailPayload {
   final int? rootWrId;
   final String fallbackReplyText;
   final String fallbackReplyDatetime;
+  /// 상세 응답에 `replies`가 포함되면 별도 replies API를 호출하지 않는다.
+  final bool repliesIncluded;
 }
 
 class QaService {
@@ -46,6 +49,17 @@ class QaService {
   }
 
   /// 상세 `data` 맵 안에 포함된 답변 배열 추출 (백엔드 스키마 차이 대응)
+  static ({List<QaInquiry> replies, bool included}) _repliesFromDetailMap(
+    Map<String, dynamic> map,
+  ) {
+    if (map.containsKey('replies')) {
+      final raw = map['replies'];
+      final replies = raw is List ? _mapJsonToList(raw) : const <QaInquiry>[];
+      return (replies: replies, included: true);
+    }
+    return (replies: _repliesFromDetailData(map), included: false);
+  }
+
   static List<QaInquiry> _repliesFromDetailData(Map<String, dynamic> map) {
     for (final key in [
       'replies',
@@ -164,7 +178,7 @@ class QaService {
         final data = responseData['data'];
         if (data is Map) {
           final map = Map<String, dynamic>.from(data);
-          final nested = _repliesFromDetailData(map);
+          final extracted = _repliesFromDetailMap(map);
           final threadRaw = responseData['thread'];
           final thread = threadRaw is List
               ? threadRaw
@@ -176,11 +190,12 @@ class QaService {
           final rootWrId = NodeValueParser.asInt(responseData['root_wr_id']);
           return QaDetailPayload(
             inquiry: QaInquiry.fromJson(map),
-            nestedReplies: nested,
+            nestedReplies: extracted.replies,
             thread: thread,
             rootWrId: rootWrId,
             fallbackReplyText: _extractReplyText(map),
             fallbackReplyDatetime: _extractReplyDatetime(map),
+            repliesIncluded: extracted.included,
           );
         }
       }
