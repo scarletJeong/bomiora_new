@@ -6,7 +6,6 @@ import '../../../core/utils/node_value_parser.dart';
 import '../../../core/utils/price_formatter.dart';
 import '../../../data/models/cart/cart_item_model.dart';
 import '../../../data/models/delivery/delivery_model.dart';
-import '../../../data/repositories/product/product_repository.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/cart_service.dart';
 import '../../../data/services/delivery_service.dart';
@@ -97,7 +96,6 @@ class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
             .toList();
       }
       list = _groupCartExtras(list);
-      list = await _enrichMissingSubjects(list);
     } else {
       final raw = await WishService.getWishList();
       list = raw
@@ -105,7 +103,6 @@ class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
           .map((e) => _fromWishMap(Map<String, dynamic>.from(e)))
           .whereType<_SelectableItem>()
           .toList();
-      list = await _enrichMissingSubjects(list);
     }
     if (!mounted) return;
     setState(() {
@@ -130,35 +127,6 @@ class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
       for (final main in mains)
         main.copyWith(extras: extrasByParent[main.itId ?? ''] ?? const []),
     ];
-  }
-
-  Future<List<_SelectableItem>> _enrichMissingSubjects(
-    List<_SelectableItem> items,
-  ) async {
-    if (items.isEmpty) return items;
-    Future<_SelectableItem> enrich(_SelectableItem item) async {
-      if ((item.itSubject ?? '').trim().isNotEmpty) return item;
-      final itId = (item.itId ?? '').trim();
-      if (itId.isEmpty) return item;
-      try {
-        final product = await ProductRepository.getProductDetail(itId);
-        final label = _productSubjectLabel(
-          product?.itSubject,
-          productKind: item.productKind ?? product?.productKind,
-        );
-        if (label == null || label.isEmpty) return item;
-        return item.copyWith(itSubject: label);
-      } catch (_) {
-        return item;
-      }
-    }
-
-    return Future.wait(items.map((item) async {
-      final main = await enrich(item);
-      if (main.extras.isEmpty) return main;
-      final extras = await Future.wait(main.extras.map(enrich));
-      return main.copyWith(extras: extras);
-    }));
   }
 
   bool _isWithinOneMonth(OrderListModel order) {

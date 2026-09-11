@@ -7,20 +7,20 @@ import '../services/auth_service.dart';
 
 class WishService {
   static const Duration _checkCacheTtl = Duration(seconds: 30);
+  static const Duration _listCacheTtl = Duration(seconds: 45);
   static final Map<String, bool> _checkCache = {};
   static final Map<String, DateTime> _checkCacheAt = {};
   static final Map<String, Future<bool>> _checkInFlight = {};
   static final Map<String, Future<Map<String, dynamic>>> _toggleInFlight = {};
+  static List<Map<String, dynamic>>? _listCache;
+  static DateTime? _listCacheAt;
+  static String? _listCacheUserId;
+  static Future<List<dynamic>>? _listInFlight;
 
   static const Map<String, String> _noCacheHeaders = {
     'Cache-Control': 'no-cache',
     'Pragma': 'no-cache',
   };
-
-  static String _withNoCacheParam(String endpoint) {
-    final ts = DateTime.now().millisecondsSinceEpoch;
-    return endpoint.contains('?') ? '$endpoint&_ts=$ts' : '$endpoint?_ts=$ts';
-  }
 
   static Map<String, dynamic>? _normalizeWishItem(dynamic raw) {
     if (raw is! Map) return null;
@@ -56,40 +56,85 @@ class WishService {
     };
   }
 
+  static List<Map<String, dynamic>>? peekWishList(String userId) {
+    if (_listCache == null || _listCacheUserId != userId.trim()) return null;
+    return _listCache;
+  }
+
+  static void rememberWishList(String userId, List<Map<String, dynamic>> list) {
+    _listCacheUserId = userId.trim();
+    _listCache = list.map((e) => Map<String, dynamic>.from(e)).toList();
+    _listCacheAt = DateTime.now();
+  }
+
+  static void removeFromLocalList(String productId) {
+    final id = productId.trim();
+    if (id.isEmpty || _listCache == null) return;
+    _listCache!.removeWhere((e) => (e['it_id']?.toString() ?? '') == id);
+  }
+
+  static void restoreLocalListItem(int index, Map<String, dynamic> item) {
+    if (_listCache == null) return;
+    final i = index < 0 ? 0 : (index > _listCache!.length ? _listCache!.length : index);
+    _listCache!.insert(i, Map<String, dynamic>.from(item));
+  }
+
   /// 찜 목록 조회
-  static Future<List<dynamic>> getWishList() async {
+  static Future<List<dynamic>> getWishList({bool forceRefresh = false}) async {
     try {
       final user = await AuthService.getUser();
       if (user == null) {
         throw Exception('로그인이 필요합니다.');
       }
 
-      final url = _withNoCacheParam('${ApiEndpoints.getWishList}?mb_id=${user.id}');
-      final response = await ApiClient.get(url, additionalHeaders: _noCacheHeaders);
-
-      if (response.statusCode == 404) {
-        throw Exception('API 엔드포인트를 찾을 수 없습니다: $url');
+      final fresh = _listCache != null &&
+          _listCacheUserId == user.id &&
+          _listCacheAt != null &&
+          DateTime.now().difference(_listCacheAt!) < _listCacheTtl;
+      if (!forceRefresh && fresh) {
+        return _listCache!.map((e) => Map<String, dynamic>.from(e)).toList();
       }
 
-      if (response.statusCode == 304 || response.body.trim().isEmpty) {
-        return [];
-      }
+      final pending = _listInFlight;
+      if (pending != null) return pending;
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data is Map && data['data'] != null && data['data'] is List) {
-          final normalized = (data['data'] as List)
-              .map(_normalizeWishItem)
-              .whereType<Map<String, dynamic>>()
-              .toList();
-          return normalized;
-        }
+      final request = _fetchWishList(user.id);
+      _listInFlight = request;
+      try {
+        return await request;
+      } finally {
+        _listInFlight = null;
       }
-
-      return [];
     } catch (e) {
       rethrow;
     }
+  }
+
+  static Future<List<dynamic>> _fetchWishList(String userId) async {
+    final url = '${ApiEndpoints.getWishList}?mb_id=$userId';
+    final response = await ApiClient.get(url);
+
+    if (response.statusCode == 404) {
+      throw Exception('API 엔드포인트를 찾을 수 없습니다: $url');
+    }
+
+    if (response.statusCode == 304 || response.body.trim().isEmpty) {
+      return peekWishList(userId) ?? [];
+    }
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      if (data is Map && data['data'] != null && data['data'] is List) {
+        final normalized = (data['data'] as List)
+            .map(_normalizeWishItem)
+            .whereType<Map<String, dynamic>>()
+            .toList();
+        rememberWishList(userId, normalized);
+        return normalized;
+      }
+    }
+
+    return [];
   }
 
   static String _cacheKey(String userId, String productId) =>
@@ -236,6 +281,7 @@ class WishService {
       final result = json.decode(response.body);
       _checkCache['${user.id}|${productId.trim()}'] = false;
       _checkCacheAt['${user.id}|${productId.trim()}'] = DateTime.now();
+      removeFromLocalList(productId);
       return result;
     } catch (e) {
       throw Exception('찜 삭제 실패: $e');

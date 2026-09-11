@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/constants/app_assets.dart';
 import '../../../../core/utils/image_url_helper.dart';
 import '../../../../core/utils/node_value_parser.dart';
+import '../../../../data/services/auth_service.dart';
 import '../../../../data/services/wish_service.dart';
 import '../../../../data/services/content_service.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
@@ -123,25 +124,51 @@ class _WishListScreenState extends State<WishListScreen> {
     _visibleCount = n < _pageSize ? n : _pageSize;
   }
 
+  Future<void> _applyWishRows(List<dynamic> raw, {required bool showSpinner}) async {
+    if (!mounted) return;
+    final list = raw.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    setState(() {
+      _wishList = list;
+      if (showSpinner) _isLoading = false;
+      _errorMessage = null;
+      _requiresLogin = false;
+      _syncVisibleCount();
+    });
+  }
+
   Future<void> _loadWishList() async {
     if (!mounted) return;
 
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-      _requiresLogin = false;
-    });
-
     try {
+      final user = await AuthService.getUser();
+      if (!mounted) return;
+      if (user == null) {
+        setState(() {
+          _requiresLogin = true;
+          _errorMessage = null;
+          _isLoading = false;
+        });
+        return;
+      }
+
+      final cached = WishService.peekWishList(user.id);
+      if (cached != null) {
+        await _applyWishRows(cached, showSpinner: true);
+        try {
+          final raw = await WishService.getWishList(forceRefresh: false);
+          if (mounted) await _applyWishRows(raw, showSpinner: false);
+        } catch (_) {}
+        return;
+      }
+
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+        _requiresLogin = false;
+      });
       final raw = await WishService.getWishList();
       if (!mounted) return;
-
-      final list = raw.map((e) => Map<String, dynamic>.from(e as Map)).toList();
-      setState(() {
-        _wishList = list;
-        _isLoading = false;
-        _syncVisibleCount();
-      });
+      await _applyWishRows(raw, showSpinner: true);
     } catch (e) {
       if (!mounted) return;
       final message = e.toString();
@@ -168,12 +195,26 @@ class _WishListScreenState extends State<WishListScreen> {
   }
 
   Future<void> _removeWishItem(String productId) async {
+    final id = productId.trim();
+    if (id.isEmpty) return;
+    final index = _wishList.indexWhere((e) => (e['it_id']?.toString() ?? '') == id);
+    if (index < 0) return;
+    final removed = Map<String, dynamic>.from(_wishList[index]);
+    setState(() {
+      _wishList.removeAt(index);
+      _syncVisibleCount();
+    });
+    WishService.removeFromLocalList(id);
     try {
-      await WishService.removeFromWish(productId);
+      await WishService.removeFromWish(id);
+    } catch (_) {
       if (!mounted) return;
-      await _loadWishList();
-    } catch (e) {
-      if (!mounted) return;
+      setState(() {
+        final i = index > _wishList.length ? _wishList.length : index;
+        _wishList.insert(i, removed);
+        _syncVisibleCount();
+      });
+      WishService.restoreLocalListItem(index, removed);
     }
   }
 
