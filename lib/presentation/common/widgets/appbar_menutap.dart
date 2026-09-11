@@ -160,9 +160,11 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
   EdgeInsets _mainMenuTitlePadding(BuildContext context) =>
       EdgeInsets.symmetric(vertical: healthDp(context, 10));
 
-  void _openHealthcareStoreTopCategory(BuildContext context) {
-    final top = _generalCategories.isNotEmpty
-        ? _generalCategories.first
+  Future<void> _openHealthcareStoreTopCategory(BuildContext context) async {
+    final cats = await ProductCategoryCatalog.generalCategories();
+    if (!mounted) return;
+    final top = cats.isNotEmpty
+        ? cats.first
         : productGeneralCategoryListFallback.first;
     _popAndPushNamed(
       context,

@@ -19,8 +19,10 @@ class ProductCategoryCatalog {
       productKind: 'general',
     );
 
-    _generalCache = fromApi;
-    return fromApi;
+    _generalCache = fromApi.isNotEmpty
+        ? fromApi
+        : List<ProductCategoryItem>.from(productGeneralCategoryListFallback);
+    return _generalCache!;
   }
 
   static Future<List<ProductCategoryItem>> prescriptionCategories({

@@ -91,13 +91,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
     _tabKeys = List.generate(_baseTabOrder.length, (_) => GlobalKey());
     _stickyTabKeys = List.generate(_baseTabOrder.length, (_) => GlobalKey());
     _activeCategoryId = _activeCategoryId.trim();
-    if (_baseTabOrder.isNotEmpty &&
-        !_baseTabOrder.any((tab) => tab.id == _activeCategoryId)) {
-      _activeCategoryId = _baseTabOrder.first.id;
-    }
     if (mounted) setState(() => _tabsReady = true);
-
-    final productsFuture = _loadProducts();
 
     final List<ProductCategoryItem> source;
     if (widget.productKind == 'general') {
@@ -107,7 +101,6 @@ class _ProductListScreenState extends State<ProductListScreen> {
     }
 
     if (!mounted || requestToken != _tabsRequestToken) {
-      await productsFuture;
       return;
     }
 
@@ -124,15 +117,15 @@ class _ProductListScreenState extends State<ProductListScreen> {
       _baseTabOrder = fromApi;
       _tabKeys = List.generate(_baseTabOrder.length, (_) => GlobalKey());
       _stickyTabKeys = List.generate(_baseTabOrder.length, (_) => GlobalKey());
-      final matchedIndex =
-          _baseTabOrder.indexWhere((tab) => tab.id == _activeCategoryId);
-      if (matchedIndex < 0) {
-        _activeCategoryId = _baseTabOrder.first.id;
-      }
-      if (mounted) setState(() {});
     }
 
-    await productsFuture;
+    if (_baseTabOrder.isNotEmpty &&
+        !_baseTabOrder.any((tab) => tab.id == _activeCategoryId)) {
+      _activeCategoryId = _baseTabOrder.first.id;
+    }
+
+    if (mounted) setState(() {});
+    await _loadProducts();
   }
 
   @override
