@@ -43,7 +43,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
   int? _prevId;
   String? _nextTitle;
   int? _nextId;
-  bool _isLoading = false;
+  bool _isLoading = true;
   int? _currentContentId;
   String? _fetchError;
 
@@ -61,6 +61,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
     _currentContentId = widget.contentId;
     final id = widget.contentId;
     if (id != null) {
+      _isLoading = true;
       _fetchDetail(id);
     } else {
       _isLoading = false;
@@ -73,24 +74,71 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
     super.dispose();
   }
 
-  Future<void> _fetchDetail(int id) async {
-    setState(() {
-      _isLoading = true;
-      _fetchError = null;
-    });
-    String? mbId;
-    const int pfNo = 0;
-    try {
-      final u = await AuthService.getUser();
-      if (u != null) {
-        mbId = u.id;
+  void _applyDetailResult(Map<String, dynamic> result, int id, String? mbId) {
+    if (result['success'] != true) {
+      _fetchError = result['message']?.toString();
+      return;
+    }
+    final data = result['data'] as Map<String, dynamic>? ?? const {};
+    final prev = result['prev'] as Map<String, dynamic>?;
+    final next = result['next'] as Map<String, dynamic>?;
+    final rc = data['recommend_count'];
+    final recCount = rc is num ? rc.toInt() : int.tryParse('$rc') ?? 0;
+    _fetchError = null;
+    _categoryLabel = data['category']?.toString().trim() ?? '';
+    _title = data['title']?.toString().trim() ?? '';
+    _bodyHtml = data['content_html']?.toString() ?? '';
+    _currentContentId = _toInt(data['id']) ?? id;
+    _prevTitle = prev?['title']?.toString();
+    _prevId = _toInt(prev?['id']);
+    _nextTitle = next?['title']?.toString();
+    _nextId = _toInt(next?['id']);
+    _recommendCount = recCount;
+    if (data.containsKey('is_wished')) {
+      final w = data['is_wished'];
+      _isWished = w == true || w == 1 || w == '1' || w == 'true';
+      if (mbId != null) {
+        WishService.rememberWished(mbId, '$id', _isWished == true);
       }
-    } catch (_) {}
+    } else if (mbId != null) {
+      _isWished ??= WishService.peekIsWished(mbId, '$id') ?? false;
+    } else {
+      _isWished ??= false;
+    }
+    if (data.containsKey('user_recommended')) {
+      final ur = data['user_recommended'];
+      _userRecommended = ur is bool
+          ? ur
+          : ur == true || ur == 1 || ur == '1' || ur == 'true';
+    }
+  }
+
+  Future<void> _fetchDetail(int id) async {
+    final cached = ContentService.peekDetail(id);
+    if (cached != null && mounted) {
+      setState(() {
+        _applyDetailResult(cached, id, _userId);
+        _isLoading = false;
+      });
+    } else if (mounted && !_isLoading) {
+      setState(() {
+        _isLoading = true;
+        _fetchError = null;
+      });
+    }
+
+    String? mbId = _userId ?? AuthService.currentUser?.id;
+    const int pfNo = 0;
+    if (mbId == null) {
+      try {
+        mbId = (await AuthService.getUser())?.id;
+      } catch (_) {}
+    }
     if (mounted) {
       setState(() {
         _userId = mbId;
         if (mbId != null) {
-          _isWished = WishService.peekIsWished(mbId, '$id');
+          _isWished ??= WishService.peekIsWished(mbId, '$id');
         }
       });
     }
@@ -100,51 +148,14 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
       pfNo: pfNo,
     );
     if (!mounted) return;
-    if (result['success'] == true) {
-      final data = result['data'] as Map<String, dynamic>? ?? const {};
-      final prev = result['prev'] as Map<String, dynamic>?;
-      final next = result['next'] as Map<String, dynamic>?;
-      final rc = data['recommend_count'];
-      final recCount = rc is num
-          ? rc.toInt()
-          : int.tryParse('$rc') ?? 0;
+    if (result['success'] == true || _title.isEmpty) {
       setState(() {
-        _fetchError = null;
-        _categoryLabel = data['category']?.toString().trim() ?? '';
-        _title = data['title']?.toString().trim() ?? '';
-        _bodyHtml = data['content_html']?.toString() ?? '';
-        _currentContentId = _toInt(data['id']) ?? id;
-        _prevTitle = prev?['title']?.toString();
-        _prevId = _toInt(prev?['id']);
-        _nextTitle = next?['title']?.toString();
-        _nextId = _toInt(next?['id']);
-        _recommendCount = recCount;
-        if (data.containsKey('is_wished')) {
-          final w = data['is_wished'];
-          _isWished = w == true || w == 1 || w == '1' || w == 'true';
-          if (mbId != null) {
-            WishService.rememberWished(mbId, '$id', _isWished == true);
-          }
-        } else if (mbId != null) {
-          _isWished ??= WishService.peekIsWished(mbId, '$id') ?? false;
-        } else {
-          _isWished ??= false;
-        }
-        if (data.containsKey('user_recommended')) {
-          final ur = data['user_recommended'];
-          _userRecommended = ur is bool
-              ? ur
-              : ur == true || ur == 1 || ur == '1' || ur == 'true';
-        } else {
-          _userRecommended = null;
-        }
+        _applyDetailResult(result, id, mbId);
+        _isLoading = false;
       });
     } else {
-      setState(() {
-        _fetchError = result['message']?.toString();
-      });
+      setState(() => _isLoading = false);
     }
-    setState(() => _isLoading = false);
   }
 
   Future<void> _toggleWish() async {
@@ -190,11 +201,16 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
       _userRecommended = nextRecommended;
       _recommendCount = nextCount;
     });
+    Future<void>.delayed(const Duration(milliseconds: 80), () {
+      if (mounted) setState(() => _recommendBusy = false);
+    });
     try {
       final r = await ContentService.recommendContent(
         id,
         mbId: mbId,
         pfNo: 0,
+        recommended: nextRecommended,
+        recommendCount: nextCount,
       );
       if (!mounted) return;
       if (r['success'] == true) {
@@ -300,20 +316,24 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
                         color: const Color(0x7FD2D2D2),
                       ),
                       SizedBox(height: healthDp(context, 20)),
-                      if (_isLoading)
-                        Padding(
-                          padding: EdgeInsets.symmetric(
-                            vertical: healthDp(context, 24),
-                          ),
-                          child: const CircularProgressIndicator(
-                            color: Color(0xFFFF5A8D),
-                          ),
-                        ),
-                      SizedBox(height: healthDp(context, 16)),
-                      _buildBodyContent(context),
+                      if (!_isLoading) ...[
+                        SizedBox(height: healthDp(context, 16)),
+                        _buildBodyContent(context),
+                      ],
                     ],
                   ),
                 ),
+                if (_isLoading)
+                  Center(
+                    child: SizedBox(
+                      width: healthDp(context, 36),
+                      height: healthDp(context, 36),
+                      child: const CircularProgressIndicator(
+                        strokeWidth: 3,
+                        color: Color(0xFFFF5A8D),
+                      ),
+                    ),
+                  ),
                 ArticleAdjacentNavOverlay(
                   controller: _scrollController,
                   previous: _prevId != null &&

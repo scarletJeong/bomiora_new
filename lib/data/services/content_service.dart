@@ -11,6 +11,42 @@ class ContentService {
   static final Map<String, DateTime> _detailCacheAt = {};
   static final Map<String, Future<Map<String, dynamic>>> _detailInFlight = {};
 
+  static Map<String, dynamic>? peekDetail(int id) {
+    Map<String, dynamic>? best;
+    DateTime? bestAt;
+    final prefix = '$id|';
+    for (final key in _detailCache.keys) {
+      if (!key.startsWith(prefix)) continue;
+      final at = _detailCacheAt[key];
+      if (at == null) continue;
+      if (bestAt == null || at.isAfter(bestAt)) {
+        bestAt = at;
+        best = _detailCache[key];
+      }
+    }
+    if (best == null || bestAt == null) return null;
+    if (DateTime.now().difference(bestAt) >= _detailCacheTtl) return null;
+    return Map<String, dynamic>.from(best);
+  }
+
+  static void rememberRecommend({
+    required int id,
+    required bool recommended,
+    required int count,
+  }) {
+    final prefix = '$id|';
+    for (final key in _detailCache.keys) {
+      if (!key.startsWith(prefix)) continue;
+      final cached = _detailCache[key];
+      if (cached == null) continue;
+      final data = cached['data'];
+      if (data is Map) {
+        data['user_recommended'] = recommended;
+        data['recommend_count'] = count;
+      }
+    }
+  }
+
   /// Cafe24 업로드 썸네일 실제 경로 (HTML이 아닌 이미지 바이트가 내려오는 경로)
   static const String _contentThumbBase =
       'https://bomiora0.mycafe24.com/data/content/';
@@ -336,13 +372,24 @@ class ContentService {
     int id, {
     required String mbId,
     int pfNo = 0,
+    bool? recommended,
+    int? recommendCount,
   }) async {
     try {
+      if (recommended != null) {
+        rememberRecommend(
+          id: id,
+          recommended: recommended,
+          count: recommendCount ?? 0,
+        );
+      }
       final response = await ApiClient.post(
         ApiEndpoints.contentRecommend(id),
         <String, dynamic>{
           'mb_id': mbId,
           'pf_no': pfNo,
+          if (recommended != null) 'recommended': recommended,
+          if (recommendCount != null) 'recommend_count': recommendCount,
         },
       );
       if (response.statusCode != 200) {
