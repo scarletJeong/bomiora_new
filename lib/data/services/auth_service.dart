@@ -15,6 +15,9 @@ class AuthService {
   static const String _tokenKey = 'auth_token';
   static const String _isLoggedInKey = 'is_logged_in';
   static const String _autoLoginKey = 'auto_login';
+  static UserModel? _memoryUser;
+
+  static UserModel? get currentUser => _memoryUser;
 
   // 로그인 상태 저장
   static Future<void> saveLoginData({
@@ -24,6 +27,7 @@ class AuthService {
   }) async {
     final prefs = await SharedPreferences.getInstance();
 
+    _memoryUser = user;
     final userJsonStr = json.encode(user.toJson());
 
     await prefs.setString(_userKey, userJsonStr);
@@ -57,6 +61,7 @@ class AuthService {
 
   // 사용자 정보 가져오기
   static Future<UserModel?> getUser() async {
+    if (_memoryUser != null) return _memoryUser;
     final prefs = await SharedPreferences.getInstance();
     final userJson = prefs.getString(_userKey);
 
@@ -64,6 +69,7 @@ class AuthService {
       try {
         final userData = json.decode(userJson);
         final user = UserModel.fromJson(userData);
+        _memoryUser = user;
         return user;
       } catch (e) {
         return null;
@@ -81,6 +87,7 @@ class AuthService {
 
   // 로그아웃 (모든 데이터 삭제)
   static Future<void> logout() async {
+    _memoryUser = null;
     await PrescriptionPurchaseHistoryService.clearCurrentUserCache();
     final prefs = await SharedPreferences.getInstance();
 
@@ -121,6 +128,7 @@ class AuthService {
 
   // 사용자 정보 업데이트
   static Future<void> updateUser(UserModel user) async {
+    _memoryUser = user;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_userKey, json.encode(user.toJson()));
   }
