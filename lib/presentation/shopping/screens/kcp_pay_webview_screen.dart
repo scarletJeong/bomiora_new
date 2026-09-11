@@ -9,18 +9,38 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_endpoints.dart';
+import '../../../core/utils/web_kcp_popup.dart';
+
+class KcpPaySession {
+  const KcpPaySession({required this.html, required this.token});
+
+  final String html;
+  final String token;
+}
+
+class KcpPayStartException implements Exception {
+  KcpPayStartException(this.message, {this.errorCode = ''});
+
+  final String message;
+  final String errorCode;
+
+  @override
+  String toString() => message;
+}
 
 class KcpPayWebViewScreen extends StatefulWidget {
   const KcpPayWebViewScreen({
     super.key,
-    required this.html,
-    required this.token,
+    this.html = '',
+    this.token = '',
     this.usePcLayout = false,
+    this.bootstrap,
   });
 
   final String html;
   final String token;
   final bool usePcLayout;
+  final Future<KcpPaySession>? bootstrap;
 
   @override
   State<KcpPayWebViewScreen> createState() => _KcpPayWebViewScreenState();
@@ -132,9 +152,13 @@ class _KcpPayWebViewScreenState extends State<KcpPayWebViewScreen> {
 
   Timer? _pollingTimer;
   bool _completed = false;
+  String _html = '';
+  String _token = '';
+  bool _bootstrapping = false;
+  void Function()? _cancelWebListener;
 
   String get _launchUrl =>
-      '${ApiClient.baseUrl}/api/kcp-pay/launch/${Uri.encodeComponent(widget.token)}';
+      '${ApiClient.baseUrl}/api/kcp-pay/launch/${Uri.encodeComponent(_token)}';
 
   void _returnUserCancelled() {
     if (_completed || !mounted) return;
@@ -150,18 +174,88 @@ class _KcpPayWebViewScreenState extends State<KcpPayWebViewScreen> {
   @override
   void initState() {
     super.initState();
-    _startPolling();
+    _html = widget.html.trim();
+    _token = widget.token.trim();
+    if (kIsWeb) {
+      _cancelWebListener = listenKcpPayCallback(_onBridgePayload);
+    }
+    final boot = widget.bootstrap;
+    if (_html.isEmpty && boot != null) {
+      _bootstrapping = true;
+      _runBootstrap(boot);
+    } else if (_token.isNotEmpty) {
+      _startPolling();
+    }
+  }
+
+  Future<void> _runBootstrap(Future<KcpPaySession> boot) async {
+    try {
+      final session = await boot;
+      if (!mounted || _completed) return;
+      setState(() {
+        _html = session.html.trim();
+        _token = session.token.trim();
+        _bootstrapping = false;
+      });
+      if (_token.isNotEmpty) _startPolling();
+    } catch (e) {
+      if (!mounted || _completed) return;
+      _completed = true;
+      final code = e is KcpPayStartException && e.errorCode.isNotEmpty
+          ? e.errorCode
+          : 'BOOTSTRAP';
+      Navigator.pop(context, {
+        'success': false,
+        'error_code': code,
+        'message': e is KcpPayStartException
+            ? e.message
+            : e.toString().replaceFirst('Exception: ', ''),
+      });
+    }
   }
 
   @override
   void dispose() {
     _pollingTimer?.cancel();
+    _cancelWebListener?.call();
     super.dispose();
+  }
+
+  void _onBridgePayload(Map<String, dynamic> data) {
+    if (_completed || !mounted) return;
+    final success = data['success'] == true;
+    final errorCode = (data['error_code'] ?? '').toString().trim();
+    final message = (data['message'] ?? '').toString();
+    final orderId = (data['order_id'] ?? '').toString().trim();
+    _finish(
+      success: success,
+      errorCode: errorCode,
+      message: message.isNotEmpty ? message : '결제가 완료되지 않았습니다.',
+      orderId: orderId,
+    );
+  }
+
+  void _finish({
+    required bool success,
+    String errorCode = '',
+    String message = '',
+    String orderId = '',
+  }) {
+    if (_completed || !mounted) return;
+    _completed = true;
+    _pollingTimer?.cancel();
+    Navigator.pop(context, {
+      'success': success,
+      'error_code': errorCode,
+      'order_id': orderId,
+      'message': message,
+      'token': _token,
+    });
   }
 
   void _startPolling() {
     _pollingTimer?.cancel();
-    _pollingTimer = Timer.periodic(const Duration(seconds: 2), (_) {
+    _pollingTimer = Timer.periodic(const Duration(milliseconds: 400), (_) {
       _pollResult();
     });
     _pollResult();
@@ -175,10 +269,9 @@ class _KcpPayWebViewScreenState extends State<KcpPayWebViewScreen> {
   }
 
   Future<void> _pollResult() async {
-    if (_completed || !mounted) return;
+    if (_completed || !mounted || _token.isEmpty) return;
     try {
-      final response =
-          await ApiClient.get(ApiEndpoints.kcpPayResult(widget.token));
+      final response = await ApiClient.get(ApiEndpoints.kcpPayResult(_token));
       if (response.statusCode == 404) {
         return;
       }
@@ -188,37 +281,29 @@ class _KcpPayWebViewScreenState extends State<KcpPayWebViewScreen> {
         final resCd = (data['res_cd'] ?? '').toString().trim();
         final orderId = (data['order_id'] ?? '').toString().trim();
         if (resCd == '0000' && orderId.isNotEmpty) {
-          _completed = true;
-          _pollingTimer?.cancel();
-          if (!mounted) return;
-          Navigator.pop(context, {
-            'success': true,
-            'order_id': orderId,
-            'message': (data['message'] ?? '가상계좌 발급이 완료되었습니다.').toString(),
-          });
+          _finish(
+            success: true,
+            orderId: orderId,
+            message: (data['message'] ?? '가상계좌 발급이 완료되었습니다.').toString(),
+          );
         }
         return;
       }
 
-      _completed = true;
-      _pollingTimer?.cancel();
-
       if (data['success'] == true) {
-        if (!mounted) return;
-        Navigator.pop(context, {
-          'success': true,
-          'order_id': data['order_id'],
-          'message': data['message'],
-        });
+        _finish(
+          success: true,
+          orderId: (data['order_id'] ?? '').toString(),
+          message: (data['message'] ?? '').toString(),
+        );
         return;
       }
 
-      if (!mounted) return;
-      Navigator.pop(context, {
-        'success': false,
-        'error_code': data['error_code'],
-        'message': (data['message'] ?? '결제가 완료되지 않았습니다.').toString(),
-      });
+      _finish(
+        success: false,
+        errorCode: (data['error_code'] ?? '').toString(),
+        message: (data['message'] ?? '결제가 완료되지 않았습니다.').toString(),
+      );
     } catch (_) {
       // no-op
     }
@@ -235,7 +320,7 @@ class _KcpPayWebViewScreenState extends State<KcpPayWebViewScreen> {
   Widget build(BuildContext context) {
     final usePc = widget.usePcLayout || kIsWeb;
     final ua = usePc ? null : _mobileUserAgent();
-    final inlineHtml = widget.html.trim();
+    final inlineHtml = _html.trim();
     final useInlineHtml = inlineHtml.isNotEmpty;
 
     final webView = InAppWebView(
@@ -257,8 +342,8 @@ class _KcpPayWebViewScreenState extends State<KcpPayWebViewScreen> {
                 javaScriptEnabled: true,
                 domStorageEnabled: true,
                 databaseEnabled: true,
-                cacheEnabled: false,
-                clearCache: true,
+                cacheEnabled: true,
+                clearCache: false,
                 userAgent: ua,
                 preferredContentMode: usePc
                     ? UserPreferredContentMode.RECOMMENDED
@@ -292,6 +377,19 @@ class _KcpPayWebViewScreenState extends State<KcpPayWebViewScreen> {
                       ),
                     ]),
               onWebViewCreated: (controller) async {
+                try {
+                  controller.addJavaScriptHandler(
+                    handlerName: 'kcpCallback',
+                    callback: (args) {
+                      if (args.isEmpty) return null;
+                      final raw = args.first;
+                      if (raw is Map) {
+                        _onBridgePayload(Map<String, dynamic>.from(raw));
+                      }
+                      return null;
+                    },
+                  );
+                } catch (_) {}
                 if (ua == null) return;
                 try {
                   await controller.setSettings(
@@ -362,6 +460,19 @@ class _KcpPayWebViewScreenState extends State<KcpPayWebViewScreen> {
               },
             );
 
+    final body = _bootstrapping || (!useInlineHtml && _token.isEmpty)
+        ? const Center(
+            child: SizedBox(
+              width: 36,
+              height: 36,
+              child: CircularProgressIndicator(
+                strokeWidth: 3,
+                color: Color(0xFFFF5A8D),
+              ),
+            ),
+          )
+        : webView;
+
     return WillPopScope(
       onWillPop: () async {
         _returnUserCancelled();
@@ -369,7 +480,7 @@ class _KcpPayWebViewScreenState extends State<KcpPayWebViewScreen> {
       },
       child: Scaffold(
         backgroundColor: const Color(0xFF6B6B6B),
-        body: webView,
+        body: body,
       ),
     );
   }

@@ -136,3 +136,52 @@ bool closeNamedKcpPopup() {
     return false;
   }
 }
+
+void prefetchKcpPayScripts() {
+  try {
+    const urls = [
+      'https://pay.kcp.co.kr/plugin/payplus_web.jsp',
+      'https://testpay.kcp.co.kr/plugin/payplus_web.jsp',
+    ];
+    for (final url in urls) {
+      final exists = html.document.querySelector('link[data-kcp-prefetch="$url"]');
+      if (exists != null) continue;
+      final link = html.LinkElement()
+        ..rel = 'preload'
+        ..as = 'script'
+        ..href = url
+        ..setAttribute('data-kcp-prefetch', url);
+      html.document.head?.append(link);
+    }
+  } catch (_) {}
+}
+
+void Function() listenKcpPayCallback(
+  void Function(Map<String, dynamic> payload) onPayload,
+) {
+  late final html.EventListener listener;
+  listener = (html.Event event) {
+    if (event is! html.MessageEvent) return;
+    final raw = event.data;
+    Map<String, dynamic>? map;
+    if (raw is Map) {
+      map = Map<String, dynamic>.from(raw);
+    } else if (raw is String) {
+      try {
+        final decoded = raw;
+        if (decoded.contains('kcp-pay-callback')) {
+          // 문자열만 온 경우는 무시
+        }
+      } catch (_) {}
+    }
+    if (map == null) return;
+    if ((map['source'] ?? '').toString() != 'kcp-pay-callback') return;
+    onPayload(map);
+  };
+  html.window.addEventListener('message', listener);
+  return () {
+    try {
+      html.window.removeEventListener('message', listener);
+    } catch (_) {}
+  };
+}

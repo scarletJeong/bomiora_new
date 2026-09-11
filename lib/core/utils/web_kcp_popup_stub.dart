@@ -33,3 +33,11 @@ bool closeKcpPopup(Object? popup) {
 bool closeNamedKcpPopup() {
   return false;
 }
+
+void prefetchKcpPayScripts() {}
+
+void Function() listenKcpPayCallback(
+  void Function(Map<String, dynamic> payload) onPayload,
+) {
+  return () {};
+}

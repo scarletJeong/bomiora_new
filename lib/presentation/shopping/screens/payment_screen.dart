@@ -1,13 +1,17 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart'
     show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'dart:convert';
 
 import '../../health/health_common/widgets/health_app_bar.dart';
 import '../../common/widgets/dropdown_btn.dart';
+import '../../common/widgets/app_toast_overlay.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
+import '../../../core/utils/web_kcp_popup.dart';
 import '../../common/widgets/daum_postcode_search_dialog.dart';
 import '../../../core/constants/app_assets.dart';
 import '../../../core/network/api_client.dart';
@@ -18,7 +22,6 @@ import '../../../data/models/coupon/coupon_model.dart';
 import '../../../data/models/user/user_model.dart';
 import '../../../data/services/address_service.dart';
 import '../../../data/services/auth_service.dart';
-import '../../../data/services/cart_service.dart';
 import '../../../data/services/coupon_service.dart';
 import '../../../data/services/point_service.dart';
 import '../../user/delivery/widgets/delivery_address_change_popup_ver2.dart';
@@ -137,6 +140,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
   void initState() {
     super.initState();
     _pointController.addListener(_onPointChanged);
+    prefetchKcpPayScripts();
     _loadData();
   }
 
@@ -666,102 +670,75 @@ class _PaymentScreenState extends State<PaymentScreen> {
     final cartIds = widget.cartItems.map((e) => e.ctId).toList();
     if (cartIds.isEmpty) return;
 
-    final expectedGoodsAmount = widget.cartItems.fold<int>(
-      0,
-      (sum, item) => sum + item.lineAmount,
-    );
-    final stockCheck = await CartService.validateCheckout(
-      ctIds: cartIds,
-      expectedGoodsAmount: expectedGoodsAmount,
-    );
-    if (!mounted) return;
-    if (stockCheck['success'] != true) {
-      await showDialog<void>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('결제할 수 없습니다'),
-          content: Text(
-            stockCheck['message']?.toString() ??
-                '재고 또는 금액이 변경되었습니다. 장바구니를 확인해 주세요.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('확인'),
-            ),
-          ],
-        ),
-      );
-      return;
-    }
-
     setState(() {
       _submitting = true;
     });
 
     try {
-      await _maybeSaveDefaultAddress(user.id);
-      final response = await ApiClient.post(
-        ApiEndpoints.kcpPayRequest,
-        {
-          'mb_id': user.id,
-          'cart_ids': cartIds,
-          'payment_method': _paymentMethodLabel,
-          'pay_method': _kcpPayMethodBits,
-          'escrow_use': _useEscrow,
-          'shipping_cost': widget.shippingCost,
-          'coupon_discount': _couponDiscount,
-          'cp_ids': _selectedCoupons
-              .map((c) => c.id.trim())
-              .where((id) => id.isNotEmpty)
-              .toList(),
-          'coupons': _checkoutCouponPayload(),
-          'used_point': _pointDiscount,
-          'final_amount': _finalAmount,
-          'goods_name': widget.cartItems.length == 1
-              ? widget.cartItems.first.itName
-              : '${widget.cartItems.first.itName} 외 ${widget.cartItems.length - 1}건',
-          'orderer': {
-            'name': user.name,
-            'email': user.email,
-            'tel': user.phone ?? _phoneController.text.trim(),
-            'hp': user.phone ?? _phoneController.text.trim(),
+      Future<KcpPaySession> bootstrap() async {
+        unawaited(_maybeSaveDefaultAddress(user.id));
+        final response = await ApiClient.post(
+          ApiEndpoints.kcpPayRequest,
+          {
+            'mb_id': user.id,
+            'cart_ids': cartIds,
+            'payment_method': _paymentMethodLabel,
+            'pay_method': _kcpPayMethodBits,
+            'escrow_use': _useEscrow,
+            'shipping_cost': widget.shippingCost,
+            'coupon_discount': _couponDiscount,
+            'cp_ids': _selectedCoupons
+                .map((c) => c.id.trim())
+                .where((id) => id.isNotEmpty)
+                .toList(),
+            'coupons': _checkoutCouponPayload(),
+            'used_point': _pointDiscount,
+            'final_amount': _finalAmount,
+            'goods_name': widget.cartItems.length == 1
+                ? widget.cartItems.first.itName
+                : '${widget.cartItems.first.itName} 외 ${widget.cartItems.length - 1}건',
+            'orderer': {
+              'name': user.name,
+              'email': user.email,
+              'tel': user.phone ?? _phoneController.text.trim(),
+              'hp': user.phone ?? _phoneController.text.trim(),
+            },
+            'od_memo': _deliveryRequestMemo,
+            'receiver': {
+              'name': _receiverController.text.trim(),
+              'tel': _phoneController.text.trim(),
+              'hp': _phoneController.text.trim(),
+              'zip': _zipController.text.trim(),
+              'addr1': _addressController.text.trim(),
+              'addr2': _detailAddressController.text.trim(),
+              'addr3': '',
+              'memo': _deliveryRequestMemo,
+            },
+            'user_agent': kIsWeb
+                ? 'Windows'
+                : (defaultTargetPlatform == TargetPlatform.iOS
+                    ? 'iPhone'
+                    : 'Android'),
+            'is_mobile': !kIsWeb,
           },
-          // 배송요청사항 → bomiora_shop_order.od_memo
-          'od_memo': _deliveryRequestMemo,
-          'receiver': {
-            'name': _receiverController.text.trim(),
-            'tel': _phoneController.text.trim(),
-            'hp': _phoneController.text.trim(),
-            'zip': _zipController.text.trim(),
-            'addr1': _addressController.text.trim(),
-            'addr2': _detailAddressController.text.trim(),
-            'addr3': '',
-            'memo': _deliveryRequestMemo,
+          additionalHeaders: <String, String>{
+            'User-Agent': _kcpRequestUserAgent(),
           },
-          // 앱: SmartPay(모바일 거래등록). 웹: PC payplus_web.
-          'user_agent': kIsWeb
-              ? 'Windows'
-              : (defaultTargetPlatform == TargetPlatform.iOS
-                  ? 'iPhone'
-                  : 'Android'),
-          'is_mobile': !kIsWeb,
-        },
-        additionalHeaders: <String, String>{
-          'User-Agent': _kcpRequestUserAgent(),
-        },
-      );
+        );
 
-      final data = jsonDecode(response.body) as Map<String, dynamic>;
-      if (response.statusCode != 200 || data['success'] != true) {
-        throw Exception((data['message'] ?? '결제 요청에 실패했습니다.').toString());
-      }
-
-      if (!mounted) return;
-      final html = (data['html'] ?? '').toString();
-      final token = (data['token'] ?? '').toString();
-      if (html.isEmpty || token.isEmpty) {
-        throw Exception('KCP 결제 요청 응답이 올바르지 않습니다.');
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        if (response.statusCode != 200 || data['success'] != true) {
+          throw KcpPayStartException(
+            (data['message'] ?? '결제 요청에 실패했습니다.').toString(),
+            errorCode: (data['error_code'] ?? '').toString(),
+          );
+        }
+        final html = (data['html'] ?? '').toString();
+        final token = (data['token'] ?? '').toString();
+        if (html.isEmpty || token.isEmpty) {
+          throw KcpPayStartException('KCP 결제 요청 응답이 올바르지 않습니다.');
+        }
+        return KcpPaySession(html: html, token: token);
       }
 
       dynamic result;
@@ -772,9 +749,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
             fullscreenDialog: true,
             pageBuilder: (context, animation, secondaryAnimation) {
               return KcpPayWebViewScreen(
-                html: html,
-                token: token,
                 usePcLayout: true,
+                bootstrap: bootstrap(),
               );
             },
             transitionsBuilder: (context, animation, secondaryAnimation, child) {
@@ -783,13 +759,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
           ),
         );
       } else {
-        result = await Navigator.pushNamed(
+        result = await Navigator.push(
           context,
-          '/kcp-pay',
-          arguments: {
-            'html': html,
-            'token': token,
-          },
+          MaterialPageRoute(
+            builder: (_) => KcpPayWebViewScreen(
+              bootstrap: bootstrap(),
+            ),
+          ),
         );
       }
 
@@ -802,6 +778,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       final message = (resultMap['message'] ?? '').toString();
       final errorCode = (resultMap['error_code'] ?? '').toString().trim();
       var orderId = (resultMap['order_id'] ?? '').toString().trim();
+      final token = (resultMap['token'] ?? '').toString().trim();
 
       if (success) {
         // 가상계좌 등에서 order_id 누락 시 결과 API로 한 번 더 보정
@@ -833,13 +810,35 @@ class _PaymentScreenState extends State<PaymentScreen> {
         }
       } else {
         final code = _resolvePaymentErrorCode(errorCode, message);
-        // [3001] 사용자 취소(또는 앱 내부 USER_CANCELLED)는 실패 안내 팝업/스낵바 없이
-        // 현재 결제 페이지로 자연스럽게 복귀합니다.
+        if (code == 'STOCK') {
+          await showDialog<void>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('결제할 수 없습니다'),
+              content: Text(
+                message.isNotEmpty
+                    ? message
+                    : '재고 또는 금액이 변경되었습니다. 장바구니를 확인해 주세요.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('확인'),
+                ),
+              ],
+            ),
+          );
+          return;
+        }
         if (code == '3001' || code == 'USER_CANCELLED') {
+          AppToastOverlay.show(context, '결제가 완료되지 않았습니다.');
           return;
         }
 
-        await _showPaymentFailureGuideDialog(code, message);
+        AppToastOverlay.show(
+          context,
+          message.isNotEmpty ? message : '결제가 완료되지 않았습니다.',
+        );
       }
     } catch (e) {
       if (!mounted) return;
@@ -862,59 +861,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
     }
     if (message.contains('NO_CODE')) return 'NO_CODE';
     return 'UNKNOWN';
-  }
-
-  String _paymentErrorGuideText(String code) {
-    switch (code) {
-      case '3017':
-        return '카드 인증 팝업이 차단된 상태입니다.\n\n'
-            '- 브라우저 팝업 차단 해제\n'
-            '- 결제창 다시열기 후 재시도\n'
-            '- 동일하면 Edge/웨일 등 다른 브라우저로 시도';
-      case '3014':
-        return 'KCP 사이트코드/도메인 등록 정보 불일치입니다.\n\n'
-            '- SITE_CD, JS_URL(운영/테스트) 일치 확인\n'
-            '- KCP 관리자에 결제 호출/리턴/공통통보 URL 등록 확인';
-      case 'NO_CODE':
-        return 'KCP 응답코드를 받지 못했습니다.\n\n'
-            '- 네트워크/CSP/브리지 로그 확인\n'
-            '- 백엔드 승인 브리지 응답(stderr 포함) 점검';
-      case 'USER_CANCELLED':
-        return '사용자가 결제창을 닫아 결제가 취소되었습니다.\n'
-            '현재 페이지에서 결제하기 버튼으로 다시 진행할 수 있습니다.';
-      default:
-        return '결제가 완료되지 않았습니다.\n'
-            '잠시 후 다시 시도하거나 주문내역에서 상태를 확인해 주세요.';
-    }
-  }
-
-  Future<void> _showPaymentFailureGuideDialog(
-    String code,
-    String message,
-  ) async {
-    if (!mounted) return;
-    final titleCode = code.isEmpty ? 'UNKNOWN' : code;
-    final guide = _paymentErrorGuideText(titleCode);
-    await showDialog<void>(
-      context: context,
-      barrierDismissible: true,
-      builder: (context) {
-        return AlertDialog(
-          title: Text('결제 실패 안내 [$titleCode]'),
-          content: SingleChildScrollView(
-            child: Text(
-              '$guide\n\n원인 메시지:\n${message.isEmpty ? '(없음)' : message}',
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('확인'),
-            ),
-          ],
-        );
-      },
-    );
   }
 
   String _couponPickerLine(Coupon c) {

@@ -87,20 +87,60 @@ String _rewriteHtmlImageSrc(String html) {
   return result;
 }
 
+String _stripBlockHeights(String html) {
+  return html.replaceAllMapped(
+    RegExp(r'''(<(?:p|div|table|td|tr|span)\b[^>]*\sstyle\s*=\s*")([^"]*)(")''',
+        caseSensitive: false),
+    (match) {
+      var style = match.group(2) ?? '';
+      style = style.replaceAll(
+        RegExp(r'(?:min-|max-)?height\s*:\s*[^;]+;?', caseSensitive: false),
+        '',
+      );
+      style = style.replaceAll(
+        RegExp(r'padding(?:-bottom|-top)?\s*:\s*[^;]+;?', caseSensitive: false),
+        '',
+      );
+      return '${match.group(1)}$style${match.group(3)}';
+    },
+  );
+}
+
 String _stripTrailingEmptyHtml(String html) {
   var result = html.trimRight();
-  final trailing = RegExp(
-    r'(?:(?:<p>(?:\s|&nbsp;|<br\s*/?>)*</p>)|(?:<div>(?:\s|&nbsp;|<br\s*/?>)*</div>)|<br\s*/?>|&nbsp;|\s)+$',
-    caseSensitive: false,
-  );
-  result = result.replaceAll(trailing, '');
+  final patterns = <RegExp>[
+    RegExp(
+      r'(?:<(?:p|div)[^>]*>\s*(?:&nbsp;|\s|<br[^>]*>)*\s*</(?:p|div)>)+$',
+      caseSensitive: false,
+    ),
+    RegExp(
+      r'(?:<br[^>]*>|&nbsp;|\s)+$',
+      caseSensitive: false,
+    ),
+  ];
+  var prev = '';
+  while (prev != result) {
+    prev = result;
+    result = result.trimRight();
+    for (final pattern in patterns) {
+      result = result.replaceAll(pattern, '');
+    }
+    result = result.replaceAllMapped(
+      RegExp(
+        r'(?:<br[^>]*>\s*)+(?:&nbsp;|\s)*</(p|div)>\s*$',
+        caseSensitive: false,
+      ),
+      (m) => '</${m.group(1)}>',
+    );
+  }
   return result.trimRight();
 }
 
 String processProductDetailHtml(String? rawHtml) {
   if (rawHtml == null || rawHtml.trim().isEmpty) return '';
   final withUrls = _rewriteHtmlImageSrc(rawHtml);
-  return _stripTrailingEmptyHtml(sanitizeProductDetailHtmlImages(withUrls));
+  final cleaned = sanitizeProductDetailHtmlImages(withUrls);
+  return _stripTrailingEmptyHtml(_stripBlockHeights(cleaned));
 }
 
 Widget buildProductDetailHtml({
@@ -142,31 +182,35 @@ Widget buildProductDetailHtml({
             ),
           ],
           style: {
+            'html': Style(
+              margin: Margins.zero,
+              padding: HtmlPaddings.zero,
+            ),
             'body': Style(
               margin: Margins.zero,
               padding: HtmlPaddings.zero,
               fontFamily: fontFamily,
-              width: Width(contentWidth),
+              lineHeight: LineHeight.number(1),
             ),
             'img': Style(
               width: Width(contentWidth),
               display: Display.block,
               margin: Margins.zero,
               padding: HtmlPaddings.zero,
-              alignment: Alignment.center,
+              alignment: Alignment.topCenter,
             ),
             'div': Style(
               margin: Margins.zero,
               padding: HtmlPaddings.zero,
               fontFamily: fontFamily,
-              width: Width(contentWidth),
+              lineHeight: LineHeight.number(1),
             ),
             'p': Style(
               margin: Margins.zero,
               padding: HtmlPaddings.zero,
               display: Display.block,
               fontFamily: fontFamily,
-              width: Width(contentWidth),
+              lineHeight: LineHeight.number(1),
             ),
             'table': Style(
               width: Width(contentWidth),
