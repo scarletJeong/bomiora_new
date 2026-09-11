@@ -21,6 +21,7 @@ class PrescriptionReviewTabPanel extends StatelessWidget {
   final VoidCallback? onGuestLoginTap;
   final bool embedInParentScroll;
   final bool showCouponSection;
+  final String? fallbackImageUrl;
 
   const PrescriptionReviewTabPanel({
     super.key,
@@ -33,6 +34,7 @@ class PrescriptionReviewTabPanel extends StatelessWidget {
     this.onGuestLoginTap,
     this.embedInParentScroll = false,
     this.showCouponSection = false,
+    this.fallbackImageUrl,
   });
 
   @override
@@ -79,6 +81,7 @@ class PrescriptionReviewTabPanel extends StatelessWidget {
                 guestLoginLocked: guestLoginLocked,
                 onGuestLoginTap: onGuestLoginTap,
                 onReviewTap: onReviewTap,
+                fallbackImageUrl: fallbackImageUrl,
               ),
             ),
           if (!guestLoginLocked && capped < sorted.length)

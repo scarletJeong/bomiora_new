@@ -574,11 +574,9 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
       return const [];
     }
 
-    if (_isPreparingStage(order)) {
-      return const [];
-    }
-
-    if (_isPaymentWaitingStage(order) || _isPaidStage(order)) {
+    if (_isPreparingStage(order) ||
+        _isPaymentWaitingStage(order) ||
+        _isPaidStage(order)) {
       return [
         (
           label: '주문취소',

@@ -82,6 +82,23 @@ class _ProductListScreenState extends State<ProductListScreen> {
 
   Future<void> _initTabsAndLoad() async {
     final requestToken = ++_tabsRequestToken;
+    final fallback = widget.productKind == 'general'
+        ? productGeneralCategoryListFallback
+        : productPrescriptionCategoryListFallback;
+    _baseTabOrder = fallback
+        .map((item) => _CategoryTab(id: item.categoryId, label: item.label))
+        .toList();
+    _tabKeys = List.generate(_baseTabOrder.length, (_) => GlobalKey());
+    _stickyTabKeys = List.generate(_baseTabOrder.length, (_) => GlobalKey());
+    _activeCategoryId = _activeCategoryId.trim();
+    if (_baseTabOrder.isNotEmpty &&
+        !_baseTabOrder.any((tab) => tab.id == _activeCategoryId)) {
+      _activeCategoryId = _baseTabOrder.first.id;
+    }
+    if (mounted) setState(() => _tabsReady = true);
+
+    final productsFuture = _loadProducts();
+
     final List<ProductCategoryItem> source;
     if (widget.productKind == 'general') {
       source = await ProductCategoryCatalog.generalCategories();
@@ -89,9 +106,12 @@ class _ProductListScreenState extends State<ProductListScreen> {
       source = await ProductCategoryCatalog.prescriptionCategories();
     }
 
-    if (!mounted || requestToken != _tabsRequestToken) return;
+    if (!mounted || requestToken != _tabsRequestToken) {
+      await productsFuture;
+      return;
+    }
 
-    _baseTabOrder = source
+    final fromApi = source
         .map(
           (item) => _CategoryTab(
             id: item.categoryId.trim(),
@@ -100,27 +120,19 @@ class _ProductListScreenState extends State<ProductListScreen> {
         )
         .where((tab) => tab.id.isNotEmpty)
         .toList();
-    if (_baseTabOrder.isEmpty) {
-      final fallback = widget.productKind == 'general'
-          ? productGeneralCategoryListFallback
-          : productPrescriptionCategoryListFallback;
-      _baseTabOrder = fallback
-          .map((item) => _CategoryTab(id: item.categoryId, label: item.label))
-          .toList();
-    }
-    _tabKeys = List.generate(_baseTabOrder.length, (_) => GlobalKey());
-    _stickyTabKeys = List.generate(_baseTabOrder.length, (_) => GlobalKey());
-
-    _activeCategoryId = _activeCategoryId.trim();
-    final matchedIndex =
-        _baseTabOrder.indexWhere((tab) => tab.id == _activeCategoryId);
-    if (matchedIndex < 0 && _baseTabOrder.isNotEmpty) {
-      _activeCategoryId = _baseTabOrder.first.id;
+    if (fromApi.isNotEmpty) {
+      _baseTabOrder = fromApi;
+      _tabKeys = List.generate(_baseTabOrder.length, (_) => GlobalKey());
+      _stickyTabKeys = List.generate(_baseTabOrder.length, (_) => GlobalKey());
+      final matchedIndex =
+          _baseTabOrder.indexWhere((tab) => tab.id == _activeCategoryId);
+      if (matchedIndex < 0) {
+        _activeCategoryId = _baseTabOrder.first.id;
+      }
+      if (mounted) setState(() {});
     }
 
-    setState(() => _tabsReady = true);
-
-    await _loadProducts();
+    await productsFuture;
   }
 
   @override

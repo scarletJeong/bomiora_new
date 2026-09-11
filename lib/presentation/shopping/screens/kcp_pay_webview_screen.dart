@@ -235,9 +235,6 @@ class _KcpPayWebViewScreenState extends State<KcpPayWebViewScreen> {
   Widget build(BuildContext context) {
     final usePc = widget.usePcLayout || kIsWeb;
     final ua = usePc ? null : _mobileUserAgent();
-    final size = MediaQuery.sizeOf(context);
-    final sheetWidth = usePc ? size.width.clamp(360.0, 720.0) : size.width;
-    final sheetHeight = usePc ? size.height * 0.92 : size.height;
     final inlineHtml = widget.html.trim();
     final useInlineHtml = inlineHtml.isNotEmpty;
 
@@ -370,31 +367,10 @@ class _KcpPayWebViewScreenState extends State<KcpPayWebViewScreen> {
         _returnUserCancelled();
         return false;
       },
-      child: usePc
-          ? Material(
-              color: Colors.transparent,
-              child: Center(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: SizedBox(
-                    width: sheetWidth,
-                    height: sheetHeight,
-                    child: Scaffold(
-                      body: SafeArea(
-                        bottom: false,
-                        child: webView,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            )
-          : Scaffold(
-              body: SafeArea(
-                bottom: false,
-                child: webView,
-              ),
-            ),
+      child: Scaffold(
+        backgroundColor: const Color(0xFF6B6B6B),
+        body: webView,
+      ),
     );
   }
 }

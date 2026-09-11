@@ -99,13 +99,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
         _safeSetState(() {});
       }
     });
-    _loadProductDetail().then((_) {
-      // 제품 정보 로드 후 리뷰 로드 (it_org_id 확인을 위해)
-      _loadReviews();
-      if (_product?.isInfluencerProduct != true) {
-        _loadUserPoint();
-      }
-    });
+    _loadProductDetail();
+    _loadReviews();
     _loadAuthUser();
     _loadConfig();
     _loadProductOptions();
@@ -167,13 +162,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
             originalPrice: product.originalPrice,
             itSubject: product.itSubject,
           );
+          if (product.isInfluencerProduct != true) {
+            _loadUserPoint();
+          }
         }
       });
 
-      // 찜하기 상태 확인
-      await _checkFavoriteStatus();
-      await _loadRecommendedProducts();
-      await _resumePendingCheckoutIfNeeded();
+      _checkFavoriteStatus();
+      _loadRecommendedProducts();
+      _resumePendingCheckoutIfNeeded();
     } catch (e) {
       _safeSetState(() {
         _isLoading = false;
@@ -361,7 +358,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
         await WishService.removeFromWish(widget.productId);
       } else {
         // 찜하기 추가
-        await WishService.addToWish(widget.productId);
+        await WishService.addToWish(
+          widget.productId,
+          wiItKind: 'prescription',
+        );
       }
     } catch (e) {
       // 실패 시 원래 상태로 되돌리기
@@ -850,6 +850,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       onGuestLoginTap: _onGuestReviewLoginTap,
       embedInParentScroll: true,
       showCouponSection: !hideCoupon,
+      fallbackImageUrl: _product?.imageUrl,
       onLoadMore: () {
         _safeSetState(() {
           _visibleSupporterReviewCount += 8;
@@ -868,6 +869,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       onGuestLoginTap: _onGuestReviewLoginTap,
       embedInParentScroll: true,
       showCouponSection: false,
+      fallbackImageUrl: _product?.imageUrl,
       onLoadMore: () {
         _safeSetState(() {
           _visibleNormalReviewCount += 8;

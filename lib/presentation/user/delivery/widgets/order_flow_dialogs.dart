@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../data/models/delivery/delivery_model.dart';
 import '../../../../data/services/delivery_service.dart';
 import '../../../../data/services/refund_account_service.dart';
+import '../../../common/widgets/app_toast_overlay.dart';
 import '../../../common/widgets/confirm_dialog.dart';
 import 'refund_account_popup.dart';
 
@@ -82,6 +83,10 @@ class OrderFlowDialogs {
       return true;
     }
 
+    AppToastOverlay.show(
+      context,
+      result['message']?.toString() ?? '주문 취소에 실패했습니다.',
+    );
     return false;
   }
 

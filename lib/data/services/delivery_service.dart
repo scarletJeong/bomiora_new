@@ -36,7 +36,7 @@ class OrderService {
 
       // 쿼리 파라미터를 URL에 직접 추가
       final queryString =
-          'mbId=$mbId&mb_id=$mbId&period=$period&status=$status&page=$page&size=$size';
+          'mbId=$mbId&mb_id=$mbId&period=$period&status=$status&page=$page&size=$size&_ts=${DateTime.now().millisecondsSinceEpoch}';
       
       final response = await _getOrderListResponse(queryString);
 
@@ -86,9 +86,13 @@ class OrderService {
     required String mbId,
   }) async {
     try {
-      var response = await ApiClient.get('/api/orders/$odId?mbId=$mbId&mb_id=$mbId');
+      var response = await ApiClient.get(
+        '/api/orders/$odId?mbId=$mbId&mb_id=$mbId&_ts=${DateTime.now().millisecondsSinceEpoch}',
+      );
       if (response.statusCode == 404) {
-        response = await ApiClient.get('/api/user/orders/$odId?mbId=$mbId&mb_id=$mbId');
+        response = await ApiClient.get(
+          '/api/user/orders/$odId?mbId=$mbId&mb_id=$mbId&_ts=${DateTime.now().millisecondsSinceEpoch}',
+        );
       }
 
       if (response.statusCode == 200) {

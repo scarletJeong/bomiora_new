@@ -167,6 +167,9 @@ class OrderListModel {
   final String recipientPhone;
   final String recipientAddress;
   final String recipientAddressDetail;
+  final String? reservationDate;
+  final String? reservationTime;
+  final String? reservationEndTime;
 
   OrderListModel({
     required this.odId,
@@ -188,6 +191,9 @@ class OrderListModel {
     this.recipientPhone = '',
     this.recipientAddress = '',
     this.recipientAddressDetail = '',
+    this.reservationDate,
+    this.reservationTime,
+    this.reservationEndTime,
   });
 
   factory OrderListModel.fromJson(Map<dynamic, dynamic> json) {
@@ -271,6 +277,10 @@ class OrderListModel {
           NodeValueParser.asString(normalized['recipientAddress']) ?? '',
       recipientAddressDetail:
           NodeValueParser.asString(normalized['recipientAddressDetail']) ?? '',
+      reservationDate: NodeValueParser.asString(normalized['reservationDate']),
+      reservationTime: NodeValueParser.asString(normalized['reservationTime']),
+      reservationEndTime:
+          NodeValueParser.asString(normalized['reservationEndTime']),
     );
   }
 
@@ -295,6 +305,9 @@ class OrderListModel {
       'recipientPhone': recipientPhone,
       'recipientAddress': recipientAddress,
       'recipientAddressDetail': recipientAddressDetail,
+      'reservationDate': reservationDate,
+      'reservationTime': reservationTime,
+      'reservationEndTime': reservationEndTime,
     };
   }
 }
@@ -416,6 +429,9 @@ class OrderDetailModel {
       ordererName: '',
       ordererPhone: '',
       ordererEmail: '',
+      reservationDate: order.reservationDate,
+      reservationTime: order.reservationTime,
+      reservationEndTime: order.reservationEndTime,
     );
   }
 

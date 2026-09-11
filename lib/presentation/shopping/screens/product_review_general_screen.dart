@@ -21,6 +21,7 @@ class GeneralReviewTabPanel extends StatelessWidget {
   final VoidCallback? onGuestLoginTap;
   final bool embedInParentScroll;
   final bool showCouponSection;
+  final String? fallbackImageUrl;
 
   const GeneralReviewTabPanel({
     super.key,
@@ -33,6 +34,7 @@ class GeneralReviewTabPanel extends StatelessWidget {
     this.onGuestLoginTap,
     this.embedInParentScroll = false,
     this.showCouponSection = false,
+    this.fallbackImageUrl,
   });
 
   @override
@@ -78,6 +80,7 @@ class GeneralReviewTabPanel extends StatelessWidget {
                 guestLoginLocked: guestLoginLocked,
                 onGuestLoginTap: onGuestLoginTap,
                 onReviewTap: onReviewTap,
+                fallbackImageUrl: fallbackImageUrl,
               ),
             ),
           if (!guestLoginLocked && capped < sorted.length)

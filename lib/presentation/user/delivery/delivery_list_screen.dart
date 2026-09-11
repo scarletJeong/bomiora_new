@@ -15,6 +15,7 @@ import '../../../data/models/delivery/delivery_model.dart';
 import '../../../utils/delivery_tracker.dart';
 import '../../shopping/utils/cart_navigation.dart';
 import '../../../core/constants/app_assets.dart';
+import '../../../core/utils/date_formatter.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../core/utils/price_formatter.dart';
 import '../../common/widgets/app_network_image.dart';
@@ -42,6 +43,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
   List<OrderListModel> _allOrders = []; // 전체 주문 데이터
   List<OrderListModel> _displayedOrders = []; // 화면에 표시할 주문 데이터
   bool _isLoading = false;
+  int _ordersLoadGen = 0;
   String _selectedProductType = DeliveryProductType.prescription;
   String _selectedStatus = 'all';
   final ScrollController _scrollController = ScrollController();
@@ -71,9 +73,10 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
   }
   
   /// 주문 목록 로드 (전체 데이터)
-  Future<void> _loadOrders() async {
-    if (_isLoading) return;
-    
+  Future<void> _loadOrders({bool force = false}) async {
+    if (_isLoading && !force) return;
+    final gen = ++_ordersLoadGen;
+
     setState(() {
       _isLoading = true;
     });
@@ -100,6 +103,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
       );
       
       if (result['success'] == true) {
+        if (gen != _ordersLoadGen) return;
         final ordersList = result['orders'] ?? [];
         List<OrderListModel> allOrders = [];
         if (ordersList is List<OrderListModel>) {
@@ -114,6 +118,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
         // 날짜순 내림차순 정렬 (최신순)
         allOrders.sort((a, b) => b.orderDateTime.compareTo(a.orderDateTime));
         
+        if (!mounted || gen != _ordersLoadGen) return;
         setState(() {
           _allOrders = allOrders;
           _applyFilter();
@@ -124,7 +129,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
       }
     } catch (e) {
     } finally {
-      if (mounted) {
+      if (mounted && gen == _ordersLoadGen) {
         setState(() {
           _isLoading = false;
         });
@@ -297,7 +302,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
         ),
         Expanded(
           child: RefreshIndicator(
-            onRefresh: _loadOrders,
+            onRefresh: () => _loadOrders(force: true),
             color: _kPink,
             child: CustomScrollView(
               controller: _scrollController,
@@ -404,6 +409,19 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
                             height: 1,
                           ),
                         ),
+                        if (_reservationLine(order).isNotEmpty) ...[
+                          SizedBox(height: healthDp(context, 5)),
+                          Text(
+                            '예약시간: ${_reservationLine(order)}',
+                            style: TextStyle(
+                              color: _kPink,
+                              fontSize: healthSp(context, 10),
+                              fontFamily: 'Gmarket Sans TTF',
+                              fontWeight: FontWeight.w500,
+                              height: 1,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ],
@@ -842,12 +860,26 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
       ]);
     }
 
-    if (_isConsultationDoneStage(order) || _isPreparingStage(order)) {
-      // 비대면 상담완료: '상담완료 후' 접두 / 일반 배송준비중: 접두 없음
+    if (_isConsultationDoneStage(order)) {
       return _buildPreparingLockedBanner(
         context,
-        withConsultPrefix: _isConsultationDoneStage(order),
+        withConsultPrefix: true,
       );
+    }
+
+    if (_isPreparingStage(order)) {
+      return _buildActionRow([
+        (
+          label: '주문취소',
+          onTap: () => _cancelOrder(order.odId),
+          style: _CardActionStyle.outlineGray,
+        ),
+        (
+          label: '배송지변경',
+          onTap: () => _changeDeliveryAddress(order),
+          style: _CardActionStyle.primary,
+        ),
+      ]);
     }
 
     if (_isCompletedStage(order)) {
@@ -1151,6 +1183,36 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
         order.displayStatus == '주문취소';
   }
 
+  String _reservationLine(OrderListModel order) {
+    if (!order.isPrescriptionOrder) return '';
+    final dateLabel = _formatReservationDate(order.reservationDate);
+    final timeLabel = _formatReservationTimeRange(
+      order.reservationTime,
+      order.reservationEndTime,
+    );
+    if (dateLabel.isEmpty && timeLabel.isEmpty) return '';
+    if (dateLabel.isEmpty) return timeLabel;
+    if (timeLabel.isEmpty) return dateLabel;
+    return '$dateLabel $timeLabel';
+  }
+
+  String _formatReservationDate(String? raw) {
+    final d = DateDisplayFormatter.tryParseYmdFlexible(raw);
+    if (d == null) return '';
+    const weekdays = ['월', '화', '수', '목', '금', '토', '일'];
+    final mm = d.month.toString().padLeft(2, '0');
+    final dd = d.day.toString().padLeft(2, '0');
+    return '$mm.$dd(${weekdays[d.weekday - 1]})';
+  }
+
+  String _formatReservationTimeRange(String? start, String? end) {
+    final st = start?.trim() ?? '';
+    final et = end?.trim() ?? '';
+    if (st.isNotEmpty && et.isNotEmpty) return '$st-$et';
+    if (st.isNotEmpty) return st;
+    return et;
+  }
+
   /// 주문 상세 화면으로 이동 (복귀 시 목록 갱신 — 수령확인/취소 반영)
   Future<void> _navigateToOrderDetail(OrderListModel order) async {
     await Navigator.pushNamed(
@@ -1161,7 +1223,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
         'initialOrder': OrderDetailModel.fromListPreview(order),
       },
     );
-    if (mounted) await _loadOrders();
+    if (mounted) await _loadOrders(force: true);
   }
 
   Future<void> _openInquiry(OrderListModel order) async {
@@ -1295,7 +1357,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
       odId: odId,
       mbId: user.id,
     );
-    if (ok && mounted) _loadOrders();
+    if (ok && mounted) await _loadOrders(force: true);
   }
 
   /// 배송 조회
@@ -1363,7 +1425,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
         context,
         '수령 확인되었습니다.',
       );
-      await _loadOrders();
+      await _loadOrders(force: true);
     } else {
       AppToastOverlay.show(
         context,
@@ -1443,7 +1505,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
       }
 
       if (reviewWritten == true) {
-        await _loadOrders();
+        await _loadOrders(force: true);
       }
     } catch (e) {}
   }
@@ -1476,7 +1538,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
       },
     );
     if (result == true && mounted) {
-      _loadOrders();
+      _loadOrders(force: true);
     }
   }
 
@@ -1595,7 +1657,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
 
       // 예약 시간이 변경되었으면 주문 목록 새로고침
       if (changeResult == true && mounted) {
-        _loadOrders();
+        await _loadOrders(force: true);
       }
     } catch (e) {}
   }

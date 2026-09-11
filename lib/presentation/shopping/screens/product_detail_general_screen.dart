@@ -95,12 +95,8 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
         _safeSetState(() {});
       }
     });
-    _loadProductDetail().then((_) {
-      _loadReviews();
-      if (_product?.isInfluencerProduct != true) {
-        _loadUserPoint();
-      }
-    });
+    _loadProductDetail();
+    _loadReviews();
     _loadAuthUser();
     _loadConfig();
     _loadProductOptions();
@@ -162,12 +158,14 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
             originalPrice: product.originalPrice,
             itSubject: product.itSubject,
           );
+          if (product.isInfluencerProduct != true) {
+            _loadUserPoint();
+          }
         }
       });
 
-      // 찜하기 상태 확인
-      await _checkFavoriteStatus();
-      await _loadRecommendedProducts();
+      _checkFavoriteStatus();
+      _loadRecommendedProducts();
     } catch (e) {
       _safeSetState(() {
         _isLoading = false;
@@ -349,7 +347,10 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
         await WishService.removeFromWish(widget.productId);
       } else {
         // 찜하기 추가
-        await WishService.addToWish(widget.productId);
+        await WishService.addToWish(
+          widget.productId,
+          wiItKind: 'general',
+        );
       }
     } catch (e) {
       // 실패 시 원래 상태로 되돌리기
@@ -726,6 +727,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       onGuestLoginTap: _onGuestReviewLoginTap,
       embedInParentScroll: true,
       showCouponSection: !hideCoupon,
+      fallbackImageUrl: _product?.imageUrl,
       onLoadMore: () {
         _safeSetState(() {
           _visibleSupporterReviewCount += 8;
@@ -804,6 +806,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       onGuestLoginTap: _onGuestReviewLoginTap,
       embedInParentScroll: true,
       showCouponSection: false,
+      fallbackImageUrl: _product?.imageUrl,
       onLoadMore: () {
         _safeSetState(() {
           _visibleNormalReviewCount += 8;

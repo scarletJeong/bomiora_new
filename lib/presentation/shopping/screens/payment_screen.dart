@@ -768,9 +768,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
       if (kIsWeb) {
         result = await Navigator.of(context).push<Map<String, dynamic>>(
           PageRouteBuilder(
-            opaque: false,
-            barrierDismissible: false,
-            barrierColor: const Color(0x99000000),
+            opaque: true,
+            fullscreenDialog: true,
             pageBuilder: (context, animation, secondaryAnimation) {
               return KcpPayWebViewScreen(
                 html: html,
@@ -794,9 +793,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
         );
       }
 
-      if (!mounted || result == null) return;
-      final resultMap =
-          result is Map<String, dynamic> ? result : <String, dynamic>{};
+      if (!mounted) return;
+      if (result == null) return;
+      final resultMap = result is Map
+          ? Map<String, dynamic>.from(result)
+          : <String, dynamic>{};
       final success = resultMap['success'] == true;
       final message = (resultMap['message'] ?? '').toString();
       final errorCode = (resultMap['error_code'] ?? '').toString().trim();

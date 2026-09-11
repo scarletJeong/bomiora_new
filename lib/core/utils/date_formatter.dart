@@ -151,6 +151,25 @@ class DateDisplayFormatter {
         int.parse(dot.group(3)!),
       );
     }
+    final ymd = RegExp(r'^(\d{4})-(\d{1,2})-(\d{1,2})').firstMatch(t);
+    if (ymd != null) {
+      final y = int.parse(ymd.group(1)!);
+      final m = int.parse(ymd.group(2)!);
+      final d = int.parse(ymd.group(3)!);
+      final rest = t.substring(ymd.end).trim();
+      // `YYYY-MM-DD` 달력 날짜는 웹 DateTime.parse(UTC)로 하루가 밀리지 않게 로컬 날짜로 둔다.
+      if (rest.isEmpty || rest.startsWith(' ')) {
+        return DateTime(y, m, d);
+      }
+      if (rest.startsWith('T')) {
+        final dt = DateTime.tryParse(t);
+        if (dt != null) {
+          final kst = toKoreaTime(dt);
+          return DateTime(kst.year, kst.month, kst.day);
+        }
+      }
+      return DateTime(y, m, d);
+    }
     try {
       final head =
           t.contains('T') ? t : t.replaceAll('.', '-').split(' ').first;
