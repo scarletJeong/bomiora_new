@@ -8,6 +8,16 @@ import '../../shopping/utils/get_product.dart';
 /// 하단 가로 바 ↔ 오른쪽 세로 바 전환 기준 (px).
 const double kFooterBarWideBreakpoint = 950;
 
+/// 패널용으로 줄어든 [MediaQuery.size]가 아니라 실제 창 너비.
+/// 650 패널 안에서도 와이드 레이아웃 여부를 올바르게 판별한다.
+double layoutWindowWidth(BuildContext context) {
+  return MediaQueryData.fromView(View.of(context)).size.width;
+}
+
+bool isWideSideNavLayout(BuildContext context) {
+  return layoutWindowWidth(context) >= kFooterBarWideBreakpoint;
+}
+
 /// 공통으로 쓰는 하단 핑크 탭 바 (Figma)
 ///
 /// - 파일명만 `footer_bar.dart` → `navi_bar.dart`로 변경했습니다.
@@ -100,8 +110,7 @@ class FooterBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.sizeOf(context).width;
-    if (screenWidth >= kFooterBarWideBreakpoint) {
+    if (isWideSideNavLayout(context)) {
       return const SizedBox.shrink();
     }
 

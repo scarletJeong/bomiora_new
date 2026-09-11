@@ -126,8 +126,9 @@ class MobileLayoutWrapper extends StatelessWidget {
   }
 
   /// 바깥 래퍼에서만 세로 네비를 그린다 (안쪽 중첩 래퍼 중복 방지).
-  bool _shouldShowSideNav(BoxConstraints constraints, double screenWidth) {
+  bool _shouldShowSideNav(BoxConstraints constraints, BuildContext context) {
     if (!showSideNav) return false;
+    final screenWidth = layoutWindowWidth(context);
     if (screenWidth < kFooterBarWideBreakpoint) return false;
     return !(constraints.maxWidth <= maxWidth && screenWidth > maxWidth);
   }
@@ -168,12 +169,11 @@ class MobileLayoutWrapper extends StatelessWidget {
       backgroundColor: Colors.grey[100],
       body: LayoutBuilder(
         builder: (context, constraints) {
-          final screenWidth = MediaQuery.sizeOf(context).width;
           final contentWidth = constraints.maxWidth > maxWidth
               ? maxWidth
               : constraints.maxWidth;
 
-          if (_shouldShowSideNav(constraints, screenWidth)) {
+          if (_shouldShowSideNav(constraints, context)) {
             return _wideLayout(
               context: context,
               constraints: constraints,
@@ -237,6 +237,7 @@ class MobileAppLayoutWrapper extends StatelessWidget {
   Widget _innerScaffold({
     required PreferredSizeWidget? wrappedAppBar,
     required PreferredSizeWidget? appBar,
+    required bool hideBottomNav,
   }) {
     return Scaffold(
       key: scaffoldKey,
@@ -245,7 +246,7 @@ class MobileAppLayoutWrapper extends StatelessWidget {
       appBar: wrappedAppBar ?? appBar,
       drawer: drawer,
       endDrawer: endDrawer,
-      bottomNavigationBar: bottomNavigationBar,
+      bottomNavigationBar: hideBottomNav ? null : bottomNavigationBar,
       resizeToAvoidBottomInset: resizeToAvoidBottomInset,
       body: child,
     );
@@ -256,6 +257,7 @@ class MobileAppLayoutWrapper extends StatelessWidget {
     required double contentWidth,
     required PreferredSizeWidget? wrappedAppBar,
     required PreferredSizeWidget? appBar,
+    bool hideBottomNav = false,
   }) {
     final media = MediaQuery.of(context);
     PreferredSizeWidget? panelAppBar = wrappedAppBar;
@@ -297,6 +299,7 @@ class MobileAppLayoutWrapper extends StatelessWidget {
           child: _innerScaffold(
             wrappedAppBar: panelAppBar,
             appBar: appBar,
+            hideBottomNav: hideBottomNav,
           ),
         ),
       ),
@@ -304,8 +307,9 @@ class MobileAppLayoutWrapper extends StatelessWidget {
   }
 
   /// 바깥 래퍼에서만 세로 네비를 그린다 (안쪽 중첩 래퍼 중복 방지).
-  bool _shouldShowSideNav(BoxConstraints constraints, double screenWidth) {
+  bool _shouldShowSideNav(BoxConstraints constraints, BuildContext context) {
     if (!showSideNav) return false;
+    final screenWidth = layoutWindowWidth(context);
     if (screenWidth < kFooterBarWideBreakpoint) return false;
     return !(constraints.maxWidth <= maxWidth && screenWidth > maxWidth);
   }
@@ -322,6 +326,7 @@ class MobileAppLayoutWrapper extends StatelessWidget {
       contentWidth: contentWidth,
       wrappedAppBar: wrappedAppBar,
       appBar: appBar,
+      hideBottomNav: true,
     );
     final panelLeft = (constraints.maxWidth - contentWidth) / 2;
     final navLeft = panelLeft + contentWidth + _sideNavGap;
@@ -382,12 +387,11 @@ class MobileAppLayoutWrapper extends StatelessWidget {
       backgroundColor: outerBackgroundColor ?? Colors.grey[100],
       body: LayoutBuilder(
         builder: (context, constraints) {
-          final screenWidth = MediaQuery.sizeOf(context).width;
           final contentWidth = constraints.maxWidth > maxWidth
               ? maxWidth
               : constraints.maxWidth;
 
-          if (_shouldShowSideNav(constraints, screenWidth)) {
+          if (_shouldShowSideNav(constraints, context)) {
             return _wideLayout(
               context: context,
               constraints: constraints,
