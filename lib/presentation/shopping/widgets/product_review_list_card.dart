@@ -3,6 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/constants/app_assets.dart';
 import '../../../core/utils/image_url_helper.dart';
+import '../../common/widgets/app_network_image.dart';
 import '../../../data/models/review/review_model.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/coupon_service.dart';
@@ -22,6 +23,8 @@ class ProductReviewListCard extends StatefulWidget {
   final bool? showCategoryScores;
   final VoidCallback? onOpenDetail;
   final VoidCallback? onGuestLoginTap;
+  /// 리뷰 첨부 사진이 없을 때 쓸 상품 썸네일
+  final String? fallbackImageUrl;
 
   const ProductReviewListCard({
     super.key,
@@ -30,6 +33,7 @@ class ProductReviewListCard extends StatefulWidget {
     this.showCategoryScores,
     this.onOpenDetail,
     this.onGuestLoginTap,
+    this.fallbackImageUrl,
   });
 
   @override
@@ -53,7 +57,9 @@ class _ProductReviewListCardState extends State<ProductReviewListCard> {
     final imageH = healthDp(context, 321);
     final radius = healthDp(context, 10);
     final total = review.averageScore ?? 0.0;
-    final imageCount = _reviewImageCount(review);
+    final displayImages = _displayImages(review);
+    final imageCount = displayImages.length;
+    final useProductThumb = review.images.isEmpty && imageCount > 0;
     // 카테고리 점수: 화면에서 지정 > 상품종류(it_kind) > 리뷰종류(is_rvkind) 순
     // is_rvkind=general 은 "비서포터"이지 일반상품이 아님
     final showCategoryScores = widget.showCategoryScores ??
@@ -72,7 +78,12 @@ class _ProductReviewListCardState extends State<ProductReviewListCard> {
                 child: SizedBox(
                   width: double.infinity,
                   height: imageH,
-                  child: _buildImage(review, imageH, imageCount),
+                  child: _buildImage(
+                    review,
+                    imageH,
+                    displayImages,
+                    useProductThumb: useProductThumb,
+                  ),
                 ),
               ),
               if (review.isSupporterReview)
@@ -230,19 +241,41 @@ class _ProductReviewListCardState extends State<ProductReviewListCard> {
     return parts.join('  ');
   }
 
-  int _reviewImageCount(ReviewModel review) => review.images.length;
+  List<String> _displayImages(ReviewModel review) {
+    if (review.images.isNotEmpty) return review.images;
+    final fallback = (review.productImage ?? widget.fallbackImageUrl ?? '')
+        .trim();
+    if (fallback.isEmpty) return const [];
+    return [fallback];
+  }
 
-  Widget _buildImage(ReviewModel review, double imageH, int imageCount) {
-    if (imageCount == 0) {
+  Widget _buildImage(
+    ReviewModel review,
+    double imageH,
+    List<String> images, {
+    required bool useProductThumb,
+  }) {
+    if (images.isEmpty) {
       return const SizedBox.shrink();
     }
 
-    if (imageCount == 1) {
-      return Image.network(
-        ImageUrlHelper.getReviewImageUrl(review.images.first),
+    String resolve(String raw) {
+      if (useProductThumb) {
+        return ImageUrlHelper.toWebSafeImageUrl(
+          ImageUrlHelper.normalizeThumbnailUrl(raw, review.itId) ?? raw,
+        );
+      }
+      return ImageUrlHelper.getReviewImageUrl(raw);
+    }
+
+    if (images.length == 1) {
+      return AppNetworkImage(
+        url: resolve(images.first),
         fit: BoxFit.cover,
         width: double.infinity,
         height: imageH,
+        decodeWidthLogical: 420,
+        decodeHeightLogical: imageH,
         errorBuilder: (_, __, ___) => const SizedBox.shrink(),
       );
     }
@@ -251,15 +284,17 @@ class _ProductReviewListCardState extends State<ProductReviewListCard> {
 
     return PageView.builder(
       controller: _imagePageController,
-      itemCount: imageCount,
+      itemCount: images.length,
       physics: const PageScrollPhysics(),
       onPageChanged: (i) => setState(() => _imageIndex = i),
       itemBuilder: (context, index) {
-        return Image.network(
-          ImageUrlHelper.getReviewImageUrl(review.images[index]),
+        return AppNetworkImage(
+          url: resolve(images[index]),
           fit: BoxFit.cover,
           width: double.infinity,
           height: imageH,
+          decodeWidthLogical: 420,
+          decodeHeightLogical: imageH,
           errorBuilder: (_, __, ___) => const SizedBox.shrink(),
         );
       },
@@ -834,6 +869,7 @@ class ProductReviewListSection extends StatelessWidget {
   final bool guestLoginLocked;
   final VoidCallback? onGuestLoginTap;
   final ValueChanged<ReviewModel>? onReviewTap;
+  final String? fallbackImageUrl;
 
   const ProductReviewListSection({
     super.key,
@@ -843,6 +879,7 @@ class ProductReviewListSection extends StatelessWidget {
     this.guestLoginLocked = false,
     this.onGuestLoginTap,
     this.onReviewTap,
+    this.fallbackImageUrl,
   });
 
   @override
@@ -862,6 +899,7 @@ class ProductReviewListSection extends StatelessWidget {
             showCouponSection: showCouponSection,
             showCategoryScores: showCategoryScores,
             onGuestLoginTap: onGuestLoginTap,
+            fallbackImageUrl: fallbackImageUrl,
             onOpenDetail: onReviewTap != null
                 ? () => onReviewTap!(displayReviews[i])
                 : null,

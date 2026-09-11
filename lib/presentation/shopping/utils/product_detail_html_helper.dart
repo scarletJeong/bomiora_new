@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
 
 import '../../../core/utils/image_url_helper.dart';
+import '../../common/widgets/app_network_image.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 
 /// 상품 상세 HTML의 고정 width/height 제거 — 화면 너비에 맞게 표시
@@ -46,20 +47,60 @@ String sanitizeProductDetailHtmlImages(String html) {
   return result;
 }
 
-String processProductDetailHtml(String? rawHtml) {
-  if (rawHtml == null || rawHtml.trim().isEmpty) return '';
+String _rewriteHtmlImageSrc(String html) {
+  var result = html.replaceAllMapped(
+    RegExp(
+      r'''src\s*=\s*(['"])(//[^'"]+)\1''',
+      caseSensitive: false,
+    ),
+    (match) {
+      final quote = match.group(1) ?? '"';
+      final originalUrl = 'https:${match.group(2) ?? ''}';
+      return 'src=$quote${ImageUrlHelper.toWebSafeImageUrl(originalUrl)}$quote';
+    },
+  );
 
-  final srcPattern = RegExp(
-    r'''src\s*=\s*(['"])(https?://[^'"]+)\1''',
+  result = result.replaceAllMapped(
+    RegExp(
+      r'''src\s*=\s*(['"])(https?://[^'"]+)\1''',
+      caseSensitive: false,
+    ),
+    (match) {
+      final quote = match.group(1) ?? '"';
+      final originalUrl = (match.group(2) ?? '').replaceAll('&amp;', '&');
+      return 'src=$quote${ImageUrlHelper.toWebSafeImageUrl(originalUrl)}$quote';
+    },
+  );
+
+  result = result.replaceAllMapped(
+    RegExp(
+      r'''src\s*=\s*(['"])(/data/[^'"]+)\1''',
+      caseSensitive: false,
+    ),
+    (match) {
+      final quote = match.group(1) ?? '"';
+      final path = match.group(2) ?? '';
+      return 'src=$quote${ImageUrlHelper.toWebSafeImageUrl('https://bomiora0.mycafe24.com$path')}$quote';
+    },
+  );
+
+  return result;
+}
+
+String _stripTrailingEmptyHtml(String html) {
+  var result = html.trimRight();
+  final trailing = RegExp(
+    r'(?:(?:<p>(?:\s|&nbsp;|<br\s*/?>)*</p>)|(?:<div>(?:\s|&nbsp;|<br\s*/?>)*</div>)|<br\s*/?>|&nbsp;|\s)+$',
     caseSensitive: false,
   );
-  final withUrls = rawHtml.replaceAllMapped(srcPattern, (match) {
-    final quote = match.group(1) ?? '"';
-    final originalUrl = match.group(2) ?? '';
-    final convertedUrl = ImageUrlHelper.convertToLocalUrl(originalUrl);
-    return 'src=$quote$convertedUrl$quote';
-  });
-  return sanitizeProductDetailHtmlImages(withUrls);
+  result = result.replaceAll(trailing, '');
+  return result.trimRight();
+}
+
+String processProductDetailHtml(String? rawHtml) {
+  if (rawHtml == null || rawHtml.trim().isEmpty) return '';
+  final withUrls = _rewriteHtmlImageSrc(rawHtml);
+  return _stripTrailingEmptyHtml(sanitizeProductDetailHtmlImages(withUrls));
 }
 
 Widget buildProductDetailHtml({
@@ -70,13 +111,36 @@ Widget buildProductDetailHtml({
   return LayoutBuilder(
     builder: (context, constraints) {
       final contentWidth = constraints.maxWidth.clamp(0.0, double.infinity);
-      final verticalGap = healthDp(context, 8);
+      final verticalGap = healthDp(context, 4);
 
       return SizedBox(
         width: contentWidth,
         child: Html(
           data: html,
           shrinkWrap: true,
+          extensions: [
+            TagExtension(
+              tagsToExtend: const {'img'},
+              builder: (extensionContext) {
+                final rawSrc = (extensionContext.attributes['src'] ?? '')
+                    .trim()
+                    .replaceAll('&amp;', '&');
+                if (rawSrc.isEmpty) return const SizedBox.shrink();
+                final url = ImageUrlHelper.toWebSafeImageUrl(rawSrc);
+                return Padding(
+                  padding: EdgeInsets.only(bottom: verticalGap),
+                  child: AppNetworkImage(
+                    url: url,
+                    width: contentWidth,
+                    fit: BoxFit.fitWidth,
+                    alignment: Alignment.topCenter,
+                    decodeWidthLogical: contentWidth,
+                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                  ),
+                );
+              },
+            ),
+          ],
           style: {
             'body': Style(
               margin: Margins.zero,
@@ -87,7 +151,8 @@ Widget buildProductDetailHtml({
             'img': Style(
               width: Width(contentWidth),
               display: Display.block,
-              margin: Margins.symmetric(vertical: verticalGap),
+              margin: Margins.zero,
+              padding: HtmlPaddings.zero,
               alignment: Alignment.center,
             ),
             'div': Style(
@@ -135,12 +200,14 @@ Widget buildProductCarouselImage({
     height: height,
     child: ColoredBox(
       color: const Color(0xFFF8F8F8),
-      child: Image.network(
-        imageUrl,
+      child: AppNetworkImage(
+        url: ImageUrlHelper.toWebSafeImageUrl(imageUrl),
         width: width,
         height: height,
         fit: BoxFit.contain,
         alignment: Alignment.center,
+        decodeWidthLogical: width,
+        decodeHeightLogical: height,
         errorBuilder: errorBuilder,
         loadingBuilder: loadingBuilder,
       ),

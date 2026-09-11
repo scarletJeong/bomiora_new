@@ -175,25 +175,41 @@ class ReviewModel {
     if (!list.contains(t)) list.add(t);
   }
 
+  static String? _normalizeReviewImageEntry(dynamic e) {
+    if (e == null || e is Map) return null;
+    var s = NodeValueParser.asString(e)?.trim() ?? '';
+    if (s.isEmpty || s.toLowerCase() == 'null') return null;
+    if (s.contains('{type:') || s.contains('"type":"Buffer"')) return null;
+    s = _extractImgSrcIfHtml(s) ?? s;
+    return s.replaceAll('&amp;', '&').trim();
+  }
+
   /// JSON에서 모델로 변환
   factory ReviewModel.fromJson(Map<String, dynamic> json) {
     final normalized = NodeValueParser.normalizeMap(json);
     List<String> imageList = [];
     if (normalized['images'] != null && normalized['images'] is List) {
-      imageList = (normalized['images'] as List)
-          .map((e) => NodeValueParser.asString(e) ?? '')
-          .where((e) => e.isNotEmpty)
-          .toList();
+      for (final e in (normalized['images'] as List)) {
+        _pushUniqueImage(imageList, _normalizeReviewImageEntry(e));
+      }
     }
     if (imageList.isEmpty) {
+      for (var i = 1; i <= 10; i++) {
+        _pushUniqueImage(
+          imageList,
+          _normalizeReviewImageEntry(
+            normalized['is_img$i'] ?? normalized['isImg$i'],
+          ),
+        );
+      }
       for (final k in ['image', 'reviewImage', 'review_image', 'is_img', 'isImg', 'photo']) {
-        _pushUniqueImage(imageList, NodeValueParser.asString(normalized[k]));
+        _pushUniqueImage(imageList, _normalizeReviewImageEntry(normalized[k]));
       }
       final altLists = [normalized['reviewPhotos'], normalized['review_images']];
       for (final raw in altLists) {
         if (raw is List) {
           for (final e in raw) {
-            _pushUniqueImage(imageList, NodeValueParser.asString(e));
+            _pushUniqueImage(imageList, _normalizeReviewImageEntry(e));
           }
         }
       }

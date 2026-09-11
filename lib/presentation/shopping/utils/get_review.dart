@@ -37,7 +37,9 @@ class ProductReviewLoader {
     final result = await ReviewService.getProductReviews(
       itId: reviewProductId,
       rvkind: null,
-      fetchAll: true,
+      page: 0,
+      size: 24,
+      fetchAll: false,
     );
 
     if (result['success'] != true) {

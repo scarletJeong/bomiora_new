@@ -340,6 +340,41 @@ class ImageUrlHelper {
     return u;
   }
 
+  static bool _hostNeedsCorsProxy(String host) {
+    final h = host.toLowerCase();
+    if (h.isEmpty) return false;
+    if (h == 'localhost' || h == '127.0.0.1') return false;
+    if (h == 'bomiora.net' || h == 'www.bomiora.net') return false;
+    if (h == 'bomiora.kr' || h == 'www.bomiora.kr') return false;
+    if (h == 'bomiora0.mycafe24.com' || h.endsWith('.mycafe24.com')) {
+      return false;
+    }
+    return true;
+  }
+
+  /// 웹 CanvasKit/Html 위젯은 교차출처 이미지를 CORS로 요청함.
+  /// Cafe24는 ACAO가 있으나 godohosting 등 외부 CDN은 없어 프록시로 우회.
+  static String toWebSafeImageUrl(String url) {
+    var raw = unwrapProxyImageUrlIfAny(url.trim());
+    if (raw.isEmpty) return url;
+    if (raw.startsWith('//')) raw = 'https:$raw';
+
+    late final String absolute;
+    if (raw.startsWith('http://') || raw.startsWith('https://')) {
+      absolute = convertToLocalUrl(raw);
+    } else {
+      absolute = normalizeImageUrl(raw);
+    }
+
+    if (!kIsWeb) return absolute;
+    if (absolute.contains('/api/proxy/image')) return absolute;
+
+    final uri = Uri.tryParse(absolute);
+    if (uri == null || uri.host.isEmpty) return absolute;
+    if (!_hostNeedsCorsProxy(uri.host)) return absolute;
+    return '${ApiClient.baseUrl}/api/proxy/image?url=${Uri.encodeComponent(absolute)}';
+  }
+
   /// 간단한 이미지 URL 반환 (일반적인 용도)
   /// 이미 전체 URL이면 그대로 반환, 아니면 normalizeImageUrl 사용
   static bool isCorruptStoredImagePath(String? imageUrl) {
@@ -607,6 +642,9 @@ class ImageUrlHelper {
   }
 
   static String _resolveQaApiImageUrl(String imageUrl) {
+    final nodeUrl = _nodeQaImageUrl(imageUrl);
+    if (nodeUrl != null) return nodeUrl;
+
     final fixed = fixHealthApiImagePath(imageUrl);
     late final String fullUrl;
     if (fixed.startsWith('http://') || fixed.startsWith('https://')) {
@@ -620,7 +658,9 @@ class ImageUrlHelper {
     final uri = Uri.tryParse(fullUrl);
     if (uri == null) return fullUrl;
 
-    // QA 이미지: Cafe24 data/qa_images 는 정적, Node /api/qa/images 는 API origin
+    final rewritten = _nodeQaImageUrl(fullUrl);
+    if (rewritten != null) return rewritten;
+
     if (isQaApiImagePath(uri.path) || isQaApiImagePath(fullUrl)) {
       if (uri.path.toLowerCase().contains('/data/qa_images/')) {
         if (uri.hasScheme) return fullUrl;
@@ -630,6 +670,26 @@ class ImageUrlHelper {
     }
 
     return convertToLocalUrl(fullUrl);
+  }
+
+  static String? _nodeQaImageUrl(String pathOrUrl) {
+    var raw = unwrapProxyImageUrlIfAny(pathOrUrl.trim());
+    if (raw.isEmpty) return null;
+
+    String path = raw;
+    if (raw.startsWith('http://') || raw.startsWith('https://')) {
+      path = Uri.tryParse(raw)?.path ?? raw;
+    } else if (!path.startsWith('/')) {
+      path = '/$path';
+    }
+
+    final match = RegExp(
+      r'/(?:api/qa/images|data/qa_images)/([^/?#]+)',
+      caseSensitive: false,
+    ).firstMatch(path);
+    if (match == null) return null;
+    final file = Uri.decodeComponent(match.group(1)!);
+    return '${ApiClient.baseUrl}/api/qa/images/$file';
   }
 
   static String _resolveProfileImageUrl(String imageUrl) {
@@ -738,11 +798,11 @@ class ImageUrlHelper {
           return '${ApiClient.baseUrl}${uri.path}';
         }
       }
-      return convertToLocalUrl(imageUrl);
+      return toWebSafeImageUrl(imageUrl);
     }
 
     // 상대 경로인 경우 normalizeImageUrl 사용
-    return normalizeImageUrl(imageUrl);
+    return toWebSafeImageUrl(normalizeImageUrl(imageUrl));
   }
 
   /// `data/itemuse/` 상대경로 정리 — 선행 `/`, 중복 `data/itemuse/` 제거
@@ -764,9 +824,13 @@ class ImageUrlHelper {
     if (imageUrl == null || imageUrl.isEmpty) {
       return convertToLocalUrl('${imageBaseUrl}/data/item/no_img.png');
     }
+    if (isCorruptStoredImagePath(imageUrl)) {
+      return convertToLocalUrl('${imageBaseUrl}/data/item/no_img.png');
+    }
 
     final extractedSrc = _extractFirstImageSrc(imageUrl);
-    final trimmed = (extractedSrc ?? imageUrl).trim();
+    var trimmed = (extractedSrc ?? imageUrl).trim().replaceAll('&amp;', '&');
+    if (trimmed.startsWith('//')) trimmed = 'https:$trimmed';
     if (isBrowserBlobOrInvalidImageUrl(trimmed)) {
       return convertToLocalUrl('${imageBaseUrl}/data/item/no_img.png');
     }
@@ -774,7 +838,7 @@ class ImageUrlHelper {
       return _resolveReviewApiImageUrl(trimmed);
     }
     if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-      return convertToLocalUrl(trimmed);
+      return toWebSafeImageUrl(trimmed);
     }
 
     final path = _normalizeReviewItemuseRelativePath(trimmed);
