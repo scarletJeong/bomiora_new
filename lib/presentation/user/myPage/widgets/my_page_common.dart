@@ -13,25 +13,24 @@ class MyPageAvatarFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final size = healthDp(context, 77);
+    final borderW = healthDp(context, 3);
     return Container(
-      padding: EdgeInsets.all(healthDp(context, 3)),
-      decoration: ShapeDecoration(
-        color: const Color(0xFFFF5A8D),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(healthDp(context, 45)),
+      width: size + borderW * 2,
+      height: size + borderW * 2,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: const Color(0xFFFF5A8D),
+          width: borderW,
         ),
       ),
-      child: Container(
-        width: healthDp(context, 77),
-        height: healthDp(context, 77),
-        decoration: ShapeDecoration(
-          color: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(healthDp(context, 45)),
-          ),
-        ),
-        alignment: Alignment.center,
-        child: child,
+      child: SizedBox(
+        width: size,
+        height: size,
+        child: ClipOval(child: child),
       ),
     );
   }

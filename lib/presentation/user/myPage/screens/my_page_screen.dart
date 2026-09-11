@@ -2,7 +2,6 @@
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/constants/app_assets.dart';
-import '../../../../core/utils/image_url_helper.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/services/address_service.dart';
 import '../../../../data/services/delivery_service.dart';
@@ -311,25 +310,6 @@ class _MyPageScreenState extends State<MyPageScreen> {
 
   Widget _buildProfilePhotoIcon() {
     final size = healthDp(context, 77);
-    final raw = _currentUser?.profileImage?.trim();
-    if (raw != null && raw.isNotEmpty) {
-      final url = ImageUrlHelper.getImageUrl(raw);
-      if (url.isNotEmpty) {
-        return Image.network(
-          url,
-          key: ValueKey(url),
-          width: size,
-          height: size,
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => SvgPicture.asset(
-            AppAssets.mypagePhotoProfileIcon,
-            width: size,
-            height: size,
-            fit: BoxFit.contain,
-          ),
-        );
-      }
-    }
     return SvgPicture.asset(
       AppAssets.mypagePhotoProfileIcon,
       width: size,
@@ -577,7 +557,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final cardHeight = constraints.maxHeight;
-                final iconTop = (cardHeight * -0.10).clamp(-12.0, -6.0);
+                final iconTop = (cardHeight * -0.16).clamp(-18.0, -10.0);
                 final contentTop = (iconTop + iconH + healthDp(context, 4))
                     .clamp(12.0, 28.0);
                 final contentBottom = (cardHeight * 0.10).clamp(6.0, 14.0);
