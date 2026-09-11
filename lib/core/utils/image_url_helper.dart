@@ -385,6 +385,35 @@ class ImageUrlHelper {
         t.contains('"type": "Buffer"');
   }
 
+  /// 리뷰 첨부 사진으로 쓸 수 있는 경로인지 (BLOB CAST 쓰레기·빈 플래그 제외)
+  static bool isUsableReviewImageRef(String? raw) {
+    final t = (raw ?? '').trim();
+    if (t.isEmpty) return false;
+    final lower = t.toLowerCase();
+    if (lower == 'null' || lower == 'undefined' || lower == '0') return false;
+    if (isCorruptStoredImagePath(t) || isBrowserBlobOrInvalidImageUrl(t)) {
+      return false;
+    }
+    if (t.length > 400) return false;
+    if (RegExp(r'[\x00-\x08\x0B\x0C\x0E-\x1F]').hasMatch(t)) return false;
+    if (lower.startsWith('http://') ||
+        lower.startsWith('https://') ||
+        lower.startsWith('//')) {
+      return true;
+    }
+    if (lower.contains('/api/user/reviews/images/') ||
+        lower.contains('/data/review_images/') ||
+        lower.contains('data/itemuse')) {
+      return true;
+    }
+    if (RegExp(r'\.(jpe?g|png|gif|webp|bmp)(\?.*)?$', caseSensitive: false)
+        .hasMatch(t)) {
+      return true;
+    }
+    if (RegExp(r'^\d+/[^/]+').hasMatch(t)) return true;
+    return false;
+  }
+
   /// 건강 API 업로드 경로(`/api/health/...`) — 쇼핑 `data/item`과 별도
   static bool isHealthApiImagePath(String path) {
     final p = path.toLowerCase();

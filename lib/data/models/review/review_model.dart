@@ -1,3 +1,4 @@
+import '../../../core/utils/image_url_helper.dart';
 import '../../../core/utils/node_value_parser.dart';
 
 /// 리뷰 모델
@@ -214,6 +215,9 @@ class ReviewModel {
         }
       }
     }
+    imageList = imageList
+        .where(ImageUrlHelper.isUsableReviewImageRef)
+        .toList();
 
     String? itName = _readProductNameFromMap(normalized);
     if (itName == null || itName.isEmpty) {

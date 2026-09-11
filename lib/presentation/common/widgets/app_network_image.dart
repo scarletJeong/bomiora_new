@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 /// 리스트/카드용 네트워크 이미지 — 표시 크기에 맞춰 디코드해 메모리·렌더 부하를 줄입니다.
@@ -137,8 +138,10 @@ class _AppNetworkImageState extends State<AppNetworkImage> {
       height: widget.height,
       fit: widget.fit,
       alignment: widget.alignment,
-      cacheWidth: cacheW,
-      cacheHeight: cacheH,
+      cacheWidth: kIsWeb ? null : cacheW,
+      cacheHeight: kIsWeb ? null : cacheH,
+      webHtmlElementStrategy:
+          kIsWeb ? WebHtmlElementStrategy.prefer : WebHtmlElementStrategy.never,
       filterQuality: FilterQuality.low,
       errorBuilder: (context, error, stackTrace) {
         _markSettled();

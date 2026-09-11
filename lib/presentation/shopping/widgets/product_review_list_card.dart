@@ -57,9 +57,10 @@ class _ProductReviewListCardState extends State<ProductReviewListCard> {
     final imageH = healthDp(context, 321);
     final radius = healthDp(context, 10);
     final total = review.averageScore ?? 0.0;
-    final displayImages = _displayImages(review);
+    final reviewImages = _usableReviewImages(review);
+    final displayImages = _displayImages(review, reviewImages);
     final imageCount = displayImages.length;
-    final useProductThumb = review.images.isEmpty && imageCount > 0;
+    final useProductThumb = reviewImages.isEmpty && imageCount > 0;
     // 카테고리 점수: 화면에서 지정 > 상품종류(it_kind) > 리뷰종류(is_rvkind) 순
     // is_rvkind=general 은 "비서포터"이지 일반상품이 아님
     final showCategoryScores = widget.showCategoryScores ??
@@ -241,12 +242,33 @@ class _ProductReviewListCardState extends State<ProductReviewListCard> {
     return parts.join('  ');
   }
 
-  List<String> _displayImages(ReviewModel review) {
-    if (review.images.isNotEmpty) return review.images;
-    final fallback = (review.productImage ?? widget.fallbackImageUrl ?? '')
-        .trim();
-    if (fallback.isEmpty) return const [];
+  List<String> _usableReviewImages(ReviewModel review) {
+    return review.images
+        .where(ImageUrlHelper.isUsableReviewImageRef)
+        .toList();
+  }
+
+  String? _productThumbRaw(ReviewModel review) {
+    final fromPage = widget.fallbackImageUrl?.trim() ?? '';
+    if (fromPage.isNotEmpty) return fromPage;
+    final fromReview = review.productImage?.trim() ?? '';
+    if (fromReview.isNotEmpty) return fromReview;
+    return null;
+  }
+
+  List<String> _displayImages(ReviewModel review, List<String> reviewImages) {
+    if (reviewImages.isNotEmpty) return reviewImages;
+    final fallback = _productThumbRaw(review);
+    if (fallback == null || fallback.isEmpty) return const [];
     return [fallback];
+  }
+
+  String _resolveProductThumbUrl(ReviewModel review, String raw) {
+    final normalized =
+        ImageUrlHelper.normalizeThumbnailUrl(raw, review.itId) ?? raw;
+    return ImageUrlHelper.toWebSafeImageUrl(
+      ImageUrlHelper.getImageUrl(normalized),
+    );
   }
 
   Widget _buildImage(
@@ -259,25 +281,48 @@ class _ProductReviewListCardState extends State<ProductReviewListCard> {
       return const SizedBox.shrink();
     }
 
+    final productThumbUrl = () {
+      final raw = _productThumbRaw(review);
+      if (raw == null) return '';
+      return _resolveProductThumbUrl(review, raw);
+    }();
+
     String resolve(String raw) {
       if (useProductThumb) {
-        return ImageUrlHelper.toWebSafeImageUrl(
-          ImageUrlHelper.normalizeThumbnailUrl(raw, review.itId) ?? raw,
-        );
+        return _resolveProductThumbUrl(review, raw);
       }
       return ImageUrlHelper.getReviewImageUrl(raw);
     }
 
-    if (images.length == 1) {
+    Widget image(String url) {
       return AppNetworkImage(
-        url: resolve(images.first),
+        url: url,
         fit: BoxFit.cover,
         width: double.infinity,
         height: imageH,
         decodeWidthLogical: 420,
         decodeHeightLogical: imageH,
-        errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+        errorBuilder: (_, __, ___) {
+          if (!useProductThumb && productThumbUrl.isNotEmpty) {
+            return AppNetworkImage(
+              url: productThumbUrl,
+              fit: BoxFit.cover,
+              width: double.infinity,
+              height: imageH,
+              decodeWidthLogical: 420,
+              decodeHeightLogical: imageH,
+              errorBuilder: (_, __, ___) => ColoredBox(
+                color: const Color(0xFFF3F3F3),
+              ),
+            );
+          }
+          return const ColoredBox(color: Color(0xFFF3F3F3));
+        },
       );
+    }
+
+    if (images.length == 1) {
+      return image(resolve(images.first));
     }
 
     _imagePageController ??= PageController();
@@ -288,15 +333,7 @@ class _ProductReviewListCardState extends State<ProductReviewListCard> {
       physics: const PageScrollPhysics(),
       onPageChanged: (i) => setState(() => _imageIndex = i),
       itemBuilder: (context, index) {
-        return AppNetworkImage(
-          url: resolve(images[index]),
-          fit: BoxFit.cover,
-          width: double.infinity,
-          height: imageH,
-          decodeWidthLogical: 420,
-          decodeHeightLogical: imageH,
-          errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-        );
+        return image(resolve(images[index]));
       },
     );
   }

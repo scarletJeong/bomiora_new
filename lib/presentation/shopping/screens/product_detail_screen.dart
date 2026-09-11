@@ -401,6 +401,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     return images;
   }
 
+  String? get _reviewFallbackImageUrl {
+    final thumbs = _getProductImages();
+    if (thumbs.isNotEmpty) return thumbs.first;
+    final display = _product?.displayImageUrl.trim() ?? '';
+    if (display.isNotEmpty) return display;
+    return _product?.imageUrl;
+  }
+
   @override
   Widget build(BuildContext context) {
     final baseTheme = Theme.of(context);
@@ -850,7 +858,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       onGuestLoginTap: _onGuestReviewLoginTap,
       embedInParentScroll: true,
       showCouponSection: !hideCoupon,
-      fallbackImageUrl: _product?.imageUrl,
+      fallbackImageUrl: _reviewFallbackImageUrl,
       onLoadMore: () {
         _safeSetState(() {
           _visibleSupporterReviewCount += 8;
@@ -869,7 +877,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       onGuestLoginTap: _onGuestReviewLoginTap,
       embedInParentScroll: true,
       showCouponSection: false,
-      fallbackImageUrl: _product?.imageUrl,
+      fallbackImageUrl: _reviewFallbackImageUrl,
       onLoadMore: () {
         _safeSetState(() {
           _visibleNormalReviewCount += 8;
