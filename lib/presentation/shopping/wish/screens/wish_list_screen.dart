@@ -39,16 +39,24 @@ class _WishListScreenState extends State<WishListScreen> {
   final Map<int, Map<String, dynamic>> _contentCache = {};
   final Set<int> _contentLoadingIds = {};
 
-  /// API `it_kind` 기준 — 비대면: prescription, 스토어: general (우선 it_kind)
+  /// API `it_kind` 기준 — 비대면: prescription, 스토어: general
+  /// 상품은 마스터 `it_kind`를 우선하고, 콘텐츠만 `wi_it_kind`를 본다.
   String _itKindLower(Map<String, dynamic> item) {
-    return (NodeValueParser.asString(item['wi_it_kind']) ??
-            NodeValueParser.asString(item['it_kind']) ??
+    final wishKind = (NodeValueParser.asString(item['wi_it_kind']) ??
+            NodeValueParser.asString(item['wiItKind']) ??
+            '')
+        .toLowerCase()
+        .trim();
+    if (wishKind == 'content') return 'content';
+    final productKind = (NodeValueParser.asString(item['it_kind']) ??
             NodeValueParser.asString(item['product_kind']) ??
             NodeValueParser.asString(item['productKind']) ??
             NodeValueParser.asString(item['ct_kind']) ??
             '')
         .toLowerCase()
         .trim();
+    if (productKind.isNotEmpty) return productKind;
+    return wishKind;
   }
 
   List<Map<String, dynamic>> get _telemedWishes => _wishList

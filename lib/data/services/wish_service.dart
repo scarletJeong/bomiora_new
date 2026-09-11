@@ -10,6 +10,7 @@ class WishService {
   static final Map<String, bool> _checkCache = {};
   static final Map<String, DateTime> _checkCacheAt = {};
   static final Map<String, Future<bool>> _checkInFlight = {};
+  static final Map<String, Future<Map<String, dynamic>>> _toggleInFlight = {};
 
   static const Map<String, String> _noCacheHeaders = {
     'Cache-Control': 'no-cache',
@@ -33,9 +34,11 @@ class WishService {
         '';
     final wiKindRaw =
         NodeValueParser.asString(item['wi_it_kind']) ?? NodeValueParser.asString(item['wiItKind']) ?? '';
-    final kind = wiKindRaw.isNotEmpty
-        ? wiKindRaw
-        : (itKindRaw.isNotEmpty ? itKindRaw : productKindRaw);
+    final wishKind = wiKindRaw.trim().toLowerCase();
+    final productKind = itKindRaw.isNotEmpty ? itKindRaw : productKindRaw;
+    final kind = wishKind == 'content'
+        ? 'content'
+        : (productKind.isNotEmpty ? productKind : wiKindRaw);
 
     return {
       ...item,
@@ -89,11 +92,24 @@ class WishService {
     }
   }
 
+  static String _cacheKey(String userId, String productId) =>
+      '${userId.trim()}|${productId.trim()}';
+
+  static bool? peekIsWished(String userId, String productId) {
+    return _checkCache[_cacheKey(userId, productId)];
+  }
+
+  static void rememberWished(String userId, String productId, bool wished) {
+    final key = _cacheKey(userId, productId);
+    _checkCache[key] = wished;
+    _checkCacheAt[key] = DateTime.now();
+  }
+
   /// 찜 여부 (콘텐츠는 [productId]에 글 id 문자열, 상품은 it_id)
   static Future<bool> isWished(String productId) async {
     final user = await AuthService.getUser();
     if (user == null) return false;
-    final key = '${user.id}|${productId.trim()}';
+    final key = _cacheKey(user.id, productId);
     final cachedAt = _checkCacheAt[key];
     if (cachedAt != null &&
         DateTime.now().difference(cachedAt) < _checkCacheTtl) {
@@ -131,20 +147,47 @@ class WishService {
     }
   }
 
-  /// 찜 추가
+  /// 찜 토글. 같은 상품에 대한 중복 요청은 하나로 합친다.
   static Future<Map<String, dynamic>> addToWish(
     String productId, {
     String? wiItKind,
     String? infCode,
+    String? mbId,
+  }) async {
+    final userId = (mbId ?? '').trim().isNotEmpty
+        ? mbId!.trim()
+        : (await AuthService.getUser())?.id;
+    if (userId == null || userId.isEmpty) {
+      throw Exception('로그인이 필요합니다.');
+    }
+
+    final key = _cacheKey(userId, productId);
+    final pending = _toggleInFlight[key];
+    if (pending != null) return pending;
+
+    final request = _postToggle(
+      userId: userId,
+      productId: productId,
+      wiItKind: wiItKind,
+      infCode: infCode,
+    );
+    _toggleInFlight[key] = request;
+    try {
+      return await request;
+    } finally {
+      _toggleInFlight.remove(key);
+    }
+  }
+
+  static Future<Map<String, dynamic>> _postToggle({
+    required String userId,
+    required String productId,
+    String? wiItKind,
+    String? infCode,
   }) async {
     try {
-      final user = await AuthService.getUser();
-      if (user == null) {
-        throw Exception('로그인이 필요합니다.');
-      }
-
       final body = <String, dynamic>{
-        'mb_id': user.id,
+        'mb_id': userId,
         'it_id': productId,
       };
       final k = wiItKind?.trim();
@@ -163,9 +206,12 @@ class WishService {
       );
 
       final result = json.decode(response.body);
-      _checkCache['${user.id}|${productId.trim()}'] = true;
-      _checkCacheAt['${user.id}|${productId.trim()}'] = DateTime.now();
-      return result;
+      if (result is Map<String, dynamic> && result.containsKey('is_wished')) {
+        rememberWished(userId, productId, result['is_wished'] == true);
+      }
+      return result is Map<String, dynamic>
+          ? result
+          : <String, dynamic>{'success': false};
     } catch (e) {
       throw Exception('찜 추가 실패: $e');
     }
