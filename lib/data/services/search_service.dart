@@ -156,7 +156,7 @@ class SearchService {
         }
       }
       return byId.values
-          .where((event) => _eventMatchesQuery(event, q))
+          .where((event) => !event.isEnded && _eventMatchesQuery(event, q))
           .toList(growable: false);
     } catch (_) {
       return const [];

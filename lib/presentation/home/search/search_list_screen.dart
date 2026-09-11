@@ -148,6 +148,7 @@ class _SearchListScreenState extends State<SearchListScreen> {
       _content.length;
 
   void _openEvent(EventModel event) {
+    if (event.isEnded) return;
     Navigator.pushNamed(context, '/event/${event.wrId}');
   }
 
