@@ -331,8 +331,8 @@ class _MyPageScreenState extends State<MyPageScreen> {
       borderRadius: BorderRadius.circular(healthDp(context, 20)),
       child: Container(
         padding: EdgeInsets.symmetric(
-          horizontal: healthDp(context, 8),
-          vertical: healthDp(context, 5),
+          horizontal: healthDp(context, 6),
+          vertical: healthDp(context, 3),
         ),
         decoration: ShapeDecoration(
           shape: RoundedRectangleBorder(
@@ -350,7 +350,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
               '개인정보 수정',
               style: TextStyle(
                 color: const Color(0xFF898686),
-                fontSize: healthSp(context, 12),
+                fontSize: healthSp(context, 10),
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -424,6 +424,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    SizedBox(height: healthDp(context, 5)),
                     Row(
                       children: [
                         Flexible(
@@ -444,15 +445,16 @@ class _MyPageScreenState extends State<MyPageScreen> {
                         ],
                       ],
                     ),
-                    SizedBox(height: healthDp(context, 4)),
+                    SizedBox(height: healthDp(context, 2)),
                     Text(
                       _currentUser?.email ?? '',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: const Color(0xFF898686),
-                        fontSize: healthSp(context, 12),
+                        fontSize: healthSp(context, 10),
                         fontWeight: FontWeight.w300,
+                        height: 1,
                       ),
                     ),
                   ],
