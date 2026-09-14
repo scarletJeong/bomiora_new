@@ -308,50 +308,57 @@ class _CouponScreenState extends State<CouponScreen> {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Expanded(
-            child: _buildTabChip(0, '사용가능한 쿠폰 ${_availableCoupons.length}'),
+            child: _buildTabChip(
+              0,
+              '사용가능한 쿠폰',
+              _availableCoupons.length,
+            ),
           ),
-          Expanded(child: _buildTabChip(1, '사용한 쿠폰')),
-          Expanded(child: _buildTabChip(2, '지난 쿠폰')),
+          Expanded(
+            child: _buildTabChip(1, '사용한 쿠폰', _usedCoupons.length),
+          ),
+          Expanded(
+            child: _buildTabChip(2, '지난 쿠폰', _expiredCoupons.length),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildTabChip(int index, String label) {
+  Widget _buildTabChip(int index, String label, int count) {
     final selected = _selectedCouponTab == index;
-    final underlineH = healthDp(context, 1);
 
     return GestureDetector(
       onTap: () => setState(() => _selectedCouponTab = index),
       behavior: HitTestBehavior.opaque,
-      child: Container(
-        padding: EdgeInsets.only(bottom: healthDp(context, 10)),
-        decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(
-              width: underlineH,
-              color: selected ? _pink : Colors.transparent,
-            ),
-          ),
-        ),
-        child: Align(
-          alignment: Alignment.center,
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.center,
-            child: Text(
-              label,
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              softWrap: false,
-              style: _couponText(
-                context,
-                size: 14,
-                color: selected ? _pink : _textMuted,
-                weight: selected ? FontWeight.w700 : FontWeight.w500,
+      child: SizedBox(
+        width: double.infinity,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.center,
+              child: Text(
+                selected ? '$label$count' : label,
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                softWrap: false,
+                style: _couponText(
+                  context,
+                  size: 14,
+                  color: selected ? _pink : _textMuted,
+                  weight: selected ? FontWeight.w700 : FontWeight.w500,
+                ),
               ),
             ),
-          ),
+            SizedBox(height: healthDp(context, 4)),
+            Container(
+              width: double.infinity,
+              height: healthDp(context, 1),
+              color: selected ? _pink : const Color(0xFFD2D2D2),
+            ),
+          ],
         ),
       ),
     );
