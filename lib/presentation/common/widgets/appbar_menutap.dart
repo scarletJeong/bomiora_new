@@ -116,9 +116,7 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
   String get _greetingName {
     final u = _user;
     if (u == null) return '회원';
-    final n = (u.nickname != null && u.nickname!.trim().isNotEmpty)
-        ? u.nickname!.trim()
-        : u.name.trim();
+    final n = u.name.trim();
     return n.isEmpty ? '회원' : n;
   }
 

@@ -144,6 +144,8 @@ class _MyPageScreenState extends State<MyPageScreen> {
   Future<void> _refreshCurrentUserInBackground() async {
     final refreshed = await AuthService.refreshUserFromServer();
     if (!mounted || refreshed == null) return;
+    if (await AuthService.getUser() == null) return;
+    if (!mounted) return;
     setState(() => _currentUser = refreshed);
   }
 

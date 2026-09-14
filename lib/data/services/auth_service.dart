@@ -19,8 +19,12 @@ class AuthService {
   static const String _isLoggedInKey = 'is_logged_in';
   static const String _autoLoginKey = 'auto_login';
   static UserModel? _memoryUser;
+  static int _sessionEpoch = 0;
 
   static UserModel? get currentUser => _memoryUser;
+
+  static bool _hasActiveSessionFlag(SharedPreferences prefs) =>
+      prefs.getBool(_isLoggedInKey) == true;
 
   // 로그인 상태 저장
   static Future<void> saveLoginData({
@@ -65,7 +69,7 @@ class AuthService {
   // 사용자 정보 가져오기
   static Future<UserModel?> getUser() async {
     final prefs = await SharedPreferences.getInstance();
-    if (prefs.getBool(_isLoggedInKey) != true) {
+    if (!_hasActiveSessionFlag(prefs)) {
       _memoryUser = null;
       return null;
     }
@@ -95,14 +99,15 @@ class AuthService {
   // 로그아웃 (모든 데이터 삭제)
   static Future<void> logout() async {
     final userId = (_memoryUser?.id ?? '').trim();
+    _sessionEpoch++;
     _memoryUser = null;
 
     try {
       final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_isLoggedInKey, false);
+      await prefs.setBool(_autoLoginKey, false);
       await prefs.remove(_userKey);
       await prefs.remove(_tokenKey);
-      await prefs.remove(_isLoggedInKey);
-      await prefs.remove(_autoLoginKey);
     } catch (_) {}
 
     try {
@@ -155,13 +160,18 @@ class AuthService {
 
   // 사용자 정보 업데이트
   static Future<void> updateUser(UserModel user) async {
-    _memoryUser = user;
     final prefs = await SharedPreferences.getInstance();
+    if (!_hasActiveSessionFlag(prefs)) {
+      _memoryUser = null;
+      return;
+    }
+    _memoryUser = user;
     await prefs.setString(_userKey, json.encode(user.toJson()));
   }
 
   /// 서버 세션 조회로 회원 정보(레벨 등) 갱신
   static Future<UserModel?> refreshUserFromServer() async {
+    final epoch = _sessionEpoch;
     final local = await getUser();
     if (local == null || local.id.trim().isEmpty) return local;
 
@@ -173,6 +183,7 @@ class AuthService {
         headers: const {'Accept': 'application/json'},
       );
 
+      if (_sessionEpoch != epoch) return null;
       if (response.statusCode != 200) return local;
 
       final decoded = json.decode(response.body);
@@ -186,10 +197,11 @@ class AuthService {
         ..addAll(
             NodeValueParser.normalizeMap(Map<String, dynamic>.from(userRaw)));
       final refreshed = UserModel.fromJson(merged);
+      if (_sessionEpoch != epoch) return null;
       await updateUser(refreshed);
-      return refreshed;
+      return _sessionEpoch == epoch ? refreshed : null;
     } catch (_) {
-      return local;
+      return _sessionEpoch == epoch ? local : null;
     }
   }
 
