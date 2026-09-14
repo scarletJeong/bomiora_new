@@ -205,7 +205,10 @@ class _ReservationTimeChangePopupState
     setState(() => _isSubmitting = false);
     if (result['success'] == true) {
       AppToastOverlay.show(context, '예약시간이 변경되었습니다.');
-      Navigator.pop(context, true);
+      Navigator.pop(
+        context,
+        ReservationPickResult(date: _selectedDate!, time: _selectedTime!),
+      );
     }
   }
 

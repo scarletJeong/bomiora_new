@@ -99,7 +99,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
         period: 0, // 전체 기간
         status: 'all', // 전체 상태
         page: 0,
-        size: 1000, // 충분히 큰 값으로 전체 데이터 가져오기
+        size: 80,
       );
       
       if (result['success'] == true) {
@@ -124,8 +124,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
           _applyFilter();
         });
 
-        // 목록 응답에 deliveryFee 포함 — 단건 상세 N+1 불필요
-        _syncReviewedItIds(userId, allOrders);
+        _applyReviewedItIdsFromList(result['reviewedByOrder'], allOrders);
       }
     } catch (e) {
     } finally {
@@ -137,25 +136,31 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
     }
   }
 
-  Future<void> _syncReviewedItIds(
-    String userId,
+  void _applyReviewedItIdsFromList(
+    dynamic raw,
     List<OrderListModel> orders,
-  ) async {
-    final completedOdIds = orders
-        .where(_isCompletedStage)
-        .map((e) => e.odId)
-        .where((e) => e.trim().isNotEmpty)
-        .toList();
-    if (completedOdIds.isEmpty) {
-      if (mounted) setState(() => _reviewedItIdsByOd = {});
-      return;
+  ) {
+    final map = <String, List<String>>{};
+    if (raw is Map) {
+      raw.forEach((key, value) {
+        final odId = key.toString();
+        final list = <String>[];
+        if (value is List) {
+          for (final id in value) {
+            final s = id?.toString().trim() ?? '';
+            if (s.isNotEmpty) list.add(s);
+          }
+        }
+        map[odId] = list;
+      });
     }
-    final map = await ReviewService.getReviewedItIdsByOrders(
-      mbId: userId,
-      odIds: completedOdIds,
-    );
-    if (!mounted) return;
-    setState(() => _reviewedItIdsByOd = map);
+    if (map.isEmpty) {
+      for (final order in orders) {
+        if (!_isCompletedStage(order)) continue;
+        map[order.odId] = const [];
+      }
+    }
+    if (mounted) setState(() => _reviewedItIdsByOd = map);
   }
 
   bool _listItemIsReviewable(OrderItem item) {
@@ -938,7 +943,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
       if (isPrescription) {
         specs.add((
           label: '예약시간변경',
-          onTap: () => _changeReservationTimeFromList(order.odId),
+          onTap: () => _changeReservationTimeFromList(order),
           style: _CardActionStyle.outlinePink,
         ));
       }
@@ -1211,6 +1216,18 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
     if (st.isNotEmpty && et.isNotEmpty) return '$st-$et';
     if (st.isNotEmpty) return st;
     return et;
+  }
+
+  String _plusMinutes(String time, int minutes) {
+    final match = RegExp(r'^(\d{1,2}):(\d{2})').firstMatch(time.trim());
+    if (match == null) return time;
+    var hour = int.parse(match.group(1)!);
+    var minute = int.parse(match.group(2)!) + minutes;
+    if (minute >= 60) {
+      hour += minute ~/ 60;
+      minute %= 60;
+    }
+    return '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
   }
 
   /// 주문 상세 화면으로 이동 (복귀 시 목록 갱신 — 수령확인/취소 반영)
@@ -1510,8 +1527,18 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
     } catch (e) {}
   }
 
+  void _patchOrder(String odId, OrderListModel Function(OrderListModel) update) {
+    setState(() {
+      _allOrders = [
+        for (final order in _allOrders)
+          if (order.odId == odId) update(order) else order,
+      ];
+      _applyFilter();
+    });
+  }
+
   Future<void> _changeDeliveryAddress(OrderListModel order) async {
-    final result = await showGeneralDialog<bool>(
+    final result = await showGeneralDialog<Object>(
       context: context,
       barrierDismissible: true,
       barrierLabel: '배송지 변경',
@@ -1537,8 +1564,18 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
         );
       },
     );
-    if (result == true && mounted) {
-      _loadOrders(force: true);
+    if (!mounted || result == null || result == false) return;
+    if (result is Map) {
+      _patchOrder(
+        order.odId,
+        (current) => current.copyWith(
+          recipientName: (result['recipientName'] ?? '').toString(),
+          recipientPhone: (result['recipientPhone'] ?? '').toString(),
+          recipientAddress: (result['recipientAddress'] ?? '').toString(),
+          recipientAddressDetail:
+              (result['recipientAddressDetail'] ?? '').toString(),
+        ),
+      );
     }
   }
 
@@ -1603,63 +1640,60 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
     );
   }
 
-  /// 예약 시간 변경 (주문 목록에서 호출 - 예약 정보 확인 후 화면 이동)
-  Future<void> _changeReservationTimeFromList(String odId) async {
-    try {
-      // 로그인 확인
+  /// 예약 시간 변경 — 목록에 있는 예약정보로 팝업만 열고, 저장 후 해당 카드만 갱신
+  Future<void> _changeReservationTimeFromList(OrderListModel order) async {
+    var date = (order.reservationDate ?? '').trim();
+    var time = (order.reservationTime ?? '').trim();
+    if (date.isEmpty || time.isEmpty) {
       final user = await AuthService.getUser();
-      if (user == null) {
-        return;
-      }
-
-      // 주문 상세 조회하여 예약 정보 확인
+      if (user == null) return;
       final result = await OrderService.getOrderDetail(
-        odId: odId,
+        odId: order.odId,
         mbId: user.id,
       );
+      if (result['success'] != true) return;
+      final detail = result['order'] as OrderDetailModel;
+      date = (detail.reservationDate ?? '').trim();
+      time = (detail.reservationTime ?? '').trim();
+    }
+    if (date.isEmpty || time.isEmpty || !mounted) return;
 
-      if (result['success'] != true) {
-        return;
-      }
-
-      final orderDetail = result['order'] as OrderDetailModel;
-
-      // 예약 정보 확인
-      if (orderDetail.reservationDate == null || orderDetail.reservationTime == null) {
-        return;
-      }
-
-      // 예약 시간 변경 팝업 표시
-      final changeResult = await showGeneralDialog<bool>(
-        context: context,
-        barrierDismissible: true,
-        barrierLabel: '예약시간 변경',
-        barrierColor: Colors.transparent,
-        transitionDuration: const Duration(milliseconds: 180),
-        pageBuilder: (context, _, __) {
-          return Stack(
-            children: [
-              Positioned.fill(
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
-                  child: Container(color: Colors.black.withValues(alpha: 0.35)),
-                ),
+    final changeResult = await showGeneralDialog<Object>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: '예약시간 변경',
+      barrierColor: Colors.transparent,
+      transitionDuration: const Duration(milliseconds: 180),
+      pageBuilder: (context, _, __) {
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
+                child: Container(color: Colors.black.withValues(alpha: 0.35)),
               ),
-              ReservationTimeChangePopup(
-                orderId: odId,
-                currentDate: orderDetail.reservationDate!,
-                currentTime: orderDetail.reservationTime!,
-              ),
-            ],
-          );
-        },
-      );
-
-      // 예약 시간이 변경되었으면 주문 목록 새로고침
-      if (changeResult == true && mounted) {
-        await _loadOrders(force: true);
-      }
-    } catch (e) {}
+            ),
+            ReservationTimeChangePopup(
+              orderId: order.odId,
+              currentDate: date,
+              currentTime: time,
+            ),
+          ],
+        );
+      },
+    );
+    if (!mounted || changeResult is! ReservationPickResult) return;
+    final picked = changeResult;
+    final day =
+        '${picked.date.year}-${picked.date.month.toString().padLeft(2, '0')}-${picked.date.day.toString().padLeft(2, '0')}';
+    _patchOrder(
+      order.odId,
+      (current) => current.copyWith(
+        reservationDate: day,
+        reservationTime: picked.time,
+        reservationEndTime: _plusMinutes(picked.time, 20),
+      ),
+    );
   }
 }
 

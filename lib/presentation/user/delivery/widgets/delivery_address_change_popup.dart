@@ -435,7 +435,22 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
     if (!mounted) return;
     if (result['success'] == true) {
       AppToastOverlay.show(context, '배송지를 변경했습니다.');
-      Navigator.pop(context, true);
+      Map<String, dynamic>? selected;
+      for (final a in _addresses) {
+        if (_asAddressId(a['adId']) == addressId) {
+          selected = a;
+          break;
+        }
+      }
+      Navigator.pop(context, <String, String>{
+        'recipientName': (selected?['adName'] ?? '').toString().trim(),
+        'recipientPhone': (selected?['adHp'] ?? '').toString().trim(),
+        'recipientAddress': (selected?['adAddr1'] ?? '').toString().trim(),
+        'recipientAddressDetail': [
+          (selected?['adAddr2'] ?? '').toString().trim(),
+          (selected?['adAddr3'] ?? '').toString().trim(),
+        ].where((e) => e.isNotEmpty).join(' '),
+      });
     }
   }
 

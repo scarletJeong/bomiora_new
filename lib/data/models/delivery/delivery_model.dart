@@ -310,6 +310,42 @@ class OrderListModel {
       'reservationEndTime': reservationEndTime,
     };
   }
+
+  OrderListModel copyWith({
+    String? recipientName,
+    String? recipientPhone,
+    String? recipientAddress,
+    String? recipientAddressDetail,
+    String? reservationDate,
+    String? reservationTime,
+    String? reservationEndTime,
+  }) {
+    return OrderListModel(
+      odId: odId,
+      orderDate: orderDate,
+      orderDateTime: orderDateTime,
+      displayStatus: displayStatus,
+      odStatus: odStatus,
+      totalPrice: totalPrice,
+      deliveryFee: deliveryFee,
+      odCartCount: odCartCount,
+      isPrescriptionOrder: isPrescriptionOrder,
+      isConsultationDone: isConsultationDone,
+      items: items,
+      firstProductName: firstProductName,
+      firstProductOption: firstProductOption,
+      firstProductQty: firstProductQty,
+      firstProductPrice: firstProductPrice,
+      recipientName: recipientName ?? this.recipientName,
+      recipientPhone: recipientPhone ?? this.recipientPhone,
+      recipientAddress: recipientAddress ?? this.recipientAddress,
+      recipientAddressDetail:
+          recipientAddressDetail ?? this.recipientAddressDetail,
+      reservationDate: reservationDate ?? this.reservationDate,
+      reservationTime: reservationTime ?? this.reservationTime,
+      reservationEndTime: reservationEndTime ?? this.reservationEndTime,
+    );
+  }
 }
 
 /// 주문 상세 모델

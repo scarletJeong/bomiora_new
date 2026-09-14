@@ -36,7 +36,7 @@ class OrderService {
 
       // 쿼리 파라미터를 URL에 직접 추가
       final queryString =
-          'mbId=$mbId&mb_id=$mbId&period=$period&status=$status&page=$page&size=$size&_ts=${DateTime.now().millisecondsSinceEpoch}';
+          'mbId=$mbId&mb_id=$mbId&period=$period&status=$status&page=$page&size=$size';
       
       final response = await _getOrderListResponse(queryString);
 
@@ -55,6 +55,7 @@ class OrderService {
         return {
           'success': true,
           'orders': orders,
+          'reviewedByOrder': data is Map ? (data['reviewedByOrder'] ?? {}) : {},
           'currentPage': data is Map ? (data['currentPage'] ?? 0) : 0,
           'totalPages': data is Map ? (data['totalPages'] ?? 0) : 0,
           'totalItems': data is Map
@@ -87,11 +88,11 @@ class OrderService {
   }) async {
     try {
       var response = await ApiClient.get(
-        '/api/orders/$odId?mbId=$mbId&mb_id=$mbId&_ts=${DateTime.now().millisecondsSinceEpoch}',
+        '/api/orders/$odId?mbId=$mbId&mb_id=$mbId',
       );
       if (response.statusCode == 404) {
         response = await ApiClient.get(
-          '/api/user/orders/$odId?mbId=$mbId&mb_id=$mbId&_ts=${DateTime.now().millisecondsSinceEpoch}',
+          '/api/user/orders/$odId?mbId=$mbId&mb_id=$mbId',
         );
       }
 
