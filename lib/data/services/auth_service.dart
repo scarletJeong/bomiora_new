@@ -158,13 +158,8 @@ class AuthService {
       final user = await getUser();
       if (user == null || user.id.trim().isEmpty) return false;
 
-      final response = await http.get(
-        Uri.parse(
-          '${ApiClient.baseUrl}/api/auth/session?mb_id=${Uri.encodeQueryComponent(user.id)}',
-        ),
-        headers: const {
-          'Accept': 'application/json',
-        },
+      final response = await ApiClient.get(
+        '${ApiEndpoints.authSession}?mb_id=${Uri.encodeQueryComponent(user.id)}',
       );
 
       if (response.statusCode != 200) {
@@ -198,11 +193,8 @@ class AuthService {
     if (local == null || local.id.trim().isEmpty) return local;
 
     try {
-      final response = await http.get(
-        Uri.parse(
-          '${ApiClient.baseUrl}${ApiEndpoints.authSession}?mb_id=${Uri.encodeQueryComponent(local.id)}',
-        ),
-        headers: const {'Accept': 'application/json'},
+      final response = await ApiClient.get(
+        '${ApiEndpoints.authSession}?mb_id=${Uri.encodeQueryComponent(local.id)}',
       );
 
       if (_sessionEpoch != epoch) return null;
