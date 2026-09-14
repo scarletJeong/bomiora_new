@@ -9,6 +9,7 @@ import '../../../../data/models/user/user_model.dart';
 import '../models/health_profile_model.dart';
 import '../health_profile_payload.dart';
 import '../health_profile_prescription_booking_args.dart';
+import '../health_profile_form_flow.dart';
 import 'health_profile_form_screen.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/login_required_dialog.dart';
@@ -53,6 +54,10 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
 
   /// 스크롤 진행률 — setState 없이 프로그레스바만 갱신(스크롤 끊김 방지)
   final ValueNotifier<double> _scrollProgress = ValueNotifier(0);
+  final GlobalKey _listScrollKey = GlobalKey();
+  final GlobalKey _sectionKeyBasic = GlobalKey();
+  final GlobalKey _sectionKeyDietExercise = GlobalKey();
+  final GlobalKey _sectionKeyHealth = GlobalKey();
 
   bool get _isPrescriptionBooking => widget.prescriptionBooking != null;
 
@@ -134,8 +139,8 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute<void>(
-        settings: const RouteSettings(name: HealthProfileFormScreen.routeName),
-        builder: (context) => HealthProfileFormScreen(
+        settings: const RouteSettings(name: HealthProfileForm1Screen.routeName),
+        builder: (context) => HealthProfileForm1Screen(
           prescriptionBooking: booking,
           existingProfile: _healthProfile,
         ),
@@ -264,6 +269,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
     return ColoredBox(
       color: Colors.white,
       child: SingleChildScrollView(
+        primary: false,
         padding: EdgeInsets.fromLTRB(
           healthDp(context, 20),
           healthDp(context, 10),
@@ -271,15 +277,18 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
           healthDp(context, 20) + MediaQuery.paddingOf(context).bottom,
         ),
         child: Column(
+          key: _listScrollKey,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _sectionBlock(
+              key: _sectionKeyBasic,
               title: '기본정보',
               onEdit: () => _openSectionForEdit([0], screenTitle: '기본정보'),
               child: _buildBasicInfoCard(profile),
             ),
             SizedBox(height: healthDp(context, 30)),
             _sectionBlock(
+              key: _sectionKeyDietExercise,
               title: '식습관 및 운동',
               onEdit: () => _openSectionForEdit(
                 [1, 2],
@@ -289,6 +298,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
             ),
             SizedBox(height: healthDp(context, 30)),
             _sectionBlock(
+              key: _sectionKeyHealth,
               title: '건강 정보',
               onEdit: () => _openSectionForEdit(
                 [3],
@@ -305,11 +315,13 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
   }
 
   Widget _sectionBlock({
+    Key? key,
     required String title,
     required VoidCallback onEdit,
     required Widget child,
   }) {
     return Column(
+      key: key,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Row(
@@ -1194,28 +1206,19 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
       _openPrescriptionFormReplace();
       return;
     }
-    final result = await Navigator.push(
+    final result = await HealthProfileFormFlow.open(
       context,
-      MaterialPageRoute(
-        settings: const RouteSettings(name: HealthProfileFormScreen.routeName),
-        builder: (context) => const HealthProfileFormScreen(),
-      ),
     );
-    if (result == true) _loadData();
+    if (result == true) await _reloadAfterForm(scrollToTop: true);
   }
 
   void _navigateToEditForm() async {
-    final result = await Navigator.push(
+    final result = await HealthProfileFormFlow.open(
       context,
-      MaterialPageRoute(
-        settings: const RouteSettings(name: HealthProfileFormScreen.routeName),
-        builder: (context) => HealthProfileFormScreen(
-          existingProfile: _healthProfile,
-          prescriptionBooking: widget.prescriptionBooking,
-        ),
-      ),
+      existingProfile: _healthProfile,
+      prescriptionBooking: widget.prescriptionBooking,
     );
-    if (result == true) _loadData();
+    if (result == true) await _reloadAfterForm(scrollToTop: true);
   }
 
   void _openSectionForEdit(
@@ -1223,17 +1226,93 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
     String? screenTitle,
   }) async {
     if (sectionIndices.isEmpty) return;
-    final result = await Navigator.push(
+    final savedOffset = _listScrollPosition?.pixels;
+    final result = await HealthProfileFormFlow.open(
       context,
-      MaterialPageRoute(
-        settings: const RouteSettings(name: HealthProfileFormScreen.routeName),
-        builder: (context) => HealthProfileFormScreen(
-          existingProfile: _healthProfile,
-          initialSectionIndices: sectionIndices,
-          editScreenTitle: screenTitle,
-        ),
-      ),
+      existingProfile: _healthProfile,
+      initialSectionIndices: sectionIndices,
+      editScreenTitle: screenTitle,
     );
-    if (result == true) _loadData();
+    if (result == true) {
+      await _reloadAfterForm(
+        scrollToTop: false,
+        restoreOffset: savedOffset,
+        sectionKey: _sectionKeyFor(sectionIndices),
+      );
+    }
+  }
+
+  GlobalKey _sectionKeyFor(List<int> sectionIndices) {
+    final first = sectionIndices.first;
+    if (first == 0) return _sectionKeyBasic;
+    if (first == 1 || first == 2) return _sectionKeyDietExercise;
+    return _sectionKeyHealth;
+  }
+
+  /// 저장 후 목록만 갱신. 전체 작성/전체 수정은 맨 위, 섹션 수정은 보던 자리 유지.
+  Future<void> _reloadAfterForm({
+    required bool scrollToTop,
+    double? restoreOffset,
+    GlobalKey? sectionKey,
+  }) async {
+    await _loadHealthProfile();
+    if (!mounted) return;
+    setState(() {});
+    _applyListScroll(
+      scrollToTop: scrollToTop,
+      restoreOffset: restoreOffset,
+      sectionKey: sectionKey,
+      attempt: 0,
+    );
+  }
+
+  void _applyListScroll({
+    required bool scrollToTop,
+    double? restoreOffset,
+    GlobalKey? sectionKey,
+    required int attempt,
+  }) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final position = _listScrollPosition;
+      if (scrollToTop) {
+        if (position != null) {
+          position.jumpTo(0);
+          return;
+        }
+        final topCtx = _sectionKeyBasic.currentContext;
+        if (topCtx != null) {
+          Scrollable.ensureVisible(
+            topCtx,
+            alignment: 0,
+            duration: Duration.zero,
+          );
+          return;
+        }
+      } else if (position != null && restoreOffset != null) {
+        position.jumpTo(restoreOffset.clamp(0.0, position.maxScrollExtent));
+        return;
+      } else {
+        final ctx = sectionKey?.currentContext;
+        if (ctx != null) {
+          Scrollable.ensureVisible(ctx, alignment: 0, duration: Duration.zero);
+          return;
+        }
+      }
+      if (attempt < 2) {
+        _applyListScroll(
+          scrollToTop: scrollToTop,
+          restoreOffset: restoreOffset,
+          sectionKey: sectionKey,
+          attempt: attempt + 1,
+        );
+      }
+    });
+  }
+
+  ScrollPosition? get _listScrollPosition {
+    final ctx = _listScrollKey.currentContext;
+    if (ctx == null) return null;
+    return Scrollable.maybeOf(ctx)?.position;
   }
 }

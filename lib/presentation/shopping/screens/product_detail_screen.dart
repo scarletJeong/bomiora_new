@@ -1876,7 +1876,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       await Navigator.push<void>(
         context,
         MaterialPageRoute(
-          builder: (context) => HealthProfileFormScreen(
+          settings: const RouteSettings(name: HealthProfileForm1Screen.routeName),
+          builder: (context) => HealthProfileForm1Screen(
             prescriptionBooking: booking,
             existingProfile: profile,
           ),
