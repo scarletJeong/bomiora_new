@@ -129,11 +129,25 @@ class _WishListScreenState extends State<WishListScreen> {
     final list = raw.map((e) => Map<String, dynamic>.from(e as Map)).toList();
     setState(() {
       _wishList = list;
+      _selectTabIfCurrentEmpty();
       if (showSpinner) _isLoading = false;
       _errorMessage = null;
       _requiresLogin = false;
       _syncVisibleCount();
     });
+  }
+
+  void _selectTabIfCurrentEmpty() {
+    if (_currentTabList.isNotEmpty || _wishList.isEmpty) return;
+    final newest = _wishList.first;
+    final kind = _itKindLower(newest);
+    if (kind == 'content') {
+      _selectedTabIndex = 2;
+    } else if (kind == 'prescription') {
+      _selectedTabIndex = 0;
+    } else {
+      _selectedTabIndex = 1;
+    }
   }
 
   Future<void> _loadWishList() async {
@@ -154,21 +168,21 @@ class _WishListScreenState extends State<WishListScreen> {
       final cached = WishService.peekWishList(user.id);
       if (cached != null) {
         await _applyWishRows(cached, showSpinner: true);
-        try {
-          final raw = await WishService.getWishList(forceRefresh: false);
-          if (mounted) await _applyWishRows(raw, showSpinner: false);
-        } catch (_) {}
-        return;
+      } else {
+        setState(() {
+          _isLoading = true;
+          _errorMessage = null;
+          _requiresLogin = false;
+        });
       }
-
-      setState(() {
-        _isLoading = true;
-        _errorMessage = null;
-        _requiresLogin = false;
-      });
-      final raw = await WishService.getWishList();
-      if (!mounted) return;
-      await _applyWishRows(raw, showSpinner: true);
+      try {
+        final raw = await WishService.getWishList(forceRefresh: true);
+        if (!mounted) return;
+        await _applyWishRows(raw, showSpinner: true);
+      } catch (e) {
+        if (cached != null) return;
+        rethrow;
+      }
     } catch (e) {
       if (!mounted) return;
       final message = e.toString();

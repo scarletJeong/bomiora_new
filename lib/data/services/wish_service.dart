@@ -16,6 +16,7 @@ class WishService {
   static DateTime? _listCacheAt;
   static String? _listCacheUserId;
   static Future<List<dynamic>>? _listInFlight;
+  static int _listEpoch = 0;
 
   static const Map<String, String> _noCacheHeaders = {
     'Cache-Control': 'no-cache',
@@ -74,14 +75,19 @@ class WishService {
   }
 
   static void clearMemoryCache() {
-    _listCache = null;
-    _listCacheAt = null;
-    _listCacheUserId = null;
-    _listInFlight = null;
+    invalidateListCache();
     _checkCache.clear();
     _checkCacheAt.clear();
     _checkInFlight.clear();
     _toggleInFlight.clear();
+  }
+
+  static void invalidateListCache() {
+    _listEpoch++;
+    _listCache = null;
+    _listCacheAt = null;
+    _listCacheUserId = null;
+    _listInFlight = null;
   }
 
   static void restoreLocalListItem(int index, Map<String, dynamic> item) {
@@ -114,7 +120,9 @@ class WishService {
       try {
         return await request;
       } finally {
-        _listInFlight = null;
+        if (identical(_listInFlight, request)) {
+          _listInFlight = null;
+        }
       }
     } catch (e) {
       rethrow;
@@ -122,11 +130,16 @@ class WishService {
   }
 
   static Future<List<dynamic>> _fetchWishList(String userId) async {
+    final epoch = _listEpoch;
     final url = '${ApiEndpoints.getWishList}?mb_id=$userId';
     final response = await ApiClient.get(url);
 
     if (response.statusCode == 404) {
       throw Exception('API 엔드포인트를 찾을 수 없습니다: $url');
+    }
+
+    if (epoch != _listEpoch) {
+      return peekWishList(userId) ?? [];
     }
 
     if (response.statusCode == 304 || response.body.trim().isEmpty) {
@@ -140,7 +153,9 @@ class WishService {
             .map(_normalizeWishItem)
             .whereType<Map<String, dynamic>>()
             .toList();
-        rememberWishList(userId, normalized);
+        if (epoch == _listEpoch) {
+          rememberWishList(userId, normalized);
+        }
         return normalized;
       }
     }
@@ -265,6 +280,7 @@ class WishService {
       if (result is Map<String, dynamic> && result.containsKey('is_wished')) {
         rememberWished(userId, productId, result['is_wished'] == true);
       }
+      invalidateListCache();
       return result is Map<String, dynamic>
           ? result
           : <String, dynamic>{'success': false};
