@@ -265,9 +265,9 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
       color: Colors.white,
       child: SingleChildScrollView(
         padding: EdgeInsets.fromLTRB(
-          healthDp(context, 27),
           healthDp(context, 20),
-          healthDp(context, 27),
+          healthDp(context, 10),
+          healthDp(context, 20),
           healthDp(context, 20) + MediaQuery.paddingOf(context).bottom,
         ),
         child: Column(
@@ -317,7 +317,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
           children: [
             Container(
               width: healthDp(context, 1),
-              height: healthDp(context, 14),
+              height: healthDp(context, 16),
               margin: EdgeInsets.only(right: healthDp(context, 6)),
               decoration: BoxDecoration(
                 color: _kInk,
@@ -333,7 +333,6 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
                   fontFamily: _kFont,
                   fontWeight: FontWeight.w500,
                   letterSpacing: healthSp(context, -1.44),
-                  height: 1.2,
                 ),
               ),
             ),
@@ -350,10 +349,10 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
                   '수정 >',
                   style: TextStyle(
                     color: _kMuted,
-                    fontSize: healthSp(context, 11),
+                    fontSize: healthSp(context, 14),
                     fontFamily: _kFont,
                     fontWeight: FontWeight.w500,
-                    letterSpacing: healthSp(context, -0.5),
+                    letterSpacing: healthSp(context, -1.26),
                   ),
                 ),
               ),
@@ -460,25 +459,32 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
                     SizedBox(width: healthDp(context, 10)),
                     if (bmiLabel != null)
                       Container(
+                        width: healthDp(context, 51),
+                        height: healthDp(context, 24),
                         padding: EdgeInsets.symmetric(
-                          horizontal: healthDp(context, 8),
-                          vertical: healthDp(context, 2),
+                          horizontal: healthDp(context, 4),
                         ),
-                        decoration: BoxDecoration(
+                        alignment: Alignment.center,
+                        decoration: ShapeDecoration(
                           color: bmiLabel.$2,
-                          borderRadius:
-                              BorderRadius.circular(healthDp(context, 28)),
-                          border: Border.all(
-                              color: bmiLabel.$2, width: healthDp(context, 1)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius:
+                                BorderRadius.circular(healthDp(context, 50)),
+                          ),
                         ),
-                        child: Text(
-                          bmiLabel.$1,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: healthSp(context, 10),
-                            fontFamily: _kFont,
-                            fontWeight: FontWeight.w500,
-                            height: 1.2,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            bmiLabel.$1,
+                            maxLines: 1,
+                            softWrap: false,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: healthSp(context, 11),
+                              fontFamily: _kFont,
+                              fontWeight: FontWeight.w700,
+                              height: 1,
+                            ),
                           ),
                         ),
                       ),
@@ -494,7 +500,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
                     ),
                   ],
                 ),
-                SizedBox(height: healthDp(context, 10)),
+                SizedBox(height: healthDp(context, 15)),
                 Row(
                   children: [
                     Expanded(
@@ -595,9 +601,9 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
         SizedBox(height: healthDp(context, 10)),
         Center(
           child: Container(
-            width: healthDp(context, 75),
+            width: healthDp(context, 84),
             padding: EdgeInsets.symmetric(
-              horizontal: healthDp(context, 4),
+              horizontal: healthDp(context, 14),
               vertical: healthDp(context, 4),
             ),
             alignment: Alignment.center,
@@ -660,11 +666,11 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
           _infoUnderlineRow(
             '하루식사',
             mealLabel,
-            valueHeight: null,
+            valueHeight: 0,
             showUnderline: false,
           ),
           if (mealTimes.isNotEmpty) ...[
-            SizedBox(height: healthDp(context, 4)),
+            SizedBox(height: healthDp(context, 10)),
             _mealTimeChipRow(mealTimes),
           ],
           SizedBox(height: healthDp(context, 20)),
@@ -677,15 +683,15 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
             height: healthDp(context, 1),
             color: _kBorderSoft,
           ),
-          SizedBox(height: healthDp(context, 12)),
+          SizedBox(height: healthDp(context, 20)),
           _infoUnderlineRow(
             '운동 습관',
             freq.isEmpty ? '-' : freq,
-            valueHeight: null,
+            valueHeight: 0,
             showUnderline: false,
           ),
           if (types.isNotEmpty) ...[
-            SizedBox(height: healthDp(context, 4)),
+            SizedBox(height: healthDp(context, 10)),
             _chipWrap(types),
           ],
         ],
@@ -721,7 +727,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
           _infoUnderlineRow(
             '다이어트 약 복용 경험',
             hasDietDrug ? '있음' : '없음',
-            valueHeight: null,
+            valueHeight: 0,
             labelWidth: 128,
             showUnderline: false,
           ),
@@ -784,7 +790,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
                   borderRadius: BorderRadius.circular(healthDp(context, 10)),
                 ),
                 padding: EdgeInsets.symmetric(
-                  horizontal: healthDp(context, 6),
+                  horizontal: healthDp(context, 10),
                   vertical: healthDp(context, 10),
                 ),
               ),
@@ -795,7 +801,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: _kMuted,
-                  fontSize: healthSp(context, 11),
+                  fontSize: healthSp(context, 16),
                   fontFamily: _kFont,
                   fontWeight: FontWeight.w500,
                 ),
@@ -926,20 +932,23 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
                 fontSize: healthSp(context, 12),
                 fontFamily: _kFont,
                 fontWeight: FontWeight.w500,
-                height: 1.3,
               ),
             ),
           ),
-          SizedBox(width: healthDp(context, 8)),
+          //SizedBox(width: healthDp(context, 8)),
           Expanded(
             child: Container(
-              constraints: BoxConstraints(
-                minHeight: valueHeight == null
-                    ? healthDp(context, 36)
-                    : healthDp(context, valueHeight),
-              ),
+              constraints: valueHeight == 0
+                  ? null
+                  : BoxConstraints(
+                      minHeight: valueHeight == null
+                          ? healthDp(context, 36)
+                          : healthDp(context, valueHeight),
+                    ),
               alignment: Alignment.centerRight,
-              padding: EdgeInsets.symmetric(vertical: healthDp(context, 10)),
+              padding: valueHeight == 0
+                  ? EdgeInsets.zero
+                  : EdgeInsets.symmetric(vertical: healthDp(context, 10)),
               child: Text(
                 value,
                 textAlign: TextAlign.right,
@@ -948,7 +957,6 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
                   fontSize: healthSp(context, 14),
                   fontFamily: _kFont,
                   fontWeight: FontWeight.w500,
-                  height: 1.3,
                 ),
               ),
             ),
@@ -973,10 +981,10 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
             fontSize: healthSp(context, 12),
             fontFamily: _kFont,
             fontWeight: FontWeight.w500,
-            height: 1.3,
+            height: 1,
           ),
         ),
-        SizedBox(height: healthDp(context, labelGap)),
+        SizedBox(height: healthDp(context, 10)),
         if (items.isEmpty)
           Text(
             '-',

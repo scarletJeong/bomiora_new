@@ -51,38 +51,46 @@ class CenteredEmptyState extends StatelessWidget {
   }
 
   /// `로그인 후 이용 가능합니다` 등 문구 아래 붙이는 로그인 버튼
-  /// (문진표 빈 화면 CTA와 동일: 12sp / w500 / radius 8 / padding 20×12)
   static List<Widget> loginButtonTrailing(
     BuildContext context, {
     VoidCallback? onPressed,
     String label = '로그인하기',
   }) {
     return [
-      Align(
-        alignment: Alignment.center,
-        widthFactor: 1,
-        child: ElevatedButton(
-          onPressed: onPressed ?? () => Navigator.pushNamed(context, '/login'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFFFF5A8D),
-            foregroundColor: Colors.white,
-            elevation: 0,
-            shadowColor: Colors.transparent,
+      Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onPressed ?? () => Navigator.pushNamed(context, '/login'),
+          borderRadius: BorderRadius.circular(healthDp(context, 50)),
+          child: Ink(
+            height: healthDp(context, 40),
             padding: EdgeInsets.symmetric(
-              horizontal: healthDp(context, 20),
-              vertical: healthDp(context, 12),
+              horizontal: healthDp(context, 14),
+              vertical: healthDp(context, 10),
             ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(healthDp(context, 8)),
+            decoration: ShapeDecoration(
+              color: const Color(0xFFFF5A8D),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(healthDp(context, 50)),
+              ),
             ),
-          ),
-          child: Text(
-            label,
-            textScaler: TextScaler.noScaling,
-            style: TextStyle(
-              fontSize: healthSp(context, 12),
-              fontFamily: 'Gmarket Sans TTF',
-              fontWeight: FontWeight.w500,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Text(
+                  label,
+                  textScaler: TextScaler.noScaling,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: healthSp(context, 16),
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w500,
+                    height: 1.2,
+                  ),
+                ),
+              ],
             ),
           ),
         ),
