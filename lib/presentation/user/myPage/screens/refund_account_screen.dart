@@ -6,6 +6,7 @@ import '../../../../data/services/auth_service.dart';
 import '../../../../data/services/refund_account_service.dart';
 import '../../../common/widgets/dropdown_btn.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
+import '../../../common/widgets/app_toast_overlay.dart';
 import '../../../common/widgets/centered_empty_state.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
@@ -138,6 +139,7 @@ class _RefundAccountScreenState extends State<RefundAccountScreen> {
       );
       if (!mounted) return;
       if (data['success'] == true) {
+        AppToastOverlay.show(context, '환불계좌 등록이 완료되었습니다.');
         Navigator.pop(context, true);
       }
     } catch (_) {}
@@ -156,7 +158,7 @@ class _RefundAccountScreenState extends State<RefundAccountScreen> {
       child: MobileAppLayoutWrapper(
         appBar: HealthAppBar(
           title: '환불 계좌 관리',
-          titleFontSize: healthSp(context, 18),
+          titleFontSize: healthSp(context, 16),
           leadingIconSize: healthDp(context, 24),
         ),
         child: DefaultTextStyle.merge(
@@ -177,11 +179,11 @@ class _RefundAccountScreenState extends State<RefundAccountScreen> {
                             child: Form(
                               key: _formKey,
                               child: ListView(
-                                padding: EdgeInsets.only(
-                                  left: healthDp(context, 27),
-                                  right: healthDp(context, 27),
-                                  top: healthDp(context, 0),
-                                  bottom: healthDp(context, 16),
+                               padding: EdgeInsets.fromLTRB(
+                                  healthDp(context, 20),
+                                  healthDp(context, 10),
+                                  healthDp(context, 20),
+                                  healthDp(context, 20),
                                 ),
                                 children: [
                                   const _FieldLabel('은행 선택'),
@@ -235,7 +237,6 @@ class _RefundAccountScreenState extends State<RefundAccountScreen> {
                                       color: const Color(0xFF898686),
                                       fontSize: healthSp(context, 10),
                                       fontWeight: FontWeight.w300,
-                                      height: 1.4,
                                     ),
                                   ),
                                   SizedBox(height: healthDp(context, 10)),
@@ -245,7 +246,7 @@ class _RefundAccountScreenState extends State<RefundAccountScreen> {
                                       color: const Color(0xFF898686),
                                       fontSize: healthSp(context, 10),
                                       fontWeight: FontWeight.w300,
-                                      height: 1.4,
+                                      height: 1.1,
                                     ),
                                   ),
                                 ],
@@ -256,10 +257,10 @@ class _RefundAccountScreenState extends State<RefundAccountScreen> {
                             top: false,
                             child: Padding(
                               padding: EdgeInsets.fromLTRB(
-                                healthDp(context, 27),
-                                healthDp(context, 12),
-                                healthDp(context, 27),
-                                healthDp(context, 16),
+                                healthDp(context, 20),
+                                healthDp(context, 10),
+                                healthDp(context, 20),
+                                healthDp(context, 10),
                               ),
                               child: Row(
                                 children: [
@@ -409,7 +410,7 @@ class _FieldLabel extends StatelessWidget {
   }
 }
 
-class _BoxField extends StatefulWidget {
+class _BoxField extends StatelessWidget {
   const _BoxField({
     required this.controller,
     required this.hintText,
@@ -425,107 +426,81 @@ class _BoxField extends StatefulWidget {
   final String? Function(String?)? validator;
 
   @override
-  State<_BoxField> createState() => _BoxFieldState();
-}
-
-class _BoxFieldState extends State<_BoxField> {
-  final _focusNode = FocusNode();
-
-  @override
-  void initState() {
-    super.initState();
-    _focusNode.addListener(() => setState(() {}));
-  }
-
-  @override
-  void dispose() {
-    _focusNode.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final errorColor = Theme.of(context).colorScheme.error;
-    final fieldH = healthDp(context, 40);
-    final padH = healthDp(context, 12);
+    final fieldHeight = healthDp(context, 40);
     final radius = healthDp(context, 10);
-    final borderW = healthDp(context, 1);
+    final borderWidth = healthDp(context, 1);
 
     return FormField<String>(
-      initialValue: widget.controller.text,
-      validator: (v) => widget.validator?.call(widget.controller.text),
-      builder: (state) {
-        Color borderColor = const Color(0xFFD2D2D2);
-        if (state.hasError) {
-          borderColor = errorColor;
-        } else if (_focusNode.hasFocus) {
-          borderColor = const Color(0xFFFF5A8D);
-        }
-
+      initialValue: controller.text,
+      validator: (v) => validator?.call(controller.text),
+      builder: (field) {
+        final borderColor = field.hasError
+            ? const Color(0xFFFF5A8D)
+            : const Color(0xFFD2D2D2);
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
-            SizedBox(
-              height: fieldH,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: Colors.white,
+            Container(
+              width: double.infinity,
+              height: fieldHeight,
+              alignment: Alignment.centerLeft,
+              padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
+              decoration: ShapeDecoration(
+                color: Colors.white,
+                shape: RoundedRectangleBorder(
+                  side: BorderSide(width: borderWidth, color: borderColor),
                   borderRadius: BorderRadius.circular(radius),
-                  border: Border.all(width: borderW, color: borderColor),
-                ),
-                child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: padH),
-                  child: TextField(
-                    controller: widget.controller,
-                    focusNode: _focusNode,
-                    keyboardType: widget.keyboardType,
-                    inputFormatters: widget.inputFormatters,
-                    expands: true,
-                    maxLines: null,
-                    textAlignVertical: TextAlignVertical.center,
-                    onChanged: (_) {
-                      state.didChange(widget.controller.text);
-                      if (state.hasError) state.validate();
-                    },
-                    decoration: InputDecoration(
-                      isCollapsed: true,
-                      contentPadding: EdgeInsets.zero,
-                      hintText: widget.hintText,
-                      hintStyle: TextStyle(
-                        color: const Color(0xFF898686),
-                        fontSize: healthSp(context, 12),
-                        fontWeight: FontWeight.w500,
-                        height: 1.0,
-                      ),
-                      border: InputBorder.none,
-                      enabledBorder: InputBorder.none,
-                      focusedBorder: InputBorder.none,
-                      errorBorder: InputBorder.none,
-                      focusedErrorBorder: InputBorder.none,
-                    ),
-                    style: TextStyle(
-                      color: const Color(0xFF1A1A1A),
-                      fontSize: healthSp(context, 12),
-                      fontWeight: FontWeight.w500,
-                      height: 1.0,
-                    ),
-                  ),
                 ),
               ),
+              child: TextField(
+                controller: controller,
+                keyboardType: keyboardType,
+                inputFormatters: inputFormatters,
+                cursorColor: const Color(0xFFFF5A8D),
+                style: TextStyle(
+                  color: const Color(0xFF1A1A1A),
+                  fontSize: healthSp(context, 12),
+                  fontWeight: FontWeight.w500,
+                  height: 1.2,
+                  fontFamily: 'Gmarket Sans TTF',
+                ),
+                decoration: InputDecoration(
+                  isCollapsed: true,
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  errorBorder: InputBorder.none,
+                  disabledBorder: InputBorder.none,
+                  hintText: hintText,
+                  hintStyle: TextStyle(
+                    color: const Color(0xFF898686),
+                    fontSize: healthSp(context, 12),
+                    fontWeight: FontWeight.w300,
+                    height: 1.2,
+                    fontFamily: 'Gmarket Sans TTF',
+                  ),
+                ),
+                onChanged: (value) {
+                  field.didChange(value);
+                  if (field.hasError) field.validate();
+                },
+              ),
             ),
-            if (state.hasError)
+            if (field.hasError)
               Padding(
                 padding: EdgeInsets.only(top: healthDp(context, 4)),
                 child: Text(
-                  state.errorText ?? '',
+                  field.errorText ?? '',
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: errorColor,
+                    color: const Color(0xFFFF5A8D),
                     fontSize: healthSp(context, 11),
-                    fontWeight: FontWeight.w500,
-                    height: 1.2,
+                    fontWeight: FontWeight.w300,
+                    fontFamily: 'Gmarket Sans TTF',
+                    height: 1.0,
                   ),
                 ),
               ),
