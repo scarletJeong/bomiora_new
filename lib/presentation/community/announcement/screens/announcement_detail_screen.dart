@@ -8,6 +8,7 @@ import '../../../../data/services/announcement_service.dart';
 import '../../../../data/services/content_service.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
 import '../../../common/navigation/board_list_navigation.dart';
+import '../../../common/widgets/app_network_image.dart';
 import '../../../common/widgets/article_adjacent_nav.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
@@ -250,6 +251,29 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
             : MediaQuery.sizeOf(context).width - horizontalPad;
         return Html(
           data: processed,
+          extensions: [
+            TagExtension(
+              tagsToExtend: const {'img'},
+              builder: (extensionContext) {
+                final rawSrc = (extensionContext.attributes['src'] ?? '')
+                    .trim()
+                    .replaceAll('&amp;', '&');
+                if (rawSrc.isEmpty) return const SizedBox.shrink();
+                final url = ImageUrlHelper.toWebSafeImageUrl(rawSrc);
+                return Padding(
+                  padding: EdgeInsets.only(bottom: healthDp(context, 8)),
+                  child: AppNetworkImage(
+                    url: url,
+                    width: maxWidth,
+                    fit: BoxFit.fitWidth,
+                    alignment: Alignment.topCenter,
+                    decodeWidthLogical: maxWidth,
+                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                  ),
+                );
+              },
+            ),
+          ],
           style: {
             'html': Style(margin: Margins.zero, padding: HtmlPaddings.zero),
             'body': Style(

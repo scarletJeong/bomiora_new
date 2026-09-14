@@ -5,11 +5,21 @@ import '../../core/network/api_endpoints.dart';
 import '../models/announcement/announcement_model.dart';
 
 class AnnouncementService {
+  static const Duration _listCacheTtl = Duration(minutes: 3);
+  static final Map<String, Map<String, dynamic>> _listCache = {};
+  static final Map<String, DateTime> _listCacheAt = {};
+
   static Future<Map<String, dynamic>> getAnnouncements({
     int page = 1,
     int size = 6,
     String query = '',
   }) async {
+    final cacheKey = '$page:$size:${query.trim()}';
+    final cachedAt = _listCacheAt[cacheKey];
+    if (cachedAt != null &&
+        DateTime.now().difference(cachedAt) < _listCacheTtl) {
+      return Map<String, dynamic>.from(_listCache[cacheKey]!);
+    }
     try {
       final endpoint =
           '${ApiEndpoints.getAnnouncementList}?page=$page&size=$size&query=${Uri.encodeComponent(query)}';
@@ -39,7 +49,7 @@ class AnnouncementService {
         }
       }
 
-      return {
+      final result = {
         'success': body['success'] == true,
         'message': body['message']?.toString(),
         'items': items,
@@ -48,6 +58,11 @@ class AnnouncementService {
         'size': pagination?['size'] ?? size,
         'totalPages': pagination?['totalPages'] ?? 1,
       };
+      if (result['success'] == true) {
+        _listCache[cacheKey] = Map<String, dynamic>.from(result);
+        _listCacheAt[cacheKey] = DateTime.now();
+      }
+      return result;
     } catch (e) {
       return {
         'success': false,

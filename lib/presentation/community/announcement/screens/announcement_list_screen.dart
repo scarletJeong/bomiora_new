@@ -91,32 +91,55 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
       appBar: const HealthAppBar(title: '공지사항'),
       child: RefreshIndicator(
         onRefresh: () => _load(page: 1),
-        child: ListView(
-          padding: EdgeInsets.fromLTRB(
-            healthDp(context, 27),
-            healthDp(context, 20),
-            healthDp(context, 27),
-            healthDp(context, 20),
-          ),
-          children: [
-            _buildSearchBar(context),
-            SizedBox(height: healthDp(context, 10)),
-            _buildTotalRow(context),
-            SizedBox(height: healthDp(context, 10)),
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            SliverPadding(
+              padding: EdgeInsets.fromLTRB(
+                healthDp(context, 27),
+                healthDp(context, 20),
+                healthDp(context, 27),
+                healthDp(context, 10),
+              ),
+              sliver: SliverToBoxAdapter(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildSearchBar(context),
+                    SizedBox(height: healthDp(context, 10)),
+                    _buildTotalRow(context),
+                  ],
+                ),
+              ),
+            ),
             if (_loading)
-              Padding(
-                padding: EdgeInsets.symmetric(vertical: healthDp(context, 64)),
-                child: const Center(child: CircularProgressIndicator()),
+              const SliverFillRemaining(
+                hasScrollBody: false,
+                child: Center(child: CircularProgressIndicator()),
               )
             else if (_error != null)
-              _buildError(context)
+              SliverToBoxAdapter(child: _buildError(context))
             else if (_items.isEmpty)
-              _buildEmpty(context)
-            else ...[
-              ..._items.map((item) => _buildNoticeCard(context, item)),
-              SizedBox(height: healthDp(context, 16)),
-              _buildPagination(context),
-            ],
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: _buildEmpty(context),
+              )
+            else
+              SliverPadding(
+                padding: EdgeInsets.fromLTRB(
+                  healthDp(context, 27),
+                  0,
+                  healthDp(context, 27),
+                  healthDp(context, 20),
+                ),
+                sliver: SliverList(
+                  delegate: SliverChildListDelegate([
+                    ..._items.map((item) => _buildNoticeCard(context, item)),
+                    SizedBox(height: healthDp(context, 16)),
+                    _buildPagination(context),
+                  ]),
+                ),
+              ),
           ],
         ),
       ),
@@ -393,15 +416,12 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
   }
 
   Widget _buildEmpty(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: healthDp(context, 40)),
-      child: CenteredEmptyState(
-        iconWidget: CenteredEmptyState.assetIcon(
-          context,
-          AppAssets.emptyNoticeIcon,
-        ),
-        message: '공지사항이 없습니다.',
+    return CenteredEmptyState(
+      iconWidget: CenteredEmptyState.assetIcon(
+        context,
+        AppAssets.emptyNoticeIcon,
       ),
+      message: '공지사항이 없습니다.',
     );
   }
 }
