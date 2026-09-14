@@ -38,7 +38,7 @@ class HealthDashboardPayload {
 }
 
 class HealthDashboardRepository {
-  static const Duration _cacheTtl = Duration(seconds: 10);
+  static const Duration _cacheTtl = Duration(minutes: 2);
   static final Map<String, HealthDashboardPayload> _cache = {};
   static final Map<String, DateTime> _cacheAt = {};
   static final Map<String, Future<HealthDashboardPayload?>> _inFlight = {};

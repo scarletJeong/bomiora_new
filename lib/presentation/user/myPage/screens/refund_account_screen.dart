@@ -53,6 +53,11 @@ class _RefundAccountScreenState extends State<RefundAccountScreen> {
   bool _isLoggedIn = false;
   bool _loadingRefund = true;
 
+  bool get _canSubmit =>
+      _selectedBank.trim().isNotEmpty &&
+      _accountController.text.trim().isNotEmpty &&
+      _ownerController.text.trim().isNotEmpty;
+
   List<String> get _bankItemsForDropdown {
     final b = _selectedBank.trim();
     if (b.isNotEmpty && !_bankNames.contains(b)) {
@@ -64,7 +69,13 @@ class _RefundAccountScreenState extends State<RefundAccountScreen> {
   @override
   void initState() {
     super.initState();
+    _ownerController.addListener(_onFormChanged);
+    _accountController.addListener(_onFormChanged);
     _loadUser();
+  }
+
+  void _onFormChanged() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _loadUser() async {
@@ -108,15 +119,15 @@ class _RefundAccountScreenState extends State<RefundAccountScreen> {
 
   @override
   void dispose() {
+    _ownerController.removeListener(_onFormChanged);
+    _accountController.removeListener(_onFormChanged);
     _ownerController.dispose();
     _accountController.dispose();
     super.dispose();
   }
 
   Future<void> _submit() async {
-    if (_selectedBank.trim().isEmpty) {
-      return;
-    }
+    if (!_canSubmit) return;
     if (!_formKey.currentState!.validate()) return;
 
     final user = await AuthService.getUser();
@@ -276,6 +287,7 @@ class _RefundAccountScreenState extends State<RefundAccountScreen> {
                                     child: _RefundFormButton(
                                       label: '확인',
                                       filled: true,
+                                      enabled: _canSubmit,
                                       onTap: _submit,
                                     ),
                                   ),
@@ -339,27 +351,38 @@ class _RefundFormButton extends StatelessWidget {
     required this.label,
     required this.filled,
     required this.onTap,
+    this.enabled = true,
   });
 
   final String label;
   final bool filled;
   final VoidCallback onTap;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
     final height = healthDp(context, 40);
     final radius = healthDp(context, 10);
     final borderW = healthDp(context, 0.5);
+    final canTap = enabled;
+    final Color fillColor;
+    if (!filled) {
+      fillColor = Colors.white;
+    } else if (!canTap) {
+      fillColor = const Color(0xFFD2D2D2);
+    } else {
+      fillColor = const Color(0xFFFF5A8D);
+    }
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: onTap,
+        onTap: canTap ? onTap : null,
         borderRadius: BorderRadius.circular(radius),
         child: Ink(
           height: height,
           decoration: ShapeDecoration(
-            color: filled ? const Color(0xFFFF5A8D) : Colors.white,
+            color: fillColor,
             shape: RoundedRectangleBorder(
               side: filled
                   ? BorderSide.none

@@ -171,6 +171,19 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   bool get _nicknameChanged =>
       _nicknameController.text.trim() != _originalNickname.trim();
 
+  bool get _phoneChanged => _enteredPhoneDigits != _originalPhoneDigits;
+
+  bool get _passwordChanged =>
+      _newPasswordController.text.isNotEmpty ||
+      _confirmPasswordController.text.isNotEmpty;
+
+  bool get _hasProfileChanges =>
+      _nicknameChanged || _phoneChanged || _passwordChanged;
+
+  void _onFormChanged() {
+    if (mounted) setState(() {});
+  }
+
   String _formatYmdDot(DateTime date) {
     final m = date.month.toString().padLeft(2, '0');
     final d = date.day.toString().padLeft(2, '0');
@@ -610,12 +623,16 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
               width: double.infinity,
               height: healthDp(context, 40),
               child: ElevatedButton(
-                onPressed: _saveProfile,
-                style: MyPageButtonStyles.pinkElevated().copyWith(
-                  shape: WidgetStatePropertyAll(
-                    RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(healthDp(context, 10)),
-                    ),
+                onPressed: _hasProfileChanges ? _saveProfile : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _hasProfileChanges
+                      ? const Color(0xFFFF5A8D)
+                      : const Color(0xFFD2D2D2),
+                  disabledBackgroundColor: const Color(0xFFD2D2D2),
+                  disabledForegroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(healthDp(context, 10)),
                   ),
                 ),
                 child: Text(
@@ -708,6 +725,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                   controller: _nicknameController,
                   readOnly: !_canChangeNicknameNow(),
                   inputFormatters: _nicknameFormatters,
+                  onChanged: (_) => _onFormChanged(),
                   decoration: InputDecoration(
                     border: InputBorder.none,
                     isCollapsed: true,
@@ -901,7 +919,10 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                   child: TextField(
                     controller: _newPasswordController,
                     obscureText: _obscureNewPassword,
-                    onChanged: (_) => _recomputePasswordMismatch(),
+                    onChanged: (_) {
+                      _recomputePasswordMismatch();
+                      _onFormChanged();
+                    },
                     decoration: InputDecoration(
                       border: InputBorder.none,
                       isCollapsed: true,
@@ -941,7 +962,10 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                   child: TextField(
                     controller: _confirmPasswordController,
                     obscureText: _obscureConfirmPassword,
-                    onChanged: (_) => _recomputePasswordMismatch(),
+                    onChanged: (_) {
+                      _recomputePasswordMismatch();
+                      _onFormChanged();
+                    },
                     decoration: InputDecoration(
                       border: InputBorder.none,
                       isCollapsed: true,
