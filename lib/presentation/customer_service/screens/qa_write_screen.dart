@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -6,6 +7,9 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../core/constants/app_assets.dart';
 import '../../../core/utils/image_picker_utils.dart';
+import '../../../data/services/auth_service.dart';
+import '../../../data/services/cart_service.dart';
+import '../../../data/services/delivery_service.dart';
 import '../../../data/services/qa_service.dart';
 import '../../common/widgets/app_toast_overlay.dart';
 import '../../common/widgets/dropdown_btn.dart';
@@ -115,6 +119,19 @@ class _QaWriteScreenState extends State<QaWriteScreen> {
 
     final inquiryType = (_selectedInquiryType ?? '').trim();
     final detailType = (_selectedDetailType ?? '').trim();
+
+    final user = await AuthService.getUser();
+    if (user != null) {
+      unawaited(OrderService.getOrderList(
+        mbId: user.id,
+        period: 1,
+        status: 'all',
+        page: 0,
+        size: 30,
+        lite: true,
+      ));
+      unawaited(CartService.getCart());
+    }
 
     final selected = await Navigator.push<QaInquiryDraft>(
       context,

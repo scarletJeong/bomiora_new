@@ -588,35 +588,22 @@ class QaListScreenState extends State<QaListScreen> {
     }
 
     if (_inquiries.isEmpty || _filteredContacts.isEmpty) {
-      return LayoutBuilder(
-        builder: (context, constraints) {
-          return SingleChildScrollView(
-            controller: _scrollController,
-            physics: const AlwaysScrollableScrollPhysics(),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(minHeight: constraints.maxHeight),
-              child: Column(
-                children: [
-                  _buildListHeader(),
-                  SizedBox(
-                    height: (constraints.maxHeight - healthDp(context, 140))
-                        .clamp(healthDp(context, 220), double.infinity),
-                    child: Center(
-                      child: CenteredEmptyState(
-                        iconWidget: CenteredEmptyState.assetIcon(
-                          context,
-                          AppAssets.emptyQAIcon,
-                        ),
-                        message: _emptyTabMessage,
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: healthDp(context, 40)),
-                ],
+      return CustomScrollView(
+        controller: _scrollController,
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          SliverToBoxAdapter(child: _buildListHeader()),
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: CenteredEmptyState(
+              iconWidget: CenteredEmptyState.assetIcon(
+                context,
+                AppAssets.emptyQAIcon,
               ),
+              message: _emptyTabMessage,
             ),
-          );
-        },
+          ),
+        ],
       );
     }
 

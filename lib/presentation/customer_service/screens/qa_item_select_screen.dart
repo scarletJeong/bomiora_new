@@ -13,6 +13,7 @@ import '../../../data/services/wish_service.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/product_card.dart';
 import '../../health/health_common/health_responsive_scale.dart';
+import '../../health/health_common/widgets/health_app_bar.dart';
 import '../../shopping/widgets/supply_add_expand_block.dart';
 import '../../user/delivery/widgets/order_item_subject_groups.dart';
 import '../models/qa_inquiry_draft.dart';
@@ -172,10 +173,11 @@ class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
     }
     final result = await OrderService.getOrderList(
       mbId: user.id,
-      period: 0,
+      period: 1,
       status: 'all',
       page: 0,
-      size: 50,
+      size: 30,
+      lite: true,
     );
     final orders = (result['orders'] as List?)?.whereType<OrderListModel>() ??
         const <OrderListModel>[];
@@ -533,38 +535,9 @@ class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
   Widget build(BuildContext context) {
     return MobileAppLayoutWrapper(
       backgroundColor: Colors.white,
+      appBar: const HealthAppBar(title: '상품선택'),
       child: Column(
         children: [
-          SafeArea(
-            bottom: false,
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(
-                healthDp(context, 20),
-                healthDp(context, 10),
-                healthDp(context, 12),
-                healthDp(context, 0),
-              ),
-              child: Row(
-                children: [
-                  Text(
-                    '상품선택',
-                    style: TextStyle(
-                      color: _ink,
-                      fontSize: healthSp(context, 17),
-                      fontFamily: _font,
-                      fontWeight: FontWeight.w300,
-                      height: 1.5,
-                    ),
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: Icon(Icons.close, size: healthDp(context, 22)),
-                  ),
-                ],
-              ),
-            ),
-          ),
           _buildTabs(context),
           Expanded(child: _buildBody(context)),
           SafeArea(
