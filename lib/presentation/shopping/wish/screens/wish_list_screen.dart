@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../../../../core/constants/app_assets.dart';
 import '../../../../core/utils/image_url_helper.dart';
 import '../../../../core/utils/node_value_parser.dart';
@@ -20,8 +21,7 @@ class WishListScreen extends StatefulWidget {
 class _WishListScreenState extends State<WishListScreen> {
   static const Color _pink = Color(0xFFFF5A8D);
   static const Color _border = Color(0x7FD2D2D2);
-  static const Color _divider = Color(0xFFD2D2D2);
-  static const Color _textMain = Color(0xFF1A1A1A);
+  static const Color _textMain = Color(0xFF1A1A1E);
   static const Color _textMuted = Color(0xFF898686);
   static const Color _textSub = Color(0xFF898383);
   static const Color _chipFill = Color(0x0CFF5A8D);
@@ -238,7 +238,7 @@ class _WishListScreenState extends State<WishListScreen> {
       child: MobileAppLayoutWrapper(
         appBar: HealthAppBar(
           title: '찜목록',
-          titleFontSize: healthSp(context, 18),
+          titleFontSize: healthSp(context, 16),
           leadingIconSize: healthDp(context, 24),
         ),
         child: DefaultTextStyle.merge(
@@ -253,7 +253,7 @@ class _WishListScreenState extends State<WishListScreen> {
                       child: const CircularProgressIndicator(color: _pink),
                     ),
                   )
-                : _requiresLogin
+                : (_requiresLogin || AuthService.currentUser == null)
                     ? _buildLoginMessage()
                     : _errorMessage != null
                         ? _buildError()
@@ -267,7 +267,7 @@ class _WishListScreenState extends State<WishListScreen> {
   Widget _buildError() {
     return Center(
       child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: healthDp(context, 27)),
+        padding: EdgeInsets.symmetric(horizontal: healthDp(context, 20)),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -294,7 +294,7 @@ class _WishListScreenState extends State<WishListScreen> {
         context,
         AppAssets.emptyWishlistIcon,
       ),
-      message: '로그인 후 이용 가능합니다.',
+      message: '로그인 후 이용가능합니다.',
       trailing: CenteredEmptyState.loginButtonTrailing(
         context,
         onPressed: () async {
@@ -326,21 +326,13 @@ class _WishListScreenState extends State<WishListScreen> {
     return Column(
       children: [
         Padding(
-          padding: EdgeInsets.only(
-            left: healthDp(context, 27),
-            right: healthDp(context, 27),
-            bottom: healthDp(context, 20),
+          padding: EdgeInsets.fromLTRB(
+            healthDp(context, 20),
+            healthDp(context, 10),
+            healthDp(context, 20),
+            healthDp(context, 20),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              SizedBox(height: healthDp(context, 0)),
-              _buildTabs(),
-              SizedBox(height: healthDp(context, 10)),
-              _buildHeader(),
-            ],
-          ),
+          child: _buildTabs(),
         ),
         if (list.isEmpty)
           Expanded(
@@ -356,15 +348,14 @@ class _WishListScreenState extends State<WishListScreen> {
           Expanded(
             child: SingleChildScrollView(
               padding: EdgeInsets.only(
-                left: healthDp(context, 27),
-                right: healthDp(context, 27),
+                left: healthDp(context, 20),
+                right: healthDp(context, 20),
                 bottom: healthDp(context, 20),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  SizedBox(height: healthDp(context, 10)),
                   for (var i = 0; i < _visibleItems.length; i++) ...[
                     if (i > 0) SizedBox(height: healthDp(context, 20)),
                     _buildWishCard(_visibleItems[i]),
@@ -382,17 +373,10 @@ class _WishListScreenState extends State<WishListScreen> {
   }
 
   Widget _buildTabs() {
-    final sepW = healthDp(context, 0.5);
-
-    Widget vSep() => Container(
-          width: sepW,
-          height: healthDp(context, 11),
-          color: _divider,
-        );
-
     Widget tabCell({
       required int index,
       required String label,
+      required int count,
     }) {
       final selected = _selectedTabIndex == index;
       return GestureDetector(
@@ -403,38 +387,29 @@ class _WishListScreenState extends State<WishListScreen> {
         behavior: HitTestBehavior.opaque,
         child: Container(
           width: double.infinity,
-          padding: EdgeInsets.only(
-            top: healthDp(context, 0),
-            bottom: healthDp(context, 0),
-          ),
           alignment: Alignment.center,
-          child: Center(
-            // 탭 영역은 Expanded로 넓게 유지하되, underline은 텍스트 폭만큼만 그려지게.
-            child: IntrinsicWidth(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    label,
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: selected ? _pink : _textSub,
-                      fontSize: healthSp(context, 14),
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                    ),
-                  ),
-                  SizedBox(height: healthDp(context, 4)),
-                  Container(
-                    width: double.infinity,
-                    height: healthDp(context, 1),
-                    color: selected ? _pink : Colors.transparent,
-                  ),
-                ],
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                selected ? '$label$count' : label,
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: selected ? _pink : _textSub,
+                  fontSize: healthSp(context, 14),
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                ),
               ),
-            ),
+              SizedBox(height: healthDp(context, 4)),
+              Container(
+                width: double.infinity,
+                height: healthDp(context, 1),
+                color: selected ? _pink : const Color(0xFFD2D2D2),
+              ),
+            ],
           ),
         ),
       );
@@ -443,58 +418,199 @@ class _WishListScreenState extends State<WishListScreen> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Expanded(child: tabCell(index: 0, label: '비대면 진료')),
-        vSep(),
-        Expanded(child: tabCell(index: 1, label: '스토어')),
-        vSep(),
-        Expanded(child: tabCell(index: 2, label: '콘텐츠')),
+        Expanded(
+          child: tabCell(
+            index: 0,
+            label: '비대면 진료',
+            count: _telemedWishes.length,
+          ),
+        ),
+        Expanded(
+          child: tabCell(
+            index: 1,
+            label: '스토어',
+            count: _storeWishes.length,
+          ),
+        ),
+        Expanded(
+          child: tabCell(
+            index: 2,
+            label: '콘텐츠',
+            count: _contentWishes.length,
+          ),
+        ),
       ],
     );
   }
 
-  Widget _buildHeader() {
-    final count = _currentTabList.length;
-    final prefix = switch (_selectedTabIndex) {
-      0 => '찜한 상품 ',
-      1 => '찜한 상품 ',
-      2 => '찜한 목록 ',
-      _ => '찜한 항목 ',
-    };
-    final lineH = healthDp(context, 1);
+  BorderRadius get _cardBottomRadius => BorderRadius.only(
+        bottomLeft: Radius.circular(healthDp(context, 10)),
+        bottomRight: Radius.circular(healthDp(context, 10)),
+      );
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Container(height: lineH, color: _divider),
-        SizedBox(height: healthDp(context, 8)),
-        RichText(
-          text: TextSpan(
-            style: TextStyle(
-              color: _textMuted,
-              fontSize: healthSp(context, 12),
-              fontFamily: 'Gmarket Sans TTF',
-              fontWeight: FontWeight.w500,
-              height: 1,
+  Widget _wishCardImage({
+    required String imageUrl,
+    required BoxFit fit,
+    VoidCallback? onTap,
+  }) {
+    final radius = healthDp(context, 10);
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: ClipRRect(
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(radius),
+          topRight: Radius.circular(radius),
+        ),
+        child: SizedBox(
+          width: double.infinity,
+          height: healthDp(context, 200),
+          child: Image.network(
+            imageUrl,
+            fit: fit,
+            width: double.infinity,
+            height: healthDp(context, 200),
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return ColoredBox(
+                color: const Color(0xFFF5F5F5),
+                child: Center(
+                  child: SizedBox(
+                    width: healthDp(context, 28),
+                    height: healthDp(context, 28),
+                    child: CircularProgressIndicator(
+                      strokeWidth: healthDp(context, 2),
+                      color: _pink,
+                    ),
+                  ),
+                ),
+              );
+            },
+            errorBuilder: (_, __, ___) => ColoredBox(
+              color: const Color(0xFFF0F0F0),
+              child: Icon(
+                Icons.image_not_supported,
+                size: healthDp(context, 48),
+                color: Colors.grey,
+              ),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _wishCardBody({
+    required VoidCallback? onTextTap,
+    required VoidCallback? onUnwish,
+    required List<Widget> textChildren,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(healthDp(context, 10)),
+      decoration: ShapeDecoration(
+        color: Colors.white,
+        shape: RoundedRectangleBorder(
+          side: BorderSide(
+            width: healthDp(context, 1),
+            color: _border,
+          ),
+          borderRadius: _cardBottomRadius,
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          GestureDetector(
+            onTap: onTextTap,
+            behavior: HitTestBehavior.opaque,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: textChildren,
+            ),
+          ),
+          SizedBox(height: healthDp(context, 10)),
+          _unwishButton(onTap: onUnwish),
+        ],
+      ),
+    );
+  }
+
+  Widget _unwishButton({required VoidCallback? onTap}) {
+    final iconSize = healthDp(context, 24);
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(healthDp(context, 4)),
+        child: Container(
+          width: double.infinity,
+          padding: EdgeInsets.symmetric(vertical: healthDp(context, 5)),
+          decoration: ShapeDecoration(
+            color: _chipFill,
+            shape: RoundedRectangleBorder(
+              side: BorderSide(width: healthDp(context, 1), color: _pink),
+              borderRadius: BorderRadius.circular(healthDp(context, 4)),
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              TextSpan(text: prefix),
-              TextSpan(
-                text: '$count',
-                style: TextStyle(
-                  color: const Color(0xFFFF5A8D),
-                  fontWeight: FontWeight.w700,
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontSize: healthSp(context, 12),
-                  height: 1,
+              SizedBox(
+                width: iconSize,
+                height: iconSize,
+                child: Center(
+                  child: SvgPicture.asset(
+                    AppAssets.heartIconFilled,
+                    width: healthDp(context, 18),
+                    height: healthDp(context, 18),
+                    colorFilter: const ColorFilter.mode(_pink, BlendMode.srcIn),
+                  ),
                 ),
               ),
-              const TextSpan(text: '개'),
+              SizedBox(width: healthDp(context, 5)),
+              Text(
+                '찜 해제',
+                style: TextStyle(
+                  color: _pink,
+                  fontSize: healthSp(context, 12),
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
             ],
           ),
         ),
-        SizedBox(height: healthDp(context, 5)),
-        Container(height: lineH, color: _divider),
-      ],
+      ),
+    );
+  }
+
+  Widget _wishMetaText(String text) {
+    return Text(
+      text,
+      style: TextStyle(
+        color: _textMuted,
+        fontSize: healthSp(context, 10),
+        fontFamily: 'Gmarket Sans TTF',
+        fontWeight: FontWeight.w500,
+      ),
+    );
+  }
+
+  Widget _wishTitleText(String text) {
+    return Text(
+      text,
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(
+        color: _textMain,
+        fontSize: healthSp(context, 14),
+        fontFamily: 'Gmarket Sans TTF',
+        fontWeight: FontWeight.w500,
+        letterSpacing: healthSp(context, -0.56),
+      ),
     );
   }
 
@@ -511,168 +627,47 @@ class _WishListScreenState extends State<WishListScreen> {
     final descriptionLine = (item['it_basic']?.toString() ?? '').trim();
     final productImage =
         item['image_url']?.toString() ?? item['it_img1']?.toString() ?? item['it_img']?.toString() ?? '';
+    final openDetail =
+        productId.isEmpty ? null : () => _openProductDetail(productId, item);
 
     return SizedBox(
       width: double.infinity,
-      child: Container(
-          decoration: BoxDecoration(
-            border: Border.all(
-                width: healthDp(context, 1), color: _border),
-            borderRadius: BorderRadius.circular(healthDp(context, 10)),
-            color: Colors.white,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _wishCardImage(
+            imageUrl: ImageUrlHelper.getImageUrl(productImage),
+            fit: BoxFit.fill,
+            onTap: openDetail,
           ),
-          clipBehavior: Clip.antiAlias,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              GestureDetector(
-                onTap: productId.isEmpty
-                    ? null
-                    : () => _openProductDetail(productId, item),
-                behavior: HitTestBehavior.opaque,
-                child: AspectRatio(
-                  aspectRatio: 1.45,
-                  child: Image.network(
-                    ImageUrlHelper.getImageUrl(productImage),
-                    fit: BoxFit.cover,
-                    width: double.infinity,
-                    loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) return child;
-                      return Container(
-                        color: Colors.grey[100],
-                        child: Center(
-                          child: SizedBox(
-                            width: healthDp(context, 28),
-                            height: healthDp(context, 28),
-                            child: CircularProgressIndicator(
-                              strokeWidth: healthDp(context, 2),
-                              color: _pink,
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                    errorBuilder: (_, __, ___) => Container(
-                      color: Colors.grey[200],
-                      child: Icon(
-                        Icons.image_not_supported,
-                        size: healthDp(context, 48),
-                        color: Colors.grey,
-                      ),
-                    ),
+          _wishCardBody(
+            onTextTap: openDetail,
+            onUnwish: productId.isEmpty ? null : () => _removeWishItem(productId),
+            textChildren: [
+              _wishMetaText(
+                subject.trim().isNotEmpty ? subject.trim() : '보미오라 한의원',
+              ),
+              SizedBox(height: healthDp(context, 4)),
+              _wishTitleText(productName.isNotEmpty ? productName : '상품'),
+              if (descriptionLine.isNotEmpty) ...[
+                SizedBox(height: healthDp(context, 4)),
+                Text(
+                  descriptionLine,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: _textSub,
+                    fontSize: healthSp(context, 12),
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w300,
                   ),
                 ),
-              ),
-              Padding(
-                padding: EdgeInsets.only(
-                  top: healthDp(context, 10),
-                  left: healthDp(context, 10),
-                  right: healthDp(context, 10),
-                  bottom: healthDp(context, 10),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    GestureDetector(
-                      onTap: productId.isEmpty
-                          ? null
-                          : () => _openProductDetail(productId, item),
-                      behavior: HitTestBehavior.opaque,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            subject.trim().isNotEmpty ? subject.trim() : '보미오라',
-                            style: TextStyle(
-                              color: _textMain,
-                              fontSize: healthSp(context, 12),
-                              fontFamily: 'Gmarket Sans TTF',
-                              fontWeight: FontWeight.w500,
-                              height: 1.5,
-                            ),
-                          ),
-                          Text(
-                            productName.isNotEmpty ? productName : '상품',
-                            textHeightBehavior: const TextHeightBehavior(
-                              applyHeightToFirstAscent: false,
-                              applyHeightToLastDescent: true,
-                            ),
-                            style: TextStyle(
-                              color: _textMain,
-                              fontSize: healthSp(context, 14),
-                              fontFamily: 'Gmarket Sans TTF',
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: -1.44,
-                              height: 1.25,
-                            ),
-                          ),
-                          if (descriptionLine.isNotEmpty) ...[
-                            SizedBox(height: healthDp(context, 10)),
-                            Text(
-                              descriptionLine,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: _textSub,
-                                fontSize: healthSp(context, 12),
-                                fontFamily: 'Gmarket Sans TTF',
-                                fontWeight: FontWeight.w500,
-                                height: 1.2,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                    SizedBox(height: healthDp(context, 20)),
-                    Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: productId.isEmpty ? null : () => _removeWishItem(productId),
-                        borderRadius:
-                            BorderRadius.circular(healthDp(context, 4)),
-                        child: Container(
-                          width: double.infinity,
-                          padding: EdgeInsets.symmetric(
-                              vertical: healthDp(context, 5)),
-                          decoration: ShapeDecoration(
-                            color: _chipFill,
-                            shape: RoundedRectangleBorder(
-                              side: BorderSide(
-                                  width: healthDp(context, 1), color: _pink),
-                              borderRadius:
-                                  BorderRadius.circular(healthDp(context, 4)),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.favorite,
-                                size: healthDp(context, 20),
-                                color: _pink.withValues(alpha: 0.9),
-                              ),
-                              SizedBox(width: healthDp(context, 5)),
-                              Text(
-                                '찜 해제',
-                                style: TextStyle(
-                                  color: _pink,
-                                  fontSize: healthSp(context, 12),
-                                  fontFamily: 'Gmarket Sans TTF',
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              ],
             ],
           ),
-        ),
+        ],
+      ),
     );
   }
 
@@ -717,174 +712,38 @@ class _WishListScreenState extends State<WishListScreen> {
       fallback: ImageUrlHelper.placeholdCo(321, 200),
     );
 
+    final openDetail = contentId == null
+        ? null
+        : () {
+            Navigator.pushNamed(
+              context,
+              '/content/detail',
+              arguments: {'id': contentId},
+            );
+          };
+
     return SizedBox(
       width: double.infinity,
-      child: Container(
-          decoration: BoxDecoration(
-            border: Border.all(
-                width: healthDp(context, 1), color: _border),
-            borderRadius: BorderRadius.circular(healthDp(context, 10)),
-            color: Colors.white,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _wishCardImage(
+            imageUrl: imageUrl,
+            fit: BoxFit.cover,
+            onTap: openDetail,
           ),
-          clipBehavior: Clip.antiAlias,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              GestureDetector(
-                onTap: contentId == null
-                    ? null
-                    : () {
-                        Navigator.pushNamed(
-                          context,
-                          '/content/detail',
-                          arguments: {'id': contentId},
-                        );
-                      },
-                behavior: HitTestBehavior.opaque,
-                child: AspectRatio(
-                  aspectRatio: 1.45,
-                  child: Image.network(
-                    imageUrl,
-                    fit: BoxFit.cover,
-                    width: double.infinity,
-                    loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) return child;
-                      return Container(
-                        color: Colors.grey[100],
-                        child: Center(
-                          child: SizedBox(
-                            width: healthDp(context, 28),
-                            height: healthDp(context, 28),
-                            child: CircularProgressIndicator(
-                              strokeWidth: healthDp(context, 2),
-                              color: _pink,
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                    errorBuilder: (_, __, ___) => Container(
-                      color: Colors.grey[200],
-                      child: Icon(
-                        Icons.image_not_supported,
-                        size: healthDp(context, 48),
-                        color: Colors.grey,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              Padding(
-                padding: EdgeInsets.only(
-                  top: healthDp(context, 0),
-                  left: healthDp(context, 10),
-                  right: healthDp(context, 10),
-                  bottom: healthDp(context, 10),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    GestureDetector(
-                      onTap: contentId == null
-                          ? null
-                          : () {
-                              Navigator.pushNamed(
-                                context,
-                                '/content/detail',
-                                arguments: {'id': contentId},
-                              );
-                            },
-                      behavior: HitTestBehavior.opaque,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            category.isNotEmpty ? category : '콘텐츠',
-                            style: TextStyle(
-                              color: _textMain,
-                              fontSize: healthSp(context, 12),
-                              fontFamily: 'Gmarket Sans TTF',
-                              fontWeight: FontWeight.w500,
-                              height: 1.5,
-                            ),
-                          ),
-                          Text(
-                            title.isNotEmpty ? title : '제목 없음',
-                            textHeightBehavior: const TextHeightBehavior(
-                              applyHeightToFirstAscent: false,
-                              applyHeightToLastDescent: true,
-                            ),
-                            style: TextStyle(
-                              color: _textMain,
-                              fontSize: healthSp(context, 14),
-                              fontFamily: 'Gmarket Sans TTF',
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: -1.44,
-                              height: 1.25,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                    SizedBox(height: healthDp(context, 20)),
-                    Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: idStr.isEmpty ? null : () => _removeWishItem(idStr),
-                        borderRadius:
-                            BorderRadius.circular(healthDp(context, 4)),
-                        child: Container(
-                          width: double.infinity,
-                          padding: EdgeInsets.symmetric(
-                              vertical: healthDp(context, 5)),
-                          decoration: ShapeDecoration(
-                            color: const Color(0x0CFF5A8D),
-                            shape: RoundedRectangleBorder(
-                              side: BorderSide(
-                                  width: healthDp(context, 1),
-                                  color: const Color(0xFFFF5A8D)),
-                              borderRadius:
-                                  BorderRadius.circular(healthDp(context, 4)),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              SizedBox(
-                                width: healthDp(context, 24),
-                                height: healthDp(context, 24),
-                                child: Center(
-                                  child: Icon(
-                                    Icons.favorite,
-                                    size: healthDp(context, 18),
-                                    color: const Color(0xFFFF5A8D),
-                                  ),
-                                ),
-                              ),
-                              SizedBox(width: healthDp(context, 5)),
-                              Text(
-                                '찜 해제',
-                                style: TextStyle(
-                                  color: const Color(0xFFFF5A8D),
-                                  fontSize: healthSp(context, 12),
-                                  fontFamily: 'Gmarket Sans TTF',
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+          _wishCardBody(
+            onTextTap: openDetail,
+            onUnwish: idStr.isEmpty ? null : () => _removeWishItem(idStr),
+            textChildren: [
+              _wishMetaText(category.isNotEmpty ? category : '콘텐츠'),
+              SizedBox(height: healthDp(context, 4)),
+              _wishTitleText(title.isNotEmpty ? title : '제목 없음'),
             ],
           ),
-        ),
+        ],
+      ),
     );
   }
 

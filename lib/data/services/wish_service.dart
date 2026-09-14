@@ -73,6 +73,17 @@ class WishService {
     _listCache!.removeWhere((e) => (e['it_id']?.toString() ?? '') == id);
   }
 
+  static void clearMemoryCache() {
+    _listCache = null;
+    _listCacheAt = null;
+    _listCacheUserId = null;
+    _listInFlight = null;
+    _checkCache.clear();
+    _checkCacheAt.clear();
+    _checkInFlight.clear();
+    _toggleInFlight.clear();
+  }
+
   static void restoreLocalListItem(int index, Map<String, dynamic> item) {
     if (_listCache == null) return;
     final i = index < 0 ? 0 : (index > _listCache!.length ? _listCache!.length : index);
