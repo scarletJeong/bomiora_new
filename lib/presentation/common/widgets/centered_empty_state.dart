@@ -7,7 +7,9 @@ import '../../health/health_common/health_responsive_scale.dart';
 const Color kEmptyStateIconColor = Color(0xFFBDBDBD);
 
 /// 빈 화면 중앙 아이콘 + 안내 문구 (로그인 필요, 목록 비어 있음 등 공통)
-class CenteredEmptyState extends StatelessWidget {
+///
+/// 남는 본문 영역이 아니라 **화면(페이지) 세로 중앙**에 맞춘다.
+class CenteredEmptyState extends StatefulWidget {
   const CenteredEmptyState({
     super.key,
     required this.message,
@@ -18,7 +20,7 @@ class CenteredEmptyState extends StatelessWidget {
     this.gap,
     this.trailingGap,
     this.trailing,
-    this.fillAvailable = false,
+    this.fillAvailable = true,
   });
 
   final String message;
@@ -98,37 +100,79 @@ class CenteredEmptyState extends StatelessWidget {
     ];
   }
 
+  @override
+  State<CenteredEmptyState> createState() => _CenteredEmptyStateState();
+}
+
+class _CenteredEmptyStateState extends State<CenteredEmptyState> {
+  double _pageCenterDy = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback(_syncPageCenter);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    WidgetsBinding.instance.addPostFrameCallback(_syncPageCenter);
+  }
+
+  @override
+  void didUpdateWidget(covariant CenteredEmptyState oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    WidgetsBinding.instance.addPostFrameCallback(_syncPageCenter);
+  }
+
+  void _syncPageCenter(Duration _) {
+    if (!mounted) return;
+    final box = context.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return;
+    final top = box.localToGlobal(Offset.zero).dy;
+    final boxH = box.size.height;
+    final screenH = MediaQuery.sizeOf(context).height;
+    // 카드/섹션 안 작은 빈 상태는 페이지 중앙으로 끌어올리지 않는다.
+    final dy = (!widget.fillAvailable || boxH < screenH * 0.28)
+        ? 0.0
+        : (screenH / 2) - (top + boxH / 2);
+    if ((dy - _pageCenterDy).abs() > 0.5) {
+      setState(() => _pageCenterDy = dy);
+    }
+  }
+
   Widget _buildContent(BuildContext context) {
     final iconSize = healthDp(context, 70);
-    final spacing = gap ?? healthDp(context, 15);
+    final spacing = widget.gap ?? healthDp(context, 15);
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (iconWidget != null) ...[
-          SizedBox(width: iconSize, height: iconSize, child: iconWidget),
+        if (widget.iconWidget != null) ...[
+          SizedBox(width: iconSize, height: iconSize, child: widget.iconWidget),
           SizedBox(height: spacing),
-        ] else if (icon != null) ...[
+        ] else if (widget.icon != null) ...[
           Icon(
-            icon,
+            widget.icon,
             size: iconSize,
-            color: iconColor,
+            color: widget.iconColor,
           ),
           SizedBox(height: spacing),
         ],
         Padding(
           padding: EdgeInsets.symmetric(horizontal: healthDp(context, 27)),
           child: Text(
-            message,
+            widget.message,
             textAlign: TextAlign.center,
             textScaler: TextScaler.noScaling,
-            style: messageStyle ?? defaultMessageStyle(context),
+            style: widget.messageStyle ??
+                CenteredEmptyState.defaultMessageStyle(context),
           ),
         ),
-        if (trailing != null) ...[
-          SizedBox(height: trailingGap ?? spacing),
-          ...trailing!,
+        if (widget.trailing != null) ...[
+          SizedBox(height: widget.trailingGap ?? spacing),
+          ...widget.trailing!,
         ],
       ],
     );
@@ -136,26 +180,23 @@ class CenteredEmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (!fillAvailable) {
-      return Center(child: _buildContent(context));
-    }
+    final content = Transform.translate(
+      offset: Offset(0, _pageCenterDy),
+      child: _buildContent(context),
+    );
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final maxHeight = constraints.maxHeight;
-        final content = Center(child: _buildContent(context));
+        final centered = Center(child: content);
 
-        // ScrollView 자식 등 높이가 무한인 경우 minHeight를 쓰면 레이아웃 오류 발생
-        if (!maxHeight.isFinite || maxHeight <= 0) {
-          return content;
+        if (!widget.fillAvailable ||
+            !maxHeight.isFinite ||
+            maxHeight <= 0) {
+          return centered;
         }
 
-        return SingleChildScrollView(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minHeight: maxHeight),
-            child: content,
-          ),
-        );
+        return SizedBox.expand(child: centered);
       },
     );
   }
