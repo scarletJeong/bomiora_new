@@ -5,7 +5,7 @@ import '../models/point/point_history_model.dart';
 
 /// 포인트 관련 공통 서비스
 class PointService {
-  static const Duration _cacheTtl = Duration(seconds: 60);
+  static const Duration _cacheTtl = Duration(minutes: 3);
   static final Map<String, int?> _pointCache = {};
   static final Map<String, List<PointHistory>> _historyCache = {};
   static final Map<String, DateTime> _pointCacheAt = {};

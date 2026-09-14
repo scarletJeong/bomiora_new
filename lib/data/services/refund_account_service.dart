@@ -5,7 +5,7 @@ import '../../core/network/api_endpoints.dart';
 
 /// 환불계좌 조회·저장 (`bomiora_back` GET/PUT `/api/user/refund-account`)
 class RefundAccountService {
-  static const Duration _cacheTtl = Duration(seconds: 60);
+  static const Duration _cacheTtl = Duration(minutes: 10);
   static final Map<String, Map<String, dynamic>> _cache = {};
   static final Map<String, DateTime> _cacheAt = {};
   static final Map<String, Future<Map<String, dynamic>>> _inFlight = {};

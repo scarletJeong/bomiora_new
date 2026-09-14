@@ -7,7 +7,7 @@ import '../services/auth_service.dart';
 
 class WishService {
   static const Duration _checkCacheTtl = Duration(seconds: 30);
-  static const Duration _listCacheTtl = Duration(seconds: 45);
+  static const Duration _listCacheTtl = Duration(minutes: 2);
   static final Map<String, bool> _checkCache = {};
   static final Map<String, DateTime> _checkCacheAt = {};
   static final Map<String, Future<bool>> _checkInFlight = {};

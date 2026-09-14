@@ -568,7 +568,7 @@ class CartService {
   static DateTime? _cartCacheAt;
   static Future<Map<String, dynamic>>? _cartInFlight;
   static String? _cartInFlightKey;
-  static const Duration _cartCacheTtl = Duration(seconds: 5);
+  static const Duration _cartCacheTtl = Duration(seconds: 90);
 
   static void invalidateCartCache() {
     _cartCache = null;
