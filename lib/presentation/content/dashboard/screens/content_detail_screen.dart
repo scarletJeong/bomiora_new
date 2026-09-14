@@ -3,10 +3,12 @@ import 'package:flutter_html/flutter_html.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../../core/constants/app_assets.dart';
+import '../../../../core/utils/image_url_helper.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/services/content_service.dart';
 import '../../../../data/services/wish_service.dart';
 import '../../../common/navigation/board_list_navigation.dart';
+import '../../../common/widgets/app_network_image.dart';
 import '../../../common/widgets/article_adjacent_nav.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
@@ -565,6 +567,29 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
           width: maxWidth,
           child: Html(
             data: processedHtml,
+            extensions: [
+              TagExtension(
+                tagsToExtend: const {'img'},
+                builder: (extensionContext) {
+                  final rawSrc = (extensionContext.attributes['src'] ?? '')
+                      .trim()
+                      .replaceAll('&amp;', '&');
+                  if (rawSrc.isEmpty) return const SizedBox.shrink();
+                  final url = ImageUrlHelper.toWebSafeImageUrl(rawSrc);
+                  return Padding(
+                    padding: EdgeInsets.only(bottom: healthDp(context, 8)),
+                    child: AppNetworkImage(
+                      url: url,
+                      width: maxWidth,
+                      fit: BoxFit.fitWidth,
+                      alignment: Alignment.topCenter,
+                      decodeWidthLogical: maxWidth,
+                      errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                    ),
+                  );
+                },
+              ),
+            ],
             style: {
               'html': Style(margin: Margins.zero, padding: HtmlPaddings.zero),
               'body': Style(

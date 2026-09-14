@@ -170,62 +170,77 @@ class _ContentListScreenState extends State<ContentListScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.only(top: healthDp(context, 10)),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: healthDp(context, 27),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        healthDp(context, 27),
+                        healthDp(context, 10),
+                        healthDp(context, 27),
+                        healthDp(context, 10),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _buildCategoryChips(_categories),
+                          SizedBox(height: healthDp(context, 10)),
+                          _buildSearchBox(),
+                          SizedBox(height: healthDp(context, 10)),
+                          _buildCountRow(),
+                        ],
+                      ),
+                    ),
+                    if (_isLoading)
+                      const Expanded(
+                        child: Center(
+                          child: SizedBox(
+                            width: 36,
+                            height: 36,
+                            child: CircularProgressIndicator(
+                              color: Color(0xFFFF5B8C),
+                            ),
+                          ),
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            _buildCategoryChips(_categories),
-                            SizedBox(height: healthDp(context, 10)),
-                            _buildSearchBox(),
-                            SizedBox(height: healthDp(context, 10)),
-                            _buildCountRow(),
-                            SizedBox(height: healthDp(context, 10)),
-                            if (_isLoading)
+                      )
+                    else if (_posts.isEmpty)
+                      Expanded(
+                        child: _hasActiveSearch
+                            ? _buildEmptySearchResult(context)
+                            : _buildEmptyPostsState(context),
+                      )
+                    else
+                      Expanded(
+                        child: SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
                               Padding(
                                 padding: EdgeInsets.symmetric(
-                                    vertical: healthDp(context, 40)),
-                                child: Center(
-                                  child: SizedBox(
-                                    width: healthDp(context, 36),
-                                    height: healthDp(context, 36),
-                                    child: const CircularProgressIndicator(
-                                      color: Color(0xFFFF5B8C),
-                                    ),
-                                  ),
+                                  horizontal: healthDp(context, 27),
                                 ),
-                              )
-                            else if (_posts.isEmpty)
-                              _hasActiveSearch
-                                  ? _buildEmptySearchResult(context)
-                                  : _buildEmptyPostsState(context)
-                            else
-                              ...[
-                                ..._posts.map((e) => Padding(
-                                      padding: EdgeInsets.only(
-                                          bottom: healthDp(context, 20)),
-                                      child: _buildListCard(context, e),
-                                    )),
-                                if (_showLoadMore) ...[
-                                  SizedBox(height: healthDp(context, 4)),
-                                  _buildLoadMoreButton(),
-                                ],
-                              ],
-                            SizedBox(height: healthDp(context, 24)),
-                            SizedBox(height: healthDp(context, 100)),
-                          ],
+                                child: Column(
+                                  children: [
+                                    ..._posts.map((e) => Padding(
+                                          padding: EdgeInsets.only(
+                                              bottom: healthDp(context, 20)),
+                                          child: _buildListCard(context, e),
+                                        )),
+                                    if (_showLoadMore) ...[
+                                      SizedBox(height: healthDp(context, 4)),
+                                      _buildLoadMoreButton(),
+                                    ],
+                                    SizedBox(height: healthDp(context, 24)),
+                                    SizedBox(height: healthDp(context, 100)),
+                                  ],
+                                ),
+                              ),
+                              const AppFooter(),
+                            ],
+                          ),
                         ),
                       ),
-                      const AppFooter(),
-                    ],
-                  ),
+                  ],
                 ),
               ),
               const FooterBar(),
@@ -323,53 +338,35 @@ class _ContentListScreenState extends State<ContentListScreen> {
   bool get _hasActiveSearch => _searchController.text.trim().isNotEmpty;
 
   Widget _buildEmptyPostsState(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: healthDp(context, 40)),
-      child: CenteredEmptyState(
-        iconWidget: CenteredEmptyState.assetIcon(
-          context,
-          AppAssets.emptyContentIcon,
-        ),
-        message: '등록된 게시글이 없습니다.',
+    return CenteredEmptyState(
+      iconWidget: CenteredEmptyState.assetIcon(
+        context,
+        AppAssets.emptyContentIcon,
       ),
+      message: '등록된 게시글이 없습니다.',
     );
   }
 
   Widget _buildEmptySearchResult(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: healthDp(context, 40)),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          CenteredEmptyState.assetIcon(context, AppAssets.emptySearchIcon),
-          SizedBox(height: healthDp(context, 10)),
-          Text(
-            '검색 결과가 없습니다.',
-            textAlign: TextAlign.center,
-            textScaler: TextScaler.noScaling,
-            style: TextStyle(
-              color: const Color(0xFF1A1A1E),
-              fontSize: healthSp(context, 16),
-              fontFamily: 'Gmarket Sans TTF',
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          SizedBox(height: healthDp(context, 5)),
-          Text(
-            '검색어를 다시 입력해주세요.',
-            textAlign: TextAlign.center,
-            textScaler: TextScaler.noScaling,
-            style: TextStyle(
-              color: const Color(0xFF898686),
-              fontSize: healthSp(context, 14),
-              fontFamily: 'Gmarket Sans TTF',
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
+    return CenteredEmptyState(
+      iconWidget: CenteredEmptyState.assetIcon(
+        context,
+        AppAssets.emptySearchIcon,
       ),
+      message: '검색 결과가 없습니다.',
+      trailing: [
+        Text(
+          '검색어를 다시 입력해주세요.',
+          textAlign: TextAlign.center,
+          textScaler: TextScaler.noScaling,
+          style: TextStyle(
+            color: const Color(0xFF898686),
+            fontSize: healthSp(context, 14),
+            fontFamily: 'Gmarket Sans TTF',
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
     );
   }
 

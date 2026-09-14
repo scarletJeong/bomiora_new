@@ -110,31 +110,56 @@ class _FaqListScreenState extends State<FaqListScreen> {
       ),
       child: RefreshIndicator(
         onRefresh: () => _load(page: 1),
-        child: ListView(
-          padding: EdgeInsets.fromLTRB(
-            healthDp(context, 27),
-            healthDp(context, 20),
-            healthDp(context, 27),
-            healthDp(context, 20),
-          ),
-          children: [
-            _buildCategoryChips(),
-            SizedBox(height: healthDp(context, 10)),
-            _buildSearchBar(),
-            SizedBox(height: healthDp(context, 10)),
-            _buildTotalRow(),
-            SizedBox(height: healthDp(context, 14)),
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            SliverPadding(
+              padding: EdgeInsets.fromLTRB(
+                healthDp(context, 27),
+                healthDp(context, 20),
+                healthDp(context, 27),
+                healthDp(context, 14),
+              ),
+              sliver: SliverToBoxAdapter(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildCategoryChips(),
+                    SizedBox(height: healthDp(context, 10)),
+                    _buildSearchBar(),
+                    SizedBox(height: healthDp(context, 10)),
+                    _buildTotalRow(),
+                  ],
+                ),
+              ),
+            ),
             if (_loading)
-              Padding(
-                padding: EdgeInsets.symmetric(vertical: healthDp(context, 60)),
-                child: const Center(child: CircularProgressIndicator()),
+              const SliverFillRemaining(
+                hasScrollBody: false,
+                child: Center(child: CircularProgressIndicator()),
               )
             else if (_error != null)
-              _buildError()
+              SliverToBoxAdapter(child: _buildError())
             else if (_items.isEmpty)
-              _buildEmpty()
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: _buildEmpty(),
+              )
             else
-              ..._visibleItems.map(_buildFaqCard),
+              SliverPadding(
+                padding: EdgeInsets.fromLTRB(
+                  healthDp(context, 27),
+                  0,
+                  healthDp(context, 27),
+                  healthDp(context, 20),
+                ),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) => _buildFaqCard(_visibleItems[index]),
+                    childCount: _visibleItems.length,
+                  ),
+                ),
+              ),
           ],
         ),
       ),
@@ -465,15 +490,12 @@ class _FaqListScreenState extends State<FaqListScreen> {
   }
 
   Widget _buildEmpty() {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: healthDp(context, 40)),
-      child: CenteredEmptyState(
-        iconWidget: CenteredEmptyState.assetIcon(
-          context,
-          AppAssets.emptyNoticeIcon,
-        ),
-        message: '조건에 맞는 FAQ가 없습니다.',
+    return CenteredEmptyState(
+      iconWidget: CenteredEmptyState.assetIcon(
+        context,
+        AppAssets.emptyNoticeIcon,
       ),
+      message: '조건에 맞는 FAQ가 없습니다.',
     );
   }
 }

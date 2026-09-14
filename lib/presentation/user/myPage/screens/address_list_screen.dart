@@ -59,37 +59,40 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
   }
 
   Future<void> _loadAddresses() async {
-    if (_currentUser == null || _isLoadingAddresses) return;
-
-    setState(() {
-      _isLoadingAddresses = true;
-    });
+    if (_currentUser == null) return;
+    final id = _currentUser!.id;
+    final cached = AddressService.peekAddressList(id);
+    if (cached != null) {
+      _applyAddresses(cached, loading: false);
+    } else if (!_isLoadingAddresses) {
+      setState(() => _isLoadingAddresses = true);
+    }
 
     try {
-      final addresses = await AddressService.getAddressList(_currentUser!.id);
-
+      final addresses = await AddressService.getAddressList(id);
       if (!mounted) return;
-
-      addresses.sort((a, b) {
-        final ad = _isDefaultAddress(a) ? 0 : 1;
-        final bd = _isDefaultAddress(b) ? 0 : 1;
-        if (ad != bd) return ad.compareTo(bd);
-        final aid = (a['adId'] as int?) ?? 0;
-        final bid = (b['adId'] as int?) ?? 0;
-        return bid.compareTo(aid);
-      });
-
-      setState(() {
-        _addresses = addresses;
-        _isLoadingAddresses = false;
-      });
-    } catch (e) {
+      _applyAddresses(addresses, loading: false);
+    } catch (_) {
       if (mounted) {
-        setState(() {
-          _isLoadingAddresses = false;
-        });
+        setState(() => _isLoadingAddresses = false);
       }
     }
+  }
+
+  void _applyAddresses(List<Map<String, dynamic>> addresses, {required bool loading}) {
+    final sorted = List<Map<String, dynamic>>.from(addresses);
+    sorted.sort((a, b) {
+      final ad = _isDefaultAddress(a) ? 0 : 1;
+      final bd = _isDefaultAddress(b) ? 0 : 1;
+      if (ad != bd) return ad.compareTo(bd);
+      final aid = (a['adId'] as int?) ?? 0;
+      final bid = (b['adId'] as int?) ?? 0;
+      return bid.compareTo(aid);
+    });
+    setState(() {
+      _addresses = sorted;
+      _isLoadingAddresses = loading;
+    });
   }
 
   Future<void> _goToRegister() async {

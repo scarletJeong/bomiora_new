@@ -4,7 +4,7 @@ import '../../core/utils/node_value_parser.dart';
 
 /// 배송지 관리 서비스
 class AddressService {
-  static const Duration _listCacheTtl = Duration(seconds: 60);
+  static const Duration _listCacheTtl = Duration(minutes: 3);
   static final Map<String, List<Map<String, dynamic>>> _listCache = {};
   static final Map<String, DateTime> _listCacheAt = {};
   static final Map<String, Future<List<Map<String, dynamic>>>> _listInFlight = {};
@@ -13,6 +13,33 @@ class AddressService {
     final id = mbId.trim();
     _listCache.remove(id);
     _listCacheAt.remove(id);
+  }
+
+  static void _rememberSaved(String mbId, dynamic raw, {int? replaceId}) {
+    final mapped = _normalizeAddressItem(raw);
+    final id = mbId.trim();
+    if (mapped == null) {
+      invalidate(id);
+      return;
+    }
+    final list = List<Map<String, dynamic>>.from(_listCache[id] ?? const []);
+    if ((mapped['adDefault'] ?? 0) == 1) {
+      for (final a in list) {
+        a['adDefault'] = 0;
+      }
+    }
+    if (replaceId != null) {
+      final i = list.indexWhere((a) => a['adId'] == replaceId);
+      if (i >= 0) {
+        list[i] = mapped;
+      } else {
+        list.insert(0, mapped);
+      }
+    } else {
+      list.insert(0, mapped);
+    }
+    _listCache[id] = list;
+    _listCacheAt[id] = DateTime.now();
   }
 
   static Map<String, dynamic>? _normalizeAddressItem(dynamic raw) {
@@ -73,11 +100,28 @@ class AddressService {
     };
   }
 
+  static List<Map<String, dynamic>>? peekAddressList(String mbId) {
+    final id = mbId.trim();
+    final list = _listCache[id];
+    if (list == null) return null;
+    return List<Map<String, dynamic>>.from(list);
+  }
+
+  static void invalidateAll() {
+    _listCache.clear();
+    _listCacheAt.clear();
+    _listInFlight.clear();
+  }
+
   /// 배송지 목록 조회
-  static Future<List<Map<String, dynamic>>> getAddressList(String mbId) async {
+  static Future<List<Map<String, dynamic>>> getAddressList(
+    String mbId, {
+    bool forceRefresh = false,
+  }) async {
     final id = mbId.trim();
     final cachedAt = _listCacheAt[id];
-    if (cachedAt != null &&
+    if (!forceRefresh &&
+        cachedAt != null &&
         DateTime.now().difference(cachedAt) < _listCacheTtl) {
       return List<Map<String, dynamic>>.from(_listCache[id] ?? const []);
     }
@@ -202,7 +246,8 @@ class AddressService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        invalidate((addressData['mbId'] ?? addressData['mb_id'] ?? '').toString());
+        final mbId = (addressData['mbId'] ?? addressData['mb_id'] ?? '').toString();
+        _rememberSaved(mbId, data['data']);
 
         return {
           'success': true,
@@ -233,7 +278,8 @@ class AddressService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        invalidate((addressData['mbId'] ?? addressData['mb_id'] ?? '').toString());
+        final mbId = (addressData['mbId'] ?? addressData['mb_id'] ?? '').toString();
+        _rememberSaved(mbId, data['data'], replaceId: id);
 
         return {
           'success': true,

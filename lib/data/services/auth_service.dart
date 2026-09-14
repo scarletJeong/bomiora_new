@@ -12,6 +12,7 @@ import 'naver_auth_service.dart';
 import 'prescription_purchase_history_service.dart';
 import 'recent_view_service.dart';
 import 'wish_service.dart';
+import 'address_service.dart';
 
 class AuthService {
   static const String _userKey = 'user_data';
@@ -22,6 +23,22 @@ class AuthService {
   static int _sessionEpoch = 0;
 
   static UserModel? get currentUser => _memoryUser;
+
+  /// 찜·배송지 목록을 로그인/스플래시에서 미리 받아 화면 진입 시 네트워크를 건너뛴다.
+  static void prefetchMemberLists([String? mbId]) {
+    unawaited(_prefetchMemberLists(mbId));
+  }
+
+  static Future<void> _prefetchMemberLists(String? mbId) async {
+    try {
+      var id = (mbId ?? _memoryUser?.id ?? '').trim();
+      if (id.isEmpty) return;
+      await Future.wait<void>([
+        WishService.getWishList(),
+        AddressService.getAddressList(id),
+      ]);
+    } catch (_) {}
+  }
 
   static bool _hasActiveSessionFlag(SharedPreferences prefs) =>
       prefs.getBool(_isLoggedInKey) == true;
@@ -50,6 +67,7 @@ class AuthService {
     // 부가 동기화는 로그인 화면 전환을 막지 않는다.
     unawaited(RecentViewService.syncLocalToAccount(user.id));
     unawaited(FCMService().registerTokenWithServer());
+    prefetchMemberLists(user.id);
   }
 
   // 로그인 상태 확인
@@ -118,6 +136,10 @@ class AuthService {
 
     try {
       WishService.clearMemoryCache();
+    } catch (_) {}
+
+    try {
+      AddressService.invalidateAll();
     } catch (_) {}
 
     try {

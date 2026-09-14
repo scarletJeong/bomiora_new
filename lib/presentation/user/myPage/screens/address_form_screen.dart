@@ -405,18 +405,20 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
       final user = await AuthService.getUser();
       if (user == null) return;
 
+      List<Map<String, dynamic>> existing = const [];
+      if (widget.address == null || !_isDefault) {
+        existing = await AddressService.getAddressList(user.id);
+      }
+
       // 신규 등록 시 mb_id당 최대 10개
-      if (widget.address == null) {
-        final existing = await AddressService.getAddressList(user.id);
-        if (existing.length >= 10) {
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('배송지는 최대 10개까지 등록할 수 있습니다.'),
-            ),
-          );
-          return;
-        }
+      if (widget.address == null && existing.length >= 10) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('배송지는 최대 10개까지 등록할 수 있습니다.'),
+          ),
+        );
+        return;
       }
 
       final zipParts = _splitZipForApi(_zipController.text.trim());
@@ -424,11 +426,8 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
       // 최초 등록 또는 유일한 기본배송지는 무조건 유지
       if (_mustKeepDefault) {
         defaultFlag = 1;
-      } else if (!_isDefault && widget.address == null) {
-        final existing = await AddressService.getAddressList(user.id);
-        if (existing.isEmpty) {
-          defaultFlag = 1;
-        }
+      } else if (!_isDefault && widget.address == null && existing.isEmpty) {
+        defaultFlag = 1;
       }
 
       final addressData = {

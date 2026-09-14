@@ -66,8 +66,9 @@ class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  late final Future<List<BannerModel>> _bannersFuture;
-  late final Future<List<Product>> _newProductsFuture;
+  Future<List<BannerModel>>? _bannersFuture;
+  Future<List<Product>>? _newProductsFuture;
+  bool _homeLoadStarted = false;
   bool _loadBelowFold = false;
 
   bool _bannerReady = false;
@@ -96,6 +97,14 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _currentIndex = widget.initialIndex;
+    if (_currentIndex == 0) {
+      _ensureHomeLoads();
+    }
+  }
+
+  void _ensureHomeLoads() {
+    if (_homeLoadStarted) return;
+    _homeLoadStarted = true;
     _bannersFuture =
         widget.bannersFuture ?? BannerService.fetchMobileBanners();
     _newProductsFuture =
@@ -106,8 +115,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadNewProducts() async {
+    final future = _newProductsFuture;
+    if (future == null) return;
     try {
-      final products = await _newProductsFuture;
+      final products = await future;
       if (!mounted) return;
       final withImage = products
           .where((p) => p.displayImageUrl.trim().isNotEmpty)
@@ -169,8 +180,13 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _scheduleBelowFoldLoad() async {
+    final banners = _bannersFuture;
+    final products = _newProductsFuture;
     await Future.any<void>([
-      Future.wait<void>([_bannersFuture, _newProductsFuture]).then((_) {}),
+      Future.wait<void>([
+        if (banners != null) banners,
+        if (products != null) products,
+      ]).then((_) {}),
       Future<void>.delayed(const Duration(milliseconds: 400)),
     ]);
     if (!mounted) return;
@@ -410,11 +426,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _getCurrentPage() {
     switch (_currentIndex) {
-      case 0:
-        return _buildHomePage();
       case 1:
         return const MyPageScreen();
       default:
+        _ensureHomeLoads();
         return _buildHomePage();
     }
   }

@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 
 import '../../core/network/api_client.dart';
 import '../../core/network/api_endpoints.dart';
@@ -137,7 +136,7 @@ class ContentService {
         final fileName = noSlash.substring('www/data/content/'.length);
         return _toWebSafeImageUrl('$_contentThumbBase$fileName');
       }
-      if (noSlash.startsWith('data/content/')) {
+      if (noSlash.startsWith('data/')) {
         return _toWebSafeImageUrl('https://bomiora0.mycafe24.com/$noSlash');
       }
       if (noSlash.startsWith('content/')) {
@@ -165,7 +164,7 @@ class ContentService {
       final fileName = normalized.substring('content/'.length);
       return _toWebSafeImageUrl('$_contentThumbBase$fileName');
     }
-    if (normalized.startsWith('data/content/')) {
+    if (normalized.startsWith('data/')) {
       return _toWebSafeImageUrl('https://bomiora0.mycafe24.com/$normalized');
     }
     if (normalized.startsWith('www/')) {
@@ -178,12 +177,7 @@ class ContentService {
   }
 
   static String _toWebSafeImageUrl(String url) {
-    if (!kIsWeb) return url;
-    final host = Uri.base.host;
-    final isLocalWeb = host == 'localhost' || host == '127.0.0.1' || host.isEmpty;
-    if (!isLocalWeb) return url;
-    // 로컬 웹: Cafe24 data/ 이미지는 CORS * 로 직링크, Node API 경로만 baseUrl
-    return ImageUrlHelper.convertToLocalUrl(url);
+    return ImageUrlHelper.toWebSafeImageUrl(url);
   }
 
   static String? resolveFirstBodyImageUrl(String? html) {
