@@ -734,7 +734,7 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
         child: Row(
           children: [
             Expanded(
-              flex: 2,
+              flex: 3,
               child: OutlinedButton(
                 onPressed: _isLoading
                     ? null
@@ -757,17 +757,22 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
                 ),
                 child: Text(
                   leftLabel,
+                  maxLines: 1,
+                  softWrap: false,
+                  overflow: TextOverflow.visible,
+                  textAlign: TextAlign.center,
                   style: TextStyle(
                     color: _kMuted,
-                    fontSize: healthSp(context, 16),
+                    fontSize: healthSp(context, 15),
                     fontWeight: FontWeight.w500,
+                    height: 1,
                   ),
                 ),
               ),
             ),
             SizedBox(width: healthDp(context, 10)),
             Expanded(
-              flex: 8,
+              flex: 7,
               child: ElevatedButton(
                 onPressed: (_isLoading || !_canProceedCurrent)
                     ? null
@@ -880,32 +885,29 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
             size: healthDp(context, 28),
           ),
         );
-    if (r.images.isNotEmpty) {
-      final u = ImageUrlHelper.getReviewImageUrl(r.images.first);
-      return ClipRRect(
-        borderRadius: r4,
-        child: Image.network(
-          u,
-          width: side,
-          height: side,
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => fallback(),
-        ),
-      );
-    }
-    final thumb = r.productImage?.trim();
-    if (thumb != null && thumb.isNotEmpty) {
-      final u = ImageUrlHelper.getImageUrl(thumb);
-      return ClipRRect(
-        borderRadius: r4,
-        child: Image.network(
-          u,
-          width: side,
-          height: side,
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => fallback(),
-        ),
-      );
+    final raw = r.productImage?.trim();
+    if (raw != null &&
+        raw.isNotEmpty &&
+        !ImageUrlHelper.isReviewAttachmentUrl(raw)) {
+      final normalized =
+          ImageUrlHelper.normalizeThumbnailUrl(raw, r.itId) ?? raw;
+      if (ImageUrlHelper.isReviewAttachmentUrl(normalized)) {
+        return fallback();
+      }
+      final u = ImageUrlHelper.getImageUrl(normalized);
+      if (!u.toLowerCase().contains('no_img.png') &&
+          !ImageUrlHelper.isReviewAttachmentUrl(u)) {
+        return ClipRRect(
+          borderRadius: r4,
+          child: Image.network(
+            u,
+            width: side,
+            height: side,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => fallback(),
+          ),
+        );
+      }
     }
     return fallback();
   }

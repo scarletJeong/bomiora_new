@@ -178,35 +178,34 @@ class _ReviewBestScreenState extends State<ReviewBestScreen> {
           : RefreshIndicator(
               color: _pink,
               onRefresh: () => _load(page: _page),
-              child: ListView(
+              child: CustomScrollView(
                 controller: _scrollController,
-                // 페이지당 소수 카드 — 화면 밖 카드도 미리 빌드해 스크롤 타겟 키 확보
                 cacheExtent: 5000,
-                padding: EdgeInsets.fromLTRB(
-                  padH,
-                  healthDp(context, 0),
-                  padH,
-                  healthDp(context, 40),
-                ),
-                children: [
-                  _buildCountRow(context),
-                  SizedBox(height: healthDp(context, 10)),
-                  _buildStatsCard(context),
-                  SizedBox(height: healthDp(context, 20)),
-                  if (_loading)
-                    Padding(
-                      padding: EdgeInsets.symmetric(
-                        vertical: healthDp(context, 20),
+                physics: const AlwaysScrollableScrollPhysics(),
+                slivers: [
+                  SliverPadding(
+                    padding: EdgeInsets.fromLTRB(padH, 0, padH, 0),
+                    sliver: SliverToBoxAdapter(
+                      child: Column(
+                        children: [
+                          _buildCountRow(context),
+                          SizedBox(height: healthDp(context, 10)),
+                          _buildStatsCard(context),
+                          SizedBox(height: healthDp(context, 20)),
+                        ],
                       ),
-                      child: const Center(
+                    ),
+                  ),
+                  if (_loading)
+                    const SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: Center(
                         child: CircularProgressIndicator(color: _pink),
                       ),
                     )
                   else if (_reviews.isEmpty)
-                    Padding(
-                      padding: EdgeInsets.symmetric(
-                        vertical: healthDp(context, 48),
-                      ),
+                    SliverFillRemaining(
+                      hasScrollBody: false,
                       child: CenteredEmptyState(
                         iconWidget: CenteredEmptyState.assetIcon(
                           context,
@@ -216,11 +215,23 @@ class _ReviewBestScreenState extends State<ReviewBestScreen> {
                       ),
                     )
                   else
-                    ..._buildReviewItems(context),
-                  if (_totalPages > 1) ...[
-                    SizedBox(height: healthDp(context, 24)),
-                    _buildPagination(context),
-                  ],
+                    SliverPadding(
+                      padding: EdgeInsets.fromLTRB(
+                        padH,
+                        0,
+                        padH,
+                        healthDp(context, 40),
+                      ),
+                      sliver: SliverList(
+                        delegate: SliverChildListDelegate([
+                          ..._buildReviewItems(context),
+                          if (_totalPages > 1) ...[
+                            SizedBox(height: healthDp(context, 24)),
+                            _buildPagination(context),
+                          ],
+                        ]),
+                      ),
+                    ),
                 ],
               ),
             ),

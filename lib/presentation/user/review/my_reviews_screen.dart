@@ -976,7 +976,20 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
       ),
     );
     if (!mounted) return;
-    if (result == true) await _loadReviews(refresh: true);
+    if (result != true) return;
+    final user = await AuthService.getUser();
+    if (user == null || !mounted) return;
+    final latest = await ReviewService.getMemberReviews(
+      mbId: user.id,
+      page: 0,
+      size: 20,
+    );
+    if (!mounted || latest['success'] != true) return;
+    setState(() {
+      _currentPage = 0;
+      _reviews = List<ReviewModel>.from(latest['reviews'] as List<ReviewModel>);
+      _hasMore = latest['hasNext'] == true;
+    });
   }
 
   Future<void> _deleteReview(ReviewModel review) async {

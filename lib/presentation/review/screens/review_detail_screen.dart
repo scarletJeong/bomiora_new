@@ -675,7 +675,7 @@ class _ReviewDetailScreenState extends State<ReviewDetailScreen> {
             odId: _review.odId,
           );
         });
-        AppToastOverlay.show(context, '도움 쿠폰이 발급되었습니다.');
+        AppToastOverlay.show(context, '쿠폰 발급이 완료되었습니다.');
       } else {
         final msg = result['message']?.toString() ?? '쿠폰 발급에 실패했습니다.';
         AppToastOverlay.show(context, msg);

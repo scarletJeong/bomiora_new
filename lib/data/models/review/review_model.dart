@@ -131,25 +131,32 @@ class ReviewModel {
     const directKeys = <String>[
       'productImage',
       'product_image',
-      'imageUrl',
-      'image_url',
       'thumbnail',
       'thumbnail_url',
+      'it_flutter_image_url',
       'it_img',
     ];
     for (final k in directKeys) {
       final s = NodeValueParser.asString(m[k]);
       if (s != null) {
         final t = s.trim();
-        if (t.isNotEmpty && t.toLowerCase() != 'null') return t;
+        if (t.isNotEmpty &&
+            t.toLowerCase() != 'null' &&
+            !ImageUrlHelper.isReviewAttachmentUrl(t)) {
+          return t;
+        }
       }
     }
     for (var i = 1; i <= 9; i++) {
-      for (final k in ['it_img$i', 'itImg$i', 'IT_IMG$i']) {
+      for (final k in ['it_img$i', 'itImg$i', 'IT_IMG$i', 'shop_it_img$i']) {
         final s = NodeValueParser.asString(m[k]);
         if (s != null) {
           final t = s.trim();
-          if (t.isNotEmpty && t.toLowerCase() != 'null') return t;
+          if (t.isNotEmpty &&
+              t.toLowerCase() != 'null' &&
+              !ImageUrlHelper.isReviewAttachmentUrl(t)) {
+            return t;
+          }
         }
       }
     }
@@ -281,6 +288,9 @@ class ReviewModel {
 
     // API가 `<img src="...">` 형태로 내려주는 케이스 정리
     productImage = _extractImgSrcIfHtml(productImage);
+    if (ImageUrlHelper.isReviewAttachmentUrl(productImage)) {
+      productImage = null;
+    }
 
     if (itKind == null || itKind.isEmpty) {
       for (final nestedKey in [

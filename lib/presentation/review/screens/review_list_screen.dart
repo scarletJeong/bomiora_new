@@ -110,32 +110,36 @@ class _ReviewListScreenState extends State<ReviewListScreen> {
           : RefreshIndicator(
               color: _pink,
               onRefresh: () => _load(page: _page),
-              child: ListView(
-                padding: EdgeInsets.fromLTRB(
-                  padH,
-                  healthDp(context, 20),
-                  padH,
-                  healthDp(context, 40),
-                ),
-                children: [
-                  _buildTabBar(context),
-                  SizedBox(height: healthDp(context, 10)),
-                  _buildCountRow(context),
-                  SizedBox(height: healthDp(context, 10)),
-                  _buildStatsCard(context),
-                  SizedBox(height: healthDp(context, 20)),
-                  if (_loading)
-                    Padding(
-                      padding: EdgeInsets.symmetric(
-                        vertical: healthDp(context, 40),
+              child: CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                slivers: [
+                  SliverPadding(
+                    padding: EdgeInsets.fromLTRB(
+                      padH,
+                      healthDp(context, 20),
+                      padH,
+                      healthDp(context, 20),
+                    ),
+                    sliver: SliverToBoxAdapter(
+                      child: Column(
+                        children: [
+                          _buildTabBar(context),
+                          SizedBox(height: healthDp(context, 10)),
+                          _buildCountRow(context),
+                          SizedBox(height: healthDp(context, 10)),
+                          _buildStatsCard(context),
+                        ],
                       ),
-                      child: const Center(child: CircularProgressIndicator()),
+                    ),
+                  ),
+                  if (_loading)
+                    const SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: Center(child: CircularProgressIndicator()),
                     )
                   else if (_reviews.isEmpty)
-                    Padding(
-                      padding: EdgeInsets.symmetric(
-                        vertical: healthDp(context, 40),
-                      ),
+                    SliverFillRemaining(
+                      hasScrollBody: false,
                       child: CenteredEmptyState(
                         iconWidget: CenteredEmptyState.assetIcon(
                           context,
@@ -145,11 +149,25 @@ class _ReviewListScreenState extends State<ReviewListScreen> {
                       ),
                     )
                   else
-                    _buildReviewGrid(context),
-                  if (_totalPages > 1) ...[
-                    SizedBox(height: healthDp(context, 20)),
-                    _buildPagination(context),
-                  ],
+                    SliverPadding(
+                      padding: EdgeInsets.fromLTRB(
+                        padH,
+                        0,
+                        padH,
+                        healthDp(context, 40),
+                      ),
+                      sliver: SliverToBoxAdapter(
+                        child: Column(
+                          children: [
+                            _buildReviewGrid(context),
+                            if (_totalPages > 1) ...[
+                              SizedBox(height: healthDp(context, 20)),
+                              _buildPagination(context),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),

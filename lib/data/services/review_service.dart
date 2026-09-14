@@ -13,6 +13,43 @@ class ReviewService {
   static final Map<String, DateTime> _bestCacheAt = {};
   static final Map<String, Future<Map<String, dynamic>>> _bestInFlight = {};
 
+  static const Duration _memberListCacheTtl = Duration(minutes: 2);
+  static final Map<String, Map<String, dynamic>> _memberListCache = {};
+  static final Map<String, DateTime> _memberListCacheAt = {};
+  static final Map<String, Future<Map<String, dynamic>>> _memberListInFlight = {};
+
+  static void _invalidateMemberListCache([String? mbId]) {
+    final id = mbId?.trim();
+    if (id == null || id.isEmpty) {
+      _memberListCache.clear();
+      _memberListCacheAt.clear();
+      return;
+    }
+    final prefix = '$id:';
+    final keys = _memberListCache.keys.where((k) => k.startsWith(prefix)).toList();
+    for (final key in keys) {
+      _memberListCache.remove(key);
+      _memberListCacheAt.remove(key);
+    }
+  }
+
+  static void _patchMemberListCache(ReviewModel updated) {
+    final prefix = '${updated.mbId.trim()}:';
+    for (final key in _memberListCache.keys.toList()) {
+      if (!key.startsWith(prefix)) continue;
+      final cached = _memberListCache[key];
+      if (cached == null) continue;
+      final reviews = List<ReviewModel>.from(
+        (cached['reviews'] as List?) ?? const <ReviewModel>[],
+      );
+      final i = reviews.indexWhere((r) => r.isId == updated.isId);
+      if (i < 0) continue;
+      reviews[i] = updated;
+      cached['reviews'] = reviews;
+      _memberListCacheAt[key] = DateTime.now();
+    }
+  }
+
   static const int maxReviewImages = 3;
 
   /// 리뷰 첨부 사진 업로드 (웹·모바일 공통)
@@ -60,6 +97,7 @@ class ReviewService {
           review = null;
         }
 
+        _invalidateMemberListCache(reviewData.mbId);
         return {
           'success': data['success'] ?? true,
           'message': data['message'] ?? '리뷰가 성공적으로 작성되었습니다.',
@@ -377,24 +415,51 @@ class ReviewService {
     int page = 0,
     int size = 20,
   }) async {
+    final cacheKey = '${mbId.trim()}:$page:$size';
+    final cachedAt = _memberListCacheAt[cacheKey];
+    if (cachedAt != null &&
+        DateTime.now().difference(cachedAt) < _memberListCacheTtl) {
+      return Map<String, dynamic>.from(_memberListCache[cacheKey]!);
+    }
+    final pending = _memberListInFlight[cacheKey];
+    if (pending != null) return pending;
+
+    final request = _fetchMemberReviews(mbId: mbId, page: page, size: size);
+    _memberListInFlight[cacheKey] = request;
+    try {
+      final result = await request;
+      if (result['success'] == true) {
+        _memberListCache[cacheKey] = Map<String, dynamic>.from(result);
+        _memberListCacheAt[cacheKey] = DateTime.now();
+      }
+      return result;
+    } finally {
+      _memberListInFlight.remove(cacheKey);
+    }
+  }
+
+  static Future<Map<String, dynamic>> _fetchMemberReviews({
+    required String mbId,
+    required int page,
+    required int size,
+  }) async {
     try {
       final queryString = 'page=$page&size=$size';
-      
+
       final response = await ApiClient.get(
         '/api/user/reviews/member/$mbId?$queryString',
       );
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        
-        // 리뷰 목록 파싱
+
         List<ReviewModel> reviews = [];
         if (data['reviews'] != null) {
           reviews = (data['reviews'] as List)
               .map((review) => ReviewModel.fromJson(review))
               .toList();
         }
-        
+
         return {
           'success': true,
           'reviews': reviews,
@@ -501,11 +566,16 @@ class ReviewService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        
+        ReviewModel? saved;
+        if (data['review'] != null) {
+          saved = ReviewModel.fromJson(data['review']);
+        }
+        _patchMemberListCache(saved ?? reviewData);
+
         return {
           'success': data['success'] ?? true,
           'message': data['message'] ?? '리뷰가 성공적으로 수정되었습니다.',
-          'review': data['review'] != null ? ReviewModel.fromJson(data['review']) : null,
+          'review': saved,
         };
       } else {
         final errorData = json.decode(response.body);
@@ -534,7 +604,8 @@ class ReviewService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        
+        _invalidateMemberListCache(mbId);
+
         return {
           'success': data['success'] ?? true,
           'message': data['message'] ?? '리뷰가 성공적으로 삭제되었습니다.',

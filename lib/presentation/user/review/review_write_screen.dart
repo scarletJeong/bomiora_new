@@ -170,8 +170,13 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
       return guardNoImg(ImageUrlHelper.getImageUrl(fromItem));
     }
     final thumb = review?.productImage?.trim();
-    if (thumb != null && thumb.isNotEmpty) {
-      return guardNoImg(ImageUrlHelper.getImageUrl(thumb));
+    if (thumb != null &&
+        thumb.isNotEmpty &&
+        !ImageUrlHelper.isReviewAttachmentUrl(thumb)) {
+      final normalized =
+          ImageUrlHelper.normalizeThumbnailUrl(thumb, review?.itId) ?? thumb;
+      if (ImageUrlHelper.isReviewAttachmentUrl(normalized)) return null;
+      return guardNoImg(ImageUrlHelper.getImageUrl(normalized));
     }
     return null;
   }
@@ -1288,7 +1293,7 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
         child: Row(
           children: [
             Expanded(
-              flex: 2,
+              flex: 3,
               child: Container(
                 height: healthDp(context, 40),
                 decoration: ShapeDecoration(
@@ -1313,11 +1318,16 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
                         },
                   child: Text(
                     leftLabel,
+                    maxLines: 1,
+                    softWrap: false,
+                    overflow: TextOverflow.visible,
+                    textAlign: TextAlign.center,
                     style: TextStyle(
                       fontFamily: _kFont,
                       color: _kMuted,
-                      fontSize: healthSp(context, 16),
+                      fontSize: healthSp(context, 15),
                       fontWeight: FontWeight.w500,
+                      height: 1,
                     ),
                   ),
                 ),
@@ -1325,7 +1335,7 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
             ),
             SizedBox(width: healthDp(context, 10)),
             Expanded(
-              flex: 8,
+              flex: 7,
               child: Container(
                 height: healthDp(context, 40),
                 decoration: ShapeDecoration(
