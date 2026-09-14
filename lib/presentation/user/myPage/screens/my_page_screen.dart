@@ -3,11 +3,9 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/constants/app_assets.dart';
 import '../../../../data/services/auth_service.dart';
-import '../../../../data/services/address_service.dart';
 import '../../../../data/services/delivery_service.dart';
 import '../../../../data/services/coupon_service.dart';
 import '../../../../data/services/point_service.dart';
-import '../../../../data/services/refund_account_service.dart';
 import '../../../../data/models/user/user_model.dart';
 import 'profile_settings_screen.dart';
 import '../../../customer_service/screens/qa_list_screen.dart';
@@ -63,19 +61,19 @@ class _MyPageScreenState extends State<MyPageScreen> {
           page: 0,
           size: 1,
         ),
-        CouponService.getAvailableCoupons(u.id),
+        CouponService.getAvailableCouponCount(u.id),
         PointService.getUserPoint(u.id),
       ]);
 
       if (!mounted) return;
 
       final orderResult = results[0] as Map<String, dynamic>;
-      final coupons = results[1] as List<dynamic>;
+      final couponCount = results[1] as int;
       final point = results[2] as int?;
 
       setState(() {
         _orderCount = _orderCountFromResult(orderResult);
-        _couponCount = coupons.length;
+        _couponCount = couponCount;
         _pointBalance = point ?? 0;
         _statsLoading = false;
       });
@@ -129,12 +127,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
       _currentUser = user;
       _statsLoading = true;
     });
-    // 상세 메뉴 진입 전에 자주 쓰는 사용자 데이터를 미리 준비합니다.
-    Future.wait([
-      AddressService.getAddressList(user.id),
-      RefundAccountService.fetch(user.id),
-      PointService.getPointHistory(user.id),
-    ]);
+    AuthService.prefetchMemberLists(user.id);
     await Future.wait([
       _loadMyPageStats(),
       _refreshCurrentUserInBackground(),

@@ -122,21 +122,16 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _ensureSession() async {
-    var loggedIn = await AuthService.isLoggedIn();
+    final loggedIn = await AuthService.isLoggedIn();
     if (!loggedIn) return;
-    if (!await AuthService.isAutoLoginEnabled()) {
-      await AuthService.logout();
-      return;
-    }
-    final active = await AuthService.isSessionActive();
-    if (!active) {
-      await AuthService.logout();
-      return;
-    }
-    // 세션 API에서 오늘 첫접속 100P가 지급됐을 수 있음 → FCM 토큰 재등록으로 푸시 보완
+    // 세션은 로그아웃 버튼에서만 지운다. 새로고침·자동로그인 체크로 풀지 않음.
+    try {
+      await AuthService.isSessionActive();
+    } catch (_) {}
     try {
       await FCMService().registerTokenWithServer();
     } catch (_) {}
+    AuthService.prefetchMemberLists();
   }
 
   Future<void> _prefetchHomeContent(
