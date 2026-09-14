@@ -170,6 +170,8 @@ class ApiEndpoints {
 
   // 쿠폰 관련
   static String userCoupons(String userId) => '/api/user/coupons?mb_id=$userId';
+  static String couponTabs(String userId) =>
+      '/api/user/coupons/tabs?mb_id=$userId';
   static String availableCoupons(String userId) =>
       '/api/user/coupons/available?mb_id=$userId';
   static String usedCoupons(String userId) =>

@@ -5,9 +5,9 @@ import '../network/api_client.dart';
 /// 이미지 URL 정규화 헬퍼
 ///
 /// **Cafe24 `data/` 정적 파일** (상품·리뷰·배너·미러 업로드 등)
-/// → `https://bomiora0.mycafe24.com/...` 직링크 (Node `/api/proxy/image` 사용 안 함)
-/// → Cafe24 nginx CORS: `Access-Control-Allow-Origin: https://bomiora.net`
-/// → `data/.htaccess` 에 ACAO 추가 금지 (nginx 와 중복 시 브라우저 CORS 실패)
+/// → 앱(네이티브): `https://bomiora0.mycafe24.com/...` 직링크
+/// → 웹: Flutter가 XHR로 이미지를 받아 Cafe24 CORS가 없으면 실패하므로
+///   같은 API의 `/api/proxy/image?url=` 로 우회
 ///
 /// **Node API 정적** (`/api/health/...`, `/api/user/reviews/images/...` 등)
 /// → [ApiClient.baseUrl] origin
@@ -323,21 +323,21 @@ class ImageUrlHelper {
     return '$_cafe24CanonicalHost$p';
   }
 
-  /// Cafe24 호스트 URL → canonical 직링크 (프록시 없음)
+  /// Cafe24 호스트 URL → canonical. 웹이면 CORS 우회 프록시를 붙인다.
   static String convertToLocalUrl(String url) {
     var u = unwrapProxyImageUrlIfAny(url);
     if (u.isEmpty) return url;
     if (isBrowserBlobOrInvalidImageUrl(u)) {
-      return '$_cafe24CanonicalHost/data/item/no_img.png';
+      return _webProxyIfNeeded('$_cafe24CanonicalHost/data/item/no_img.png');
     }
 
     if (u.contains('bomiora.kr') ||
         u.contains('www.bomiora.kr') ||
         u.contains('bomiora0.mycafe24.com')) {
-      return _cafe24CanonicalUrl(Uri.parse(u).path);
+      return _webProxyIfNeeded(_cafe24CanonicalUrl(Uri.parse(u).path));
     }
 
-    return u;
+    return _webProxyIfNeeded(u);
   }
 
   static bool _hostNeedsCorsProxy(String host) {
@@ -345,34 +345,42 @@ class ImageUrlHelper {
     if (h.isEmpty) return false;
     if (h == 'localhost' || h == '127.0.0.1') return false;
     if (h == 'bomiora.net' || h == 'www.bomiora.net') return false;
-    if (h == 'bomiora.kr' || h == 'www.bomiora.kr') return false;
     if (h == 'bomiora0.mycafe24.com' || h.endsWith('.mycafe24.com')) {
-      return false;
+      return true;
     }
-    return true;
+    if (h == 'bomiora.kr' || h == 'www.bomiora.kr') return true;
+    if (h.endsWith('.godohosting.com')) return true;
+    return false;
   }
 
-  /// 웹 CanvasKit/Html 위젯은 교차출처 이미지를 CORS로 요청함.
-  /// Cafe24는 ACAO가 있으나 godohosting 등 외부 CDN은 없어 프록시로 우회.
+  /// Cafe24 `/data/editor/` 는 서버 fetch 시 GNUBoard HTML이 내려와 프록시가 415를 냄.
+  /// 브라우저 `<img>` 직링크만 이미지가 나옴.
+  static bool _isCafe24EditorPath(String absolute) {
+    final path = Uri.tryParse(absolute)?.path.toLowerCase() ?? '';
+    return path.contains('/data/editor/');
+  }
+
+  static String _webProxyIfNeeded(String absolute) {
+    if (!kIsWeb) return absolute;
+    if (absolute.contains('/api/proxy/image')) return absolute;
+    if (_isCafe24EditorPath(absolute)) return absolute;
+    final uri = Uri.tryParse(absolute);
+    if (uri == null || uri.host.isEmpty) return absolute;
+    if (!_hostNeedsCorsProxy(uri.host)) return absolute;
+    return '${ApiClient.baseUrl}/api/proxy/image?url=${Uri.encodeComponent(absolute)}';
+  }
+
+  /// 웹 CanvasKit은 교차출처 이미지를 XHR로 받아 CORS가 필요함.
+  /// Cafe24·외부 CDN은 프록시로 우회.
   static String toWebSafeImageUrl(String url) {
     var raw = unwrapProxyImageUrlIfAny(url.trim());
     if (raw.isEmpty) return url;
     if (raw.startsWith('//')) raw = 'https:$raw';
 
-    late final String absolute;
     if (raw.startsWith('http://') || raw.startsWith('https://')) {
-      absolute = convertToLocalUrl(raw);
-    } else {
-      absolute = normalizeImageUrl(raw);
+      return convertToLocalUrl(raw);
     }
-
-    if (!kIsWeb) return absolute;
-    if (absolute.contains('/api/proxy/image')) return absolute;
-
-    final uri = Uri.tryParse(absolute);
-    if (uri == null || uri.host.isEmpty) return absolute;
-    if (!_hostNeedsCorsProxy(uri.host)) return absolute;
-    return '${ApiClient.baseUrl}/api/proxy/image?url=${Uri.encodeComponent(absolute)}';
+    return normalizeImageUrl(raw);
   }
 
   /// 간단한 이미지 URL 반환 (일반적인 용도)
@@ -424,6 +432,16 @@ class ImageUrlHelper {
     final p = path.toLowerCase();
     return p.contains('/api/user/reviews/images/') ||
         p.contains('/data/review_images/');
+  }
+
+  /// 리뷰 첨부(업로드) 경로 — 상품 썸네일과 구분
+  static bool isReviewAttachmentUrl(String? raw) {
+    final t = (raw ?? '').trim().toLowerCase();
+    if (t.isEmpty) return false;
+    return t.contains('review_images') ||
+        t.contains('itemuse') ||
+        t.contains('/api/user/reviews/images/') ||
+        t.contains('/uploads/review');
   }
 
   static bool isQaApiImagePath(String path) {

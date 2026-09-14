@@ -4,6 +4,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../../../core/constants/app_assets.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../common/widgets/app_network_image.dart';
+import '../../common/widgets/app_toast_overlay.dart';
 import '../../../data/models/review/review_model.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/coupon_service.dart';
@@ -721,24 +722,15 @@ class _CouponHelpSectionState extends State<_CouponHelpSection> {
             _downloadCount += 1;
           }
         });
-        final message = result['message'] as String?;
-        if (message != null && message.isNotEmpty) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(message)),
-          );
-        }
+        AppToastOverlay.show(context, '쿠폰 발급이 완료되었습니다.');
       } else {
         final message =
-            result['message'] as String? ?? '쿠폰 다운로드에 실패했습니다.';
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(message)),
-        );
+            result['message'] as String? ?? '쿠폰 발급에 실패했습니다.';
+        AppToastOverlay.show(context, message);
       }
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('쿠폰 다운로드 중 오류가 발생했습니다.')),
-        );
+        AppToastOverlay.show(context, '쿠폰 발급 중 오류가 발생했습니다.');
       }
     } finally {
       if (mounted) setState(() => _isDownloading = false);

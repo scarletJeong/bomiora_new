@@ -122,17 +122,16 @@ class _CouponScreenState extends State<CouponScreen> {
     if (_currentUser == null) return;
 
     try {
-      final results = await Future.wait([
-        CouponService.getAvailableCoupons(_currentUser!.id),
-        CouponService.getUsedCoupons(_currentUser!.id),
-        CouponService.getExpiredCoupons(_currentUser!.id),
-      ]);
+      final tabs = await CouponService.getCouponTabs(
+        _currentUser!.id,
+        forceRefresh: true,
+      );
 
       if (!mounted) return;
       setState(() {
-        _availableCoupons = results[0];
-        _usedCoupons = results[1];
-        _expiredCoupons = results[2];
+        _availableCoupons = tabs['available'] ?? <Coupon>[];
+        _usedCoupons = tabs['used'] ?? <Coupon>[];
+        _expiredCoupons = tabs['expired'] ?? <Coupon>[];
       });
     } catch (e) {
       debugPrint('쿠폰 조회 오류: $e');

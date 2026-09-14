@@ -6,6 +6,25 @@ import '../../core/network/api_client.dart';
 
 /// 주문/배송 서비스
 class OrderService {
+  static const Duration _listCacheTtl = Duration(minutes: 2);
+  static final Map<String, Map<String, dynamic>> _listCache = {};
+  static final Map<String, DateTime> _listCacheAt = {};
+  static final Map<String, Future<Map<String, dynamic>>> _listInFlight = {};
+
+  static void invalidateOrderList([String? mbId]) {
+    if (mbId == null || mbId.trim().isEmpty) {
+      _listCache.clear();
+      _listCacheAt.clear();
+      return;
+    }
+    final prefix = '${mbId.trim()}:';
+    final keys = _listCache.keys.where((k) => k.startsWith(prefix)).toList();
+    for (final key in keys) {
+      _listCache.remove(key);
+      _listCacheAt.remove(key);
+    }
+  }
+
   static dynamic _decodeBody(http.Response response) {
     return json.decode(response.body);
   }
@@ -31,12 +50,51 @@ class OrderService {
     String status = 'all',
     int page = 0,
     int size = 10,
+    bool lite = false,
+  }) async {
+    final cacheKey = '${mbId.trim()}:$period:$status:$page:$size:${lite ? 'lite' : 'full'}';
+    final cachedAt = _listCacheAt[cacheKey];
+    if (cachedAt != null &&
+        DateTime.now().difference(cachedAt) < _listCacheTtl) {
+      return Map<String, dynamic>.from(_listCache[cacheKey]!);
+    }
+    final pending = _listInFlight[cacheKey];
+    if (pending != null) return pending;
+
+    final request = _fetchOrderList(
+      mbId: mbId,
+      period: period,
+      status: status,
+      page: page,
+      size: size,
+      lite: lite,
+    );
+    _listInFlight[cacheKey] = request;
+    try {
+      final result = await request;
+      if (result['success'] == true) {
+        _listCache[cacheKey] = Map<String, dynamic>.from(result);
+        _listCacheAt[cacheKey] = DateTime.now();
+      }
+      return result;
+    } finally {
+      _listInFlight.remove(cacheKey);
+    }
+  }
+
+  static Future<Map<String, dynamic>> _fetchOrderList({
+    required String mbId,
+    required int period,
+    required String status,
+    required int page,
+    required int size,
+    bool lite = false,
   }) async {
     try {
 
       // 쿼리 파라미터를 URL에 직접 추가
       final queryString =
-          'mbId=$mbId&mb_id=$mbId&period=$period&status=$status&page=$page&size=$size';
+          'mbId=$mbId&mb_id=$mbId&period=$period&status=$status&page=$page&size=$size${lite ? '&lite=1' : ''}';
       
       final response = await _getOrderListResponse(queryString);
 

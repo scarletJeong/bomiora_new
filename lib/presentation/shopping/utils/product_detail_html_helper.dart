@@ -248,7 +248,7 @@ Widget buildProductCarouselImage({
         url: ImageUrlHelper.toWebSafeImageUrl(imageUrl),
         width: width,
         height: height,
-        fit: BoxFit.contain,
+        fit: BoxFit.cover,
         alignment: Alignment.center,
         decodeWidthLogical: width,
         decodeHeightLogical: height,

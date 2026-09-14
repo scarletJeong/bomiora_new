@@ -334,61 +334,58 @@ class _ProductListScreenState extends State<ProductListScreen> {
                 child: _buildCategoryTabs(),
               ),
             ),
-            SliverPadding(
-              padding: EdgeInsets.fromLTRB(
-                _pageHPad(context),
-                healthDp(context, 10),
-                _pageHPad(context),
-                healthDp(context, 48),
-              ),
-              sliver: _products.isEmpty
-                  ? SliverToBoxAdapter(
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(
-                          vertical: healthDp(context, 56),
-                        ),
-                        child: CenteredEmptyState(
-                          iconWidget: CenteredEmptyState.assetIcon(
-                            context,
-                            AppAssets.emptyCategoryIcon,
-                          ),
-                          message: '등록된 상품이 없습니다',
-                        ),
-                      ),
-                    )
-                  : SliverGrid(
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        mainAxisExtent:
-                            ProductCatalogCard.preferredMainAxisExtent(context),
-                        crossAxisSpacing: healthDp(context, 9),
-                        mainAxisSpacing: healthDp(context, 20),
-                      ),
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) {
-                          if (index == _products.length) {
-                            return Center(
-                              child: Padding(
-                                padding: EdgeInsets.all(healthDp(context, 16)),
-                                child: SizedBox(
-                                  width: healthDp(context, 28),
-                                  height: healthDp(context, 28),
-                                  child: const CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                ),
+            if (_products.isEmpty)
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: CenteredEmptyState(
+                  iconWidget: CenteredEmptyState.assetIcon(
+                    context,
+                    AppAssets.emptyCategoryIcon,
+                  ),
+                  message: '등록된 상품이 없습니다',
+                ),
+              )
+            else ...[
+              SliverPadding(
+                padding: EdgeInsets.fromLTRB(
+                  _pageHPad(context),
+                  healthDp(context, 10),
+                  _pageHPad(context),
+                  healthDp(context, 48),
+                ),
+                sliver: SliverGrid(
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    mainAxisExtent:
+                        ProductCatalogCard.preferredMainAxisExtent(context),
+                    crossAxisSpacing: healthDp(context, 9),
+                    mainAxisSpacing: healthDp(context, 20),
+                  ),
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      if (index == _products.length) {
+                        return Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(healthDp(context, 16)),
+                            child: SizedBox(
+                              width: healthDp(context, 28),
+                              height: healthDp(context, 28),
+                              child: const CircularProgressIndicator(
+                                strokeWidth: 2,
                               ),
-                            );
-                          }
-                          return _buildProductCard(_products[index]);
-                        },
-                        childCount:
-                            _products.length + (_isLoadingMore ? 1 : 0),
-                      ),
-                    ),
-            ),
-            SliverToBoxAdapter(child: SizedBox(height: healthDp(context, 32))),
-            const SliverToBoxAdapter(child: AppFooter()),
+                            ),
+                          ),
+                        );
+                      }
+                      return _buildProductCard(_products[index]);
+                    },
+                    childCount: _products.length + (_isLoadingMore ? 1 : 0),
+                  ),
+                ),
+              ),
+              SliverToBoxAdapter(child: SizedBox(height: healthDp(context, 32))),
+              const SliverToBoxAdapter(child: AppFooter()),
+            ],
           ],
         ),
       ),

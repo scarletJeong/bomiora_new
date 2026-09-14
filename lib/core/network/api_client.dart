@@ -49,6 +49,7 @@ class ApiClient {
 
   /// API 요청 시간·응답 크기 계측 로그 켜기 (릴리즈에서 debugPrint는 자동 no-op)
   static const bool _logTimings = true;
+  static final http.Client _http = http.Client();
 
   static void _logTiming(
     String method,
@@ -83,7 +84,7 @@ class ApiClient {
     }
 
     final sw = Stopwatch()..start();
-    final response = await http.get(
+    final response = await _http.get(
       Uri.parse('$baseUrl$endpoint'),
       headers: headers,
     );
@@ -123,7 +124,7 @@ class ApiClient {
 
     try {
       final sw = Stopwatch()..start();
-      final response = await http
+      final response = await _http
           .post(
         Uri.parse(url),
         headers: headers,
@@ -156,7 +157,8 @@ class ApiClient {
   // PUT 요청
   static Future<http.Response> put(
       String endpoint, Map<String, dynamic> data) async {
-    return await http.put(
+    final sw = Stopwatch()..start();
+    final response = await _http.put(
       Uri.parse('$baseUrl$endpoint'),
       headers: {
         'Content-Type': 'application/json',
@@ -165,12 +167,22 @@ class ApiClient {
       },
       body: json.encode(data),
     );
+    sw.stop();
+    _logTiming(
+      'PUT',
+      endpoint,
+      response.statusCode,
+      sw.elapsedMilliseconds,
+      response.bodyBytes.length,
+    );
+    return response;
   }
 
   // DELETE 요청
   static Future<http.Response> delete(String endpoint,
       {Map<String, dynamic>? data}) async {
-    return await http.delete(
+    final sw = Stopwatch()..start();
+    final response = await _http.delete(
       Uri.parse('$baseUrl$endpoint'),
       headers: {
         'Content-Type': 'application/json',
@@ -179,6 +191,15 @@ class ApiClient {
       },
       body: data != null ? json.encode(data) : null,
     );
+    sw.stop();
+    _logTiming(
+      'DELETE',
+      endpoint,
+      response.statusCode,
+      sw.elapsedMilliseconds,
+      response.bodyBytes.length,
+    );
+    return response;
   }
 
   // 파일 업로드 요청 (웹 호환성 고려)
@@ -210,9 +231,17 @@ class ApiClient {
         return http.Response('Invalid file type for upload', 400);
       }
 
+      final sw = Stopwatch()..start();
       var streamedResponse = await request.send();
       var response = await http.Response.fromStream(streamedResponse);
-
+      sw.stop();
+      _logTiming(
+        'POST',
+        endpoint,
+        response.statusCode,
+        sw.elapsedMilliseconds,
+        response.bodyBytes.length,
+      );
       return response;
     } catch (e) {
       return http.Response('File upload failed: $e', 500);

@@ -6,8 +6,9 @@ import '../../models/product/product_model.dart';
 import '../../services/auth_service.dart';
 
 class ProductRepository {
-  static const Duration _listCacheTtl = Duration(seconds: 30);
+  static const Duration _listCacheTtl = Duration(seconds: 60);
   static final Map<String, _ProductListCacheEntry> _listCache = {};
+  static final Map<String, Future<List<Product>>> _listInFlight = {};
   static const Duration _detailCacheTtl = Duration(minutes: 2);
   static final Map<String, Product> _detailCache = {};
   static final Map<String, Product> _previewCache = {};
@@ -188,30 +189,38 @@ class ProductRepository {
     if (hit != null && DateTime.now().isBefore(hit.expiresAt)) {
       return hit.products;
     }
+    final pending = _listInFlight[cacheKey];
+    if (pending != null) return pending;
 
-    try {
-      final response = await ApiClient.get(
-        '${ApiEndpoints.newProducts}?limit=$limit',
-      );
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        var list = _parseProductList(data);
-
-        if (limit > 0 && list.length > limit) {
-          list = list.take(limit).toList();
-        }
-        _listCache[cacheKey] = _ProductListCacheEntry(
-          products: list,
-          expiresAt: DateTime.now().add(_listCacheTtl),
+    final Future<List<Product>> future = () async {
+      try {
+        final response = await ApiClient.get(
+          '${ApiEndpoints.newProducts}?limit=$limit',
         );
-        return list;
-      }
 
-      return hit?.products ?? [];
-    } catch (e) {
-      return hit?.products ?? [];
-    }
+        if (response.statusCode == 200) {
+          final data = json.decode(response.body);
+          var list = _parseProductList(data);
+
+          if (limit > 0 && list.length > limit) {
+            list = list.take(limit).toList();
+          }
+          _listCache[cacheKey] = _ProductListCacheEntry(
+            products: list,
+            expiresAt: DateTime.now().add(_listCacheTtl),
+          );
+          return list;
+        }
+
+        return hit?.products ?? <Product>[];
+      } catch (e) {
+        return hit?.products ?? <Product>[];
+      } finally {
+        _listInFlight.remove(cacheKey);
+      }
+    }();
+    _listInFlight[cacheKey] = future;
+    return future;
   }
 
   /// MD pick — API(`/md-pick`)가 it_type5 + 정렬.
