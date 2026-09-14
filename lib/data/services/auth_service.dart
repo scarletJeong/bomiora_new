@@ -7,8 +7,11 @@ import '../../core/network/api_client.dart';
 import '../../core/network/api_endpoints.dart';
 import '../../core/utils/node_value_parser.dart';
 import 'fcm_service_stub.dart' if (dart.library.io) 'fcm_service.dart';
+import 'kakao_auth_service.dart';
+import 'naver_auth_service.dart';
 import 'prescription_purchase_history_service.dart';
 import 'recent_view_service.dart';
+import 'wish_service.dart';
 
 class AuthService {
   static const String _userKey = 'user_data';
@@ -61,8 +64,12 @@ class AuthService {
 
   // 사용자 정보 가져오기
   static Future<UserModel?> getUser() async {
-    if (_memoryUser != null) return _memoryUser;
     final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool(_isLoggedInKey) != true) {
+      _memoryUser = null;
+      return null;
+    }
+    if (_memoryUser != null) return _memoryUser;
     final userJson = prefs.getString(_userKey);
 
     if (userJson != null) {
@@ -87,14 +94,34 @@ class AuthService {
 
   // 로그아웃 (모든 데이터 삭제)
   static Future<void> logout() async {
+    final userId = (_memoryUser?.id ?? '').trim();
     _memoryUser = null;
-    await PrescriptionPurchaseHistoryService.clearCurrentUserCache();
-    final prefs = await SharedPreferences.getInstance();
 
-    await prefs.remove(_userKey);
-    await prefs.remove(_tokenKey);
-    await prefs.remove(_isLoggedInKey);
-    await prefs.remove(_autoLoginKey);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_userKey);
+      await prefs.remove(_tokenKey);
+      await prefs.remove(_isLoggedInKey);
+      await prefs.remove(_autoLoginKey);
+    } catch (_) {}
+
+    try {
+      if (userId.isNotEmpty) {
+        await PrescriptionPurchaseHistoryService.clearCacheForUser(userId);
+      }
+    } catch (_) {}
+
+    try {
+      WishService.clearMemoryCache();
+    } catch (_) {}
+
+    try {
+      await KakaoAuthService.logout();
+    } catch (_) {}
+
+    try {
+      await NaverAuthService.logout();
+    } catch (_) {}
   }
 
   /// 탈퇴/차단 등으로 세션이 유효한지 확인

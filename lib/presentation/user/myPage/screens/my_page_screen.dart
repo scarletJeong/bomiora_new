@@ -91,15 +91,20 @@ class _MyPageScreenState extends State<MyPageScreen> {
   }
 
   Future<void> _handleLogout() async {
-    try {
-      await AuthService.logout();
-      if (!mounted) return;
-      Navigator.pushNamedAndRemoveUntil(
-        context,
-        '/home',
-        (route) => false,
-      );
-    } catch (_) {}
+    await AuthService.logout();
+    if (!mounted) return;
+    setState(() {
+      _currentUser = null;
+      _orderCount = 0;
+      _couponCount = 0;
+      _pointBalance = 0;
+      _statsLoading = false;
+    });
+    Navigator.pushNamedAndRemoveUntil(
+      context,
+      '/home',
+      (route) => false,
+    );
   }
 
   @override
