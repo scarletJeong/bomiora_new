@@ -235,7 +235,7 @@ abstract final class AppAssets {
   static const String POSTIcon = '${_img}bankIcon_POST.svg';
   static const String KAKAOIcon = '${_img}bankIcon_KAKAO.svg';
   static const String KIcon = '${_img}bankIcon_K.svg';
-  static const String TOSSIcon = '${_img}bankIcon_TOSS.svg';
+  static const String TOSSIcon = '${_img}bankIcon_TOSS.png';
 
   /* 10. 건강콘텐츠 */
   // 엄지척 아이콘 - 콘텐츠 추천
@@ -272,5 +272,28 @@ abstract final class AppAssets {
   static const String emptyNoticeIcon = '${_img}empty_notice_icon.svg'; // 공지사항 빈 카드
   static const String emptyEventIcon = '${_img}empty_event_icon.svg'; // 이벤트 빈 카드
 
-
+  /// 환불 계좌 등 은행명 → 아이콘 경로
+  static String? bankIconForName(String bankName) {
+    final n = bankName.trim();
+    if (n.isEmpty) return null;
+    if (n.contains('국민')) return KBIcon;
+    if (n.contains('신한은행')) return SHIcon;
+    if (n.contains('수협')) return SHIcon;
+    if (n.contains('우리')) return WOORIIcon;
+    if (n.contains('하나')) return KEBIcon;
+    if (n.contains('농협')) return NHIcon;
+    if (n.contains('기업')) return IBKIcon;
+    if (n.contains('카카오')) return KAKAOIcon;
+    if (n.contains('케이뱅크')) return KIcon;
+    if (n.contains('토스')) return TOSSIcon;
+    if (n.contains('부산') || n.contains('대구') || n.contains('경남')) {
+      return DGIcon;
+    }
+    if (n.contains('광주') || n.contains('전북')) return JBIcon;
+    if (n.contains('제주')) return JJIcon;
+    if (n.contains('우체국')) return POSTIcon;
+    if (n.contains('SC제일') || n.contains('제일')) return SCIcon;
+    if (n.contains('씨티')) return CITIIcon;
+    return null;
+  }
 }

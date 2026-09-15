@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+import '../../../../core/constants/app_assets.dart';
 import '../../../../data/services/refund_account_service.dart';
 import '../../../common/widgets/dropdown_btn.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
-import '../../myPage/utils/bank_icon_resolver.dart';
 
 /// 환불 계좌 입력 결과 (가상계좌 주문 취소 등)
 class RefundAccountInput {
@@ -397,19 +397,16 @@ class _BankIconLeading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final asset = bankIconAssetForName(bankName);
+    final asset = AppAssets.bankIconForName(bankName);
     if (asset == null) {
       return SizedBox(width: size, height: size);
     }
     return SizedBox(
       width: size,
       height: size,
-      child: SvgPicture.asset(
-        asset,
-        width: size,
-        height: size,
-        fit: BoxFit.contain,
-      ),
+      child: asset.endsWith('.png')
+          ? Image.asset(asset, width: size, height: size, fit: BoxFit.contain)
+          : SvgPicture.asset(asset, width: size, height: size, fit: BoxFit.contain),
     );
   }
 }

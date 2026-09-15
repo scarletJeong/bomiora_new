@@ -10,7 +10,6 @@ import '../../../common/widgets/app_toast_overlay.dart';
 import '../../../common/widgets/centered_empty_state.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
-import '../utils/bank_icon_resolver.dart';
 
 class RefundAccountScreen extends StatefulWidget {
   const RefundAccountScreen({super.key});
@@ -329,19 +328,16 @@ class _BankIconLeading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final asset = bankIconAssetForName(bankName);
+    final asset = AppAssets.bankIconForName(bankName);
     if (asset == null) {
       return SizedBox(width: size, height: size);
     }
     return SizedBox(
       width: size,
       height: size,
-      child: SvgPicture.asset(
-        asset,
-        width: size,
-        height: size,
-        fit: BoxFit.contain,
-      ),
+      child: asset.endsWith('.png')
+          ? Image.asset(asset, width: size, height: size, fit: BoxFit.contain)
+          : SvgPicture.asset(asset, width: size, height: size, fit: BoxFit.contain),
     );
   }
 }

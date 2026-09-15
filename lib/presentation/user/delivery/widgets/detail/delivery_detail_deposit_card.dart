@@ -5,7 +5,7 @@ import '../../../../../core/utils/date_formatter.dart';
 import '../../../../../core/utils/price_formatter.dart';
 import '../../../../../data/models/delivery/delivery_model.dart';
 import '../../../../health/health_common/health_responsive_scale.dart';
-import '../../../common/widgets/app_toast_overlay.dart';
+import '../../../../common/widgets/app_toast_overlay.dart';
 import 'delivery_detail_section_style.dart';
 
 /// 결제대기 가상계좌 입금 안내 카드
