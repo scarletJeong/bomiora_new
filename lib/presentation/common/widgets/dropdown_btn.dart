@@ -93,6 +93,7 @@ class DropdownBtn extends StatefulWidget {
     Widget? Function(String item)? leadingBuilder,
     double itemLeadingGapBase = 8,
     EdgeInsetsGeometry? itemPadding,
+    String? selectedValue,
     bool blurBackdrop = false,
     double blurSigma = 4,
     double backdropOpacity = 0.72,
@@ -190,6 +191,9 @@ class DropdownBtn extends StatefulWidget {
                         for (int i = 0; i < items.length; i++)
                           _DropdownHoverItem(
                             label: items[i],
+                            selected: selectedValue != null &&
+                                selectedValue.isNotEmpty &&
+                                items[i] == selectedValue,
                             showDivider: i != items.length - 1,
                             dividerWidth: dividerWidth,
                             itemPadding: resolvedItemPadding,
@@ -350,6 +354,7 @@ class _DropdownBtnState extends State<DropdownBtn> {
       context: context,
       anchorKey: _anchorKey,
       items: widget.items,
+      selectedValue: widget.value,
       panelMaxHeight: widget.panelMaxHeight,
       itemFontSizeBase: widget.itemFontSizeBase,
       itemTextAlign: widget.itemTextAlign,
@@ -447,6 +452,7 @@ class _DropdownBtnState extends State<DropdownBtn> {
 class _DropdownHoverItem extends StatefulWidget {
   const _DropdownHoverItem({
     required this.label,
+    this.selected = false,
     required this.showDivider,
     required this.dividerWidth,
     required this.itemPadding,
@@ -460,6 +466,7 @@ class _DropdownHoverItem extends StatefulWidget {
   });
 
   final String label;
+  final bool selected;
   final bool showDivider;
   final double dividerWidth;
   final EdgeInsetsGeometry itemPadding;
@@ -480,11 +487,12 @@ class _DropdownHoverItemState extends State<_DropdownHoverItem> {
 
   @override
   Widget build(BuildContext context) {
+    final highlighted = _hovered || widget.selected;
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
       child: Material(
-        color: Colors.white,
+        color: Colors.transparent,
         child: InkWell(
           onTap: widget.onTap,
           splashColor: Colors.transparent,
@@ -494,15 +502,25 @@ class _DropdownHoverItemState extends State<_DropdownHoverItem> {
           child: Container(
             width: double.infinity,
             padding: widget.itemPadding,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border(
-                bottom: BorderSide(
-                  width: widget.showDivider ? widget.dividerWidth : 0,
-                  color: const Color(0x7FD2D2D2),
-                ),
-              ),
-            ),
+            decoration: highlighted
+                ? const ShapeDecoration(
+                    color: Color(0x19FF5A8D),
+                    shape: RoundedRectangleBorder(
+                      side: BorderSide(
+                        width: 0.30,
+                        color: Color(0x7FD2D2D2),
+                      ),
+                    ),
+                  )
+                : BoxDecoration(
+                    color: Colors.white,
+                    border: Border(
+                      bottom: BorderSide(
+                        width: widget.showDivider ? widget.dividerWidth : 0,
+                        color: const Color(0x7FD2D2D2),
+                      ),
+                    ),
+                  ),
             child: Row(
               mainAxisAlignment: widget.itemTextAlign == TextAlign.center
                   ? MainAxisAlignment.center
@@ -519,9 +537,7 @@ class _DropdownHoverItemState extends State<_DropdownHoverItem> {
                     textAlign: widget.itemTextAlign,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: _hovered
-                          ? const Color(0xFFFF5A8D)
-                          : const Color(0xFF1A1A1A),
+                      color: const Color(0xFF1A1A1A),
                       fontSize: widget.itemFontSize,
                       fontFamily: widget.itemFontFamily,
                       fontWeight: widget.itemFontWeight,

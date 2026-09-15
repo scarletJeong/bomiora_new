@@ -1013,30 +1013,15 @@ mixin HealthProfileForm1Ui on _HealthProfileFormState {
                   ),
                   itemBuilder: (_, i) {
                     final opt = options[i];
-                    final selected = opt == current;
-                    return InkWell(
+                    return _Answer6OptionTile(
+                      label: opt,
+                      selected: opt == current,
+                      fontSize: healthSp(ctx, 16),
+                      verticalPadding: healthDp(ctx, 14),
                       onTap: () {
                         onSelected(opt);
                         Navigator.of(ctx).pop();
                       },
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(
-                          vertical: healthDp(ctx, 14),
-                        ),
-                        child: Text(
-                          opt,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: selected
-                                ? const Color(0xFFFF5A8D)
-                                : const Color(0xFF1A1A1E),
-                            fontSize: healthSp(ctx, 16),
-                            fontFamily: 'Gmarket Sans TTF',
-                            fontWeight:
-                                selected ? FontWeight.w500 : FontWeight.w300,
-                          ),
-                        ),
-                      ),
                     );
                   },
                 ),
@@ -1248,6 +1233,70 @@ mixin HealthProfileForm1Ui on _HealthProfileFormState {
           ],
         ),
       ],
+    );
+  }
+}
+
+class _Answer6OptionTile extends StatefulWidget {
+  const _Answer6OptionTile({
+    required this.label,
+    required this.selected,
+    required this.fontSize,
+    required this.verticalPadding,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final double fontSize;
+  final double verticalPadding;
+  final VoidCallback onTap;
+
+  @override
+  State<_Answer6OptionTile> createState() => _Answer6OptionTileState();
+}
+
+class _Answer6OptionTileState extends State<_Answer6OptionTile> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final highlighted = _hovered || widget.selected;
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: InkWell(
+        onTap: widget.onTap,
+        splashColor: Colors.transparent,
+        highlightColor: Colors.transparent,
+        hoverColor: Colors.transparent,
+        overlayColor: const WidgetStatePropertyAll(Colors.transparent),
+        child: Container(
+          width: double.infinity,
+          padding: EdgeInsets.symmetric(vertical: widget.verticalPadding),
+          decoration: highlighted
+              ? const ShapeDecoration(
+                  color: Color(0x19FF5A8D),
+                  shape: RoundedRectangleBorder(
+                    side: BorderSide(
+                      width: 0.30,
+                      color: Color(0x7FD2D2D2),
+                    ),
+                  ),
+                )
+              : null,
+          child: Text(
+            widget.label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: const Color(0xFF1A1A1E),
+              fontSize: widget.fontSize,
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: widget.selected ? FontWeight.w500 : FontWeight.w300,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
