@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../settings/policy/policy_texts.dart';
 import 'agreement_popup_dialog.dart';
 
 class TermsOfServicePopup extends StatelessWidget {
@@ -7,10 +8,10 @@ class TermsOfServicePopup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const AgreementPopupDialog(
+    return AgreementPopupDialog(
       title: '이용약관',
-      subtitle: '이용약관',
-      body: '이용약관 내용은 추후 제공 예정입니다.',
+      subtitle: PolicyTexts.termsHeading,
+      body: PolicyTexts.popupBody(sections: PolicyTexts.termsSections),
     );
   }
 }

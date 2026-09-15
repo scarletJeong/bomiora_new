@@ -87,6 +87,7 @@ class _AgreementWidgetState extends State<AgreementWidget> {
       children: [
         Expanded(
           child: SingleChildScrollView(
+            padding: EdgeInsets.symmetric(horizontal: healthDp(context, 20)),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
@@ -199,41 +200,53 @@ class _AgreementWidgetState extends State<AgreementWidget> {
             ),
           ),
         ),
-        SizedBox(height: healthDp(context, 20)),
-        SizedBox(
-          width: double.infinity,
-          height: healthDp(context, 40),
-          child: ElevatedButton(
-            onPressed: !_canProceed || widget.isLoading
-                ? null
-                : () => widget.onNext(_agreements),
-            style: ElevatedButton.styleFrom(
-              elevation: 0,
-              backgroundColor:
-                  _canProceed ? const Color(0xFFFF5A8D) : const Color(0xFFD2D2D2),
-              disabledBackgroundColor: const Color(0xFFD2D2D2),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(healthDp(context, 10)),
+        SafeArea(
+          top: false,
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              healthDp(context, 20),
+              healthDp(context, 10),
+              healthDp(context, 20),
+              healthDp(context, 10),
+            ),
+            child: SizedBox(
+              width: double.infinity,
+              height: healthDp(context, 40),
+              child: ElevatedButton(
+                onPressed: !_canProceed || widget.isLoading
+                    ? null
+                    : () => widget.onNext(_agreements),
+                style: ElevatedButton.styleFrom(
+                  elevation: 0,
+                  backgroundColor: _canProceed
+                      ? const Color(0xFFFF5A8D)
+                      : const Color(0xFFD2D2D2),
+                  disabledBackgroundColor: const Color(0xFFD2D2D2),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(healthDp(context, 10)),
+                  ),
+                ),
+                child: widget.isLoading
+                    ? SizedBox(
+                        width: healthDp(context, 18),
+                        height: healthDp(context, 18),
+                        child: const CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : Text(
+                        '다음',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: healthSp(context, 20),
+                          fontFamily: 'Gmarket Sans TTF',
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
               ),
             ),
-            child: widget.isLoading
-                ? SizedBox(
-                    width: healthDp(context, 18),
-                    height: healthDp(context, 18),
-                    child: const CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                    ),
-                  )
-                : Text(
-                    '다음',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: healthSp(context, 20),
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
           ),
         ),
       ],

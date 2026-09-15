@@ -63,88 +63,93 @@ class SignupDoneScreen extends StatelessWidget {
               titleFontSize: healthSp(context, 16),
               leadingIconSize: healthDp(context, 24),
             ),
-            child: SafeArea(
-              top: false,
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(
-                  healthDp(context, 20),
-                  healthDp(context, 20),
-                  healthDp(context, 20),
-                  healthDp(context, 20),
-                ),
-                child: Column(
-                  children: [
-                    Expanded(
-                      child: SingleChildScrollView(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Align(
-                              alignment: Alignment.centerLeft,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    '회원 가입 완료 !',
-                                    style: TextStyle(
-                                      color: Colors.black,
-                                      fontSize: healthSp(context, 20),
-                                      fontFamily: 'Gmarket Sans TTF',
-                                      fontWeight: FontWeight.w500,
-                                      height: 1,
-                                    ),
-                                  ),
-                                  SizedBox(height: healthDp(context, 4)),
-                                  Text(
-                                    '회원가입을 진심으로 축하드립니다.\n보미오라만의 다양한 서비스를 만나보세요.',
-                                    style: TextStyle(
-                                      color: const Color(0xFF898686),
-                                      fontSize: healthSp(context, 14),
-                                      fontFamily: 'Gmarket Sans TTF',
-                                      fontWeight: FontWeight.w300,
-                                      height: 1,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            SizedBox(height: healthDp(context, 20)),
-                            _BenefitCard(
-                              title: '문진표',
-                              subtitle: '나의 건강 상태 확인하기',
-                              iconAsset: AppAssets.signupComplete,
-                              iconBackground: const Color(0xFFEFF6FF),
-                              onTap: () => _goHealthQuestionnaire(context),
-                            ),
-                            SizedBox(height: healthDp(context, 10)),
-                            const _BenefitCard(
-                              title: '비대면 진료',
-                              subtitle: '집에서 편하게 받는 진료',
-                              iconAsset: AppAssets.signupCompleteHealthProduct,
-                              iconBackground: Color(0xFFECFDF5),
-                            ),
-                            SizedBox(height: healthDp(context, 10)),
-                            _BenefitCard(
-                              title: '쇼핑몰',
-                              subtitle: '맞춤 영양제 및 건강 용품',
-                              iconAsset: AppAssets.signupCompleteShopping,
-                              iconBackground: const Color(0xFFFFF7ED),
-                              onTap: () => _goShoppingMall(context),
-                            ),
-                            SizedBox(height: healthDp(context, 10)),
-                            _BenefitCard(
-                              title: '건강 대시보드',
-                              subtitle: '나의 건강 데이터를 한눈에',
-                              iconAsset: AppAssets.signupCompleteHealthDashboard,
-                              iconBackground: const Color(0xFFFAF5FF),
-                              onTap: () => _goHealthDashboard(context),
-                            ),
-                          ],
-                        ),
-                      ),
+            child: Column(
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: EdgeInsets.fromLTRB(
+                      healthDp(context, 20),
+                      healthDp(context, 20),
+                      healthDp(context, 20),
+                      0,
                     ),
-                    SizedBox(height: healthDp(context, 20)),
-                    SizedBox(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '회원 가입 완료 !',
+                                style: TextStyle(
+                                  color: Colors.black,
+                                  fontSize: healthSp(context, 20),
+                                  fontFamily: 'Gmarket Sans TTF',
+                                  fontWeight: FontWeight.w500,
+                                  height: 1,
+                                ),
+                              ),
+                              SizedBox(height: healthDp(context, 4)),
+                              Text(
+                                '회원가입을 진심으로 축하드립니다.\n보미오라만의 다양한 서비스를 만나보세요.',
+                                style: TextStyle(
+                                  color: const Color(0xFF898686),
+                                  fontSize: healthSp(context, 14),
+                                  fontFamily: 'Gmarket Sans TTF',
+                                  fontWeight: FontWeight.w300,
+                                  height: 1,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(height: healthDp(context, 20)),
+                        _BenefitCard(
+                          title: '문진표',
+                          subtitle: '나의 건강 상태 확인하기',
+                          iconAsset: AppAssets.signupComplete,
+                          iconBackground: const Color(0xFFEFF6FF),
+                          onTap: () => _goHealthQuestionnaire(context),
+                        ),
+                        SizedBox(height: healthDp(context, 10)),
+                        const _BenefitCard(
+                          title: '비대면 진료',
+                          subtitle: '집에서 편하게 받는 진료',
+                          iconAsset: AppAssets.signupCompleteHealthProduct,
+                          iconBackground: Color(0xFFECFDF5),
+                        ),
+                        SizedBox(height: healthDp(context, 10)),
+                        _BenefitCard(
+                          title: '쇼핑몰',
+                          subtitle: '맞춤 영양제 및 건강 용품',
+                          iconAsset: AppAssets.signupCompleteShopping,
+                          iconBackground: const Color(0xFFFFF7ED),
+                          onTap: () => _goShoppingMall(context),
+                        ),
+                        SizedBox(height: healthDp(context, 10)),
+                        _BenefitCard(
+                          title: '건강 대시보드',
+                          subtitle: '나의 건강 데이터를 한눈에',
+                          iconAsset: AppAssets.signupCompleteHealthDashboard,
+                          iconBackground: const Color(0xFFFAF5FF),
+                          onTap: () => _goHealthDashboard(context),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                SafeArea(
+                  top: false,
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      healthDp(context, 20),
+                      healthDp(context, 10),
+                      healthDp(context, 20),
+                      healthDp(context, 10),
+                    ),
+                    child: SizedBox(
                       width: double.infinity,
                       height: healthDp(context, 40),
                       child: ElevatedButton(
@@ -170,9 +175,9 @@ class SignupDoneScreen extends StatelessWidget {
                         ),
                       ),
                     ),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             ),
           ),
         ),

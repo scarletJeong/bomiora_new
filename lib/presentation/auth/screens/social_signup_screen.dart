@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../../data/models/user/user_model.dart';
 import '../../../data/repositories/auth/auth_repository.dart';
 import '../../../data/services/auth_service.dart';
+import '../../../data/services/last_login_via_service.dart';
 import '../../../data/services/pending_product_checkout.dart';
 import '../../../core/utils/node_value_parser.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
@@ -143,6 +144,11 @@ class _SocialSignupScreenState extends State<SocialSignupScreen> {
       await AuthService.saveLoginData(
         user: UserModel.fromJson(userJson),
         token: NodeValueParser.asString(data['token']),
+      );
+      await LastLoginViaService.save(
+        widget.provider == 'naver'
+            ? LastLoginViaService.naver
+            : LastLoginViaService.kakao,
       );
 
       if (!mounted) return;

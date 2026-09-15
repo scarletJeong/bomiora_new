@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../settings/policy/policy_texts.dart';
 import 'agreement_popup_dialog.dart';
 
 class PrivacyCollectionPopup extends StatelessWidget {
@@ -7,10 +8,13 @@ class PrivacyCollectionPopup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const AgreementPopupDialog(
+    return AgreementPopupDialog(
       title: '개인정보 수집 및 이용',
-      subtitle: '개인정보 수집 및 이용',
-      body: '개인정보 수집 및 이용 약관 내용은 추후 제공 예정입니다.',
+      subtitle: PolicyTexts.privacyHeading,
+      body: PolicyTexts.popupBody(
+        sections: PolicyTexts.privacySections,
+        intros: PolicyTexts.privacyIntros,
+      ),
     );
   }
 }

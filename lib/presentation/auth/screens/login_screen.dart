@@ -4,6 +4,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../../../data/repositories/auth/auth_repository.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/kakao_auth_service.dart';
+import '../../../data/services/last_login_via_service.dart';
 import '../../../data/services/naver_auth_service.dart';
 import '../../../core/utils/web_history.dart';
 import '../../../data/models/user/user_model.dart';
@@ -36,11 +37,13 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _didApplyPrefillEmail = false;
   bool _naverWebResumeStarted = false;
   bool _kakaoWebResumeStarted = false;
+  String? _lastLoginVia;
 
   @override
   void initState() {
     super.initState();
     _loadAutoLoginPref();
+    _loadLastLoginVia();
     if (kIsWeb) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _resumeKakaoWebAuthIfNeeded();
@@ -53,6 +56,12 @@ class _LoginScreenState extends State<LoginScreen> {
     final enabled = await AuthService.isAutoLoginEnabled();
     if (!mounted) return;
     setState(() => _autoLogin = enabled);
+  }
+
+  Future<void> _loadLastLoginVia() async {
+    final via = await LastLoginViaService.load();
+    if (!mounted) return;
+    setState(() => _lastLoginVia = via);
   }
   @override
   void didChangeDependencies() {
@@ -273,20 +282,35 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           SizedBox(height: healthDp(context, 24)),
           _buildLoginButton(),
+          if (_lastLoginVia == LastLoginViaService.email) ...[
+            SizedBox(height: healthDp(context, 8)),
+            Text(
+              '최근 이메일로 로그인하셨습니다.',
+              style: TextStyle(
+                color: const Color(0xFF898383),
+                fontSize: healthSp(context, 12),
+                fontFamily: 'Gmarket Sans TTF',
+                fontWeight: FontWeight.w300,
+              ),
+            ),
+          ],
           SizedBox(height: healthDp(context, 20)),
           _buildLinkRow(),
           SizedBox(height: healthDp(context, 48)),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               _buildSocialIconButton(
                 imagePath: AppAssets.loginNaver,
                 onTap: _isLoading ? null : _handleNaverLogin,
+                showRecentBadge: _lastLoginVia == LastLoginViaService.naver,
               ),
               SizedBox(width: healthDp(context, 10)),
               _buildSocialIconButton(
                 imagePath: AppAssets.loginKakao,
                 onTap: _isLoading ? null : _handleKakaoLogin,
+                showRecentBadge: _lastLoginVia == LastLoginViaService.kakao,
               ),
             ],
           ),
@@ -353,6 +377,7 @@ class _LoginScreenState extends State<LoginScreen> {
           token: token,
           autoLogin: _autoLogin,
         );
+        await LastLoginViaService.save(LastLoginViaService.email);
 
         if (!mounted) return;
         
@@ -552,39 +577,64 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _buildLoginButton() {
-    return SizedBox(
-      width: double.infinity,
-      height: healthDp(context, 52),
-      child: ElevatedButton(
-        onPressed: _isLoading ? null : _handleLogin,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFFFF5A8D),
-          disabledBackgroundColor: const Color(0xFFFF5A8D).withValues(alpha: 0.7),
-          elevation: 0,
-          shadowColor: const Color(0x3F000000),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(healthDp(context, 7)),
-          ),
-        ),
-        child: _isLoading
-            ? SizedBox(
-                height: healthDp(context, 10),
-                width: healthDp(context, 20),
-                child: CircularProgressIndicator(
-                  strokeWidth: healthDp(context, 2),
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                ),
-              )
-            : Text(
-                '로그인',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: healthSp(context, 16),
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w500,
+    final isRecentEmail = _lastLoginVia == LastLoginViaService.email;
+    final radius = healthDp(context, 7);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        if (isRecentEmail) ...[
+          const _RecentLoginBadge(),
+          SizedBox(height: healthDp(context, 8)),
+        ],
+        Container(
+          width: double.infinity,
+          decoration: isRecentEmail
+              ? BoxDecoration(
+                  borderRadius: BorderRadius.circular(radius),
+                  border: Border.all(
+                    color: const Color(0xFFFF5C8F),
+                    width: healthDp(context, 2),
+                  ),
+                )
+              : null,
+          child: SizedBox(
+            height: healthDp(context, 52),
+            child: ElevatedButton(
+            onPressed: _isLoading ? null : _handleLogin,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFFF5A8D),
+              disabledBackgroundColor:
+                  const Color(0xFFFF5A8D).withValues(alpha: 0.7),
+              elevation: 0,
+              shadowColor: const Color(0x3F000000),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(
+                  isRecentEmail ? radius - healthDp(context, 1) : radius,
                 ),
               ),
-      ),
+            ),
+            child: _isLoading
+                ? SizedBox(
+                    height: healthDp(context, 10),
+                    width: healthDp(context, 20),
+                    child: CircularProgressIndicator(
+                      strokeWidth: healthDp(context, 2),
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  )
+                : Text(
+                    '로그인',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: healthSp(context, 16),
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+          ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -678,20 +728,50 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildSocialIconButton({
     required String imagePath,
     required VoidCallback? onTap,
+    bool showRecentBadge = false,
   }) {
     final size = healthDp(context, 54);
-    return GestureDetector(
+    final icon = GestureDetector(
       onTap: onTap,
-      child: SvgPicture.asset(
-        imagePath,
+      child: Container(
         width: size,
         height: size,
-        fit: BoxFit.fill,
+        decoration: showRecentBadge
+            ? BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: const Color(0xFFFF5C8F),
+                  width: healthDp(context, 2),
+                ),
+              )
+            : null,
+        child: ClipOval(
+          child: SvgPicture.asset(
+            imagePath,
+            width: size,
+            height: size,
+            fit: BoxFit.fill,
+          ),
+        ),
       ),
+    );
+
+    if (!showRecentBadge) return icon;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const _RecentLoginBadge(),
+        SizedBox(height: healthDp(context, 6)),
+        icon,
+      ],
     );
   }
 
-  Future<void> _completeSocialLogin(Map<String, dynamic> result) async {
+  Future<void> _completeSocialLogin(
+    Map<String, dynamic> result, {
+    required String via,
+  }) async {
     final resultData = result['data'];
     if (resultData is! Map) {
       throw const FormatException('소셜 로그인 응답 형식이 올바르지 않습니다.');
@@ -720,6 +800,7 @@ class _LoginScreenState extends State<LoginScreen> {
       token: token,
       autoLogin: _autoLogin,
     );
+    await LastLoginViaService.save(via);
 
     if (!mounted) return;
 
@@ -768,7 +849,12 @@ class _LoginScreenState extends State<LoginScreen> {
     String? birthday,
   }) async {
     if (result['success'] == true) {
-      await _completeSocialLogin(result);
+      await _completeSocialLogin(
+        result,
+        via: provider == 'naver'
+            ? LastLoginViaService.naver
+            : LastLoginViaService.kakao,
+      );
       return;
     }
 
@@ -1033,5 +1119,33 @@ class _LoginScreenState extends State<LoginScreen> {
         });
       }
     }
+  }
+}
+
+class _RecentLoginBadge extends StatelessWidget {
+  const _RecentLoginBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: healthDp(context, 8),
+        vertical: healthDp(context, 3),
+      ),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFF5C8F),
+        borderRadius: BorderRadius.circular(healthDp(context, 20)),
+      ),
+      child: Text(
+        '최근 로그인',
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: healthSp(context, 10),
+          fontFamily: 'Gmarket Sans TTF',
+          fontWeight: FontWeight.w500,
+          height: 1,
+        ),
+      ),
+    );
   }
 }

@@ -6,6 +6,7 @@ import '../../../core/validation/app_password_validator.dart';
 import '../../../data/models/user/user_model.dart';
 import '../../../data/repositories/auth/auth_repository.dart';
 import '../../../data/services/auth_service.dart';
+import '../../../data/services/last_login_via_service.dart';
 import '../../../data/services/pending_product_checkout.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/app_alert_dialog.dart';
@@ -76,8 +77,12 @@ class _SignupScreenState extends State<SignupScreen> {
 
   bool get _canInputComplete {
     if (_isLoading || !_hasCert || !_isEmailVerified) return false;
-    return _passwordController.text.isNotEmpty &&
-        _passwordConfirmController.text.isNotEmpty;
+    if (_passwordController.text.isEmpty ||
+        _passwordConfirmController.text.isEmpty) {
+      return false;
+    }
+    if (_hasConfirmMismatch) return false;
+    return isValidAppPassword(_passwordController.text);
   }
 
   bool _isDuplicateEmailMessage(String? message) {
@@ -437,6 +442,7 @@ class _SignupScreenState extends State<SignupScreen> {
         final user = UserModel.fromJson(userJson);
         final token = NodeValueParser.asString(dataMap['token']);
         await AuthService.saveLoginData(user: user, token: token);
+        await LastLoginViaService.save(LastLoginViaService.email);
 
         if (!mounted) return;
         if (PendingProductCheckout.navigateAfterAuth(context)) return;
@@ -503,24 +509,13 @@ class _SignupScreenState extends State<SignupScreen> {
               titleFontSize: healthSp(context, 16),
               leadingIconSize: healthDp(context, 24),
             ),
-            child: SafeArea(
-              top: false,
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(
-                  healthDp(context, 20),
-                  0,
-                  healthDp(context, 20),
-                  healthDp(context, 20),
+            child: switch (_step) {
+              _SignupStep.form => _buildFormStep(),
+              _SignupStep.agreement => AgreementWidget(
+                  isLoading: _isLoading,
+                  onNext: _handleAgreementNext,
                 ),
-                child: switch (_step) {
-                  _SignupStep.form => _buildFormStep(),
-                  _SignupStep.agreement => AgreementWidget(
-                      isLoading: _isLoading,
-                      onNext: _handleAgreementNext,
-                    ),
-                },
-              ),
-            ),
+            },
           ),
         ),
       ),
@@ -544,6 +539,7 @@ class _SignupScreenState extends State<SignupScreen> {
       children: [
         Expanded(
           child: SingleChildScrollView(
+            padding: EdgeInsets.symmetric(horizontal: healthDp(context, 20)),
             child: Form(
               key: _formKey,
               child: Column(
@@ -647,91 +643,93 @@ class _SignupScreenState extends State<SignupScreen> {
                           return null;
                         },
                       ),
-                      if (_isEmailVerified) ...[
-                        SizedBox(height: healthDp(context, 10)),
-                        _SignupTextField(
-                          label: '비밀번호',
-                          controller: _passwordController,
-                          focusNode: _passwordFocus,
-                          textInputAction: TextInputAction.next,
-                          onFieldSubmitted: (_) =>
-                              _passwordConfirmFocus.requestFocus(),
-                          hintText: '비밀번호를 입력해주세요',
-                          obscureText: _obscurePassword,
-                          suffix: IconButton(
-                            onPressed: () {
-                              setState(() {
-                                _obscurePassword = !_obscurePassword;
-                              });
-                            },
-                            padding: EdgeInsets.zero,
-                            visualDensity: VisualDensity.compact,
-                            constraints: BoxConstraints(
-                              minWidth: healthDp(context, 40),
-                              minHeight: healthDp(context, 40),
-                            ),
-                            icon: Icon(
-                              _obscurePassword
-                                  ? Icons.visibility_off
-                                  : Icons.visibility,
-                              color: const Color(0xFF898686),
-                              size: healthDp(context, 20),
-                            ),
-                          ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return '비밀번호를 입력해주세요.';
-                            }
-                            if (!isValidAppPassword(value)) {
-                              return '8~16자/문자,숫자,특수문자를 모두 포함해주세요.';
-                            }
-                            return null;
+                      SizedBox(height: healthDp(context, 10)),
+                      _SignupTextField(
+                        label: '비밀번호',
+                        controller: _passwordController,
+                        focusNode: _passwordFocus,
+                        textInputAction: TextInputAction.next,
+                        onFieldSubmitted: (_) =>
+                            _passwordConfirmFocus.requestFocus(),
+                        hintText: '비밀번호를 입력해주세요',
+                        obscureText: _obscurePassword,
+                        suffix: IconButton(
+                          onPressed: () {
+                            setState(() {
+                              _obscurePassword = !_obscurePassword;
+                            });
                           },
-                          helperText: '*8~16자/문자,숫자,특수문자 모두 혼용',
-                        ),
-                        SizedBox(height: healthDp(context, 10)),
-                        _SignupTextField(
-                          label: '비밀번호 확인',
-                          controller: _passwordConfirmController,
-                          focusNode: _passwordConfirmFocus,
-                          textInputAction: TextInputAction.done,
-                          hintText: '비밀번호를 다시 입력해주세요',
-                          obscureText: _obscurePasswordConfirm,
-                          hasError: _hasConfirmMismatch,
-                          errorText:
-                              _hasConfirmMismatch ? '비밀번호가 일치하지 않습니다.' : null,
-                          suffix: IconButton(
-                            onPressed: () {
-                              setState(() {
-                                _obscurePasswordConfirm =
-                                    !_obscurePasswordConfirm;
-                              });
-                            },
-                            padding: EdgeInsets.zero,
-                            visualDensity: VisualDensity.compact,
-                            constraints: BoxConstraints(
-                              minWidth: healthDp(context, 40),
-                              minHeight: healthDp(context, 40),
-                            ),
-                            icon: Icon(
-                              _obscurePasswordConfirm
-                                  ? Icons.visibility_off
-                                  : Icons.visibility,
-                              color: const Color(0xFF898686),
-                              size: healthDp(context, 20),
-                            ),
+                          padding: EdgeInsets.zero,
+                          visualDensity: VisualDensity.compact,
+                          constraints: BoxConstraints(
+                            minWidth: healthDp(context, 40),
+                            minHeight: healthDp(context, 40),
                           ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return '비밀번호 확인을 입력해주세요.';
-                            }
-                            if (value != _passwordController.text) {
-                              return '비밀번호가 일치하지 않습니다.';
-                            }
-                            return null;
-                          },
+                          icon: Icon(
+                            _obscurePassword
+                                ? Icons.visibility_off
+                                : Icons.visibility,
+                            color: const Color(0xFF898686),
+                            size: healthDp(context, 20),
+                          ),
                         ),
-                      ],
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return '비밀번호를 입력해주세요.';
+                          }
+                          if (!isValidAppPassword(value)) {
+                            return '8~16자/문자,숫자,특수문자를 모두 포함해주세요.';
+                          }
+                          return null;
+                        },
+                        helperText: '*8~16자/문자,숫자,특수문자 모두 혼용',
+                        helperColor: _passwordController.text.isNotEmpty &&
+                                !isValidAppPassword(_passwordController.text)
+                            ? const Color(0xFFEF4444)
+                            : const Color(0xFF898686),
+                      ),
+                      SizedBox(height: healthDp(context, 10)),
+                      _SignupTextField(
+                        label: '비밀번호 확인',
+                        controller: _passwordConfirmController,
+                        focusNode: _passwordConfirmFocus,
+                        textInputAction: TextInputAction.done,
+                        hintText: '비밀번호를 다시 입력해주세요',
+                        obscureText: _obscurePasswordConfirm,
+                        hasError: _hasConfirmMismatch,
+                        errorText:
+                            _hasConfirmMismatch ? '비밀번호가 일치하지 않습니다.' : null,
+                        suffix: IconButton(
+                          onPressed: () {
+                            setState(() {
+                              _obscurePasswordConfirm =
+                                  !_obscurePasswordConfirm;
+                            });
+                          },
+                          padding: EdgeInsets.zero,
+                          visualDensity: VisualDensity.compact,
+                          constraints: BoxConstraints(
+                            minWidth: healthDp(context, 40),
+                            minHeight: healthDp(context, 40),
+                          ),
+                          icon: Icon(
+                            _obscurePasswordConfirm
+                                ? Icons.visibility_off
+                                : Icons.visibility,
+                            color: const Color(0xFF898686),
+                            size: healthDp(context, 20),
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return '비밀번호 확인을 입력해주세요.';
+                          }
+                          if (value != _passwordController.text) {
+                            return '비밀번호가 일치하지 않습니다.';
+                          }
+                          return null;
+                        },
+                      ),
                       SizedBox(height: healthDp(context, 10)),
                       _PhoneReadonlyField(segments: phone),
                       SizedBox(height: healthDp(context, 10)),
@@ -748,29 +746,47 @@ class _SignupScreenState extends State<SignupScreen> {
             ),
           ),
         ),
-        SizedBox(height: healthDp(context, 20)),
-        SizedBox(
-          width: double.infinity,
-          height: healthDp(context, 40),
-          child: ElevatedButton(
-            onPressed: _canInputComplete ? _handleInputComplete : null,
-            style: ElevatedButton.styleFrom(
-              elevation: 0,
-              backgroundColor: _canInputComplete
-                  ? const Color(0xFFFF5A8D)
-                  : const Color(0xFFD2D2D2),
-              disabledBackgroundColor: const Color(0xFFD2D2D2),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(healthDp(context, 10)),
-              ),
+        SafeArea(
+          top: false,
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              healthDp(context, 20),
+              healthDp(context, 10),
+              healthDp(context, 20),
+              healthDp(context, 10),
             ),
-            child: Text(
-              '입력완료',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: healthSp(context, 20),
-                fontFamily: 'Gmarket Sans TTF',
-                fontWeight: FontWeight.w500,
+            child: SizedBox(
+              width: double.infinity,
+              height: healthDp(context, 40),
+              child: ElevatedButton(
+                onPressed: _canInputComplete ? _handleInputComplete : null,
+                style: ElevatedButton.styleFrom(
+                  elevation: 0,
+                  backgroundColor: _canInputComplete
+                      ? const Color(0xFFFF5A8D)
+                      : const Color(0xFFD2D2D2),
+                  disabledBackgroundColor: const Color(0xFFD2D2D2),
+                  disabledForegroundColor: Colors.white,
+                  padding: EdgeInsets.all(healthDp(context, 10)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(healthDp(context, 10)),
+                  ),
+                ),
+                child: Text(
+                  '입력완료',
+                  textAlign: TextAlign.center,
+                  textHeightBehavior: const TextHeightBehavior(
+                    applyHeightToFirstAscent: false,
+                    applyHeightToLastDescent: false,
+                  ),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: healthSp(context, 16),
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w500,
+                    height: 1.0,
+                  ),
+                ),
               ),
             ),
           ),
@@ -1164,20 +1180,20 @@ class _GenderOption extends StatelessWidget {
       height: healthDp(context, 40),
       alignment: Alignment.center,
       decoration: ShapeDecoration(
-        color: selected ? const Color(0x0CFF5A8D) : Colors.white,
+        color: selected ? const Color(0x0CFF5A8D) : const Color(0xFFF5F5F5),
         shape: RoundedRectangleBorder(
           side: BorderSide(
             width: healthDp(context, 1),
             color: selected ? const Color(0xFFFF5A8D) : const Color(0xFFD2D2D2),
           ),
-          borderRadius: BorderRadius.circular(healthDp(context, 7)),
+          borderRadius: BorderRadius.circular(healthDp(context, 10)),
         ),
       ),
       child: Text(
         label,
         style: TextStyle(
-          color: selected ? const Color(0xFFFF5A8D) : const Color(0xFF898383),
-          fontSize: healthSp(context, 14),
+          color: selected ? const Color(0xFFFF5A8D) : const Color(0xFF898686),
+          fontSize: healthSp(context, 16),
           fontFamily: 'Gmarket Sans TTF',
           fontWeight: FontWeight.w500,
         ),

@@ -2,7 +2,8 @@ import 'dart:async';
 import 'dart:collection';
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, debugPrint, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
@@ -99,8 +100,86 @@ const String _kcpSingleWindowUserScriptSource = r'''
 })();
 ''';
 
+const String _kcpIosSafariUa =
+    'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
+const String _kcpAndroidChromeUa =
+    'Mozilla/5.0 (Linux; Android 14; Mobile; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Mobile Safari/537.36';
+
+String get _kcpMobileUserAgent => defaultTargetPlatform == TargetPlatform.iOS
+    ? _kcpIosSafariUa
+    : _kcpAndroidChromeUa;
+
+/// PC 브라우저가 KCP 표준(팝업) 본인인증으로 분기하지 않도록 모바일 UA·화면 정보를 강제한다.
+String get _kcpForceMobileUaScript {
+  final ua = _kcpMobileUserAgent;
+  final platform =
+      defaultTargetPlatform == TargetPlatform.iOS ? 'iPhone' : 'Android';
+  return '''
+(function () {
+  var MOBILE_UA = ${jsonEncode(ua)};
+  var PLATFORM = ${jsonEncode(platform)};
+  function spoof(obj, prop, value) {
+    try {
+      Object.defineProperty(obj, prop, {
+        configurable: true,
+        get: function () { return value; }
+      });
+    } catch (e) {}
+  }
+  try {
+    spoof(Navigator.prototype, 'userAgent', MOBILE_UA);
+    spoof(Navigator.prototype, 'appVersion', MOBILE_UA);
+    spoof(Navigator.prototype, 'platform', PLATFORM === 'iPhone' ? 'iPhone' : 'Linux armv8l');
+    spoof(Navigator.prototype, 'vendor', 'Google Inc.');
+    spoof(Navigator.prototype, 'maxTouchPoints', 5);
+    spoof(Navigator.prototype, 'userAgentData', {
+      mobile: true,
+      platform: PLATFORM,
+      brands: [
+        { brand: 'Chromium', version: '123' },
+        { brand: 'Google Chrome', version: '123' }
+      ],
+      getHighEntropyValues: function () {
+        return Promise.resolve({
+          mobile: true,
+          platform: PLATFORM,
+          model: 'Pixel 7',
+          uaFullVersion: '123.0.0.0'
+        });
+      }
+    });
+  } catch (e) {}
+  try {
+    spoof(Screen.prototype, 'width', 390);
+    spoof(Screen.prototype, 'height', 844);
+    spoof(Screen.prototype, 'availWidth', 390);
+    spoof(Screen.prototype, 'availHeight', 844);
+  } catch (e2) {}
+  try {
+    var mm = window.matchMedia;
+    window.matchMedia = function (q) {
+      try {
+        if (String(q).indexOf('pointer: fine') >= 0) {
+          return { matches: false, media: q, addListener: function(){}, removeListener: function(){}, addEventListener: function(){}, removeEventListener: function(){}, onchange: null, dispatchEvent: function(){ return false; } };
+        }
+        if (String(q).indexOf('pointer: coarse') >= 0 || String(q).indexOf('hover: none') >= 0) {
+          return { matches: true, media: q, addListener: function(){}, removeListener: function(){}, addEventListener: function(){}, removeEventListener: function(){}, onchange: null, dispatchEvent: function(){ return false; } };
+        }
+      } catch (e3) {}
+      return mm ? mm.call(window, q) : { matches: false, media: q };
+    };
+  } catch (e4) {}
+})();
+''';
+}
+
 UnmodifiableListView<UserScript> get _kcpSingleWindowUserScripts =>
     UnmodifiableListView<UserScript>([
+      UserScript(
+        source: _kcpForceMobileUaScript,
+        injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
+        forMainFrameOnly: false,
+      ),
       UserScript(
         source: _kcpSingleWindowUserScriptSource,
         injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
@@ -109,8 +188,9 @@ UnmodifiableListView<UserScript> get _kcpSingleWindowUserScripts =>
     ]);
 
 String _hardenKcpHtmlForSingleWindow(String html) {
-  // 최초 요청 HTML에도 동일 스크립트를 넣어, 첫 로드부터 새 창을 막는다.
-  const injected = '<script>$_kcpSingleWindowUserScriptSource</script>';
+  // 최초 요청 HTML에도 동일 스크립트를 넣어, 첫 로드부터 새 창을 막고 모바일 본인인증으로 분기한다.
+  final injected =
+      '<script>$_kcpForceMobileUaScript</script><script>$_kcpSingleWindowUserScriptSource</script>';
 
   // 1) 흔한 target 을 정적으로 우선 치환(iframe 이탈·새 탭 방지)
   var out = html
@@ -226,9 +306,9 @@ class _KcpCertWebViewScreenState extends State<KcpCertWebViewScreen> {
     if (!mounted || _hasNavigated || _requestToken == null) return;
     _webWindowReturnTimer?.cancel();
     debugPrint('[KCP] 부모 창 복귀 → 완료 결과 반영 대기');
-    _webWindowReturnTimer = Timer(const Duration(seconds: 3), () async {
+    _webWindowReturnTimer = Timer(const Duration(seconds: 1), () async {
       if (!mounted || _hasNavigated) return;
-      debugPrint('[KCP] 부모 창 복귀 3초 후 최종 결과 확인');
+      debugPrint('[KCP] 부모 창 복귀 1초 후 최종 결과 확인');
       await _pollKcpResult();
       if (!mounted || _hasNavigated) return;
       debugPrint('[KCP] 유예 후에도 결과 pending → 인증 취소로 처리');
@@ -460,7 +540,11 @@ class _KcpCertWebViewScreenState extends State<KcpCertWebViewScreen> {
         databaseEnabled: true,
         cacheEnabled: true,
         clearCache: false,
+        userAgent: _kcpMobileUserAgent,
+        preferredContentMode: UserPreferredContentMode.MOBILE,
         useHybridComposition: true,
+        useWideViewPort: true,
+        loadWithOverviewMode: true,
         allowsInlineMediaPlayback: true,
         mediaPlaybackRequiresUserGesture: false,
         mixedContentMode: MixedContentMode.MIXED_CONTENT_ALWAYS_ALLOW,
@@ -471,8 +555,18 @@ class _KcpCertWebViewScreenState extends State<KcpCertWebViewScreen> {
         // iOS 등에서 targetFrame 없이 새 창으로 열리려는 http(s) 내비게이션을 같은 WebView로 당긴다.
         useShouldOverrideUrlLoading: true,
       ),
-      onWebViewCreated: (_) {
+      onWebViewCreated: (controller) async {
         debugPrint('[KCP] onWebViewCreated');
+        try {
+          await controller.setSettings(
+            settings: InAppWebViewSettings(
+              userAgent: _kcpMobileUserAgent,
+              preferredContentMode: UserPreferredContentMode.MOBILE,
+            ),
+          );
+        } catch (e) {
+          debugPrint('[KCP] onWebViewCreated: userAgent 설정 실패(무시): $e');
+        }
       },
       onCreateWindow: (controller, createWindowRequest) async {
         // 새 창을 만들지 않고, 현재 WebView에서 URL을 연다. (POST body 등은 request 전체 유지)
@@ -580,9 +674,10 @@ class _KcpCertWebViewScreenState extends State<KcpCertWebViewScreen> {
         // KCP 페이지에서 window.open을 호출해 새창을 띄우는 경우가 있어,
         // 동일 WebView에서 열리도록 window.open을 덮어쓴다.
         try {
+          await controller.evaluateJavascript(source: _kcpForceMobileUaScript);
           await controller.evaluateJavascript(
               source: _kcpSingleWindowUserScriptSource);
-          debugPrint('[KCP] onLoadStop: window.open 주입 스크립트 실행 OK');
+          debugPrint('[KCP] onLoadStop: 모바일 UA + window.open 주입 스크립트 실행 OK');
         } catch (e) {
           debugPrint('[KCP] onLoadStop: 주입 스크립트 실패(무시): $e');
         }
@@ -610,6 +705,8 @@ class _KcpCertWebViewScreenState extends State<KcpCertWebViewScreen> {
       outerBackgroundColor: isOverlay ? Colors.transparent : null,
       backgroundColor: isOverlay ? Colors.transparent : null,
       showShadow: !isOverlay,
+      // 회원가입 등 부모 화면이 이미 SideNavi를 그리므로 오버레이에서 한 번 더 그리지 않는다.
+      showSideNav: !isOverlay,
       child: _buildWebViewOrError(),
     );
 
