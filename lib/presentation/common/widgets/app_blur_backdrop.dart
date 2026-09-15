@@ -1,24 +1,19 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 
-/// 검색 팝업과 동일한 딤 + 블러 배경.
+/// 검색 팝업과 동일한 딤 배경.
 /// 뒤 화면을 누르면 [onDismiss]가 호출됩니다.
 class AppBlurBackdrop extends StatelessWidget {
   static const Color overlayColor = Color(0x331A1A1A);
-  static const double blurSigma = 4;
 
   const AppBlurBackdrop({
     super.key,
     this.child,
     this.onDismiss,
-    this.sigma = blurSigma,
     this.color = overlayColor,
   });
 
   final Widget? child;
   final VoidCallback? onDismiss;
-  final double sigma;
   final Color color;
 
   @override
@@ -29,10 +24,7 @@ class AppBlurBackdrop extends StatelessWidget {
         GestureDetector(
           onTap: onDismiss,
           behavior: HitTestBehavior.opaque,
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
-            child: ColoredBox(color: color),
-          ),
+          child: ColoredBox(color: color),
         ),
         if (child != null) child!,
       ],
@@ -40,7 +32,7 @@ class AppBlurBackdrop extends StatelessWidget {
   }
 }
 
-/// 블러는 제자리에서 페이드되고, [child]만 [slideFrom]에서 들어옵니다.
+/// 딤은 제자리에서 페이드되고, [child]만 [slideFrom]에서 들어옵니다.
 Future<T?> showAppBlurSheet<T>({
   required BuildContext context,
   required Widget child,
