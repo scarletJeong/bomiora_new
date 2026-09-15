@@ -143,6 +143,13 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
       }
 
       final userId = user.id.toString();
+      final cached = HealthDashboardRepository.peek(
+        mbId: userId,
+        date: selectedDate,
+      );
+      if (cached != null && mounted) {
+        _applyHealthDashboard(user, cached);
+      }
 
       final results = await Future.wait<dynamic>([
         HealthDashboardRepository.fetchDashboard(
@@ -242,6 +249,47 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
 
   bool _isSameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
+
+  void _applyHealthDashboard(UserModel user, HealthDashboardPayload dashboard) {
+    final weightRecord =
+        _latestOfDate(dashboard.weightRecords, (e) => e.measuredAt);
+    final bloodPressureRecord =
+        _latestOfDate(dashboard.bloodPressureRecords, (e) => e.measuredAt);
+    final bloodSugarRecord =
+        _latestOfDate(dashboard.bloodSugarRecords, (e) => e.measuredAt);
+    final heartRateRecord =
+        _latestOfDate(dashboard.heartRateRecords, (e) => e.measuredAt);
+
+    setState(() {
+      currentUser = user;
+      latestWeightRecord = weightRecord;
+      latestBloodPressureRecord = bloodPressureRecord;
+      latestBloodSugarRecord = bloodSugarRecord;
+      latestMenstrualCycleRecord = dashboard.menstrualCycle;
+      latestHeartRateRecord = heartRateRecord;
+      latestStepsRecord = dashboard.steps;
+      latestHealthGoal = dashboard.healthGoal;
+      if (weightRecord != null) {
+        currentWeight = weightRecord.weight;
+        height = weightRecord.height ?? 170.0;
+        bmi = weightRecord.bmi ?? 0.0;
+      } else {
+        currentWeight = 0.0;
+        height = 170.0;
+        bmi = 0.0;
+      }
+      if (bloodPressureRecord != null) {
+        systolicBP = bloodPressureRecord.systolic;
+        diastolicBP = bloodPressureRecord.diastolic;
+      } else {
+        systolicBP = 0;
+        diastolicBP = 0;
+      }
+      heartRate = heartRateRecord?.heartRate ?? 0;
+      steps = dashboard.steps?.totalSteps ?? 0;
+      isLoading = false;
+    });
+  }
 
   /// 선택한 날짜와 같은 날 기록만 남기고, measuredAt 기준 가장 최신 1건.
   T? _latestOfDate<T>(
@@ -383,7 +431,9 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
                                         onBeforeAction:
                                             _ensureDashboardFeatureAccess,
                                         onAfterDietReturn: () {
-                                          if (mounted) _loadData();
+                                          if (mounted) {
+                                            _loadData(showBlockingLoader: false);
+                                          }
                                         },
                                       ),
                                       SizedBox(height: healthDp(context, 14)),

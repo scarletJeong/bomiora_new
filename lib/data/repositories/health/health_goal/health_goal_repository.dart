@@ -7,10 +7,39 @@ import '../../../../core/network/api_endpoints.dart';
 import '../../../models/health/health_goal_record_model.dart';
 
 class HealthGoalRepository {
-  static const Duration _cacheTtl = Duration(seconds: 30);
+  static const Duration _cacheTtl = Duration(minutes: 2);
   static final Map<String, HealthGoalRecordModel?> _cache = {};
   static final Map<String, DateTime> _cacheAt = {};
   static final Map<String, Future<HealthGoalRecordModel?>> _inFlight = {};
+
+  static void seedLatest(String mbId, HealthGoalRecordModel? goal) {
+    final id = mbId.trim();
+    if (id.isEmpty) return;
+    _cache[id] = goal;
+    _cacheAt[id] = DateTime.now();
+  }
+
+  static void invalidate([String? mbId]) {
+    if (mbId == null || mbId.trim().isEmpty) {
+      _cache.clear();
+      _cacheAt.clear();
+      return;
+    }
+    final id = mbId.trim();
+    _cache.remove(id);
+    _cacheAt.remove(id);
+  }
+
+  static HealthGoalRecordModel? peekLatest(String mbId) {
+    final id = mbId.trim();
+    final cachedAt = _cacheAt[id];
+    if (cachedAt == null ||
+        DateTime.now().difference(cachedAt) >= _cacheTtl ||
+        !_cache.containsKey(id)) {
+      return null;
+    }
+    return _cache[id];
+  }
 
   /// GET 최신 목표 1건 (`mb_id` 기준)
   static Future<HealthGoalRecordModel?> fetchLatest(String mbId) async {

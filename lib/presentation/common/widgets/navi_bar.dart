@@ -18,6 +18,29 @@ bool isWideSideNavLayout(BuildContext context) {
   return layoutWindowWidth(context) >= kFooterBarWideBreakpoint;
 }
 
+void goNamedKeepingExisting(
+  BuildContext context,
+  String routeName, {
+  Object? arguments,
+}) {
+  final current = ModalRoute.of(context)?.settings.name;
+  if (current == routeName && arguments == null) return;
+
+  if (arguments == null) {
+    final navigator = Navigator.of(context);
+    var found = false;
+    navigator.popUntil((route) {
+      if (route.settings.name == routeName) {
+        found = true;
+        return true;
+      }
+      return route.isFirst;
+    });
+    if (found) return;
+  }
+  Navigator.of(context).pushNamed(routeName, arguments: arguments);
+}
+
 /// 공통으로 쓰는 하단 핑크 탭 바 (Figma)
 ///
 /// - 파일명만 `footer_bar.dart` → `navi_bar.dart`로 변경했습니다.
@@ -46,9 +69,7 @@ class FooterBar extends StatelessWidget {
   }
 
   void _go(BuildContext context, String routeName, {Object? arguments}) {
-    final current = ModalRoute.of(context)?.settings.name;
-    if (current == routeName && arguments == null) return;
-    Navigator.pushNamed(context, routeName, arguments: arguments);
+    goNamedKeepingExisting(context, routeName, arguments: arguments);
   }
 
   void _goPrescriptionDiet(BuildContext context) {
@@ -220,9 +241,7 @@ class SideNaviBar extends StatelessWidget {
   ];
 
   void _go(BuildContext context, String routeName, {Object? arguments}) {
-    final current = ModalRoute.of(context)?.settings.name;
-    if (current == routeName && arguments == null) return;
-    Navigator.pushNamed(context, routeName, arguments: arguments);
+    goNamedKeepingExisting(context, routeName, arguments: arguments);
   }
 
   void _goPrescriptionDiet(BuildContext context) {

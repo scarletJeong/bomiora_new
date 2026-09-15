@@ -47,11 +47,27 @@ class HealthDashboardRepository {
     if (mbId == null || mbId.trim().isEmpty) {
       _cache.clear();
       _cacheAt.clear();
+      HealthGoalRepository.invalidate();
       return;
     }
     final prefix = '${mbId.trim()}|';
     _cache.removeWhere((key, _) => key.startsWith(prefix));
     _cacheAt.removeWhere((key, _) => key.startsWith(prefix));
+    HealthGoalRepository.invalidate(mbId);
+  }
+
+  static HealthDashboardPayload? peek({
+    required String mbId,
+    required DateTime date,
+  }) {
+    final dateStr = date.toIso8601String().split('T')[0];
+    final key = '${mbId.trim()}|$dateStr';
+    final cachedAt = _cacheAt[key];
+    if (cachedAt == null ||
+        DateTime.now().difference(cachedAt) >= _cacheTtl) {
+      return null;
+    }
+    return _cache[key];
   }
 
   static Future<HealthDashboardPayload?> fetchDashboard({
@@ -114,13 +130,16 @@ class HealthDashboardRepository {
         return _fetchLegacyDashboard(mbId: mbId, date: date);
       }
 
-      return _parseBundle(data);
+      return _parseBundle(mbId, data);
     } catch (_) {
       return _fetchLegacyDashboard(mbId: mbId, date: date);
     }
   }
 
-  static HealthDashboardPayload _parseBundle(Map<String, dynamic> data) {
+  static HealthDashboardPayload _parseBundle(
+    String mbId,
+    Map<String, dynamic> data,
+  ) {
     List<T> parseList<T>(
       dynamic raw,
       T Function(Map<String, dynamic>) fromJson,
@@ -143,6 +162,7 @@ class HealthDashboardRepository {
     if (goalRaw is Map<String, dynamic>) {
       healthGoal = HealthGoalRecordModel.fromJson(goalRaw);
     }
+    HealthGoalRepository.seedLatest(mbId, healthGoal);
 
     MenstrualCycleRecord? menstrual;
     final menstrualRaw = data['menstrualCycle'];

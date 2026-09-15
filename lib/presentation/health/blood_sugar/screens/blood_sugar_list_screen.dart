@@ -583,7 +583,9 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen>
             textScaler: TextScaler.linear(textScale),
           ),
           child: isLoading
-              ? const Center(child: CircularProgressIndicator())
+              ? const Center(
+                  child: CircularProgressIndicator(color: Color(0xFFFF5A8D)),
+                )
               : Column(
                   children: [
                     Expanded(

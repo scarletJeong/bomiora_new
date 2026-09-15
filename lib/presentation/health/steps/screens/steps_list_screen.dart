@@ -29,8 +29,15 @@ import '../../health_common/widgets/health_period_selector.dart';
 
 class StepsTodayScreen extends StatefulWidget {
   final DateTime? initialDate;
+  final StepsRecord? initialStepsRecord;
+  final HealthGoalRecordModel? initialHealthGoal;
 
-  const StepsTodayScreen({super.key, this.initialDate});
+  const StepsTodayScreen({
+    super.key,
+    this.initialDate,
+    this.initialStepsRecord,
+    this.initialHealthGoal,
+  });
 
   @override
   State<StepsTodayScreen> createState() => _StepsTodayScreenState();
@@ -62,6 +69,9 @@ class _StepsTodayScreenState extends State<StepsTodayScreen>
     if (widget.initialDate != null) {
       selectedDate = widget.initialDate!;
     }
+    todayStepsRecord = widget.initialStepsRecord;
+    latestHealthGoal = widget.initialHealthGoal;
+    isLoading = todayStepsRecord == null && latestHealthGoal == null;
     timeOffset = _isToday() ? _defaultDailyTimeOffset() : 0.0;
     _loadData();
   }
@@ -72,7 +82,10 @@ class _StepsTodayScreenState extends State<StepsTodayScreen>
   }
 
   Future<void> _loadData() async {
-    setState(() => isLoading = true);
+    final hasPreview = todayStepsRecord != null || latestHealthGoal != null;
+    if (!hasPreview) {
+      setState(() => isLoading = true);
+    }
 
     try {
       final user = await AuthService.getUser();
@@ -87,28 +100,43 @@ class _StepsTodayScreenState extends State<StepsTodayScreen>
       final end =
           DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
       final start = end.subtract(const Duration(days: 6));
+      final sameAsInitial = widget.initialDate != null &&
+          widget.initialDate!.year == selectedDate.year &&
+          widget.initialDate!.month == selectedDate.month &&
+          widget.initialDate!.day == selectedDate.day;
+      final cachedGoal = HealthGoalRepository.peekLatest(user.id);
+      final reuseGoal = cachedGoal != null ||
+          (sameAsInitial && widget.initialHealthGoal != null);
+      final hasHourly = todayStepsRecord != null &&
+          (todayStepsRecord!.hourlySteps.isNotEmpty ||
+              todayStepsRecord!.halfHourSteps.any((s) => s > 0));
 
       final results = await Future.wait([
-        StepsRepository.getStepsRecordByMbId(user.id, selectedDate),
-        StepsRepository.getStepsStatisticsByMbId(user.id),
-        HealthGoalRepository.fetchLatest(user.id).catchError((_) => null),
+        hasHourly && sameAsInitial
+            ? Future.value(todayStepsRecord)
+            : StepsRepository.getStepsRecordByMbId(user.id, selectedDate),
+        reuseGoal
+            ? Future<HealthGoalRecordModel?>.value(
+                cachedGoal ?? widget.initialHealthGoal,
+              )
+            : HealthGoalRepository.fetchLatest(user.id).catchError((_) => null),
         StepsRepository.getStepsDailyRange(user.id, start, end),
         StepsRepository.getStepsMonthlyTotalsForYear(
             user.id, selectedDate.year),
       ]);
 
+      if (!mounted) return;
       setState(() {
         currentUser = user;
         todayStepsRecord = results[0] as StepsRecord?;
-        stepsStatistics = results[1] as StepsStatistics?;
-        latestHealthGoal = results[2] as HealthGoalRecordModel?;
-        weekStepsByDate = Map<String, int>.from(results[3] as Map<String, int>);
-        monthSteps12 = List<int>.from(results[4] as List<int>);
+        latestHealthGoal = results[1] as HealthGoalRecordModel?;
+        weekStepsByDate = Map<String, int>.from(results[2] as Map<String, int>);
+        monthSteps12 = List<int>.from(results[3] as List<int>);
         isLoading = false;
       });
     } catch (e, st) {
       debugPrint('StepsTodayScreen._loadData: $e\n$st');
-      setState(() => isLoading = false);
+      if (mounted) setState(() => isLoading = false);
     }
   }
 

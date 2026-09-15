@@ -14,6 +14,7 @@ import 'recent_view_service.dart';
 import 'wish_service.dart';
 import 'address_service.dart';
 import 'notification_service.dart';
+import '../repositories/health/dashboard/health_dashboard_repository.dart';
 
 class AuthService {
   static const String _userKey = 'user_data';
@@ -38,6 +39,10 @@ class AuthService {
         WishService.getWishList(),
         AddressService.getAddressList(id),
         NotificationService.loadSettings(),
+        HealthDashboardRepository.fetchDashboard(
+          mbId: id,
+          date: DateTime.now(),
+        ).then((_) {}),
       ]);
     } catch (_) {}
   }

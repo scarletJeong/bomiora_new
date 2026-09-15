@@ -571,7 +571,11 @@ Widget _buildStepsCard(
         await Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => StepsTodayScreen(initialDate: selectedDate),
+            builder: (context) => StepsTodayScreen(
+              initialDate: selectedDate,
+              initialStepsRecord: latestStepsRecord,
+              initialHealthGoal: latestHealthGoal,
+            ),
           ),
         );
         onAfterReturn();
@@ -641,7 +645,11 @@ Widget _buildStepsCard(
       await Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => StepsTodayScreen(initialDate: selectedDate),
+          builder: (context) => StepsTodayScreen(
+            initialDate: selectedDate,
+            initialStepsRecord: latestStepsRecord,
+            initialHealthGoal: latestHealthGoal,
+          ),
         ),
       );
       onAfterReturn();

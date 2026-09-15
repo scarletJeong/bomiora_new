@@ -594,7 +594,9 @@ class _WeightListScreenState extends State<WeightListScreen>
                           child: Container(
                             color: Colors.transparent,
                             alignment: Alignment.center,
-                            child: const CircularProgressIndicator(),
+                    child: const CircularProgressIndicator(
+                      color: Color(0xFFFF5A8D),
+                    ),
                           ),
                         ),
                       ),
