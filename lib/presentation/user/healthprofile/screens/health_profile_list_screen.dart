@@ -807,7 +807,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
                 ),
               ),
               child: Text(
-                '문진표 전체 수정',
+                '전체 수정',
                 textAlign: TextAlign.center,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
