@@ -17,6 +17,7 @@ import '../../user/delivery/widgets/detail/delivery_detail_general_products_sect
 import '../../user/delivery/widgets/detail/delivery_detail_payment_section.dart';
 import '../../user/delivery/widgets/detail/delivery_detail_products_section.dart';
 import '../../user/delivery/widgets/detail/delivery_detail_reservation_products_card.dart';
+import '../../user/delivery/widgets/delivery_status_filter_bar.dart';
 import '../../user/delivery/widgets/order_flow_dialogs.dart';
 import '../../user/delivery/widgets/reservation_time_change_popup.dart';
 import '../data/payment_complete_preview_data.dart';
@@ -233,6 +234,13 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
         context,
         '/order',
         (route) => route.isFirst,
+        arguments: {
+          'status': 'cancelled',
+          'openOdId': order.odId,
+          'productType': order.isPrescriptionOrder
+              ? DeliveryProductType.prescription
+              : DeliveryProductType.general,
+        },
       );
     }
   }

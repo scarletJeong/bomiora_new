@@ -10,6 +10,7 @@ class OrderService {
   static final Map<String, Map<String, dynamic>> _listCache = {};
   static final Map<String, DateTime> _listCacheAt = {};
   static final Map<String, Future<Map<String, dynamic>>> _listInFlight = {};
+  static int _listEpoch = 0;
 
   /// 주문내역 화면과 동일한 목록 (캐시 공유)
   static Future<Map<String, dynamic>> prefetchOrderList(String mbId) {
@@ -30,16 +31,22 @@ class OrderService {
   }
 
   static void invalidateOrderList([String? mbId]) {
+    _listEpoch++;
     if (mbId == null || mbId.trim().isEmpty) {
       _listCache.clear();
       _listCacheAt.clear();
+      _listInFlight.clear();
       return;
     }
     final prefix = '${mbId.trim()}:';
-    final keys = _listCache.keys.where((k) => k.startsWith(prefix)).toList();
+    final keys = {
+      ..._listCache.keys,
+      ..._listInFlight.keys,
+    }.where((k) => k.startsWith(prefix)).toList();
     for (final key in keys) {
       _listCache.remove(key);
       _listCacheAt.remove(key);
+      _listInFlight.remove(key);
     }
   }
 
@@ -69,16 +76,20 @@ class OrderService {
     int page = 0,
     int size = 10,
     bool lite = false,
+    bool forceRefresh = false,
   }) async {
     final cacheKey = '${mbId.trim()}:$period:$status:$page:$size:${lite ? 'lite' : 'full'}';
-    final cachedAt = _listCacheAt[cacheKey];
-    if (cachedAt != null &&
-        DateTime.now().difference(cachedAt) < _listCacheTtl) {
-      return Map<String, dynamic>.from(_listCache[cacheKey]!);
+    if (!forceRefresh) {
+      final cachedAt = _listCacheAt[cacheKey];
+      if (cachedAt != null &&
+          DateTime.now().difference(cachedAt) < _listCacheTtl) {
+        return Map<String, dynamic>.from(_listCache[cacheKey]!);
+      }
+      final pending = _listInFlight[cacheKey];
+      if (pending != null) return pending;
     }
-    final pending = _listInFlight[cacheKey];
-    if (pending != null) return pending;
 
+    final epoch = _listEpoch;
     final request = _fetchOrderList(
       mbId: mbId,
       period: period,
@@ -87,16 +98,20 @@ class OrderService {
       size: size,
       lite: lite,
     );
-    _listInFlight[cacheKey] = request;
+    if (!forceRefresh) {
+      _listInFlight[cacheKey] = request;
+    }
     try {
       final result = await request;
-      if (result['success'] == true) {
+      if (result['success'] == true && epoch == _listEpoch) {
         _listCache[cacheKey] = Map<String, dynamic>.from(result);
         _listCacheAt[cacheKey] = DateTime.now();
       }
       return result;
     } finally {
-      _listInFlight.remove(cacheKey);
+      if (identical(_listInFlight[cacheKey], request)) {
+        _listInFlight.remove(cacheKey);
+      }
     }
   }
 
@@ -226,6 +241,7 @@ class OrderService {
       );
 
       if (response.statusCode == 200) {
+        invalidateOrderList(mbId);
         final data = _decodeBody(response);
         return {
           'success': true,

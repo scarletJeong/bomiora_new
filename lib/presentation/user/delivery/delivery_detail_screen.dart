@@ -690,8 +690,10 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
       orderDetail: _orderDetail,
     );
     if (ok && mounted) {
-      // 목록 복귀 시 리로드되도록 결과 전달 + 상세도 갱신
-      Navigator.pop(context, true);
+      Navigator.pop(context, {
+        'cancelled': true,
+        'odId': _orderDetail!.odId,
+      });
     }
   }
 

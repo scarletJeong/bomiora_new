@@ -60,10 +60,18 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
   /// 배송완료 주문의 이미 작성된 리뷰 itId `{ odId: [itId...] }`
   Map<String, List<String>> _reviewedItIdsByOd = {};
 
+  String? _pendingOpenOdId;
+  bool _routeArgsApplied = false;
+
   @override
   void initState() {
     super.initState();
-    _loadOrders();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      _applyRouteArgs();
+      await _loadOrders();
+      if (mounted) await _openPendingOrderDetail();
+    });
   }
 
   @override
@@ -72,6 +80,26 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
     super.dispose();
   }
   
+  void _applyRouteArgs() {
+    if (_routeArgsApplied) return;
+    _routeArgsApplied = true;
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is! Map) return;
+    final status = args['status']?.toString();
+    final productType = args['productType']?.toString();
+    final openOdId = args['openOdId']?.toString();
+    if (productType == DeliveryProductType.general ||
+        productType == DeliveryProductType.prescription) {
+      _selectedProductType = productType!;
+    }
+    if (status != null && status.isNotEmpty) {
+      _selectedStatus = status;
+    }
+    if (openOdId != null && openOdId.isNotEmpty) {
+      _pendingOpenOdId = openOdId;
+    }
+  }
+
   /// 주문 목록 로드 (전체 데이터)
   Future<void> _loadOrders({bool force = false}) async {
     if (_isLoading && !force) return;
@@ -100,6 +128,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
         status: 'all', // 전체 상태
         page: 0,
         size: 80,
+        forceRefresh: force,
       );
       
       if (result['success'] == true) {
@@ -1233,7 +1262,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
 
   /// 주문 상세 화면으로 이동 (복귀 시 목록 갱신 — 수령확인/취소 반영)
   Future<void> _navigateToOrderDetail(OrderListModel order) async {
-    await Navigator.pushNamed(
+    final result = await Navigator.pushNamed(
       context,
       '/order-detail',
       arguments: {
@@ -1241,7 +1270,53 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
         'initialOrder': OrderDetailModel.fromListPreview(order),
       },
     );
-    if (mounted) await _loadOrders(force: true);
+    if (!mounted) return;
+    if (result is Map && result['cancelled'] == true) {
+      await _goToCancelledOrder(result['odId']?.toString() ?? order.odId);
+      return;
+    }
+    await _loadOrders(force: true);
+  }
+
+  Future<void> _openPendingOrderDetail() async {
+    final odId = _pendingOpenOdId;
+    if (odId == null || odId.isEmpty) return;
+    _pendingOpenOdId = null;
+    await _openOrderDetailById(odId);
+  }
+
+  Future<void> _openOrderDetailById(String odId) async {
+    OrderListModel? match;
+    for (final o in _allOrders) {
+      if (o.odId == odId) {
+        match = o;
+        break;
+      }
+    }
+    if (!mounted) return;
+    if (match != null) {
+      await _navigateToOrderDetail(match);
+      return;
+    }
+    final result = await Navigator.pushNamed(
+      context,
+      '/order-detail',
+      arguments: {'orderNumber': odId},
+    );
+    if (!mounted) return;
+    if (result is Map && result['cancelled'] == true) {
+      await _goToCancelledOrder(result['odId']?.toString() ?? odId);
+      return;
+    }
+    await _loadOrders(force: true);
+  }
+
+  Future<void> _goToCancelledOrder(String odId) async {
+    if (!mounted) return;
+    _pendingOpenOdId = odId;
+    setState(() => _selectedStatus = 'cancelled');
+    await _loadOrders(force: true);
+    if (mounted) await _openPendingOrderDetail();
   }
 
   Future<void> _openInquiry(OrderListModel order) async {
@@ -1375,7 +1450,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
       odId: odId,
       mbId: user.id,
     );
-    if (ok && mounted) await _loadOrders(force: true);
+    if (ok && mounted) await _goToCancelledOrder(odId);
   }
 
   /// 배송 조회
