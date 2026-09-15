@@ -87,6 +87,7 @@ flutter:
 
   assets:
     - assets/img/
+    - assets/img/bank/
     # 웹 빌드 AssetManifest 누락 방지(폴더 등록만으로 생략되는 경우 대비)
     - assets/img/product_main_intro.png
     - assets/img/product_main_1.jpg

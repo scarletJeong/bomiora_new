@@ -19,7 +19,6 @@ import 'data/services/naver_auth_service.dart';
 import 'data/services/fcm_service_stub.dart'
     if (dart.library.io) 'data/services/fcm_service.dart';
 import 'presentation/common/widgets/mobile_layout_wrapper.dart';
-import 'presentation/health/health_common/widgets/health_app_bar.dart';
 import 'presentation/shopping/screens/product_detail_screen.dart';
 import 'presentation/shopping/screens/product_detail_general_screen.dart';
 import 'presentation/shopping/screens/product_list_screen.dart';
@@ -166,12 +165,9 @@ class _BomioraAppState extends State<BomioraApp> {
         '/home': (context) => const MobileLayoutWrapper(initialIndex: 0),
         // 로그인·가입 직후: 스플래시에서 메인 이미지 준비 후 홈 진입
         '/enter-home': (context) => const SplashScreen(checkSession: false),
-        // (임시) 카테고리 페이지 접근 차단
-        
         '/favorite': (context) => const WishListScreen(),
         '/my_page': (context) => const MobileLayoutWrapper(initialIndex: 1),
         '/health': (context) => const HealthDashboardScreen(),
-        // (임시) 장바구니 페이지 접근 차단
         '/cart': (context) => const CartScreen(),
         '/bomiora-introduce': (context) => const BomioraIntroduceScreen(),
         '/coupon': (context) => const CouponScreen(),
@@ -287,7 +283,6 @@ class _BomioraAppState extends State<BomioraApp> {
         // 제품 목록 페이지: /product-list (레거시)
         if (uri.pathSegments.length == 1 &&
             uri.pathSegments[0] == 'product-list') {
-          // (임시) 상품 목록 페이지 접근 차단
           final arguments = settings.arguments as Map<String, dynamic>? ?? {};
           return MaterialPageRoute(
             builder: (context) => ProductListScreen.fromArguments(arguments),
@@ -350,7 +345,6 @@ class _BomioraAppState extends State<BomioraApp> {
         if (uri.pathSegments.length == 2 &&
             uri.pathSegments[0] == 'product' &&
             uri.pathSegments[1].trim().isNotEmpty) {
-          // (임시) 상품 상세 페이지 접근 차단
           final productId = uri.pathSegments[1];
           return MaterialPageRoute(
             builder: (context) => ProductDetailScreen(productId: productId),
@@ -428,46 +422,6 @@ class MobileLayoutWrapper extends StatelessWidget {
   Widget build(BuildContext context) {
     return MobileAppLayoutWrapper(
       child: HomeScreen(initialIndex: initialIndex),
-    );
-  }
-}
-
-class _TemporaryBlockedScreen extends StatelessWidget {
-  const _TemporaryBlockedScreen({required this.featureLabel});
-
-  final String featureLabel;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: HealthAppBar(title: featureLabel),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.block_outlined,
-                size: 64,
-                color: Colors.grey[400],
-              ),
-              const SizedBox(height: 16),
-              Text(
-                '$featureLabel 화면 없음.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey[700],
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

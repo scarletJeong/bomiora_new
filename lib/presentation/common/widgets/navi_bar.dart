@@ -244,14 +244,6 @@ class SideNaviBar extends StatelessWidget {
     goNamedKeepingExisting(context, routeName, arguments: arguments);
   }
 
-  void _goPrescriptionDiet(BuildContext context) {
-    _go(
-      context,
-      '/product/',
-      arguments: kPrescriptionDietProductListArguments,
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Container(
