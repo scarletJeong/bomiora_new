@@ -7,10 +7,10 @@ import '../../../../data/services/health_profile_service.dart';
 import '../../../../data/services/shop_default_service.dart';
 import '../../../../data/models/user/user_model.dart';
 import '../models/health_profile_model.dart';
-import '../health_profile_payload.dart';
-import '../health_profile_prescription_booking_args.dart';
-import '../health_profile_form_flow.dart';
-import 'health_profile_form_screen.dart';
+import '../widgets/health_profile_form_flow.dart';
+import '../widgets/health_profile_payload.dart';
+import '../widgets/health_profile_prescription_booking_args.dart';
+import 'health_profile_form1_screen.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/login_required_dialog.dart';
 import '../../../common/widgets/centered_empty_state.dart';
@@ -20,7 +20,7 @@ import '../../../health/health_common/widgets/health_app_bar.dart';
 import '../../../shopping/screens/prescription_booking/prescription_time_screen.dart';
 import '../../../shopping/widgets/prescription_booking_progress_bar.dart';
 
-export '../health_profile_prescription_booking_args.dart';
+export '../widgets/health_profile_prescription_booking_args.dart';
 
 class HealthProfileListScreen extends StatefulWidget {
   final String appBarTitle;

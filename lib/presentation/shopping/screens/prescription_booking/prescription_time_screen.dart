@@ -11,7 +11,7 @@ import '../../../../data/services/auth_service.dart';
 import '../../../../data/services/health_profile_service.dart';
 import '../../../../data/services/shop_default_service.dart';
 import '../../../user/healthprofile/models/health_profile_model.dart';
-import '../../../user/healthprofile/health_profile_payload.dart';
+import '../../../user/healthprofile/widgets/health_profile_payload.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';

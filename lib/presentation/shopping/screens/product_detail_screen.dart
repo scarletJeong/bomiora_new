@@ -34,7 +34,7 @@ import '../utils/product_detail_html_helper.dart';
 import '../utils/product_info_spec_helper.dart';
 import '../../common/widgets/login_required_dialog.dart';
 import '../../common/widgets/app_alert_dialog.dart';
-import '../../user/healthprofile/screens/health_profile_form_screen.dart';
+import '../../user/healthprofile/screens/health_profile_form1_screen.dart';
 import '../../user/healthprofile/screens/health_profile_list_screen.dart';
 import '../../../data/services/health_profile_service.dart';
 import '../../user/healthprofile/models/health_profile_model.dart';

@@ -1,4 +1,4 @@
-import 'models/health_profile_model.dart';
+import '../models/health_profile_model.dart';
 
 /// 건강프로필 API 페이로드 조합 (문진표 화면과 처방 플로우 공통).
 abstract final class HealthProfilePayload {

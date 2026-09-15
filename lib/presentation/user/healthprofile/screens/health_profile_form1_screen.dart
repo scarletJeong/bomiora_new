@@ -1,35 +1,174 @@
-part of 'health_profile_form_screen.dart';
+import 'dart:async';
 
-/// 문진표 1페이지 진입 — 기본정보
-class HealthProfileForm1Screen extends StatelessWidget {
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+
+import '../../../../core/constants/app_assets.dart';
+import '../../../common/widgets/app_toast_overlay.dart';
+import '../../../common/widgets/mobile_layout_wrapper.dart';
+import '../../../health/health_common/health_responsive_scale.dart';
+import '../widgets/health_profile_common.dart';
+import '../widgets/health_profile_form_session.dart';
+import '../widgets/health_profile_form_widgets.dart';
+import '../widgets/health_profile_prescription_booking_args.dart';
+import '../widgets/health_profile_questionnaire_options.dart';
+import '../models/health_profile_model.dart';
+
+import 'health_profile_form2_screen.dart';
+
+/// 문진표 1페이지 — 기본정보
+class HealthProfileForm1Screen extends StatefulWidget {
   static const String routeName = 'health_profile_form1';
 
   const HealthProfileForm1Screen({
     super.key,
+    this.session,
     this.existingProfile,
     this.initialSectionIndices,
     this.editScreenTitle,
     this.prescriptionBooking,
   });
 
+  final HealthProfileFormSession? session;
   final HealthProfileModel? existingProfile;
   final List<int>? initialSectionIndices;
   final String? editScreenTitle;
   final HealthProfilePrescriptionBookingArgs? prescriptionBooking;
 
   @override
-  Widget build(BuildContext context) {
-    return HealthProfileFormShell(
-      existingProfile: existingProfile,
-      initialSectionIndices: initialSectionIndices,
-      editScreenTitle: editScreenTitle,
-      initialWizardIndex: 0,
-      prescriptionBooking: prescriptionBooking,
-    );
-  }
+  State<HealthProfileForm1Screen> createState() => _HealthProfileForm1State();
 }
 
-mixin HealthProfileForm1Ui on _HealthProfileFormState {
+class _HealthProfileForm1State extends State<HealthProfileForm1Screen> {
+  late final HealthProfileFormSession session;
+  late final bool _ownsSession;
+  final _formKey = GlobalKey<FormState>();
+
+  bool get isSectionEdit =>
+      widget.initialSectionIndices != null &&
+      widget.initialSectionIndices!.isNotEmpty;
+
+  bool get isFullWizard => !isSectionEdit;
+
+  bool get mergeDietExercise {
+    final subs = widget.initialSectionIndices;
+    return subs != null && subs.length == 2 && subs[0] == 1 && subs[1] == 2;
+  }
+
+  void _bindSession() {
+    if (widget.session != null) {
+      session = widget.session!;
+      _ownsSession = false;
+    } else {
+      session = HealthProfileFormSession(
+        existingProfile: widget.existingProfile,
+        prescriptionBooking: widget.prescriptionBooking,
+      );
+      _ownsSession = true;
+      session.load();
+    }
+    session.addListener(_onSession);
+  }
+
+  void _onSession() {
+    if (mounted) setState(() {});
+  }
+
+  void _unbindSession() {
+    session.removeListener(_onSession);
+    if (_ownsSession) session.dispose();
+  }
+
+  Future<void> _submit() {
+    return HealthProfileFormUi.submit(
+      context: context,
+      session: session,
+      formKey: _formKey,
+    );
+  }
+
+  OverlayEntry? _bmiGuideOverlay;
+  final GlobalKey _bmiGuideIconKey = GlobalKey();
+  OverlayEntry? _answer6MenuOverlay;
+  ScrollController? _answer6MenuScrollController;
+  final GlobalKey _answer6FieldKey = GlobalKey();
+  bool _goalWeightInvalid = false;
+  bool _goalWeightHintVisible = false;
+  Timer? _goalWeightHintTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _bindSession();
+  }
+
+  @override
+  void deactivate() {
+    _removeAnswer6MenuOverlay();
+    _hideBmiGuideOverlay();
+    super.deactivate();
+  }
+
+  @override
+  void dispose() {
+    _goalWeightHintTimer?.cancel();
+    _removeAnswer6MenuOverlay();
+    _hideBmiGuideOverlay();
+    _unbindSession();
+    super.dispose();
+  }
+
+  void _goNext() {
+    if (!session.isWizardStepFilled(0)) {
+      AppToastOverlay.show(context, '모든 문진표를 작성해야합니다');
+      _formKey.currentState?.validate();
+      return;
+    }
+    _formKey.currentState?.save();
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        settings: const RouteSettings(name: HealthProfileForm2Screen.routeName),
+        builder: (_) => HealthProfileForm2Screen(
+          session: session,
+          prescriptionBooking:
+              widget.prescriptionBooking ?? session.prescriptionBooking,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return HealthProfileFormFrame(
+      session: session,
+      pageIndex: 0,
+      isSectionEdit: isSectionEdit,
+      editScreenTitle: widget.editScreenTitle,
+      pinnedBottom: isSectionEdit
+          ? HealthProfileSectionSubmitBar(session: session, onSubmit: _submit)
+          : null,
+      child: Form(
+        key: _formKey,
+        child: HealthProfileStepScroll(
+          session: session,
+          pageIndex: 0,
+          showHero: isFullWizard,
+          showBottomBar: isFullWizard,
+          onNext: _goNext,
+          onPrevious: () => Navigator.pop(context),
+          onSubmit: _submit,
+          questions: HealthProfileQuestionsColumn(
+            session: session,
+            stepIndex: 0,
+            basicInfo: _buildFigmaBirthAndGender(),
+          ),
+        ),
+      ),
+    );
+  }
+
   void _hideBmiGuideOverlay() {
     _bmiGuideOverlay?.remove();
     _bmiGuideOverlay = null;
@@ -114,7 +253,9 @@ mixin HealthProfileForm1Ui on _HealthProfileFormState {
       decoration: ShapeDecoration(
         color: Colors.white,
         shape: RoundedRectangleBorder(
-          side: BorderSide(width: healthDp(context, 1), color: HealthProfileFormCommon.border),
+          side: BorderSide(
+              width: healthDp(context, 1),
+              color: HealthProfileFormCommon.border),
           borderRadius: BorderRadius.circular(healthDp(context, 15)),
         ),
         shadows: [
@@ -158,13 +299,13 @@ mixin HealthProfileForm1Ui on _HealthProfileFormState {
 
   Widget _buildFigmaBirthAndGender() {
     final height = double.tryParse(
-      (_formData['answer_4']?.toString() ?? '').replaceAll(',', ''),
+      (session.formData['answer_4']?.toString() ?? '').replaceAll(',', ''),
     );
     final weight = double.tryParse(
-      (_formData['answer_5']?.toString() ?? '').replaceAll(',', ''),
+      (session.formData['answer_5']?.toString() ?? '').replaceAll(',', ''),
     );
     final goal = double.tryParse(
-      (_formData['answer_3']?.toString() ?? '').replaceAll(',', ''),
+      (session.formData['answer_3']?.toString() ?? '').replaceAll(',', ''),
     );
     final remaining = (weight != null && goal != null) ? weight - goal : null;
     final bmi = (height != null && height > 0 && weight != null)
@@ -200,8 +341,8 @@ mixin HealthProfileForm1Ui on _HealthProfileFormState {
                     ),
                   ),
                   child: TextFormField(
-                    key: ValueKey<int>(_wizardBirthFieldKeySeed),
-                    initialValue: _birthYyyymmddDisplayForWizardField(),
+                    key: ValueKey<int>(session.wizardBirthFieldKeySeed),
+                    initialValue: session.birthYyyymmddDisplay(),
                     keyboardType: TextInputType.number,
                     inputFormatters: [
                       FilteringTextInputFormatter.digitsOnly,
@@ -229,15 +370,15 @@ mixin HealthProfileForm1Ui on _HealthProfileFormState {
                       final s = v.trim();
                       if (!mounted) return;
                       setState(() {
-                        _formData['answer_1'] = s;
+                        session.formData['answer_1'] = s;
                         if (s.length == 8) {
-                          _formData['birth_year'] = s.substring(0, 4);
-                          _formData['birth_month'] = s.substring(4, 6);
-                          _formData['birth_day'] = s.substring(6, 8);
+                          session.formData['birth_year'] = s.substring(0, 4);
+                          session.formData['birth_month'] = s.substring(4, 6);
+                          session.formData['birth_day'] = s.substring(6, 8);
                         } else {
-                          _formData['birth_year'] = '';
-                          _formData['birth_month'] = '';
-                          _formData['birth_day'] = '';
+                          session.formData['birth_year'] = '';
+                          session.formData['birth_month'] = '';
+                          session.formData['birth_day'] = '';
                         }
                       });
                     },
@@ -264,10 +405,10 @@ mixin HealthProfileForm1Ui on _HealthProfileFormState {
                     onSaved: (v) {
                       final s = (v ?? '').trim();
                       if (s.length == 8) {
-                        _formData['answer_1'] = s;
-                        _formData['birth_year'] = s.substring(0, 4);
-                        _formData['birth_month'] = s.substring(4, 6);
-                        _formData['birth_day'] = s.substring(6, 8);
+                        session.formData['answer_1'] = s;
+                        session.formData['birth_year'] = s.substring(0, 4);
+                        session.formData['birth_month'] = s.substring(4, 6);
+                        session.formData['birth_day'] = s.substring(6, 8);
                       }
                     },
                   ),
@@ -279,10 +420,11 @@ mixin HealthProfileForm1Ui on _HealthProfileFormState {
               child: _figmaStackField(
                 label: '성별',
                 child: FormField<String>(
-                  initialValue: _formData['answer_2']?.toString(),
+                  initialValue: session.formData['answer_2']?.toString(),
                   validator: (v) {
                     final g =
-                        (v ?? _formData['answer_2']?.toString() ?? '').trim();
+                        (v ?? session.formData['answer_2']?.toString() ?? '')
+                            .trim();
                     if (g != 'M' && g != 'F') return '성별을 선택해주세요';
                     return null;
                   },
@@ -293,9 +435,10 @@ mixin HealthProfileForm1Ui on _HealthProfileFormState {
                         Expanded(
                           child: _genderChip(
                             label: '여',
-                            selected: _formData['answer_2'] == 'F',
+                            selected: session.formData['answer_2'] == 'F',
                             onTap: () {
-                              setState(() => _formData['answer_2'] = 'F');
+                              setState(
+                                  () => session.formData['answer_2'] = 'F');
                               state.didChange('F');
                             },
                           ),
@@ -304,9 +447,10 @@ mixin HealthProfileForm1Ui on _HealthProfileFormState {
                         Expanded(
                           child: _genderChip(
                             label: '남',
-                            selected: _formData['answer_2'] == 'M',
+                            selected: session.formData['answer_2'] == 'M',
                             onTap: () {
-                              setState(() => _formData['answer_2'] = 'M');
+                              setState(
+                                  () => session.formData['answer_2'] = 'M');
                               state.didChange('M');
                             },
                           ),
@@ -585,53 +729,6 @@ mixin HealthProfileForm1Ui on _HealthProfileFormState {
         height: 1.2,
       );
 
-  TextStyle _figmaMultiHintStyle(BuildContext context) => TextStyle(
-        color: const Color(0xFF898383),
-        fontSize: healthSp(context, 12),
-        fontFamily: 'Gmarket Sans TTF',
-        fontWeight: FontWeight.w300,
-      );
-
-  InputDecoration _figmaInputDecoration(BuildContext context, {String? hint}) {
-    return InputDecoration(
-      isDense: true,
-      filled: true,
-      fillColor: const Color(0xFFF8FAFC),
-      hintText: hint,
-      hintStyle: TextStyle(
-        color: const Color(0xFF898686),
-        fontSize: healthSp(context, 14),
-        fontFamily: 'Gmarket Sans TTF',
-        fontWeight: FontWeight.w300,
-        height: 1.2,
-      ),
-      contentPadding: EdgeInsets.symmetric(
-        horizontal: healthDp(context, 10),
-      ),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(healthDp(context, 15)),
-        borderSide: BorderSide(
-          width: healthDp(context, 1),
-          color: HealthProfileFormCommon.border,
-        ),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(healthDp(context, 15)),
-        borderSide: BorderSide(
-          width: healthDp(context, 1),
-          color: HealthProfileFormCommon.border,
-        ),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(healthDp(context, 15)),
-        borderSide: BorderSide(
-          width: healthDp(context, 1),
-          color: HealthProfileFormCommon.pink,
-        ),
-      ),
-    );
-  }
-
   Widget _genderChip({
     required String label,
     required bool selected,
@@ -647,7 +744,9 @@ mixin HealthProfileForm1Ui on _HealthProfileFormState {
           shape: RoundedRectangleBorder(
             side: BorderSide(
               width: healthDp(context, 1),
-              color: selected ? const Color(0xFFFF5A8D) : HealthProfileFormCommon.border,
+              color: selected
+                  ? const Color(0xFFFF5A8D)
+                  : HealthProfileFormCommon.border,
             ),
             borderRadius: BorderRadius.circular(healthDp(context, 15)),
           ),
@@ -666,19 +765,8 @@ mixin HealthProfileForm1Ui on _HealthProfileFormState {
     );
   }
 
-  bool _isGoalWeightTooHigh() {
-    final weight = double.tryParse(
-      (_formData['answer_5']?.toString() ?? '').replaceAll(',', ''),
-    );
-    final goal = double.tryParse(
-      (_formData['answer_3']?.toString() ?? '').replaceAll(',', ''),
-    );
-    if (weight == null || goal == null) return false;
-    return goal >= weight;
-  }
-
   void _checkGoalWeightAgainstCurrent() {
-    final tooHigh = _isGoalWeightTooHigh();
+    final tooHigh = session.isGoalWeightTooHigh();
     if (tooHigh) {
       _goalWeightHintTimer?.cancel();
       setState(() {
@@ -711,16 +799,16 @@ mixin HealthProfileForm1Ui on _HealthProfileFormState {
     VoidCallback? onAfterChanged,
   }) {
     return FormField<String>(
-      initialValue: (_formData[questionId]?.toString() ?? '').trim(),
+      initialValue: (session.formData[questionId]?.toString() ?? '').trim(),
       validator: (v) {
         final s = (v ?? '').trim();
         if (s.isEmpty) return requiredMsg;
-        if (questionId == 'answer_3' && _isGoalWeightTooHigh()) {
+        if (questionId == 'answer_3' && session.isGoalWeightTooHigh()) {
           return '현재 체중보다 낮게만 입력해주세요';
         }
         return null;
       },
-      onSaved: (v) => _formData[questionId] = (v ?? '').trim(),
+      onSaved: (v) => session.formData[questionId] = (v ?? '').trim(),
       builder: (state) {
         final showTransient =
             transientErrorText != null && transientErrorText.isNotEmpty;
@@ -756,63 +844,63 @@ mixin HealthProfileForm1Ui on _HealthProfileFormState {
                         child: Transform.translate(
                           offset: Offset(0, healthDp(context, -2.1)),
                           child: Row(
-                          children: [
-                            Expanded(
-                              child: TextFormField(
-                                initialValue: state.value,
-                                textAlignVertical: TextAlignVertical.center,
-                                keyboardType: allowDecimal
-                                    ? const TextInputType.numberWithOptions(
-                                        decimal: true,
+                            children: [
+                              Expanded(
+                                child: TextFormField(
+                                  initialValue: state.value,
+                                  textAlignVertical: TextAlignVertical.center,
+                                  keyboardType: allowDecimal
+                                      ? const TextInputType.numberWithOptions(
+                                          decimal: true,
+                                        )
+                                      : TextInputType.number,
+                                  inputFormatters: [
+                                    if (allowDecimal)
+                                      FilteringTextInputFormatter.allow(
+                                        RegExp(r'[0-9.]'),
                                       )
-                                    : TextInputType.number,
-                                inputFormatters: [
-                                  if (allowDecimal)
-                                    FilteringTextInputFormatter.allow(
-                                      RegExp(r'[0-9.]'),
-                                    )
-                                  else
-                                    FilteringTextInputFormatter.digitsOnly,
-                                ],
-                                style: _figmaFieldTextStyle(context),
-                                decoration: InputDecoration(
-                                  isDense: true,
-                                  isCollapsed: true,
-                                  border: InputBorder.none,
-                                  enabledBorder: InputBorder.none,
-                                  focusedBorder: InputBorder.none,
-                                  hintText: hint.isEmpty ? null : hint,
-                                  hintStyle: TextStyle(
-                                    color: const Color(0xFF898686),
-                                    fontSize: healthSp(context, 14),
-                                    fontFamily: 'Gmarket Sans TTF',
-                                    fontWeight: FontWeight.w300,
-                                    height: 1.2,
+                                    else
+                                      FilteringTextInputFormatter.digitsOnly,
+                                  ],
+                                  style: _figmaFieldTextStyle(context),
+                                  decoration: InputDecoration(
+                                    isDense: true,
+                                    isCollapsed: true,
+                                    border: InputBorder.none,
+                                    enabledBorder: InputBorder.none,
+                                    focusedBorder: InputBorder.none,
+                                    hintText: hint.isEmpty ? null : hint,
+                                    hintStyle: TextStyle(
+                                      color: const Color(0xFF898686),
+                                      fontSize: healthSp(context, 14),
+                                      fontFamily: 'Gmarket Sans TTF',
+                                      fontWeight: FontWeight.w300,
+                                      height: 1.2,
+                                    ),
+                                    errorStyle: const TextStyle(
+                                      height: 0,
+                                      fontSize: 0,
+                                    ),
                                   ),
-                                  errorStyle: const TextStyle(
-                                    height: 0,
-                                    fontSize: 0,
-                                  ),
+                                  onChanged: (v) {
+                                    state.didChange(v);
+                                    if (!mounted) return;
+                                    setState(() {
+                                      session.formData[questionId] = v.trim();
+                                    });
+                                    onAfterChanged?.call();
+                                  },
+                                  validator: (_) => null,
+                                  onSaved: (_) {},
                                 ),
-                                onChanged: (v) {
-                                  state.didChange(v);
-                                  if (!mounted) return;
-                                  setState(() {
-                                    _formData[questionId] = v.trim();
-                                  });
-                                  onAfterChanged?.call();
-                                },
-                                validator: (_) => null,
-                                onSaved: (_) {},
                               ),
-                            ),
-                            SizedBox(width: healthDp(context, 8)),
-                            Text(
-                              suffix,
-                              style: _figmaFieldTextStyle(context),
-                            ),
-                          ],
-                        ),
+                              SizedBox(width: healthDp(context, 8)),
+                              Text(
+                                suffix,
+                                style: _figmaFieldTextStyle(context),
+                              ),
+                            ],
+                          ),
                         ),
                       );
                     },
@@ -851,22 +939,23 @@ mixin HealthProfileForm1Ui on _HealthProfileFormState {
   }
 
   Widget _buildAnswer6Dropdown() {
-    final options = HealthProfileQuestionnaireOptions.dietPeriod;
-    final current = _formData['answer_6']?.toString().trim() ?? '';
+    const options = HealthProfileQuestionnaireOptions.dietPeriod;
+    final current = session.formData['answer_6']?.toString().trim() ?? '';
     final selected =
         current.isEmpty || !options.contains(current) ? null : current;
     return FormField<String>(
-      // initialValue는 첫 마운트에만 적용되므로, 값이 바뀔 때마다 필드를 재생성해 표시·검증이 _formData와 일치하게 함
+      // initialValue는 첫 마운트에만 적용되므로, 값이 바뀔 때마다 필드를 재생성해 표시·검증이 session.formData와 일치하게 함
       key: ValueKey<String>('answer6|${selected ?? ''}'),
       initialValue: selected,
       validator: (v) {
-        final val = (v ?? _formData['answer_6']?.toString() ?? '').trim();
+        final val =
+            (v ?? session.formData['answer_6']?.toString() ?? '').trim();
         if (val.isEmpty) return '기간을 선택해주세요';
         return null;
       },
       onSaved: (v) {
-        final s = (v ?? _formData['answer_6']?.toString() ?? '').trim();
-        if (s.isNotEmpty) _formData['answer_6'] = s;
+        final s = (v ?? session.formData['answer_6']?.toString() ?? '').trim();
+        if (s.isNotEmpty) session.formData['answer_6'] = s;
       },
       builder: (state) {
         final label = selected ?? '선택';
@@ -895,7 +984,7 @@ mixin HealthProfileForm1Ui on _HealthProfileFormState {
                   onSelected: (v) {
                     if (!mounted) return;
                     setState(() {
-                      _formData['answer_6'] = v;
+                      session.formData['answer_6'] = v;
                     });
                     state.didChange(v);
                   },
@@ -966,7 +1055,7 @@ mixin HealthProfileForm1Ui on _HealthProfileFormState {
   }) async {
     _removeAnswer6MenuOverlay();
     final contentW = MobileLayoutWrapper.contentWidthOf(context);
-    final current = _formData['answer_6']?.toString().trim() ?? '';
+    final current = session.formData['answer_6']?.toString().trim() ?? '';
 
     await showModalBottomSheet<void>(
       context: context,
@@ -1039,201 +1128,6 @@ mixin HealthProfileForm1Ui on _HealthProfileFormState {
     required ValueChanged<String> onSelected,
   }) {
     _openAnswer6BottomSheet(options: options, onSelected: onSelected);
-  }
-
-  Widget _figmaLabeledRow({
-    required String label,
-    required Widget field,
-    TextAlign labelAlign = TextAlign.left,
-
-    /// 라벨–필드 사이 간격 (375 기준 20)
-    bool includeLabelToFieldGap = true,
-
-    /// 라벨을 입력칸 높이 중앙에 맞추기 위한 고정 박스 높이 (ex: 생년월일/성별)
-    double? labelBoxHeight,
-
-    /// 라벨 영역 안쪽 여백 (ex: 생년월일만 살짝 오른쪽)
-    EdgeInsets? labelPadding,
-  }) {
-    final labelStyle = TextStyle(
-      color: const Color(0xFF1A1A1A),
-      fontSize: healthSp(context, 14),
-      fontFamily: 'Gmarket Sans TTF',
-      fontWeight: FontWeight.w500,
-      height: 1,
-    );
-
-    Widget labelChild = labelBoxHeight == null
-        ? Text(label, textAlign: labelAlign, style: labelStyle)
-        : SizedBox(
-            height: labelBoxHeight,
-            child: Align(
-              alignment: labelAlign == TextAlign.right
-                  ? Alignment.centerRight
-                  : Alignment.centerLeft,
-              child: Text(label, textAlign: labelAlign, style: labelStyle),
-            ),
-          );
-    if (labelPadding != null) {
-      labelChild = Padding(padding: labelPadding, child: labelChild);
-    }
-
-    // 오류 문구로 필드 열 높이가 늘어나도 라벨이 세로 중앙으로 밀리지 않도록 상단 정렬
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: healthDp(context, 72),
-          child: labelChild,
-        ),
-        if (includeLabelToFieldGap) SizedBox(width: healthDp(context, 20)),
-        Expanded(child: field),
-      ],
-    );
-  }
-
-  Widget _buildBirthdateInput() {
-    final y = _formData['birth_year']?.toString() ?? '';
-    final m = _formData['birth_month']?.toString() ?? '';
-    final d = _formData['birth_day']?.toString() ?? '';
-    return Column(
-      key: ValueKey<String>('birth3|$y|$m|$d'),
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: TextFormField(
-                initialValue: y,
-                keyboardType: TextInputType.number,
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                  LengthLimitingTextInputFormatter(4),
-                ],
-                decoration: InputDecoration(
-                  labelText: '년',
-                  hintText: '1990',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(healthDp(context, 8)),
-                  ),
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: healthDp(context, 16),
-                    vertical: healthDp(context, 12),
-                  ),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return '년을 입력해주세요';
-                  }
-                  if (value.length != 4) {
-                    return '4자리 숫자를 입력해주세요';
-                  }
-                  final year = int.tryParse(value);
-                  if (year == null) {
-                    return '올바른 숫자를 입력해주세요';
-                  }
-                  if (year < 1900 || year > DateTime.now().year) {
-                    return '1900년부터 ${DateTime.now().year}년까지 입력 가능합니다';
-                  }
-                  return null;
-                },
-                onSaved: (value) {
-                  _formData['birth_year'] = value ?? '';
-                },
-              ),
-            ),
-            SizedBox(width: healthDp(context, 8)),
-            Expanded(
-              child: TextFormField(
-                initialValue: m,
-                keyboardType: TextInputType.number,
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                  LengthLimitingTextInputFormatter(2),
-                ],
-                decoration: InputDecoration(
-                  labelText: '월',
-                  hintText: '01',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(healthDp(context, 8)),
-                  ),
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: healthDp(context, 16),
-                    vertical: healthDp(context, 12),
-                  ),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return '월을 입력해주세요';
-                  }
-                  final month = int.tryParse(value);
-                  if (month == null || month < 1 || month > 12) {
-                    return '1월부터 12월까지 입력 가능합니다';
-                  }
-                  return null;
-                },
-                onSaved: (value) {
-                  _formData['birth_month'] = (value ?? '').padLeft(2, '0');
-                },
-              ),
-            ),
-            SizedBox(width: healthDp(context, 8)),
-            Expanded(
-              child: TextFormField(
-                initialValue: d,
-                keyboardType: TextInputType.number,
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                  LengthLimitingTextInputFormatter(2),
-                ],
-                decoration: InputDecoration(
-                  labelText: '일',
-                  hintText: '01',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(healthDp(context, 8)),
-                  ),
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: healthDp(context, 16),
-                    vertical: healthDp(context, 12),
-                  ),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return '일을 입력해주세요';
-                  }
-                  final day = int.tryParse(value);
-                  if (day == null || day < 1 || day > 31) {
-                    return '1일부터 31일까지 입력 가능합니다';
-                  }
-                  // 년/월 정보로 실제 날짜 유효성 검증
-                  final year = int.tryParse(_formData['birth_year'] ?? '');
-                  final month = int.tryParse(_formData['birth_month'] ?? '');
-                  if (year != null && month != null) {
-                    try {
-                      final date = DateTime(year, month, day);
-                      if (date.year != year ||
-                          date.month != month ||
-                          date.day != day) {
-                        return '올바른 날짜를 입력해주세요';
-                      }
-                      if (date.isAfter(DateTime.now())) {
-                        return '미래 날짜는 입력할 수 없습니다';
-                      }
-                    } catch (e) {
-                      return '올바른 날짜를 입력해주세요';
-                    }
-                  }
-                  return null;
-                },
-                onSaved: (value) {
-                  _formData['birth_day'] = (value ?? '').padLeft(2, '0');
-                },
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
   }
 }
 

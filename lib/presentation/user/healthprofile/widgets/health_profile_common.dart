@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../health/health_common/health_responsive_scale.dart';
+import '../../../health/health_common/health_responsive_scale.dart';
 import 'health_profile_questionnaire_options.dart';
 
 /// 문진표 작성 1~4페이지 공통 상수·헬퍼.
@@ -118,6 +118,50 @@ abstract final class HealthProfileFormCommon {
     return t;
   }
 
+  /// 칩 라벨 공백/개행·오타(다이터트) 정규화
+  static String normalizeChipOptionLabel(String raw) {
+    var s = raw.replaceAll('\n', ' ').replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (s.contains('샐러드') && (s.contains('다이어트') || s.contains('다이터트'))) {
+      return '샐러드/다이어트식단';
+    }
+    return s;
+  }
+
+  /// API/DB 값이 선택지와 약간 다를 때(공백·개행 등) 목표 기간 드롭다운과 맞춤
+  static String normalizeDietPeriodOption(String raw) {
+    final t = raw.trim();
+    if (t.isEmpty) return '';
+    const options = HealthProfileQuestionnaireOptions.dietPeriod;
+    for (final o in options) {
+      if (o == t) return o;
+    }
+    for (final o in options) {
+      if (o.replaceAll(RegExp(r'\s'), '') == t.replaceAll(RegExp(r'\s'), '')) {
+        return o;
+      }
+    }
+    return t;
+  }
+
+  static String canonicalHealthNoneGridOption(String questionId, String opt) {
+    if (questionId != 'answer_8' &&
+        questionId != 'answer_9' &&
+        questionId != 'answer_11' &&
+        questionId != 'answer_12') {
+      return opt;
+    }
+    final o = (questionId == 'answer_8' || questionId == 'answer_9')
+        ? normalizeChipOptionLabel(opt)
+        : opt.trim();
+    if (o == '해당없음' || o == '없음' || o == '해당 없음') {
+      if (questionId == 'answer_8' || questionId == 'answer_11') {
+        return '해당없음';
+      }
+      return '해당 없음';
+    }
+    return o;
+  }
+
   /// 하루 식사 횟수 칩을 누르면 식사시간을 모두 `-`로 리셋.
   static void resetMealTimes(Map<String, dynamic> formData) {
     for (final key in mealTimeKeys) {
@@ -134,18 +178,18 @@ abstract final class HealthProfileFormCommon {
     final expected = expectedMealSlotCount(formData['answer_7']?.toString());
     if (expected <= 0) return;
 
-    final filled = mealTimeKeys
-        .where((key) => isRealMealTime(formData[key]))
-        .toList();
+    final filled =
+        mealTimeKeys.where((key) => isRealMealTime(formData[key])).toList();
     if (filled.length > expected) {
       var kept = 0;
       for (final key in mealTimeKeys) {
         if (!isRealMealTime(formData[key])) continue;
         if (key == justSetKey) continue;
-        if (kept < expected - (justSetKey != null &&
-                isRealMealTime(formData[justSetKey])
-            ? 1
-            : 0)) {
+        if (kept <
+            expected -
+                (justSetKey != null && isRealMealTime(formData[justSetKey])
+                    ? 1
+                    : 0)) {
           kept++;
         } else {
           formData[key] = '-';

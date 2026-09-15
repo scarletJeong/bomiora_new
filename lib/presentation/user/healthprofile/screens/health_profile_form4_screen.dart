@@ -1,281 +1,117 @@
-part of 'health_profile_form_screen.dart';
+import 'package:flutter/material.dart';
 
-/// 문진표 4페이지 진입 — 건강 정보
-class HealthProfileForm4Screen extends StatelessWidget {
+import '../../../health/health_common/health_responsive_scale.dart';
+import '../widgets/health_profile_common.dart';
+import '../widgets/health_profile_form_session.dart';
+import '../widgets/health_profile_form_widgets.dart';
+import '../widgets/health_profile_prescription_booking_args.dart';
+import '../models/health_profile_model.dart';
+
+/// 문진표 4페이지 — 건강 정보
+class HealthProfileForm4Screen extends StatefulWidget {
   static const String routeName = 'health_profile_form4';
 
   const HealthProfileForm4Screen({
     super.key,
+    this.session,
     this.existingProfile,
     this.initialSectionIndices,
     this.editScreenTitle,
     this.prescriptionBooking,
   });
 
+  final HealthProfileFormSession? session;
   final HealthProfileModel? existingProfile;
   final List<int>? initialSectionIndices;
   final String? editScreenTitle;
   final HealthProfilePrescriptionBookingArgs? prescriptionBooking;
 
   @override
-  Widget build(BuildContext context) {
-    return HealthProfileFormShell(
-      existingProfile: existingProfile,
-      initialSectionIndices: initialSectionIndices ?? const [3],
-      editScreenTitle: editScreenTitle,
-      initialWizardIndex: 3,
-      prescriptionBooking: prescriptionBooking,
-    );
-  }
+  State<HealthProfileForm4Screen> createState() => _HealthProfileForm4State();
 }
 
-mixin HealthProfileForm4Ui on _HealthProfileFormState {
-  void _syncMedicationOtherFormData() {
-    _formData['answer_12_other'] = [
-      ..._medicationOthers,
-      if (_medicationOtherDraftCtrl.text.trim().isNotEmpty)
-        _medicationOtherDraftCtrl.text.trim(),
-    ].join(', ');
+class _HealthProfileForm4State extends State<HealthProfileForm4Screen> {
+  late final HealthProfileFormSession session;
+  late final bool _ownsSession;
+  final _formKey = GlobalKey<FormState>();
+
+  bool get isSectionEdit => widget.session == null;
+
+  bool get isFullWizard => widget.session != null;
+
+  bool get mergeDietExercise {
+    final subs = widget.initialSectionIndices;
+    return subs != null && subs.length == 2 && subs[0] == 1 && subs[1] == 2;
   }
 
-  void _clearMedicationOthers() {
-    _medicationOthers.clear();
-    _medicationOtherDraftOpen = false;
-    _medicationOtherDraftCtrl.clear();
-    _formData['answer_12_other'] = '';
-  }
-
-  void _commitMedicationOtherDraft() {
-    final text = _medicationOtherDraftCtrl.text.trim();
-    if (text.isEmpty) return;
-    if (_medicationOthers.contains(text)) {
-      _medicationOtherDraftCtrl.clear();
-      setState(() {
-        _medicationOtherDraftOpen = false;
-        _syncMedicationOtherFormData();
-      });
-      return;
+  void _bindSession() {
+    if (widget.session != null) {
+      session = widget.session!;
+      _ownsSession = false;
+    } else {
+      session = HealthProfileFormSession(
+        existingProfile: widget.existingProfile,
+        prescriptionBooking: widget.prescriptionBooking,
+      );
+      _ownsSession = true;
+      session.load();
     }
-    setState(() {
-      _medicationOthers.add(text);
-      _medicationOtherDraftCtrl.clear();
-      _medicationOtherDraftOpen = false;
-      _syncMedicationOtherFormData();
-    });
+    session.addListener(_onSession);
   }
 
-  void _removeMedicationOtherAt(int index) {
-    setState(() {
-      if (index < 0 || index >= _medicationOthers.length) return;
-      _medicationOthers.removeAt(index);
-      if (_medicationOthers.isEmpty && _isMedicationOtherSelected()) {
-        _medicationOtherDraftOpen = true;
-      }
-      _syncMedicationOtherFormData();
-    });
+  void _onSession() {
+    if (mounted) setState(() {});
   }
 
-  bool _isMedicationOtherSelected() {
-    final raw = _formData['answer_12'];
-    if (raw is List) return raw.map((e) => e.toString()).contains('기타');
-    return raw?.toString() == '기타';
+  void _unbindSession() {
+    session.removeListener(_onSession);
+    if (_ownsSession) session.dispose();
   }
 
-  void _openMedicationOtherDraft() {
-    final text = _medicationOtherDraftCtrl.text.trim();
-    if (text.isNotEmpty && !_medicationOthers.contains(text)) {
-      _medicationOthers.add(text);
-      _medicationOtherDraftCtrl.clear();
-    }
-    setState(() {
-      _medicationOtherDraftOpen = true;
-      _syncMedicationOtherFormData();
-    });
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _medicationOtherDraftFocus.requestFocus();
-    });
-  }
-
-  Widget _buildOtherMedicationCard() {
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(healthDp(context, 14)),
-      decoration: ShapeDecoration(
-        shape: RoundedRectangleBorder(
-          side: BorderSide(width: healthDp(context, 1), color: HealthProfileFormCommon.border),
-          borderRadius: BorderRadius.circular(healthDp(context, 15)),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  '기타 약 정보',
-                  style: TextStyle(
-                    color: const Color(0xFF1A1A1E),
-                    fontSize: healthSp(context, 14),
-                    fontFamily: 'Gmarket Sans TTF',
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-              Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: _openMedicationOtherDraft,
-                  borderRadius: BorderRadius.circular(healthDp(context, 50)),
-                  child: Container(
-                    height: healthDp(context, 28),
-                    padding: EdgeInsets.symmetric(
-                      horizontal: healthDp(context, 10),
-                    ),
-                    decoration: ShapeDecoration(
-                      shape: RoundedRectangleBorder(
-                        side: BorderSide(
-                            width: healthDp(context, 1), color: HealthProfileFormCommon.border),
-                        borderRadius:
-                            BorderRadius.circular(healthDp(context, 50)),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.add,
-                          size: healthDp(context, 14),
-                          color: const Color(0xFF898686),
-                        ),
-                        SizedBox(width: healthDp(context, 2)),
-                        Text(
-                          '추가',
-                          style: TextStyle(
-                            color: const Color(0xFF898686),
-                            fontSize: healthSp(context, 12),
-                            fontFamily: 'Gmarket Sans TTF',
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: healthDp(context, 14)),
-          Container(height: healthDp(context, 1), color: HealthProfileFormCommon.border),
-          SizedBox(height: healthDp(context, 20)),
-          if (_medicationOthers.isNotEmpty)
-            Wrap(
-              spacing: healthDp(context, 8),
-              runSpacing: healthDp(context, 8),
-              children: [
-                for (var i = 0; i < _medicationOthers.length; i++)
-                  _buildMedicationOtherChip(_medicationOthers[i], i),
-              ],
-            ),
-          if (_medicationOtherDraftOpen || _medicationOthers.isEmpty) ...[
-            if (_medicationOthers.isNotEmpty)
-              SizedBox(height: healthDp(context, 8)),
-            _buildMedicationOtherDraftField(),
-          ],
-        ],
-      ),
+  Future<void> _submit() {
+    return HealthProfileFormUi.submit(
+      context: context,
+      session: session,
+      formKey: _formKey,
     );
   }
 
-  Widget _buildMedicationOtherChip(String label, int index) {
-    return Container(
-      height: healthDp(context, 45),
-      padding: EdgeInsets.only(
-        left: healthDp(context, 14),
-        right: healthDp(context, 8),
-      ),
-      decoration: ShapeDecoration(
-        color: const Color(0xFFF8FAFC),
-        shape: RoundedRectangleBorder(
-          side: BorderSide(width: healthDp(context, 1), color: HealthProfileFormCommon.border),
-          borderRadius: BorderRadius.circular(healthDp(context, 50)),
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              color: const Color(0xFF1A1A1E),
-              fontSize: healthSp(context, 14),
-              fontFamily: 'Gmarket Sans TTF',
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          SizedBox(width: healthDp(context, 4)),
-          GestureDetector(
-            onTap: () => _removeMedicationOtherAt(index),
-            behavior: HitTestBehavior.opaque,
-            child: Icon(
-              Icons.close,
-              size: healthSp(context, 16),
-              color: const Color(0xFF898686),
-            ),
-          ),
-        ],
-      ),
-    );
+  @override
+  void initState() {
+    super.initState();
+    _bindSession();
   }
 
-  Widget _buildMedicationOtherDraftField() {
-    return SizedBox(
-      width: double.infinity,
-      height: healthDp(context, 45),
-      child: TextField(
-        controller: _medicationOtherDraftCtrl,
-        focusNode: _medicationOtherDraftFocus,
-        textInputAction: TextInputAction.done,
-        textAlignVertical: TextAlignVertical.center,
-        onSubmitted: (_) => _commitMedicationOtherDraft(),
-        onChanged: (_) {
-          _syncMedicationOtherFormData();
-          setState(() {});
-        },
-        style: TextStyle(
-          color: const Color(0xFF1A1A1E),
-          fontSize: healthSp(context, 14),
-          fontFamily: 'Gmarket Sans TTF',
-          fontWeight: FontWeight.w500,
-        ),
-        decoration: InputDecoration(
-          hintText: '복용중인 약 이름을 입력해주세요',
-          hintStyle: TextStyle(
-            color: const Color(0xFF898686),
-            fontSize: healthSp(context, 14),
-            fontFamily: 'Gmarket Sans TTF',
-            fontWeight: FontWeight.w500,
-          ),
-          filled: true,
-          fillColor: const Color(0xFFF8FAFC),
-          contentPadding: EdgeInsets.symmetric(
-            horizontal: healthDp(context, 14),
-            vertical: 0,
-          ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(healthDp(context, 50)),
-            borderSide:
-                BorderSide(width: healthDp(context, 1), color: HealthProfileFormCommon.border),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(healthDp(context, 50)),
-            borderSide:
-                BorderSide(width: healthDp(context, 1), color: HealthProfileFormCommon.border),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(healthDp(context, 50)),
-            borderSide: BorderSide(
-                width: healthDp(context, 1), color: const Color(0xFFFF5A8D)),
+  @override
+  void dispose() {
+    _unbindSession();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return HealthProfileFormFrame(
+      session: session,
+      pageIndex: 3,
+      isSectionEdit: isSectionEdit,
+      editScreenTitle: widget.editScreenTitle,
+      pinnedBottom: isSectionEdit
+          ? HealthProfileSectionSubmitBar(session: session, onSubmit: _submit)
+          : null,
+      child: Form(
+        key: _formKey,
+        child: HealthProfileStepScroll(
+          session: session,
+          pageIndex: 3,
+          showHero: isFullWizard,
+          showBottomBar: isFullWizard,
+          onNext: () {},
+          onPrevious: () => Navigator.pop(context),
+          onSubmit: _submit,
+          questions: HealthProfileQuestionsColumn(
+            session: session,
+            stepIndex: 3,
+            yesNo: _buildFigmaYesNoChips(),
           ),
         ),
       ),
@@ -283,7 +119,7 @@ mixin HealthProfileForm4Ui on _HealthProfileFormState {
   }
 
   Widget _buildFigmaYesNoChips() {
-    final v = _formData['answer_13'];
+    final v = session.formData['answer_13'];
     final isYes = v == '2' || v == '있음';
     final isNo = v == '1' || v == '없음';
     return Column(
@@ -295,22 +131,26 @@ mixin HealthProfileForm4Ui on _HealthProfileFormState {
               child: GestureDetector(
                 onTap: () {
                   setState(() {
-                    final oldValue = _formData['answer_13']?.toString();
-                    _formData['answer_13'] = '2';
+                    final oldValue = session.formData['answer_13']?.toString();
+                    session.formData['answer_13'] = '2';
                     final wasNoOrUnset = oldValue == null ||
                         oldValue.isEmpty ||
                         oldValue == '1' ||
                         oldValue == '없음';
                     if (wasNoOrUnset) {
-                      _formData['answer_13_medicine'] =
-                          _backupAnswer13Fields['answer_13_medicine'] ?? '';
-                      _formData['answer_13_period'] =
-                          _backupAnswer13Fields['answer_13_period'] ?? '';
-                      _formData['answer_13_dosage'] =
-                          _backupAnswer13Fields['answer_13_dosage'] ?? '';
-                      _formData['answer_13_sideeffect'] =
-                          _backupAnswer13Fields['answer_13_sideeffect'] ?? '';
-                      _dietDetailResetTick++;
+                      session.formData['answer_13_medicine'] =
+                          session.backupAnswer13Fields['answer_13_medicine'] ??
+                              '';
+                      session.formData['answer_13_period'] =
+                          session.backupAnswer13Fields['answer_13_period'] ??
+                              '';
+                      session.formData['answer_13_dosage'] =
+                          session.backupAnswer13Fields['answer_13_dosage'] ??
+                              '';
+                      session.formData['answer_13_sideeffect'] = session
+                              .backupAnswer13Fields['answer_13_sideeffect'] ??
+                          '';
+                      session.dietDetailResetTick++;
                     }
                   });
                 },
@@ -318,11 +158,15 @@ mixin HealthProfileForm4Ui on _HealthProfileFormState {
                   height: healthDp(context, 40),
                   alignment: Alignment.center,
                   decoration: ShapeDecoration(
-                    color: isYes ? HealthProfileFormCommon.pinkSoft : Colors.transparent,
+                    color: isYes
+                        ? HealthProfileFormCommon.pinkSoft
+                        : Colors.transparent,
                     shape: RoundedRectangleBorder(
                       side: BorderSide(
                         width: healthDp(context, 1),
-                        color: isYes ? HealthProfileFormCommon.pink : HealthProfileFormCommon.border,
+                        color: isYes
+                            ? HealthProfileFormCommon.pink
+                            : HealthProfileFormCommon.border,
                       ),
                       borderRadius:
                           BorderRadius.circular(healthDp(context, 15)),
@@ -344,18 +188,22 @@ mixin HealthProfileForm4Ui on _HealthProfileFormState {
               child: GestureDetector(
                 onTap: () {
                   setState(() {
-                    _formData['answer_13'] = '1';
+                    session.formData['answer_13'] = '1';
                   });
                 },
                 child: Container(
                   height: healthDp(context, 40),
                   alignment: Alignment.center,
                   decoration: ShapeDecoration(
-                    color: isNo ? HealthProfileFormCommon.pinkSoft : Colors.transparent,
+                    color: isNo
+                        ? HealthProfileFormCommon.pinkSoft
+                        : Colors.transparent,
                     shape: RoundedRectangleBorder(
                       side: BorderSide(
                         width: healthDp(context, 1),
-                        color: isNo ? HealthProfileFormCommon.pink : HealthProfileFormCommon.border,
+                        color: isNo
+                            ? HealthProfileFormCommon.pink
+                            : HealthProfileFormCommon.border,
                       ),
                       borderRadius:
                           BorderRadius.circular(healthDp(context, 15)),
@@ -377,7 +225,7 @@ mixin HealthProfileForm4Ui on _HealthProfileFormState {
             ),
           ],
         ),
-        if (_shouldShowQuestion(
+        if (session.shouldShowQuestion(
           HealthProfileQuestion(
             id: 'answer_13_medicine',
             question: '',
@@ -398,7 +246,9 @@ mixin HealthProfileForm4Ui on _HealthProfileFormState {
       padding: EdgeInsets.all(healthDp(context, 14)),
       decoration: ShapeDecoration(
         shape: RoundedRectangleBorder(
-          side: BorderSide(width: healthDp(context, 1), color: HealthProfileFormCommon.border),
+          side: BorderSide(
+              width: healthDp(context, 1),
+              color: HealthProfileFormCommon.border),
           borderRadius: BorderRadius.circular(healthDp(context, 15)),
         ),
       ),
@@ -423,11 +273,11 @@ mixin HealthProfileForm4Ui on _HealthProfileFormState {
                 child: InkWell(
                   onTap: () {
                     setState(() {
-                      _formData['answer_13_medicine'] = '';
-                      _formData['answer_13_period'] = '';
-                      _formData['answer_13_dosage'] = '';
-                      _formData['answer_13_sideeffect'] = '';
-                      _dietDetailResetTick++;
+                      session.formData['answer_13_medicine'] = '';
+                      session.formData['answer_13_period'] = '';
+                      session.formData['answer_13_dosage'] = '';
+                      session.formData['answer_13_sideeffect'] = '';
+                      session.dietDetailResetTick++;
                     });
                   },
                   borderRadius: BorderRadius.circular(healthDp(context, 50)),
@@ -440,7 +290,8 @@ mixin HealthProfileForm4Ui on _HealthProfileFormState {
                     decoration: ShapeDecoration(
                       shape: RoundedRectangleBorder(
                         side: BorderSide(
-                            width: healthDp(context, 1), color: HealthProfileFormCommon.border),
+                            width: healthDp(context, 1),
+                            color: HealthProfileFormCommon.border),
                         borderRadius:
                             BorderRadius.circular(healthDp(context, 50)),
                       ),
@@ -472,7 +323,9 @@ mixin HealthProfileForm4Ui on _HealthProfileFormState {
             ],
           ),
           SizedBox(height: healthDp(context, 14)),
-          Container(height: healthDp(context, 1), color: HealthProfileFormCommon.border),
+          Container(
+              height: healthDp(context, 1),
+              color: HealthProfileFormCommon.border),
           SizedBox(height: healthDp(context, 20)),
           _detailRow('복용 약명', 'answer_13_medicine', '약명'),
           SizedBox(height: healthDp(context, 20)),
@@ -503,8 +356,8 @@ mixin HealthProfileForm4Ui on _HealthProfileFormState {
         SizedBox(
           height: healthDp(context, 45),
           child: TextFormField(
-            key: ValueKey<String>('diet_$id:$_dietDetailResetTick'),
-            initialValue: _formData[id]?.toString() ?? '',
+            key: ValueKey<String>('diet_$id:$session.dietDetailResetTick'),
+            initialValue: session.formData[id]?.toString() ?? '',
             textAlignVertical: TextAlignVertical.center,
             style: TextStyle(
               color: const Color(0xFF1A1A1E),
@@ -528,13 +381,15 @@ mixin HealthProfileForm4Ui on _HealthProfileFormState {
               ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(healthDp(context, 15)),
-                borderSide:
-                    BorderSide(width: healthDp(context, 1), color: HealthProfileFormCommon.border),
+                borderSide: BorderSide(
+                    width: healthDp(context, 1),
+                    color: HealthProfileFormCommon.border),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(healthDp(context, 15)),
-                borderSide:
-                    BorderSide(width: healthDp(context, 1), color: HealthProfileFormCommon.border),
+                borderSide: BorderSide(
+                    width: healthDp(context, 1),
+                    color: HealthProfileFormCommon.border),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(healthDp(context, 15)),
@@ -544,10 +399,10 @@ mixin HealthProfileForm4Ui on _HealthProfileFormState {
               ),
             ),
             onChanged: (v) {
-              _formData[id] = v;
+              session.formData[id] = v;
               setState(() {});
             },
-            onSaved: (v) => _formData[id] = v ?? '',
+            onSaved: (v) => session.formData[id] = v ?? '',
           ),
         ),
       ],

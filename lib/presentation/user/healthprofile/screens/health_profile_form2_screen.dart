@@ -1,35 +1,171 @@
-part of 'health_profile_form_screen.dart';
+import 'package:flutter/material.dart';
 
-/// 문진표 2페이지 진입 — 식습관
-class HealthProfileForm2Screen extends StatelessWidget {
+import '../../../common/widgets/app_toast_overlay.dart';
+import '../../../common/widgets/mobile_layout_wrapper.dart';
+import '../../../health/health_common/health_responsive_scale.dart';
+import '../widgets/health_profile_common.dart';
+import '../widgets/health_profile_form_session.dart';
+import '../widgets/health_profile_form_widgets.dart';
+import '../widgets/health_profile_prescription_booking_args.dart';
+import '../models/health_profile_model.dart';
+
+import 'health_profile_form3_screen.dart';
+
+/// 문진표 2페이지 — 식습관
+class HealthProfileForm2Screen extends StatefulWidget {
   static const String routeName = 'health_profile_form2';
 
   const HealthProfileForm2Screen({
     super.key,
+    this.session,
     this.existingProfile,
     this.initialSectionIndices,
     this.editScreenTitle,
     this.prescriptionBooking,
   });
 
+  final HealthProfileFormSession? session;
   final HealthProfileModel? existingProfile;
   final List<int>? initialSectionIndices;
   final String? editScreenTitle;
   final HealthProfilePrescriptionBookingArgs? prescriptionBooking;
 
   @override
-  Widget build(BuildContext context) {
-    return HealthProfileFormShell(
-      existingProfile: existingProfile,
-      initialSectionIndices: initialSectionIndices ?? const [1],
-      editScreenTitle: editScreenTitle,
-      initialWizardIndex: 1,
-      prescriptionBooking: prescriptionBooking,
-    );
-  }
+  State<HealthProfileForm2Screen> createState() => _HealthProfileForm2State();
 }
 
-mixin HealthProfileForm2Ui on _HealthProfileFormState {
+class _HealthProfileForm2State extends State<HealthProfileForm2Screen> {
+  late final HealthProfileFormSession session;
+  late final bool _ownsSession;
+  final _formKey = GlobalKey<FormState>();
+
+  bool get isSectionEdit => widget.session == null;
+
+  bool get isFullWizard => widget.session != null;
+
+  bool get mergeDietExercise {
+    final subs = widget.initialSectionIndices;
+    return subs != null && subs.length == 2 && subs[0] == 1 && subs[1] == 2;
+  }
+
+  void _bindSession() {
+    if (widget.session != null) {
+      session = widget.session!;
+      _ownsSession = false;
+    } else {
+      session = HealthProfileFormSession(
+        existingProfile: widget.existingProfile,
+        prescriptionBooking: widget.prescriptionBooking,
+      );
+      _ownsSession = true;
+      session.load();
+    }
+    session.addListener(_onSession);
+  }
+
+  void _onSession() {
+    if (mounted) setState(() {});
+  }
+
+  void _unbindSession() {
+    session.removeListener(_onSession);
+    if (_ownsSession) session.dispose();
+  }
+
+  Future<void> _submit() {
+    return HealthProfileFormUi.submit(
+      context: context,
+      session: session,
+      formKey: _formKey,
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _bindSession();
+  }
+
+  @override
+  void dispose() {
+    _unbindSession();
+    super.dispose();
+  }
+
+  void _goNext() {
+    if (!session.isWizardStepFilled(1)) {
+      AppToastOverlay.show(context, '모든 문진표를 작성해야합니다');
+      _formKey.currentState?.validate();
+      return;
+    }
+    _formKey.currentState?.save();
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        settings: const RouteSettings(name: HealthProfileForm3Screen.routeName),
+        builder: (_) => HealthProfileForm3Screen(
+          session: session,
+          prescriptionBooking:
+              widget.prescriptionBooking ?? session.prescriptionBooking,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final questions = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        HealthProfileQuestionsColumn(
+          session: session,
+          stepIndex: 1,
+          mealtime: _buildFigmaMealtimeTable(),
+        ),
+        if (mergeDietExercise) ...[
+          SizedBox(height: healthDp(context, 20)),
+          HealthProfileQuestionsColumn(
+            session: session,
+            stepIndex: 2,
+          ),
+        ],
+      ],
+    );
+
+    return HealthProfileFormFrame(
+      session: session,
+      pageIndex: 1,
+      isSectionEdit: isSectionEdit,
+      editScreenTitle: widget.editScreenTitle,
+      pinnedBottom: isSectionEdit
+          ? HealthProfileSectionSubmitBar(session: session, onSubmit: _submit)
+          : null,
+      child: Form(
+        key: _formKey,
+        child: mergeDietExercise
+            ? SingleChildScrollView(
+                padding: EdgeInsets.fromLTRB(
+                  healthDp(context, 20),
+                  healthDp(context, 20),
+                  healthDp(context, 20),
+                  healthDp(context, 16),
+                ),
+                child: questions,
+              )
+            : HealthProfileStepScroll(
+                session: session,
+                pageIndex: 1,
+                showHero: isFullWizard,
+                showBottomBar: isFullWizard,
+                onNext: _goNext,
+                onPrevious: () => Navigator.pop(context),
+                onSubmit: _submit,
+                questions: questions,
+              ),
+      ),
+    );
+  }
+
   Widget _buildFigmaMealtimeTable() {
     final slots = <({String label, String key})>[
       (label: '아침', key: 'meal_1'),
@@ -43,7 +179,9 @@ mixin HealthProfileForm2Ui on _HealthProfileFormState {
       clipBehavior: Clip.antiAlias,
       decoration: ShapeDecoration(
         shape: RoundedRectangleBorder(
-          side: BorderSide(width: healthDp(context, 1), color: HealthProfileFormCommon.border),
+          side: BorderSide(
+              width: healthDp(context, 1),
+              color: HealthProfileFormCommon.border),
           borderRadius: BorderRadius.circular(healthDp(context, 15)),
         ),
       ),
@@ -53,7 +191,9 @@ mixin HealthProfileForm2Ui on _HealthProfileFormState {
           children: [
             for (var i = 0; i < slots.length; i++) ...[
               if (i > 0)
-                Container(width: healthDp(context, 1), color: HealthProfileFormCommon.border),
+                Container(
+                    width: healthDp(context, 1),
+                    color: HealthProfileFormCommon.border),
               Expanded(
                 child: _mealTimeSlotRow(
                   label: slots[i].label,
@@ -71,7 +211,7 @@ mixin HealthProfileForm2Ui on _HealthProfileFormState {
     required String label,
     required String fieldKey,
   }) {
-    final raw = (_formData[fieldKey]?.toString() ?? '').trim();
+    final raw = (session.formData[fieldKey]?.toString() ?? '').trim();
     final display = raw.isEmpty ? '-' : raw;
     final empty = raw.isEmpty || raw == '-';
 
@@ -121,7 +261,7 @@ mixin HealthProfileForm2Ui on _HealthProfileFormState {
   }
 
   Future<void> _showMealTimePickerBottomSheet(String fieldKey) async {
-    final raw = (_formData[fieldKey]?.toString() ?? '').trim();
+    final raw = (session.formData[fieldKey]?.toString() ?? '').trim();
     var hour = 12;
     var minute = 0;
     final m = RegExp(r'^(\d{1,2}):(\d{2})$').firstMatch(raw);
@@ -263,9 +403,9 @@ mixin HealthProfileForm2Ui on _HealthProfileFormState {
                         Navigator.of(ctx).pop();
                         if (!mounted) return;
                         setState(() {
-                          _formData[fieldKey] = value;
+                          session.formData[fieldKey] = value;
                           HealthProfileFormCommon.applyUnusedMealDash(
-                            _formData,
+                            session.formData,
                             justSetKey: fieldKey,
                           );
                         });
@@ -299,166 +439,5 @@ mixin HealthProfileForm2Ui on _HealthProfileFormState {
 
     hourCtrl.dispose();
     minuteCtrl.dispose();
-  }
-
-  Widget _buildMealtimeInput() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '1식',
-                    style: TextStyle(
-                      fontSize: healthSp(context, 14),
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  SizedBox(height: healthDp(context, 4)),
-                  TextFormField(
-                    initialValue: _formData['meal_1'] ?? '',
-                    textAlign: TextAlign.center,
-                    decoration: InputDecoration(
-                      hintText: '예: 08:00',
-                      border: OutlineInputBorder(
-                        borderRadius:
-                            BorderRadius.circular(healthDp(context, 8)),
-                      ),
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: healthDp(context, 16),
-                        vertical: healthDp(context, 12),
-                      ),
-                    ),
-                    onSaved: (value) {
-                      _formData['meal_1'] = value ?? '';
-                    },
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(width: healthDp(context, 8)),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '2식',
-                    style: TextStyle(
-                      fontSize: healthSp(context, 14),
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  SizedBox(height: healthDp(context, 4)),
-                  TextFormField(
-                    initialValue: _formData['meal_2'] ?? '',
-                    textAlign: TextAlign.center,
-                    decoration: InputDecoration(
-                      hintText: '예: 12:00',
-                      border: OutlineInputBorder(
-                        borderRadius:
-                            BorderRadius.circular(healthDp(context, 8)),
-                      ),
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: healthDp(context, 16),
-                        vertical: healthDp(context, 12),
-                      ),
-                    ),
-                    onSaved: (value) {
-                      _formData['meal_2'] = value ?? '';
-                    },
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(width: healthDp(context, 8)),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '3식',
-                    style: TextStyle(
-                      fontSize: healthSp(context, 14),
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  SizedBox(height: healthDp(context, 4)),
-                  TextFormField(
-                    initialValue: _formData['meal_3'] ?? '',
-                    textAlign: TextAlign.center,
-                    decoration: InputDecoration(
-                      hintText: '예: 19:00',
-                      border: OutlineInputBorder(
-                        borderRadius:
-                            BorderRadius.circular(healthDp(context, 8)),
-                      ),
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: healthDp(context, 16),
-                        vertical: healthDp(context, 12),
-                      ),
-                    ),
-                    onSaved: (value) {
-                      _formData['meal_3'] = value ?? '';
-                    },
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(width: healthDp(context, 8)),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '4식',
-                    style: TextStyle(
-                      fontSize: healthSp(context, 14),
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  SizedBox(height: healthDp(context, 4)),
-                  TextFormField(
-                    initialValue: _formData['meal_other'] ?? '',
-                    textAlign: TextAlign.center,
-                    decoration: InputDecoration(
-                      hintText: '예: 21:00',
-                      border: OutlineInputBorder(
-                        borderRadius:
-                            BorderRadius.circular(healthDp(context, 8)),
-                      ),
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: healthDp(context, 16),
-                        vertical: healthDp(context, 12),
-                      ),
-                    ),
-                    onSaved: (value) {
-                      _formData['meal_other'] = value ?? '';
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        SizedBox(height: healthDp(context, 8)),
-        Text(
-          '*해당되는 입력란에만 입력하세요.',
-          style: TextStyle(
-            fontSize: healthSp(context, 11),
-            fontFamily: 'Gmarket Sans TTF',
-            color: Colors.grey[500],
-            fontStyle: FontStyle.italic,
-          ),
-        ),
-      ],
-    );
   }
 }

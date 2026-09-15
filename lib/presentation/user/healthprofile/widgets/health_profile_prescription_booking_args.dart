@@ -1,4 +1,4 @@
-import '../../../data/models/cart/cart_item_model.dart';
+import '../../../../data/models/cart/cart_item_model.dart';
 
 /// 처방 예약 플로우에서 문진표 확인·작성 시 전달
 class HealthProfilePrescriptionBookingArgs {

@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../models/health_profile_model.dart';
+import '../screens/health_profile_form1_screen.dart';
+import '../screens/health_profile_form2_screen.dart';
+import '../screens/health_profile_form3_screen.dart';
+import '../screens/health_profile_form4_screen.dart';
 import 'health_profile_common.dart';
 import 'health_profile_prescription_booking_args.dart';
-import 'models/health_profile_model.dart';
-import 'screens/health_profile_form_screen.dart';
 
 /// 문진표 작성 진입. 전체 작성은 1페이지, 섹션 수정은 해당 페이지로 엽니다.
 abstract final class HealthProfileFormFlow {
