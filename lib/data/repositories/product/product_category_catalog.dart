@@ -7,6 +7,8 @@ class ProductCategoryCatalog {
 
   static List<ProductCategoryItem>? _generalCache;
   static List<ProductCategoryItem>? _prescriptionCache;
+  static Future<List<ProductCategoryItem>>? _generalInFlight;
+  static Future<List<ProductCategoryItem>>? _prescriptionInFlight;
 
   static Future<List<ProductCategoryItem>> generalCategories({
     bool forceRefresh = false,
@@ -14,15 +16,25 @@ class ProductCategoryCatalog {
     if (!forceRefresh && _generalCache != null) {
       return _generalCache!;
     }
+    if (!forceRefresh && _generalInFlight != null) {
+      return _generalInFlight!;
+    }
 
-    final fromApi = await ProductRepository.getCategoriesWithProducts(
-      productKind: 'general',
-    );
-
-    _generalCache = fromApi.isNotEmpty
-        ? fromApi
-        : List<ProductCategoryItem>.from(productGeneralCategoryListFallback);
-    return _generalCache!;
+    final request = () async {
+      final fromApi = await ProductRepository.getCategoriesWithProducts(
+        productKind: 'general',
+      );
+      _generalCache = fromApi.isNotEmpty
+          ? fromApi
+          : List<ProductCategoryItem>.from(productGeneralCategoryListFallback);
+      return _generalCache!;
+    }();
+    _generalInFlight = request;
+    try {
+      return await request;
+    } finally {
+      if (identical(_generalInFlight, request)) _generalInFlight = null;
+    }
   }
 
   static Future<List<ProductCategoryItem>> prescriptionCategories({
@@ -33,22 +45,35 @@ class ProductCategoryCatalog {
         _prescriptionCache!.isNotEmpty) {
       return _prescriptionCache!;
     }
+    if (!forceRefresh && _prescriptionInFlight != null) {
+      return _prescriptionInFlight!;
+    }
 
-    final fromApi = await ProductRepository.getCategoriesWithProducts(
-      productKind: 'prescription',
-    );
-
-    _prescriptionCache = fromApi.isNotEmpty
-        ? fromApi
-        : List<ProductCategoryItem>.from(
-            productPrescriptionCategoryListFallback,
-          );
-
-    return _prescriptionCache!;
+    final request = () async {
+      final fromApi = await ProductRepository.getCategoriesWithProducts(
+        productKind: 'prescription',
+      );
+      _prescriptionCache = fromApi.isNotEmpty
+          ? fromApi
+          : List<ProductCategoryItem>.from(
+              productPrescriptionCategoryListFallback,
+            );
+      return _prescriptionCache!;
+    }();
+    _prescriptionInFlight = request;
+    try {
+      return await request;
+    } finally {
+      if (identical(_prescriptionInFlight, request)) {
+        _prescriptionInFlight = null;
+      }
+    }
   }
 
   static void clearCache() {
     _generalCache = null;
     _prescriptionCache = null;
+    _generalInFlight = null;
+    _prescriptionInFlight = null;
   }
 }

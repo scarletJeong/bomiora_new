@@ -93,6 +93,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
     _activeCategoryId = _activeCategoryId.trim();
     if (mounted) setState(() => _tabsReady = true);
 
+    final productsFuture = _loadProducts();
     final List<ProductCategoryItem> source;
     if (widget.productKind == 'general') {
       source = await ProductCategoryCatalog.generalCategories();
@@ -119,13 +120,18 @@ class _ProductListScreenState extends State<ProductListScreen> {
       _stickyTabKeys = List.generate(_baseTabOrder.length, (_) => GlobalKey());
     }
 
-    if (_baseTabOrder.isNotEmpty &&
-        !_baseTabOrder.any((tab) => tab.id == _activeCategoryId)) {
+    final categoryChanged = _baseTabOrder.isNotEmpty &&
+        !_baseTabOrder.any((tab) => tab.id == _activeCategoryId);
+    if (categoryChanged) {
       _activeCategoryId = _baseTabOrder.first.id;
     }
 
     if (mounted) setState(() {});
-    await _loadProducts();
+    if (categoryChanged) {
+      await _loadProducts();
+    } else {
+      await productsFuture;
+    }
   }
 
   @override

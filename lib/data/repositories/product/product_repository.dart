@@ -6,7 +6,7 @@ import '../../models/product/product_model.dart';
 import '../../services/auth_service.dart';
 
 class ProductRepository {
-  static const Duration _listCacheTtl = Duration(seconds: 60);
+  static const Duration _listCacheTtl = Duration(minutes: 3);
   static final Map<String, _ProductListCacheEntry> _listCache = {};
   static final Map<String, Future<List<Product>>> _listInFlight = {};
   static const Duration _detailCacheTtl = Duration(minutes: 2);
@@ -63,23 +63,47 @@ class ProductRepository {
     if (hit != null && DateTime.now().isBefore(hit.expiresAt)) {
       return hit.products;
     }
+    final pending = _listInFlight[cacheKey];
+    if (pending != null) return pending;
 
-    try {      
-      // 먼저 Spring Boot API를 시도
-      String endpoint = ApiEndpoints.productListByCategory(categoryId, productKind: productKind);
+    final request = _fetchProductsByCategory(
+      categoryId: categoryId,
+      productKind: productKind,
+      page: page,
+      pageSize: pageSize,
+      cacheKey: cacheKey,
+      fallback: hit?.products ?? const [],
+    );
+    _listInFlight[cacheKey] = request;
+    try {
+      return await request;
+    } finally {
+      if (identical(_listInFlight[cacheKey], request)) {
+        _listInFlight.remove(cacheKey);
+      }
+    }
+  }
+
+  static Future<List<Product>> _fetchProductsByCategory({
+    required String categoryId,
+    String? productKind,
+    required int page,
+    required int pageSize,
+    required String cacheKey,
+    required List<Product> fallback,
+  }) async {
+    try {
+      String endpoint =
+          ApiEndpoints.productListByCategory(categoryId, productKind: productKind);
       endpoint += '&page=$page&pageSize=$pageSize';
-      
-      
-      // 인증 토큰이 있으면 헤더에 추가
+
       final token = await AuthService.getToken();
       Map<String, String>? headers;
       if (token != null && token.isNotEmpty) {
         headers = {'Authorization': 'Bearer $token'};
       }
-      
+
       final response = await ApiClient.get(endpoint, additionalHeaders: headers);
-      
-      // Spring Boot API가 성공하면 처리
       if (response.statusCode == 200) {
         try {
           final data = json.decode(response.body);
@@ -90,13 +114,12 @@ class ProductRepository {
           );
           return products;
         } catch (_) {
-          return hit?.products ?? [];
+          return fallback;
         }
       }
-      
-      return hit?.products ?? [];
-    } catch (e) {
-      return hit?.products ?? [];
+      return fallback;
+    } catch (_) {
+      return fallback;
     }
   }
 
