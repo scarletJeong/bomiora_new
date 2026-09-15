@@ -161,10 +161,13 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
 
     final result = await AddressService.deleteAddress(id, _currentUser!.id);
     if (!mounted) return;
-    await _loadAddresses();
-    if (!mounted) return;
     if (result['success'] == true) {
+      setState(() {
+        _addresses = _addresses.where((a) => a['adId'] != id).toList();
+      });
       AppToastOverlay.show(context, '배송지가 삭제됐어요.');
+    } else {
+      await _loadAddresses();
     }
   }
 

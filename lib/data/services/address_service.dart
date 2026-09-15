@@ -15,6 +15,14 @@ class AddressService {
     _listCacheAt.remove(id);
   }
 
+  static void removeFromCache(String mbId, int adId) {
+    final id = mbId.trim();
+    final list = _listCache[id];
+    if (list == null) return;
+    _listCache[id] = list.where((a) => a['adId'] != adId).toList();
+    _listCacheAt[id] = DateTime.now();
+  }
+
   static void _rememberSaved(String mbId, dynamic raw, {int? replaceId}) {
     final mapped = _normalizeAddressItem(raw);
     final id = mbId.trim();
@@ -309,7 +317,7 @@ class AddressService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        invalidate(mbId);
+        removeFromCache(mbId, id);
 
         return {
           'success': true,
