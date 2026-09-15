@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../data/models/health/health_goal_record_model.dart';
 import '../dashboard/screens/health_goal_screen.dart';
+import 'health_responsive_scale.dart';
 
 bool isHealthGoalConfigured(HealthGoalRecordModel? goal) {
   if (goal == null) return false;
@@ -20,10 +21,12 @@ Future<bool> showHealthGoalRequiredDialog(BuildContext context) async {
         backgroundColor: Colors.transparent,
         elevation: 0,
         child: Container(
-          width: 272,
-          decoration: const BoxDecoration(
+          width: healthDp(dialogContext, 272),
+          decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.all(Radius.circular(20)),
+            borderRadius: BorderRadius.all(
+              Radius.circular(healthDp(dialogContext, 20)),
+            ),
           ),
           clipBehavior: Clip.antiAlias,
           child: DefaultTextStyle.merge(
@@ -31,32 +34,42 @@ Future<bool> showHealthGoalRequiredDialog(BuildContext context) async {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(20, 20, 20, 8),
+                Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    healthDp(dialogContext, 20),
+                    healthDp(dialogContext, 20),
+                    healthDp(dialogContext, 20),
+                    healthDp(dialogContext, 8),
+                  ),
                   child: Text(
                     '목표설정 안내',
                     style: TextStyle(
-                      color: Color(0xFF1A1A1A),
-                      fontSize: 20,
+                      color: const Color(0xFF1A1A1A),
+                      fontSize: healthSp(dialogContext, 20),
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(20, 0, 20, 20),
+                Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    healthDp(dialogContext, 20),
+                    0,
+                    healthDp(dialogContext, 20),
+                    healthDp(dialogContext, 20),
+                  ),
                   child: Text(
                     '목표를 설정하고 기록을 시작하세요.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: Color(0xFF898686),
-                      fontSize: 14,
+                      color: const Color(0xFF898686),
+                      fontSize: healthSp(dialogContext, 14),
                       fontWeight: FontWeight.w500,
                       height: 1.57,
                     ),
                   ),
                 ),
                 SizedBox(
-                  height: 50,
+                  height: healthDp(dialogContext, 50),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -65,12 +78,12 @@ Future<bool> showHealthGoalRequiredDialog(BuildContext context) async {
                           color: const Color(0xFFF7F7F7),
                           child: InkWell(
                             onTap: () => Navigator.of(dialogContext).pop(false),
-                            child: const Center(
+                            child: Center(
                               child: Text(
                                 '취소',
                                 style: TextStyle(
-                                  color: Color(0xFF898686),
-                                  fontSize: 16,
+                                  color: const Color(0xFF898686),
+                                  fontSize: healthSp(dialogContext, 16),
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
@@ -83,12 +96,12 @@ Future<bool> showHealthGoalRequiredDialog(BuildContext context) async {
                           color: const Color(0xFFFF5A8D),
                           child: InkWell(
                             onTap: () => Navigator.of(dialogContext).pop(true),
-                            child: const Center(
+                            child: Center(
                               child: Text(
                                 '확인',
                                 style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: 16,
+                                  fontSize: healthSp(dialogContext, 16),
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),

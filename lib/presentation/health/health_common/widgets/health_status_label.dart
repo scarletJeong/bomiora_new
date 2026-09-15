@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../health_responsive_scale.dart';
+
 /// 혈당/혈압 등 건강 기록의 상태 칩 (정상, 주의, 고혈압, 의심, 모름, 전단계)
 class HealthStatusLabel extends StatelessWidget {
   final String label;
@@ -46,7 +48,10 @@ class HealthStatusLabel extends StatelessWidget {
         : BorderRadius.circular(999);
     return Container(
       padding: chipPadding ??
-          const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          EdgeInsets.symmetric(
+            horizontal: healthDp(context, 8),
+            vertical: healthDp(context, 4),
+          ),
       decoration: BoxDecoration(
         color: _backgroundColor,
         borderRadius: radius,

@@ -694,33 +694,35 @@ class QaListScreenState extends State<QaListScreen> {
                   if (!_requiresLogin && _selectedStatusTab == 0)
                     SafeArea(
                       top: false,
-                      minimum: EdgeInsets.fromLTRB(
-                        healthDp(context, 20),
-                        healthDp(context, 0),
-                        healthDp(context, 20),
-                        healthDp(context, 10),
-                      ),
-                      child: GestureDetector(
-                        onTap: _openContactForm,
-                        child: Container(
-                          width: double.infinity,
-                          height: healthDp(context, 40),
-                          padding: EdgeInsets.all(healthDp(context, 10)),
-                          clipBehavior: Clip.antiAlias,
-                          decoration: ShapeDecoration(
-                            color: _pink,
-                            shape: RoundedRectangleBorder(
-                              borderRadius:
-                                  BorderRadius.circular(healthDp(context, 10)),
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(
+                          healthDp(context, 20),
+                          healthDp(context, 10),
+                          healthDp(context, 20),
+                          healthDp(context, 10),
+                        ),
+                        child: GestureDetector(
+                          onTap: _openContactForm,
+                          child: Container(
+                            width: double.infinity,
+                            height: healthDp(context, 40),
+                            padding: EdgeInsets.all(healthDp(context, 10)),
+                            clipBehavior: Clip.antiAlias,
+                            decoration: ShapeDecoration(
+                              color: _pink,
+                              shape: RoundedRectangleBorder(
+                                borderRadius:
+                                    BorderRadius.circular(healthDp(context, 10)),
+                              ),
                             ),
-                          ),
-                          alignment: Alignment.center,
-                          child: Text(
-                            '1:1 문의하기',
-                            style: _qaText(
-                              context,
-                              size: 16,
-                              color: Colors.white,
+                            alignment: Alignment.center,
+                            child: Text(
+                              '1:1 문의하기',
+                              style: _qaText(
+                                context,
+                                size: 16,
+                                color: Colors.white,
+                              ),
                             ),
                           ),
                         ),

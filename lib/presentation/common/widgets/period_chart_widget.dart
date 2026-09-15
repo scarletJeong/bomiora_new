@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/utils/api_date_time.dart';
+import '../../health/health_common/health_responsive_scale.dart';
 import '../chart_layout.dart';
 
 /// 주/월별 차트를 위한 공통 위젯
@@ -27,7 +28,8 @@ class PeriodChartWidget extends StatefulWidget {
   final bool useCalendarYearMonths;
 
   /// 카드 바깥 패딩 (건강 그래프는 [ChartConstants.healthChartCardPadding] / [healthChartCardPadding]로 통일)
-  final EdgeInsetsGeometry padding;
+  /// null이면 [healthDp] 기준 10.
+  final EdgeInsetsGeometry? padding;
 
   /// null이면 `Colors.grey[50]` (기존 동작)
   final Color? cardBackgroundColor;
@@ -50,7 +52,7 @@ class PeriodChartWidget extends StatefulWidget {
     this.yAxisUnitLabel = '(kg)',
     this.omitOutOfRangeWeightPoints = false,
     this.useCalendarYearMonths = false,
-    this.padding = const EdgeInsets.all(10),
+    this.padding,
     this.cardBackgroundColor,
   }) : super(key: key);
 
@@ -63,10 +65,10 @@ class _PeriodChartWidgetState extends State<PeriodChartWidget> {
   Widget build(BuildContext context) {
     return Container(
       height: widget.height,
-      padding: widget.padding,
+      padding: widget.padding ?? EdgeInsets.all(healthDp(context, 10)),
       decoration: BoxDecoration(
         color: widget.cardBackgroundColor ?? Colors.grey[50],
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(healthDp(context, 12)),
         border: Border.all(color: Colors.grey[200]!),
       ),
       child: Column(
@@ -106,8 +108,8 @@ class _PeriodChartWidgetState extends State<PeriodChartWidget> {
                             child: Text(
                               label.toStringAsFixed(0),
                               textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                fontSize: 11,
+                              style: TextStyle(
+                                fontSize: healthSp(context, 11),
                                 color: Colors.grey,
                               ),
                             ),
@@ -133,7 +135,7 @@ class _PeriodChartWidgetState extends State<PeriodChartWidget> {
                                     child: Text(
                                       widget.yAxisUnitLabel,
                                       style: TextStyle(
-                                        fontSize: 11,
+                                        fontSize: healthSp(context, 11),
                                         color: Colors.grey[700],
                                         fontWeight: FontWeight.w500,
                                       ),
@@ -166,7 +168,7 @@ class _PeriodChartWidgetState extends State<PeriodChartWidget> {
               },
             ),
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: healthDp(context, 10)),
           // X축 라벨 (체중은 일·주 카드와 동일: 하단 추가 패딩 없음)
           Padding(
             padding: EdgeInsets.only(
@@ -233,29 +235,31 @@ class _PeriodChartWidgetState extends State<PeriodChartWidget> {
   double _calculateTooltipLeft(double pointX) {
     final chartWidth = MediaQuery.of(context).size.width - 43 - 32; // Y축 라벨 + 패딩 제외
     const tooltipWidth = 100.0;
+    final margin = healthDp(context, 10);
 
     // 점 중앙에 툴팁 배치 시도
     double left = pointX - tooltipWidth / 2;
     
     // 그래프 영역을 벗어나면 조정
-    if (left < 10) {
-      left = 10; // 왼쪽 여백
-    } else if (left + tooltipWidth > chartWidth - 10) {
-      left = chartWidth - tooltipWidth - 10; // 오른쪽 여백
+    if (left < margin) {
+      left = margin; // 왼쪽 여백
+    } else if (left + tooltipWidth > chartWidth - margin) {
+      left = chartWidth - tooltipWidth - margin; // 오른쪽 여백
     }
     
     return left;
   }
 
   double _calculateTooltipTop(double pointY) {
-    const tooltipHeight = 60.0;
+    final tooltipHeight = healthDp(context, 60);
+    final offset = healthDp(context, 10);
 
     // 점 위쪽에 툴팁 배치 시도
-    double top = pointY - tooltipHeight - 10;
+    double top = pointY - tooltipHeight - offset;
     
     // 그래프 영역을 벗어나면 점 아래쪽에 배치
-    if (top < 10) {
-      top = pointY + 10;
+    if (top < offset) {
+      top = pointY + offset;
     }
     
     return top;
@@ -281,7 +285,7 @@ class _PeriodChartWidgetState extends State<PeriodChartWidget> {
               overflow: TextOverflow.clip,
               // 체중 [_buildWeightPeriodXAxisLabels] 월 눈금과 동일 (9pt, grey[600])
               style: TextStyle(
-                fontSize: 12,
+                fontSize: healthSp(context, 12),
                 color: Colors.grey[600],
               ),
             ),
@@ -295,11 +299,11 @@ class _PeriodChartWidgetState extends State<PeriodChartWidget> {
           children: [
             Expanded(child: monthRow),
             Padding(
-              padding: const EdgeInsets.only(left: 6),
+              padding: EdgeInsets.only(left: healthDp(context, 6)),
               child: Text(
                 '(월)',
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: healthSp(context, 11),
                   color: Colors.grey[700],
                   fontWeight: FontWeight.w500,
                 ),
@@ -324,8 +328,8 @@ class _PeriodChartWidgetState extends State<PeriodChartWidget> {
           final date = startDate.add(Duration(days: i));
           return Text(
             '${date.month}/${date.day}',
-            style: const TextStyle(
-              fontSize: 10,
+            style: TextStyle(
+              fontSize: healthSp(context, 10),
               color: Colors.grey,
             ),
           );
@@ -346,8 +350,8 @@ class _PeriodChartWidgetState extends State<PeriodChartWidget> {
           final date = startDate.add(Duration(days: dayIndex));
           return Text(
             '${date.month}/${date.day}',
-            style: const TextStyle(
-              fontSize: 10,
+            style: TextStyle(
+              fontSize: healthSp(context, 10),
               color: Colors.grey,
             ),
           );
@@ -508,10 +512,10 @@ class _PeriodChartWidgetState extends State<PeriodChartWidget> {
     final timeStr = DateFormat('HH:mm').format(dateTime);
     
     return Container(
-      padding: const EdgeInsets.all(8),
+      padding: EdgeInsets.all(healthDp(context, 8)),
       decoration: BoxDecoration(
         color: Colors.black87,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(healthDp(context, 8)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.2),
@@ -526,37 +530,37 @@ class _PeriodChartWidgetState extends State<PeriodChartWidget> {
         children: [
           Text(
             '$chartDate $timeStr',
-            style: const TextStyle(
+            style: TextStyle(
               color: Colors.white,
-              fontSize: 12,
+              fontSize: healthSp(context, 12),
               fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(height: 4),
+          SizedBox(height: healthDp(context, 4)),
           if (widget.dataType == 'bloodPressure')
             Text(
               '${data['systolic']}/${data['diastolic']} mmHg',
-              style: const TextStyle(
+              style: TextStyle(
                 color: Colors.white,
-                fontSize: 14,
+                fontSize: healthSp(context, 14),
                 fontWeight: FontWeight.bold,
               ),
             )
           else if (widget.dataType == 'bloodSugar')
             Text(
               '${value.toStringAsFixed(0)} mg/dL',
-              style: const TextStyle(
+              style: TextStyle(
                 color: Colors.white,
-                fontSize: 14,
+                fontSize: healthSp(context, 14),
                 fontWeight: FontWeight.bold,
               ),
             )
           else
             Text(
               '${value.toStringAsFixed(0)} kg',
-              style: const TextStyle(
+              style: TextStyle(
                 color: Colors.white,
-                fontSize: 14,
+                fontSize: healthSp(context, 14),
                 fontWeight: FontWeight.bold,
               ),
             ),

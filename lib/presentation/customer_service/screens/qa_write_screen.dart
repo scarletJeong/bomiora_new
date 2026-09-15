@@ -488,40 +488,42 @@ class _QaWriteScreenState extends State<QaWriteScreen> {
                   ),
                   SafeArea(
                     top: false,
-                    minimum: EdgeInsets.fromLTRB(
-                      healthDp(context, 20),
-                      healthDp(context, 0),
-                      healthDp(context, 20),
-                      healthDp(context, 5),
-                    ),
-                    child: SizedBox(
-                      width: double.infinity,
-                      height: healthDp(context, 45),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            flex: 2,
-                            child: _BottomButton(
-                              label: '취소',
-                              bg: Colors.white,
-                              fg: const Color(0xFF555555),
-                              borderColor: const Color(0xFFDCDCDC),
-                              onTap: () => Navigator.pop(context),
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        healthDp(context, 20),
+                        healthDp(context, 10),
+                        healthDp(context, 20),
+                        healthDp(context, 10),
+                      ),
+                      child: SizedBox(
+                        width: double.infinity,
+                        height: healthDp(context, 45),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              flex: 2,
+                              child: _BottomButton(
+                                label: '취소',
+                                bg: Colors.white,
+                                fg: const Color(0xFF555555),
+                                borderColor: const Color(0xFFDCDCDC),
+                                onTap: () => Navigator.pop(context),
+                              ),
                             ),
-                          ),
-                          SizedBox(width: healthDp(context, 10)),
-                          Expanded(
-                            flex: 3,
-                            child: _BottomButton(
-                              label: '문의하기',
-                              bg: _canSubmit
-                                  ? _pink
-                                  : const Color(0xFFD2D2D2),
-                              fg: Colors.white,
-                              onTap: _sending ? null : _submit,
+                            SizedBox(width: healthDp(context, 10)),
+                            Expanded(
+                              flex: 3,
+                              child: _BottomButton(
+                                label: '문의하기',
+                                bg: _canSubmit
+                                    ? _pink
+                                    : const Color(0xFFD2D2D2),
+                                fg: Colors.white,
+                                onTap: _sending ? null : _submit,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
