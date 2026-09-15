@@ -5,6 +5,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../../core/constants/app_assets.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
+import '../../../common/widgets/app_toast_overlay.dart';
 import '../../../common/widgets/login_required_dialog.dart';
 import '../../health_common/widgets/health_app_bar.dart';
 import '../../health_common/health_responsive_scale.dart';
@@ -110,12 +111,7 @@ class _HealthConnectScreenState extends State<HealthConnectScreen> {
     });
 
     if (message.isNotEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          duration: const Duration(seconds: 2),
-        ),
-      );
+      AppToastOverlay.show(context, message);
     }
   }
 

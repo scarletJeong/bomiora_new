@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../../../../data/models/delivery/delivery_model.dart';
 import '../../../../health/health_common/health_responsive_scale.dart';
+import '../../../common/widgets/app_toast_overlay.dart';
 import 'delivery_detail_section_style.dart';
 
 /// 주문 상태 + 진행 바 카드
@@ -102,6 +103,7 @@ class DeliveryDetailStatusCard extends StatelessWidget {
                   GestureDetector(
                     onTap: () {
                       Clipboard.setData(ClipboardData(text: order.odId));
+                      AppToastOverlay.show(context, '주문번호가 복사되었습니다.');
                     },
                     child: Text(
                       '주문번호: ${order.odId}',

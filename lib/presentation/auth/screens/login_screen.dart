@@ -11,6 +11,7 @@ import '../../../core/constants/app_assets.dart';
 import '../../../core/utils/node_value_parser.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/app_alert_dialog.dart';
+import '../../common/widgets/app_toast_overlay.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../widgets/kcp_cert.dart';
 import 'signup_screen.dart';
@@ -791,9 +792,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
     final msg = result['error']?.toString();
     if (msg != null && msg.isNotEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(msg)),
-      );
+      AppToastOverlay.show(context, msg);
     }
   }
 
@@ -819,9 +818,7 @@ class _LoginScreenState extends State<LoginScreen> {
         if (!mounted) return;
         final msg = kakaoResult['error']?.toString();
         if (msg != null && msg.isNotEmpty) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(msg)),
-          );
+          AppToastOverlay.show(context, msg);
         }
         return;
       }
@@ -830,9 +827,7 @@ class _LoginScreenState extends State<LoginScreen> {
       await _completeKakaoLoginFromData(kakaoData);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('카카오 로그인 오류: $e')),
-      );
+      AppToastOverlay.show(context, '카카오 로그인 오류: $e');
     } finally {
       if (mounted) {
         setState(() {
@@ -850,9 +845,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (authError != null && authError.isNotEmpty) {
       KakaoAuthService.clearWebAuthQueryFromUrl();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(authError)),
-      );
+      AppToastOverlay.show(context, authError);
       return;
     }
 
@@ -871,9 +864,7 @@ class _LoginScreenState extends State<LoginScreen> {
         if (!mounted) return;
         final msg = kakaoResult['error']?.toString();
         if (msg != null && msg.isNotEmpty) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(msg)),
-          );
+          AppToastOverlay.show(context, msg);
         }
         return;
       }
@@ -882,9 +873,7 @@ class _LoginScreenState extends State<LoginScreen> {
       await _completeKakaoLoginFromData(kakaoData);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('카카오 로그인 오류: $e')),
-      );
+      AppToastOverlay.show(context, '카카오 로그인 오류: $e');
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -900,9 +889,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (kakaoId.isEmpty) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('카카오 사용자 정보를 가져오지 못했습니다.')),
-      );
+      AppToastOverlay.show(context, '카카오 사용자 정보를 가져오지 못했습니다.');
       return;
     }
 
@@ -932,9 +919,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (authError != null && authError.isNotEmpty) {
       NaverAuthService.clearWebAuthQueryFromUrl();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(authError)),
-      );
+      AppToastOverlay.show(context, authError);
       return;
     }
 
@@ -953,9 +938,7 @@ class _LoginScreenState extends State<LoginScreen> {
         if (!mounted) return;
         final msg = naverResult['error']?.toString();
         if (msg != null && msg.isNotEmpty) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(msg)),
-          );
+          AppToastOverlay.show(context, msg);
         }
         return;
       }
@@ -964,9 +947,7 @@ class _LoginScreenState extends State<LoginScreen> {
       await _completeNaverLoginFromData(naverData);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('네이버 로그인 오류: $e')),
-      );
+      AppToastOverlay.show(context, '네이버 로그인 오류: $e');
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -983,9 +964,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (naverId.isEmpty) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('네이버 사용자 정보를 가져오지 못했습니다.')),
-      );
+      AppToastOverlay.show(context, '네이버 사용자 정보를 가져오지 못했습니다.');
       return;
     }
 
@@ -1036,9 +1015,7 @@ class _LoginScreenState extends State<LoginScreen> {
         if (naverResult['cancelled'] != true) {
           final msg = naverResult['error']?.toString();
           if (msg != null && msg.isNotEmpty) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(msg)),
-            );
+            AppToastOverlay.show(context, msg);
           }
         }
         return;
@@ -1048,9 +1025,7 @@ class _LoginScreenState extends State<LoginScreen> {
       await _completeNaverLoginFromData(naverData);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('네이버 로그인 오류: $e')),
-      );
+      AppToastOverlay.show(context, '네이버 로그인 오류: $e');
     } finally {
       if (mounted) {
         setState(() {

@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../presentation/common/widgets/app_toast_overlay.dart';
 import '../navigation/app_navigator_key.dart';
 import 'inf_code_tracker.dart';
 
@@ -83,7 +84,7 @@ class ProductShare {
     }
   }
 
-  /// 공유 실행 후 사용자 피드백(스낵바)까지 처리합니다.
+  /// 공유 실행 후 사용자 피드백(토스트)까지 처리합니다.
   static Future<void> shareProductWithFeedback({
     required BuildContext context,
     required BuildContext anchorContext,
@@ -100,45 +101,19 @@ class ProductShare {
         productKind: productKind,
         infCode: infCode,
       );
-      _showFeedbackSnackBar(
+      _showFeedback(
+        context,
         shared ? '공유하기를 실행했습니다.' : '링크가 클립보드에 복사되었습니다.',
       );
     } catch (_) {
-      _showFeedbackSnackBar('공유에 실패했습니다.');
+      _showFeedback(context, '공유에 실패했습니다.');
     }
   }
 
-  static void _showFeedbackSnackBar(String message) {
-    final rootContext = appNavigatorKey.currentContext;
-    if (rootContext == null || !rootContext.mounted) return;
-
-    final messenger = ScaffoldMessenger.maybeOf(rootContext);
-    if (messenger == null) return;
-
-    final screenW = MediaQuery.sizeOf(rootContext).width;
-    final barWidth =
-        (screenW > 650 ? 618.0 : screenW - 32).clamp(200.0, screenW);
-    final hMargin = ((screenW - barWidth) / 2).clamp(16.0, double.infinity);
-
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          message,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontFamily: 'Gmarket Sans TTF',
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-            color: Colors.white,
-            height: 1.35,
-          ),
-        ),
-        behavior: SnackBarBehavior.floating,
-        margin: EdgeInsets.fromLTRB(hMargin, 0, hMargin, 88),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-        duration: const Duration(seconds: 2),
-      ),
-    );
+  static void _showFeedback(BuildContext context, String message) {
+    final ctx = context.mounted ? context : appNavigatorKey.currentContext;
+    if (ctx == null || !ctx.mounted) return;
+    AppToastOverlay.show(ctx, message);
   }
 
   static bool _shouldFallbackToClipboard(Object error) {

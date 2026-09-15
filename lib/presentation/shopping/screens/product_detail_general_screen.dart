@@ -21,6 +21,7 @@ import '../../../data/repositories/product/product_option_repository.dart';
 import '../../../data/repositories/product/product_category_catalog.dart';
 import '../../../data/models/cart/cart_item_model.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
+import '../../common/widgets/app_toast_overlay.dart';
 import '../widgets/product_tail_info_section.dart';
 import '../widgets/option_bottomup.dart';
 import '../widgets/recommend_product.dart';
@@ -1709,9 +1710,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
 
   void _showBuyNowFailedSnackBar() {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('결제 정보를 불러오지 못했습니다. 다시 시도해 주세요.')),
-    );
+    AppToastOverlay.show(context, '결제 정보를 불러오지 못했습니다. 다시 시도해 주세요.');
   }
 
   int _resolveBuyNowShippingCost({
@@ -1888,9 +1887,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       return;
     }
     final message = (result['message'] ?? '장바구니 담기에 실패했습니다.').toString();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    AppToastOverlay.show(context, message);
   }
 
   Future<void> _showGeneralQuantityBottomSheet() async {

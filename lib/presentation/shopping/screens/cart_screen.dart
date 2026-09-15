@@ -120,12 +120,9 @@ class _CartScreenState extends State<CartScreen> {
       ctKind: _selectionCtKind,
     );
     if (!mounted || result['success'] == true) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          result['message']?.toString() ?? '선택 저장에 실패했습니다.',
-        ),
-      ),
+    AppToastOverlay.show(
+      context,
+      result['message']?.toString() ?? '선택 저장에 실패했습니다.',
     );
   }
 

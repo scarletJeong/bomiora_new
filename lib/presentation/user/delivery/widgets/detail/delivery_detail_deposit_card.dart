@@ -5,6 +5,7 @@ import '../../../../../core/utils/date_formatter.dart';
 import '../../../../../core/utils/price_formatter.dart';
 import '../../../../../data/models/delivery/delivery_model.dart';
 import '../../../../health/health_common/health_responsive_scale.dart';
+import '../../../common/widgets/app_toast_overlay.dart';
 import 'delivery_detail_section_style.dart';
 
 /// 결제대기 가상계좌 입금 안내 카드
@@ -138,11 +139,7 @@ class DeliveryDetailDepositCard extends StatelessWidget {
                         if (text.isEmpty) return;
                         await Clipboard.setData(ClipboardData(text: text));
                         if (!context.mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('계좌번호가 복사되었습니다.'),
-                          ),
-                        );
+                        AppToastOverlay.show(context, '계좌번호가 복사되었습니다.');
                       },
                       borderRadius: BorderRadius.circular(healthDp(context, 8)),
                       child: Container(

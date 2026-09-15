@@ -377,21 +377,15 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
         ? ''
         : _subjectController.text.trim();
     if (_subjectPreset == _SubjectPreset.custom && subject.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('배송지명을 입력해주세요.')),
-      );
+      AppToastOverlay.show(context, '배송지명을 입력해주세요.');
       return;
     }
     if (_address1Controller.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('주소를 검색해주세요.')),
-      );
+      AppToastOverlay.show(context, '주소를 검색해주세요.');
       return;
     }
     if (_address2Controller.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('상세 주소를 입력해주세요.')),
-      );
+      AppToastOverlay.show(context, '상세 주소를 입력해주세요.');
       setState(() => _highlightDetailAddress = true);
       return;
     }
@@ -413,11 +407,7 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
       // 신규 등록 시 mb_id당 최대 10개
       if (widget.address == null && existing.length >= 10) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('배송지는 최대 10개까지 등록할 수 있습니다.'),
-          ),
-        );
+        AppToastOverlay.show(context, '배송지는 최대 10개까지 등록할 수 있습니다.');
         return;
       }
 

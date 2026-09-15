@@ -20,6 +20,7 @@ import '../../../data/models/user/user_model.dart';
 import '../../../data/models/product/product_option_model.dart';
 import '../../../data/repositories/product/product_option_repository.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
+import '../../common/widgets/app_toast_overlay.dart';
 import '../widgets/product_tail_info_section.dart';
 import '../widgets/option_bottomup.dart';
 import '../widgets/recommend_product.dart';
@@ -1912,9 +1913,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       return;
     }
     final message = (result['message'] ?? '장바구니 담기에 실패했습니다.').toString();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    AppToastOverlay.show(context, message);
   }
 
   Future<List<int>?> _addPrescriptionItemsToShoppingCart({

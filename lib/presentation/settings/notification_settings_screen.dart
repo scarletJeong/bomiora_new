@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/constants/app_assets.dart';
 import '../common/widgets/mobile_layout_wrapper.dart';
 import '../common/widgets/centered_empty_state.dart';
+import '../common/widgets/app_toast_overlay.dart';
 import '../health/health_common/widgets/health_app_bar.dart';
 import '../health/health_common/health_responsive_scale.dart';
 import '../../data/models/notification/notification_settings_model.dart';
@@ -95,9 +96,7 @@ class _NotificationSettingsScreenState
     if (!mounted) return;
     setState(() => _saving = false);
     if (!ok) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('알림 설정 저장에 실패했습니다.')),
-      );
+      AppToastOverlay.show(context, '알림 설정 저장에 실패했습니다.');
     }
   }
 

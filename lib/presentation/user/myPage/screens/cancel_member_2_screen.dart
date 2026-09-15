@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
+import '../../../common/widgets/app_toast_overlay.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
 import 'cancel_member_done_screen.dart';
@@ -59,9 +60,7 @@ class _Cancel2MemberScreenState extends State<Cancel2MemberScreen> {
       final user = await AuthService.getUser();
       if (!mounted) return;
       if (user == null || user.id.trim().isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('로그인 정보를 확인할 수 없습니다.')),
-        );
+        AppToastOverlay.show(context, '로그인 정보를 확인할 수 없습니다.');
         return;
       }
 
@@ -71,14 +70,11 @@ class _Cancel2MemberScreenState extends State<Cancel2MemberScreen> {
       );
       if (!mounted) return;
       if (result['success'] != true) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              result['message']?.toString().trim().isNotEmpty == true
-                  ? result['message'].toString()
-                  : '회원 탈퇴에 실패했습니다. 다시 시도해 주세요.',
-            ),
-          ),
+        AppToastOverlay.show(
+          context,
+          result['message']?.toString().trim().isNotEmpty == true
+              ? result['message'].toString()
+              : '회원 탈퇴에 실패했습니다. 다시 시도해 주세요.',
         );
         return;
       }
@@ -93,9 +89,7 @@ class _Cancel2MemberScreenState extends State<Cancel2MemberScreen> {
       );
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('회원 탈퇴 중 오류가 발생했습니다.')),
-      );
+      AppToastOverlay.show(context, '회원 탈퇴 중 오류가 발생했습니다.');
     } finally {
       if (mounted) setState(() => _submitting = false);
     }

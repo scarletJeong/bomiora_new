@@ -6,6 +6,7 @@ import '../../data/models/notification/app_notification_model.dart';
 import '../../data/services/auth_service.dart';
 import '../../data/services/notification_inbox_service.dart';
 import '../common/widgets/centered_empty_state.dart';
+import '../common/widgets/app_toast_overlay.dart';
 import '../common/widgets/mobile_layout_wrapper.dart';
 import '../health/health_common/health_responsive_scale.dart';
 import '../health/health_common/widgets/health_app_bar.dart';
@@ -153,9 +154,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
     if (!mounted) return;
     if (ok) {
       setState(() => _items = []);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('모든 알림을 삭제했습니다.')),
-      );
+      AppToastOverlay.show(context, '모든 알림을 삭제했습니다.');
     }
   }
 

@@ -98,19 +98,7 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
   Future<void> _goToRegister() async {
     if (_addresses.length >= 10) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '배송지는 최대 10개까지 등록할 수 있습니다.',
-            style: TextStyle(
-              fontFamily: 'Gmarket Sans TTF',
-              fontSize: healthSp(context, 14),
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      AppToastOverlay.show(context, '배송지는 최대 10개까지 등록할 수 있습니다.');
       return;
     }
 
