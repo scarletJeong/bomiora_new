@@ -5,17 +5,18 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../../core/utils/image_url_helper.dart';
-import '../widgets/consult_confirm_popup.dart';
+import '../widgets/step2_consult_confirm_popup.dart';
 import '../widgets/reservation_time_change_popup.dart';
-import 'widgets/refund_apply_photo_utils.dart';
+import 'widgets/step2_refund_apply_photo_utils.dart';
 import '../../../../core/utils/price_formatter.dart';
 import '../../../../data/models/delivery/delivery_model.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/services/delivery_service.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
-import 'refund_reason_status.dart';
+import 'step2_refund_reason_status.dart';
 
+/// STEP2 — 1차 출시 제외. 비대면 주문 교환/환불 신청 UI. 출시 후 API 연동.
 /// 비대면(prescription) 주문 교환/환불 신청 화면 — 라우트 `/refund`
 class RefundApplyPrescriptionScreen extends StatefulWidget {
   final String orderNumber;

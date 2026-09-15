@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../health/health_common/health_responsive_scale.dart';
 
-/// 교환/환불 신청 후 상담 예약 접수 확인 팝업
+/// STEP2 — 1차 출시 제외. 교환/환불 신청 후 상담 예약 접수 확인 팝업
 class ConsultConfirmPopup {
   ConsultConfirmPopup._();
 

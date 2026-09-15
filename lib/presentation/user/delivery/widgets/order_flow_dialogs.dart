@@ -5,6 +5,7 @@ import '../../../../data/services/delivery_service.dart';
 import '../../../../data/services/refund_account_service.dart';
 import '../../../common/widgets/app_toast_overlay.dart';
 import '../../../common/widgets/confirm_dialog.dart';
+import '../../../health/health_common/health_responsive_scale.dart';
 import 'refund_account_popup.dart';
 
 /// 주문 취소 / 수령 확인 등 주문 플로우용 다이얼로그.
@@ -17,39 +18,43 @@ class OrderFlowDialogs {
     return paymentMethod.contains('가상');
   }
 
-  static Future<String> _resolvePaymentMethod({
+  static Future<OrderDetailModel?> _loadOrderDetail({
     required String odId,
     required String mbId,
     OrderDetailModel? orderDetail,
   }) async {
-    final fromDetail = orderDetail?.paymentMethod ?? '';
-    if (fromDetail.isNotEmpty) return fromDetail;
-
+    if (orderDetail != null) return orderDetail;
     final detailResult = await OrderService.getOrderDetail(
       odId: odId,
       mbId: mbId,
     );
-    if (detailResult['success'] == true && detailResult['order'] is OrderDetailModel) {
-      return (detailResult['order'] as OrderDetailModel).paymentMethod;
+    if (detailResult['success'] == true &&
+        detailResult['order'] is OrderDetailModel) {
+      return detailResult['order'] as OrderDetailModel;
     }
-    return '';
+    return null;
   }
 
-  /// 가상계좌: 환불계좌 입력 → 취소 확인 → API 취소. 그 외: 취소 확인 → API 취소. 성공 시 true.
+  /// 가상계좌 **입금 후**만 환불계좌 입력 → 취소 확인 → API.
+  /// 입금 전·그 외 결제: 취소 확인 → API. 성공 시 true.
   static Future<bool> runOrderCancelFlow(
     BuildContext context, {
     required String odId,
     required String mbId,
     OrderDetailModel? orderDetail,
   }) async {
-    final paymentMethod = await _resolvePaymentMethod(
+    final detail = await _loadOrderDetail(
       odId: odId,
       mbId: mbId,
       orderDetail: orderDetail,
     );
+    final paymentMethod = detail?.paymentMethod ?? '';
+    final needRefundAccount = _isVirtualAccountPayment(paymentMethod) &&
+        detail != null &&
+        !detail.isAwaitingVirtualDeposit;
 
     RefundAccountInput? refundInput;
-    if (_isVirtualAccountPayment(paymentMethod)) {
+    if (needRefundAccount) {
       if (!context.mounted) return false;
       refundInput = await RefundAccountPopup.show(context, mbId: mbId);
       if (refundInput == null) return false;
@@ -108,6 +113,14 @@ class OrderFlowDialogs {
     BuildContext context, {
     bool cancelRequested = false,
   }) {
+    final pad = healthDp(context, 20);
+    final radius = healthDp(context, 20);
+    final titleSize = healthSp(context, 20);
+    final bodySize = healthSp(context, 14);
+    final btnRadius = healthDp(context, 10);
+    final btnPadV = healthDp(context, 10);
+    final btnFont = healthSp(context, 16);
+
     return showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -116,14 +129,14 @@ class OrderFlowDialogs {
           backgroundColor: Colors.transparent,
           elevation: 0,
           child: Container(
-            width: 272,
-            padding: const EdgeInsets.all(20),
-            decoration: const ShapeDecoration(
+            width: healthDp(ctx, 272),
+            padding: EdgeInsets.all(pad),
+            decoration: ShapeDecoration(
               color: Colors.white,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.all(Radius.circular(20)),
+                borderRadius: BorderRadius.all(Radius.circular(radius)),
               ),
-              shadows: [
+              shadows: const [
                 BoxShadow(
                   color: Color(0x19000000),
                   blurRadius: 8.14,
@@ -138,16 +151,16 @@ class OrderFlowDialogs {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Text(
+                  Text(
                     '주문 취소',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: Color(0xFF1A1A1A),
-                      fontSize: 20,
+                      color: const Color(0xFF1A1A1A),
+                      fontSize: titleSize,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  SizedBox(height: healthDp(ctx, 20)),
                   Text(
                     cancelRequested
                         ? '취소 요청이 접수되었습니다.\n'
@@ -159,27 +172,27 @@ class OrderFlowDialogs {
                             '확인해 주세요.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: Color(0xFF898686),
-                      fontSize: 14,
+                      color: const Color(0xFF898686),
+                      fontSize: bodySize,
                       fontWeight: FontWeight.w500,
                       height: 1.57,
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  SizedBox(height: healthDp(ctx, 20)),
                   Material(
                     color: _kPink,
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(btnRadius),
                     child: InkWell(
                       onTap: () => Navigator.pop(ctx),
-                      borderRadius: BorderRadius.circular(10),
-                      child: const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 10),
+                      borderRadius: BorderRadius.circular(btnRadius),
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(vertical: btnPadV),
                         child: Center(
                           child: Text(
                             '확인',
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: 16,
+                              fontSize: btnFont,
                               fontWeight: FontWeight.w500,
                             ),
                           ),

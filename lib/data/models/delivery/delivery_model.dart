@@ -305,6 +305,13 @@ class OrderListModel {
     return false;
   }
 
+  /// 가상계좌 입금 전 (결제대기) — 즉시 취소, 환불계좌 불필요
+  bool get isAwaitingVirtualDeposit {
+    final display = displayStatus.trim();
+    final od = odStatus.trim();
+    return display == '결제대기중' || od == '주문';
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'odId': odId,
@@ -580,6 +587,13 @@ class OrderDetailModel {
         normalized['reservationEndTime'] ?? normalized['reservation_end_time'],
       ),
     );
+  }
+
+  /// 가상계좌 입금 전 (결제대기) — 즉시 취소, 환불계좌 불필요
+  bool get isAwaitingVirtualDeposit {
+    final display = displayStatus.trim();
+    final od = odStatus.trim();
+    return display == '결제대기중' || od == '주문';
   }
 
   Map<String, dynamic> toJson() {

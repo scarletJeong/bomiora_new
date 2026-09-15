@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// 교환/환불 신청 화면 공통 상수·탭·사유 목록
+/// STEP2 — 1차 출시 제외. 교환/환불 신청 화면 공통 상수·탭·사유 목록
 class RefundReasonStatus {
   RefundReasonStatus._();
 

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../common/widgets/mobile_layout_wrapper.dart';
-import 'widgets/refund_apply_photo_utils.dart';
+import 'widgets/step2_refund_apply_photo_utils.dart';
 import '../../../../core/utils/image_url_helper.dart';
 import '../../../../core/utils/price_formatter.dart';
 import '../../../../data/models/delivery/delivery_model.dart';
@@ -10,8 +10,9 @@ import '../../../../data/services/auth_service.dart';
 import '../../../../data/services/delivery_service.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
-import 'refund_reason_status.dart';
+import 'step2_refund_reason_status.dart';
 
+/// STEP2 — 1차 출시 제외. 일반 주문 교환/환불 신청 UI. 출시 후 API 연동.
 /// 헬스케어 스토어(일반) 주문 교환/환불 신청 — 라우트 `/refund-general`
 class RefundApplyGeneralScreen extends StatefulWidget {
   final String orderNumber;

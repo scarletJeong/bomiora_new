@@ -35,8 +35,6 @@ import 'presentation/user/point/screens/point_screen.dart';
 import 'presentation/user/delivery/delivery_list_screen.dart';
 import 'presentation/user/delivery/delivery_detail_screen.dart';
 import 'data/models/delivery/delivery_model.dart';
-import 'presentation/user/delivery/refund/refund_apply_general_screen.dart';
-import 'presentation/user/delivery/refund/refund_apply_prescription_screen.dart';
 import 'presentation/user/coupon/screens/coupon_screen.dart';
 import 'presentation/user/healthprofile/screens/health_profile_list_screen.dart';
 import 'presentation/user/review/my_reviews_screen.dart';
@@ -221,24 +219,6 @@ class _BomioraAppState extends State<BomioraApp> {
             orderNumber: orderNumber,
             initialOrder: initialOrder,
           );
-        },
-        '/refund': (context) {
-          final args = ModalRoute.of(context)?.settings.arguments;
-          var orderNumber = '';
-          if (args is Map) {
-            orderNumber =
-                (args['orderNumber'] ?? args['odId'] ?? '').toString();
-          }
-          return RefundApplyPrescriptionScreen(orderNumber: orderNumber);
-        },
-        '/refund-general': (context) {
-          final args = ModalRoute.of(context)?.settings.arguments;
-          var orderNumber = '';
-          if (args is Map) {
-            orderNumber =
-                (args['orderNumber'] ?? args['odId'] ?? '').toString();
-          }
-          return RefundApplyGeneralScreen(orderNumber: orderNumber);
         },
         '/announcement': (context) => const AnnouncementListScreen(),
         '/event': (context) => const EventListScreen(),

@@ -8,7 +8,7 @@ import '../../../../../core/constants/app_assets.dart';
 import '../../../../../core/utils/image_picker_utils.dart';
 import '../../../../health/health_common/health_responsive_scale.dart';
 
-/// 교환/환불 신청 — 사진 선택·표시 공통 (로컬만, 업로드 API 미연동)
+/// STEP2 — 1차 출시 제외. 교환/환불 신청 사진 선택·표시 공통 (로컬만, 업로드 API 미연동)
 class RefundApplyPhotoUtils {
   RefundApplyPhotoUtils._();
 
