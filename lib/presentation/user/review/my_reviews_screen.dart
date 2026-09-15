@@ -1004,7 +1004,11 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
     try {
       final user = await AuthService.getUser();
       if (user == null) return;
-      final result = await ReviewService.deleteReview(review.isId!, user.id);
+      final result = await ReviewService.deleteReview(
+        review.isId!,
+        user.id,
+        itId: review.itId,
+      );
       if (!mounted) return;
       if (result['success'] == true) {
         setState(() {

@@ -596,10 +596,17 @@ class ReviewService {
   /// 
   /// [isId] 리뷰 ID
   /// [mbId] 회원 ID (권한 확인용)
-  static Future<Map<String, dynamic>> deleteReview(int isId, String mbId) async {
+  static Future<Map<String, dynamic>> deleteReview(
+    int isId,
+    String mbId, {
+    String? itId,
+  }) async {
     try {
+      final itQ = (itId != null && itId.trim().isNotEmpty)
+          ? '&itId=${Uri.encodeQueryComponent(itId.trim())}'
+          : '';
       final response = await ApiClient.delete(
-        '/api/user/reviews/$isId?mbId=$mbId',
+        '/api/user/reviews/$isId?mbId=$mbId$itQ',
       );
 
       if (response.statusCode == 200) {
