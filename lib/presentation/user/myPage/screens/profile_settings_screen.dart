@@ -615,9 +615,9 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           child: Padding(
             padding: EdgeInsets.fromLTRB(
               healthDp(context, 20),
-              healthDp(context, 0),
+              healthDp(context, 10),
               healthDp(context, 20),
-              healthDp(context, 0),
+              healthDp(context, 10),
             ),
             child: SizedBox(
               width: double.infinity,

@@ -695,10 +695,10 @@ class QaListScreenState extends State<QaListScreen> {
                     SafeArea(
                       top: false,
                       minimum: EdgeInsets.fromLTRB(
-                        healthDp(context, 27),
+                        healthDp(context, 20),
                         healthDp(context, 0),
-                        healthDp(context, 27),
-                        healthDp(context, 5),
+                        healthDp(context, 20),
+                        healthDp(context, 10),
                       ),
                       child: GestureDetector(
                         onTap: _openContactForm,
