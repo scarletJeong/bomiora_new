@@ -16,8 +16,44 @@ class NotificationService {
   static const _prefsMarketing = 'notif_marketing_agree';
   static const _prefsAppPush = 'notif_app_push_agree';
   static const _prefsSms = 'notif_sms_agree';
+  static const _listCacheTtl = Duration(minutes: 3);
 
-  static Future<NotificationSettingsModel> loadSettings() async {
+  static NotificationSettingsModel? _memory;
+  static DateTime? _memoryAt;
+  static Future<NotificationSettingsModel>? _inFlight;
+
+  static void invalidate() {
+    _memory = null;
+    _memoryAt = null;
+    _inFlight = null;
+  }
+
+  static NotificationSettingsModel? peekSettings() {
+    final cachedAt = _memoryAt;
+    if (_memory == null || cachedAt == null) return null;
+    if (DateTime.now().difference(cachedAt) >= _listCacheTtl) return null;
+    return _memory;
+  }
+
+  static Future<NotificationSettingsModel> loadSettings({
+    bool forceRefresh = false,
+  }) async {
+    if (!forceRefresh) {
+      final cached = peekSettings();
+      if (cached != null) return cached;
+      if (_inFlight != null) return _inFlight!;
+    }
+
+    final request = _fetchSettings();
+    _inFlight = request;
+    try {
+      return await request;
+    } finally {
+      if (identical(_inFlight, request)) _inFlight = null;
+    }
+  }
+
+  static Future<NotificationSettingsModel> _fetchSettings() async {
     final prefs = await SharedPreferences.getInstance();
     final local = NotificationSettingsModel(
       orderAgree: prefs.getBool(_prefsOrder) ?? false,
@@ -86,6 +122,8 @@ class NotificationService {
   }
 
   static Future<void> _saveLocal(NotificationSettingsModel settings) async {
+    _memory = settings;
+    _memoryAt = DateTime.now();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_prefsOrder, settings.orderAgree);
     await prefs.setBool(_prefsMarketing, settings.marketingAgree);

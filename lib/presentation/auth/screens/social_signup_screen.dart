@@ -50,6 +50,8 @@ class _SocialSignupScreenState extends State<SocialSignupScreen> {
 
   bool _terms = true;
   bool _privacy = true;
+  bool _marketing = false;
+  bool _appPush = false;
   bool _isLoading = false;
   String? _errorText;
 
@@ -113,6 +115,10 @@ class _SocialSignupScreenState extends State<SocialSignupScreen> {
       agreements: {
         'terms': _terms,
         'privacy': _privacy,
+        'marketing': _marketing,
+        'marketingEmail': _marketing,
+        'marketingSms': _marketing,
+        'appPush': _appPush,
       },
     );
 
@@ -235,6 +241,38 @@ class _SocialSignupScreenState extends State<SocialSignupScreen> {
                       : (v) => setState(() => _privacy = v ?? false),
                   title: Text(
                     '개인정보 처리방침 동의 (필수)',
+                    style: TextStyle(
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontSize: healthSp(context, 14),
+                    ),
+                  ),
+                  controlAffinity: ListTileControlAffinity.leading,
+                  contentPadding: EdgeInsets.zero,
+                  visualDensity: VisualDensity.compact,
+                ),
+                CheckboxListTile(
+                  value: _marketing,
+                  onChanged: _isLoading
+                      ? null
+                      : (v) => setState(() => _marketing = v ?? false),
+                  title: Text(
+                    '마케팅 정보 수신 동의 (선택)',
+                    style: TextStyle(
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontSize: healthSp(context, 14),
+                    ),
+                  ),
+                  controlAffinity: ListTileControlAffinity.leading,
+                  contentPadding: EdgeInsets.zero,
+                  visualDensity: VisualDensity.compact,
+                ),
+                CheckboxListTile(
+                  value: _appPush,
+                  onChanged: _isLoading
+                      ? null
+                      : (v) => setState(() => _appPush = v ?? false),
+                  title: Text(
+                    '야간 알림 (선택)',
                     style: TextStyle(
                       fontFamily: 'Gmarket Sans TTF',
                       fontSize: healthSp(context, 14),

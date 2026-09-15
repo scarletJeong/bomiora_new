@@ -13,6 +13,7 @@ import 'prescription_purchase_history_service.dart';
 import 'recent_view_service.dart';
 import 'wish_service.dart';
 import 'address_service.dart';
+import 'notification_service.dart';
 
 class AuthService {
   static const String _userKey = 'user_data';
@@ -36,6 +37,7 @@ class AuthService {
       await Future.wait<void>([
         WishService.getWishList(),
         AddressService.getAddressList(id),
+        NotificationService.loadSettings(),
       ]);
     } catch (_) {}
   }
@@ -140,6 +142,7 @@ class AuthService {
 
     try {
       AddressService.invalidateAll();
+      NotificationService.invalidate();
     } catch (_) {}
 
     try {

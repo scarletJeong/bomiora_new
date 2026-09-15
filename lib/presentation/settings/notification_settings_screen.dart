@@ -58,6 +58,17 @@ class _NotificationSettingsScreenState
       return;
     }
 
+    final cached = NotificationService.peekSettings();
+    if (cached != null && mounted) {
+      setState(() {
+        _orderAgree = cached.orderAgree;
+        _marketingAgree = cached.marketingAgree;
+        _nightAgree = cached.appPushAgree;
+        _smsAgree = cached.smsAgree;
+        _loading = false;
+      });
+    }
+
     final settings = await NotificationService.loadSettings();
     if (!mounted) return;
     setState(() {

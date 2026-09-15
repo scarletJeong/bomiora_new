@@ -30,69 +30,28 @@ class AgreementWidget extends StatefulWidget {
 class _AgreementWidgetState extends State<AgreementWidget> {
   bool _terms = false;
   bool _privacy = false;
-  bool _location = false;
   bool _marketing = false;
-  bool _marketingEmail = false;
-  bool _marketingSms = false;
+  bool _appPush = false;
 
-  bool get _allChecked =>
-      _terms &&
-      _privacy &&
-      _location &&
-      _marketing &&
-      _marketingEmail &&
-      _marketingSms;
+  bool get _allChecked => _terms && _privacy && _marketing && _appPush;
 
   bool get _canProceed => _terms && _privacy;
 
   Map<String, bool> get _agreements => {
         'terms': _terms,
         'privacy': _privacy,
-        'location': _location,
         'marketing': _marketing,
-        'marketingEmail': _marketing && _marketingEmail,
-        'marketingSms': _marketing && _marketingSms,
+        'marketingEmail': _marketing,
+        'marketingSms': _marketing,
+        'appPush': _appPush,
       };
 
   void _toggleAll(bool value) {
     setState(() {
       _terms = value;
       _privacy = value;
-      _location = value;
       _marketing = value;
-      _marketingEmail = value;
-      _marketingSms = value;
-    });
-  }
-
-  void _toggleMarketing(bool value) {
-    setState(() {
-      _marketing = value;
-      if (value) {
-        _marketingEmail = true;
-        _marketingSms = true;
-      } else {
-        _marketingEmail = false;
-        _marketingSms = false;
-      }
-    });
-  }
-
-  void _toggleMarketingDetail(bool isEmail, bool value) {
-    setState(() {
-      if (!_marketing && value) {
-        _marketing = true;
-      }
-
-      if (isEmail) {
-        _marketingEmail = value;
-      } else {
-        _marketingSms = value;
-      }
-
-      if (!_marketingEmail && !_marketingSms) {
-        _marketing = false;
-      }
+      _appPush = value;
     });
   }
 
@@ -209,49 +168,26 @@ class _AgreementWidgetState extends State<AgreementWidget> {
                             onChanged: (value) => setState(() => _privacy = value),
                             onViewPressed: _showAgreementPopup,
                           ),
+                          _AgreementTableRow(
+                            value: _marketing,
+                            requiredLabel: '[선택]',
+                            title: '마케팅 정보 수신 동의',
+                            popupType: AgreementPopupType.marketing,
+                            onChanged: (value) =>
+                                setState(() => _marketing = value),
+                            onViewPressed: _showAgreementPopup,
+                          ),
                           Padding(
                             padding: EdgeInsets.only(
                               bottom: healthDp(context, 10),
                             ),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _AgreementTableRow(
-                                  value: _marketing,
-                                  requiredLabel: '[선택]',
-                                  title: '마케팅 및 광고 활용 동의',
-                                  popupType: AgreementPopupType.marketing,
-                                  showDivider: false,
-                                  onChanged: _toggleMarketing,
-                                  onViewPressed: _showAgreementPopup,
-                                ),
-                                Padding(
-                                  padding: EdgeInsets.only(
-                                    left: healthDp(context, 24),
-                                  ),
-                                  child: Row(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Expanded(
-                                        child: _NestedAgreementOption(
-                                          value: _marketingEmail,
-                                          label: '이메일 수신',
-                                          onChanged: (value) => _toggleMarketingDetail(true, value),
-                                        ),
-                                      ),
-                                      SizedBox(width: healthDp(context, 10)),
-                                      Expanded(
-                                        child: _NestedAgreementOption(
-                                          value: _marketingSms,
-                                          label: 'SNS 수신',
-                                          onChanged: (value) => _toggleMarketingDetail(false, value),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
+                            child: _AgreementTableRow(
+                              value: _appPush,
+                              requiredLabel: '[선택]',
+                              title: '야간 알림',
+                              showDivider: false,
+                              onChanged: (value) =>
+                                  setState(() => _appPush = value),
                             ),
                           ),
                         ],
@@ -342,17 +278,17 @@ class _AgreementTableRow extends StatelessWidget {
   final String requiredLabel;
   final String title;
   final bool showDivider;
-  final AgreementPopupType popupType;
+  final AgreementPopupType? popupType;
   final ValueChanged<bool> onChanged;
-  final ValueChanged<AgreementPopupType> onViewPressed;
+  final ValueChanged<AgreementPopupType>? onViewPressed;
 
   const _AgreementTableRow({
     required this.value,
     required this.requiredLabel,
     required this.title,
-    required this.popupType,
     required this.onChanged,
-    required this.onViewPressed,
+    this.popupType,
+    this.onViewPressed,
     this.showDivider = true,
   });
 
@@ -415,57 +351,23 @@ class _AgreementTableRow extends StatelessWidget {
                     ),
                   ),
                 ),
-                SizedBox(width: healthDp(context, 8)),
-                GestureDetector(
-                  onTap: () => onViewPressed(popupType),
-                  child: Text(
-                    '보기',
-                    style: TextStyle(
-                      color: const Color(0xFF898686),
-                      fontSize: healthSp(context, 10),
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w300,
-                      decoration: TextDecoration.underline,
+                if (popupType != null && onViewPressed != null) ...[
+                  SizedBox(width: healthDp(context, 8)),
+                  GestureDetector(
+                    onTap: () => onViewPressed!(popupType!),
+                    child: Text(
+                      '보기',
+                      style: TextStyle(
+                        color: const Color(0xFF898686),
+                        fontSize: healthSp(context, 10),
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w300,
+                        decoration: TextDecoration.underline,
+                      ),
                     ),
                   ),
-                ),
+                ],
               ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _NestedAgreementOption extends StatelessWidget {
-  final bool value;
-  final String label;
-  final ValueChanged<bool> onChanged;
-
-  const _NestedAgreementOption({
-    required this.value,
-    required this.label,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: () => onChanged(!value),
-      child: Row(
-        children: [
-          _CheckboxBox(value: value, size: healthDp(context, 16)),
-          SizedBox(width: healthDp(context, 8)),
-          Flexible(
-            child: Text(
-              label,
-              style: TextStyle(
-                color: Colors.black,
-                fontSize: healthSp(context, 12),
-                fontFamily: 'Gmarket Sans TTF',
-                fontWeight: FontWeight.w300,
-              ),
             ),
           ),
         ],

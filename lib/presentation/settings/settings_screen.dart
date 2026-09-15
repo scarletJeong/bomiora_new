@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../common/widgets/app_alert_dialog.dart';
 import '../common/widgets/mobile_layout_wrapper.dart';
 import '../health/health_common/widgets/health_app_bar.dart';
 import 'notification_settings_screen.dart';
@@ -212,48 +213,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  /// 앱 정보 다이얼로그
   void _showAppInfoDialog() {
-    showDialog(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('앱 정보'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '보미오라',
-              style: TextStyle(
-                fontSize: healthSp(dialogContext, 18),
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            SizedBox(height: healthDp(dialogContext, 5)),
-            Text(
-              '버전: $_appVersion',
-              style: TextStyle(
-                fontSize: healthSp(dialogContext, 12),
-                color: _kMuted,
-              ),
-            ),
-            SizedBox(height: healthDp(dialogContext, 16)),
-            Text(
-              '건강한 삶을 위한 스마트한 선택\n보미오라와 함께하세요.',
-              style: TextStyle(
-                fontSize: healthSp(dialogContext, 14),
-                color: Colors.grey[800],
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('확인'),
-          ),
-        ],
-      ),
+    AppAlertDialog.show(
+      context,
+      title: '앱 정보',
+      message:
+          '보미오라\n버전 $_appVersion\n\n건강한 삶을 위한 스마트한 선택\n보미오라와 함께하세요.',
     );
   }
 }
