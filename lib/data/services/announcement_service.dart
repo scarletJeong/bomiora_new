@@ -8,6 +8,7 @@ class AnnouncementService {
   static const Duration _listCacheTtl = Duration(minutes: 3);
   static final Map<String, Map<String, dynamic>> _listCache = {};
   static final Map<String, DateTime> _listCacheAt = {};
+  static final Map<String, Future<Map<String, dynamic>>> _listInFlight = {};
 
   static Future<Map<String, dynamic>> getAnnouncements({
     int page = 1,
@@ -20,6 +21,31 @@ class AnnouncementService {
         DateTime.now().difference(cachedAt) < _listCacheTtl) {
       return Map<String, dynamic>.from(_listCache[cacheKey]!);
     }
+    final pending = _listInFlight[cacheKey];
+    if (pending != null) return pending;
+
+    final request = _fetchAnnouncements(
+      page: page,
+      size: size,
+      query: query,
+      cacheKey: cacheKey,
+    );
+    _listInFlight[cacheKey] = request;
+    try {
+      return await request;
+    } finally {
+      if (identical(_listInFlight[cacheKey], request)) {
+        _listInFlight.remove(cacheKey);
+      }
+    }
+  }
+
+  static Future<Map<String, dynamic>> _fetchAnnouncements({
+    required int page,
+    required int size,
+    required String query,
+    required String cacheKey,
+  }) async {
     try {
       final endpoint =
           '${ApiEndpoints.getAnnouncementList}?page=$page&size=$size&query=${Uri.encodeComponent(query)}';

@@ -5,6 +5,11 @@ import '../../core/network/api_client.dart';
 import '../../core/network/api_endpoints.dart';
 
 class EventService {
+  static const Duration _listCacheTtl = Duration(minutes: 3);
+  static List<EventModel>? _activeCache;
+  static DateTime? _activeCacheAt;
+  static Future<List<EventModel>>? _activeInFlight;
+
   static String _withNoCacheParam(String endpoint) {
     final ts = DateTime.now().millisecondsSinceEpoch;
     return endpoint.contains('?') ? '$endpoint&_ts=$ts' : '$endpoint?_ts=$ts';
@@ -37,20 +42,36 @@ class EventService {
 
   /// 진행중인 이벤트 목록 조회
   static Future<List<EventModel>> getActiveEvents() async {
-    final path = _withNoCacheParam(ApiEndpoints.getActiveEvents);
+    final cachedAt = _activeCacheAt;
+    if (_activeCache != null &&
+        cachedAt != null &&
+        DateTime.now().difference(cachedAt) < _listCacheTtl) {
+      return List<EventModel>.from(_activeCache!);
+    }
+    if (_activeInFlight != null) return _activeInFlight!;
+
+    final request = _fetchActiveEvents();
+    _activeInFlight = request;
     try {
-      final response = await ApiClient.get(
-        path,
-        additionalHeaders: _noCacheHeaders,
-      );
+      return await request;
+    } finally {
+      if (identical(_activeInFlight, request)) _activeInFlight = null;
+    }
+  }
 
+  static Future<List<EventModel>> _fetchActiveEvents() async {
+    try {
+      final response = await ApiClient.get(ApiEndpoints.getActiveEvents);
       if (response.statusCode == 304 || response.body.trim().isEmpty) {
-        return [];
+        return _activeCache ?? const [];
       }
-
       final responseData = json.decode(response.body);
-      return _parseEventList(responseData);
+      final list = _parseEventList(responseData);
+      _activeCache = list;
+      _activeCacheAt = DateTime.now();
+      return List<EventModel>.from(list);
     } catch (e) {
+      if (_activeCache != null) return List<EventModel>.from(_activeCache!);
       throw Exception('진행중인 이벤트 목록 조회 실패: $e');
     }
   }

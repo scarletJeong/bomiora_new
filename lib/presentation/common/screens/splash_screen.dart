@@ -10,6 +10,7 @@ import '../../../data/models/product/product_model.dart';
 import '../../../data/repositories/product/product_repository.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/banner_service.dart';
+import '../../../data/services/community_prefetch.dart';
 import '../../../data/services/fcm_service_stub.dart'
     if (dart.library.io) '../../../data/services/fcm_service.dart';
 import '../../home/screens/home_screen.dart';
@@ -149,6 +150,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
     final banners = results[0] as List<BannerModel>;
     final products = results[1] as List<Product>;
+    CommunityPrefetch.afterHomeContent();
     if (!mounted) return;
 
     final bannerW = MediaQuery.sizeOf(context).width;

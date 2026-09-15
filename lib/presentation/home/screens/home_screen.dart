@@ -6,6 +6,7 @@ import '../../../data/models/home/banner_model.dart';
 import '../../../data/models/product/product_model.dart';
 import '../../../data/repositories/product/product_category_catalog.dart';
 import '../../../data/repositories/product/product_repository.dart';
+import '../../../data/services/community_prefetch.dart';
 import '../../../data/services/banner_service.dart';
 import '../../common/widgets/app_clickable.dart';
 import '../../common/widgets/app_footer.dart';
@@ -182,11 +183,13 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _scheduleBelowFoldLoad() async {
     final banners = _bannersFuture;
     final products = _newProductsFuture;
+    final homeReady = Future.wait<void>([
+      if (banners != null) banners,
+      if (products != null) products,
+    ]).then((_) {});
+    homeReady.then((_) => CommunityPrefetch.afterHomeContent());
     await Future.any<void>([
-      Future.wait<void>([
-        if (banners != null) banners,
-        if (products != null) products,
-      ]).then((_) {}),
+      homeReady,
       Future<void>.delayed(const Duration(milliseconds: 400)),
     ]);
     if (!mounted) return;
