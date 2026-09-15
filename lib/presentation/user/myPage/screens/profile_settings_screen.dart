@@ -12,6 +12,7 @@ import '../widgets/my_page_common.dart';
 import '../../../../core/constants/app_assets.dart';
 import '../../../../data/repositories/auth/auth_repository.dart';
 import '../../../../data/services/auth_service.dart';
+import '../../../../core/validation/app_password_validator.dart';
 import '../../../../data/models/user/user_model.dart';
 import 'cancel_member_screen.dart';
 
@@ -950,7 +951,13 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           SizedBox(height: healthDp(context, 4)),
           Text(
             '*8~16자/문자,숫자,특수문자 모두 혼용',
-            style: _hintWarningStyle(context),
+            style: _hintWarningStyle(
+              context,
+              color: _newPasswordController.text.isNotEmpty &&
+                      !isValidAppPassword(_newPasswordController.text)
+                  ? const Color(0xFFEF4444)
+                  : const Color(0xFF898686),
+            ),
           ),
           SizedBox(height: healthDp(context, 8)),
           _InputBox(
