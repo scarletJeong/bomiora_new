@@ -50,6 +50,7 @@ dependencies:
   
   # 이미지 선택
   image_picker: ^1.0.4
+  file_picker: ^8.1.2
   
   # HTML 렌더링
   flutter_html: ^3.0.0-beta.2
@@ -57,23 +58,21 @@ dependencies:
   # 인앱 웹뷰
   flutter_inappwebview: ^6.0.0
   
-  # 캘린더
-  table_calendar: ^3.0.9
-  
   # 차트
   fl_chart: ^0.68.0
   kakao_flutter_sdk: ^1.10.0
+  flutter_naver_login: ^2.1.1
   
   # SVG 이미지 지원
   flutter_svg: ^2.0.9
+  share_plus: ^12.0.2
   
-  # Firebase (웹 개발 시 주석 처리, 모바일 빌드 시 주석 해제)
-  # firebase_core: ^2.24.2
-  # firebase_messaging: ^14.7.10
-  # flutter_local_notifications: ^16.3.0
-  
-  # JS 호환성 (firebase_messaging_web 호환 버전)
-  # js: ^0.6.7
+  # Firebase (모바일 FCM — 웹은 fcm_service_stub 사용)
+  firebase_core: ^3.13.0
+  firebase_messaging: ^15.2.5
+  flutter_local_notifications: ^18.0.1
+  health: ^13.3.1
+  permission_handler: ^12.0.3
   
   # URL 런처
   # url_launcher: ^6.2.1  # 현재 사용하지 않음
@@ -88,6 +87,19 @@ flutter:
 
   assets:
     - assets/img/
+    # 웹 빌드 AssetManifest 누락 방지(폴더 등록만으로 생략되는 경우 대비)
+    - assets/img/product_main_intro.png
+    - assets/img/product_main_1.jpg
+    - assets/img/product_main_bottom_1.png
+    - assets/img/product_main_bottom_2.png
+    - assets/img/product_main_bottom_3.png
+    - assets/img/product_main_bottom_4.png
+    - assets/img/product_main_icon1.svg
+    - assets/img/product_main_icon2.svg
+    - assets/img/product_main_icon3.svg
+    - assets/img/pay_credit.svg
+    - assets/img/pay_cash.svg
+    - assets/img/escrow.png
 
   # 한국어 로케일 지원
   generate: true
