@@ -211,6 +211,8 @@ class _LoginScreenState extends State<LoginScreen> {
             controller: _emailController,
             hintText: '이메일',
             keyboardType: TextInputType.emailAddress,
+            highlightRecent:
+                _lastLoginVia == LastLoginViaService.email,
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
                 return '이메일을 입력해주세요';
@@ -282,18 +284,6 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           SizedBox(height: healthDp(context, 24)),
           _buildLoginButton(),
-          if (_lastLoginVia == LastLoginViaService.email) ...[
-            SizedBox(height: healthDp(context, 8)),
-            Text(
-              '최근 이메일로 로그인하셨습니다.',
-              style: TextStyle(
-                color: const Color(0xFF898383),
-                fontSize: healthSp(context, 12),
-                fontFamily: 'Gmarket Sans TTF',
-                fontWeight: FontWeight.w300,
-              ),
-            ),
-          ],
           SizedBox(height: healthDp(context, 20)),
           _buildLinkRow(),
           SizedBox(height: healthDp(context, 48)),
@@ -419,8 +409,12 @@ class _LoginScreenState extends State<LoginScreen> {
     required String hintText,
     TextInputType? keyboardType,
     required String? Function(String?) validator,
+    bool highlightRecent = false,
   }) {
-    return SizedBox(
+    final radius = healthDp(context, 7);
+    final borderColor =
+        highlightRecent ? const Color(0xFFFFC4D6) : const Color(0xFFD2D2D2);
+    final field = SizedBox(
       width: double.infinity,
       height: healthDp(context, 52),
       child: TextFormField(
@@ -461,26 +455,28 @@ class _LoginScreenState extends State<LoginScreen> {
             vertical: healthDp(context, 14),
           ),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(healthDp(context, 7)),
-            borderSide: const BorderSide(color: Color(0xFFD2D2D2)),
+            borderRadius: BorderRadius.circular(radius),
+            borderSide: BorderSide(color: borderColor),
           ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(healthDp(context, 7)),
-            borderSide: const BorderSide(color: Color(0xFFD2D2D2)),
+            borderRadius: BorderRadius.circular(radius),
+            borderSide: BorderSide(color: borderColor),
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(healthDp(context, 7)),
+            borderRadius: BorderRadius.circular(radius),
             borderSide: BorderSide(
-              color: const Color(0xFFFF5A8D),
+              color: highlightRecent
+                  ? const Color(0xFFFFA3C0)
+                  : const Color(0xFFFF5A8D),
               width: healthDp(context, 1.2),
             ),
           ),
           errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(healthDp(context, 7)),
+            borderRadius: BorderRadius.circular(radius),
             borderSide: const BorderSide(color: Color(0xFFEF4444)),
           ),
           focusedErrorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(healthDp(context, 7)),
+            borderRadius: BorderRadius.circular(radius),
             borderSide: BorderSide(
               color: const Color(0xFFEF4444),
               width: healthDp(context, 1.2),
@@ -488,6 +484,23 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           errorStyle: const TextStyle(height: 0, fontSize: 0),
         ),
+      ),
+    );
+
+    if (!highlightRecent) return field;
+
+    return Padding(
+      padding: EdgeInsets.only(top: healthDp(context, 10)),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          field,
+          Positioned(
+            top: healthDp(context, -8),
+            right: healthDp(context, 12),
+            child: const _RecentLoginBadge(),
+          ),
+        ],
       ),
     );
   }
@@ -577,64 +590,39 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _buildLoginButton() {
-    final isRecentEmail = _lastLoginVia == LastLoginViaService.email;
-    final radius = healthDp(context, 7);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        if (isRecentEmail) ...[
-          const _RecentLoginBadge(),
-          SizedBox(height: healthDp(context, 8)),
-        ],
-        Container(
-          width: double.infinity,
-          decoration: isRecentEmail
-              ? BoxDecoration(
-                  borderRadius: BorderRadius.circular(radius),
-                  border: Border.all(
-                    color: const Color(0xFFFF5C8F),
-                    width: healthDp(context, 2),
-                  ),
-                )
-              : null,
-          child: SizedBox(
-            height: healthDp(context, 52),
-            child: ElevatedButton(
-            onPressed: _isLoading ? null : _handleLogin,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFFF5A8D),
-              disabledBackgroundColor:
-                  const Color(0xFFFF5A8D).withValues(alpha: 0.7),
-              elevation: 0,
-              shadowColor: const Color(0x3F000000),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(
-                  isRecentEmail ? radius - healthDp(context, 1) : radius,
-                ),
-              ),
-            ),
-            child: _isLoading
-                ? SizedBox(
-                    height: healthDp(context, 10),
-                    width: healthDp(context, 20),
-                    child: CircularProgressIndicator(
-                      strokeWidth: healthDp(context, 2),
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                    ),
-                  )
-                : Text(
-                    '로그인',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: healthSp(context, 16),
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-          ),
+    return SizedBox(
+      width: double.infinity,
+      height: healthDp(context, 52),
+      child: ElevatedButton(
+        onPressed: _isLoading ? null : _handleLogin,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFFFF5A8D),
+          disabledBackgroundColor: const Color(0xFFFF5A8D).withValues(alpha: 0.7),
+          elevation: 0,
+          shadowColor: const Color(0x3F000000),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(healthDp(context, 7)),
           ),
         ),
-      ],
+        child: _isLoading
+            ? SizedBox(
+                height: healthDp(context, 10),
+                width: healthDp(context, 20),
+                child: CircularProgressIndicator(
+                  strokeWidth: healthDp(context, 2),
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              )
+            : Text(
+                '로그인',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: healthSp(context, 16),
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+      ),
     );
   }
 
@@ -740,7 +728,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ? BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: const Color(0xFFFF5C8F),
+                  color: const Color(0xFFFFC4D6),
                   width: healthDp(context, 2),
                 ),
               )
@@ -1130,16 +1118,17 @@ class _RecentLoginBadge extends StatelessWidget {
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: healthDp(context, 8),
-        vertical: healthDp(context, 3),
+        vertical: healthDp(context, 4),
       ),
       decoration: BoxDecoration(
-        color: const Color(0xFFFF5C8F),
+        color: const Color(0xFFFFEEF3),
         borderRadius: BorderRadius.circular(healthDp(context, 20)),
+        border: Border.all(color: const Color(0xFFFFC4D6)),
       ),
       child: Text(
-        '최근 로그인',
+        '최근로그인',
         style: TextStyle(
-          color: Colors.white,
+          color: const Color(0xFFFF7A9E),
           fontSize: healthSp(context, 10),
           fontFamily: 'Gmarket Sans TTF',
           fontWeight: FontWeight.w500,
