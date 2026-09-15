@@ -11,6 +11,24 @@ class OrderService {
   static final Map<String, DateTime> _listCacheAt = {};
   static final Map<String, Future<Map<String, dynamic>>> _listInFlight = {};
 
+  /// 주문내역 화면과 동일한 목록 (캐시 공유)
+  static Future<Map<String, dynamic>> prefetchOrderList(String mbId) {
+    return getOrderList(
+      mbId: mbId,
+      period: 0,
+      status: 'all',
+      page: 0,
+      size: 80,
+    );
+  }
+
+  static int countOpenOrderHistory(Map<String, dynamic> result) {
+    if (result['success'] != true) return 0;
+    final orders = result['orders'];
+    if (orders is! List) return 0;
+    return orders.whereType<OrderListModel>().where((o) => o.countsAsOpenOrderHistory).length;
+  }
+
   static void invalidateOrderList([String? mbId]) {
     if (mbId == null || mbId.trim().isEmpty) {
       _listCache.clear();

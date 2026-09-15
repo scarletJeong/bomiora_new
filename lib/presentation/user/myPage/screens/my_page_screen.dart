@@ -33,16 +33,6 @@ class _MyPageScreenState extends State<MyPageScreen> {
   int _couponCount = 0;
   int _pointBalance = 0;
 
-  static int _orderCountFromResult(Map<String, dynamic> result) {
-    if (result['success'] != true) return 0;
-    final total = result['totalItems'];
-    if (total is int && total > 0) return total;
-    if (total is num && total > 0) return total.toInt();
-    final orders = result['orders'];
-    if (orders is List) return orders.length;
-    return 0;
-  }
-
   Future<void> _loadMyPageStats() async {
     final u = _currentUser;
     if (u == null) {
@@ -54,13 +44,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
 
     try {
       final results = await Future.wait([
-        OrderService.getOrderList(
-          mbId: u.id,
-          period: 0,
-          status: 'all',
-          page: 0,
-          size: 1,
-        ),
+        OrderService.prefetchOrderList(u.id),
         CouponService.getAvailableCouponCount(u.id),
         PointService.getUserPoint(u.id),
       ]);
@@ -72,7 +56,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
       final point = results[2] as int?;
 
       setState(() {
-        _orderCount = _orderCountFromResult(orderResult);
+        _orderCount = OrderService.countOpenOrderHistory(orderResult);
         _couponCount = couponCount;
         _pointBalance = point ?? 0;
         _statsLoading = false;

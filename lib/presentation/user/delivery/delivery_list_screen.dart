@@ -202,7 +202,8 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
     });
 
     if (_selectedStatus == 'all') {
-      _displayedOrders = byType.toList();
+      _displayedOrders =
+          byType.where((order) => order.countsAsOpenOrderHistory).toList();
       return;
     }
 

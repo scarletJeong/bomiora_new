@@ -284,6 +284,27 @@ class OrderListModel {
     );
   }
 
+  /// 마이페이지·주문내역 전체: 결제완료 / 상담완료 / 배송준비중 / 배송중만
+  bool get countsAsOpenOrderHistory {
+    final display = displayStatus.trim();
+    final od = odStatus.trim();
+    if (display.contains('취소') || od.contains('취소') || od.contains('반품')) {
+      return false;
+    }
+    if (display == '결제대기중' || od == '주문') return false;
+    if (display == '배송완료') return false;
+
+    if (display == '배송중' || od == '배송') return true;
+    if (display == '상담완료' ||
+        display.contains('상담') ||
+        isConsultationDone) {
+      return true;
+    }
+    if (display == '배송준비중' || od == '준비') return true;
+    if (display == '결제완료' || od == '입금') return true;
+    return false;
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'odId': odId,
