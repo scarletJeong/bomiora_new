@@ -582,16 +582,18 @@ class RecommendSquareProductCard extends StatelessWidget {
                 ),
                 Row(
                   children: [
-                    Text(
-                      '${(product.discountRate ?? 0).round()}%',
-                      style: TextStyle(
-                        color: _brandPink,
-                        fontSize: healthSp(context, 11),
-                        fontFamily: _gmarket,
-                        fontWeight: FontWeight.w700,
+                    if ((product.discountRate ?? 0) > 0) ...[
+                      Text(
+                        '${product.discountRate!.round()}%',
+                        style: TextStyle(
+                          color: _brandPink,
+                          fontSize: healthSp(context, 11),
+                          fontFamily: _gmarket,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
-                    ),
-                    SizedBox(width: healthDp(context, 3)),
+                      SizedBox(width: healthDp(context, 3)),
+                    ],
                     Expanded(
                       child: Text(
                         product.formattedPrice,

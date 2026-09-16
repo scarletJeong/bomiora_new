@@ -224,11 +224,13 @@ class ProductCatalogCard extends StatelessWidget {
               SizedBox(height: healthDp(context, 1)),
               Row(
                 children: [
-                  Text(
-                    '${(product.discountRate ?? 0).round()}%',
-                    style: pricePinkStyle,
-                  ),
-                  SizedBox(width: priceGap),
+                  if ((product.discountRate ?? 0) > 0) ...[
+                    Text(
+                      '${product.discountRate!.round()}%',
+                      style: pricePinkStyle,
+                    ),
+                    SizedBox(width: priceGap),
+                  ],
                   Expanded(
                     child: Text(
                       product.formattedPrice,
