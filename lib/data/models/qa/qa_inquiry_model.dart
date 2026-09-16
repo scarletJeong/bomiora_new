@@ -285,7 +285,7 @@ class QaInquiry {
     if (body.isEmpty || !body.startsWith('[QA_CARD]')) return body;
     final sep = RegExp(r'\n---\s*\n').firstMatch(body);
     if (sep != null) return body.substring(sep.end).trim();
-    return body;
+    return '';
   }
 
   /// 구버전: content 앞에 붙이던 메타 + `---` 구분선 제거

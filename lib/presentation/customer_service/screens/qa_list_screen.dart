@@ -187,8 +187,14 @@ class QaListScreenState extends State<QaListScreen> {
 
   String _firstQuestionTitle(QaInquiry item) {
     final body = item.displayQuestionText.trim().replaceAll('\n', ' ');
-    if (body.isEmpty) return '(내용 없음)';
-    return body.length > 15 ? '${body.substring(0, 15)}…' : body;
+    if (body.isNotEmpty && !body.startsWith('[QA_CARD]')) {
+      return body.length > 15 ? '${body.substring(0, 15)}…' : body;
+    }
+    final fallback = item.listCardTitle.trim();
+    if (fallback.isNotEmpty && fallback != '(내용 없음)') {
+      return fallback.length > 15 ? '${fallback.substring(0, 15)}…' : fallback;
+    }
+    return '(내용 없음)';
   }
 
   Widget _buildCountRow() {
