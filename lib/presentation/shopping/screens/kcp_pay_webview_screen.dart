@@ -10,7 +10,6 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_endpoints.dart';
 import '../../../core/utils/web_kcp_popup.dart';
-import '../../common/widgets/mobile_layout_wrapper.dart';
 
 class KcpPaySession {
   const KcpPaySession({required this.html, required this.token});
@@ -188,44 +187,6 @@ class _KcpPayWebViewScreenState extends State<KcpPayWebViewScreen> {
     return injected + out;
   }
 
-  /// PC 결제 레이어가 뜨면 화면 폭에 맞게 확대
-  static const String _fitPaymentLayerScript = r'''
-(function () {
-  function fit() {
-    try {
-      var meta = document.querySelector('meta[name="viewport"]');
-      if (!meta) {
-        meta = document.createElement('meta');
-        meta.name = 'viewport';
-        document.head.appendChild(meta);
-      }
-      meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
-      document.documentElement.style.width = '100%';
-      document.body.style.width = '100%';
-      document.body.style.margin = '0';
-      document.body.style.padding = '0';
-      document.body.style.overflowX = 'hidden';
-
-      var nodes = document.querySelectorAll(
-        'iframe, [id*="kcp"], [class*="kcp"], [id*="pay"], [class*="pay"], [id*="layer"], [class*="layer"]'
-      );
-      for (var i = 0; i < nodes.length; i++) {
-        var el = nodes[i];
-        if (!el || !el.style) continue;
-        el.style.maxWidth = '100vw';
-        el.style.width = '100%';
-        if (el.tagName === 'IFRAME') {
-          el.style.minHeight = '80vh';
-          el.setAttribute('width', '100%');
-        }
-      }
-    } catch (e) {}
-  }
-  fit();
-  setInterval(fit, 700);
-})();
-''';
-
   Timer? _pollingTimer;
   bool _completed = false;
   String _html = '';
@@ -389,7 +350,6 @@ class _KcpPayWebViewScreenState extends State<KcpPayWebViewScreen> {
     try {
       await controller.evaluateJavascript(source: _forceMobileUaScript);
       await controller.evaluateJavascript(source: _singleWindowScript);
-      await controller.evaluateJavascript(source: _fitPaymentLayerScript);
     } catch (_) {}
   }
 
@@ -453,11 +413,6 @@ class _KcpPayWebViewScreenState extends State<KcpPayWebViewScreen> {
                       UserScript(
                         source: _singleWindowScript,
                         injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
-                        forMainFrameOnly: false,
-                      ),
-                      UserScript(
-                        source: _fitPaymentLayerScript,
-                        injectionTime: UserScriptInjectionTime.AT_DOCUMENT_END,
                         forMainFrameOnly: false,
                       ),
                     ]),
@@ -533,12 +488,7 @@ class _KcpPayWebViewScreenState extends State<KcpPayWebViewScreen> {
         _returnUserCancelled();
         return false;
       },
-      child: usePc
-          ? scaffold
-          : MobileLayoutWrapper(
-              backgroundColor: const Color(0xFF6B6B6B),
-              child: scaffold,
-            ),
+      child: scaffold,
     );
   }
 }
