@@ -67,7 +67,7 @@ abstract final class AppAssets {
 
 
 
-  /* 2. 회원가입/로그인 */
+  /* 1. 회원가입/로그인 */
   // 간편로그인 아이콘
   static const String loginNaver = '${_img}login_naver.svg';
   static const String loginKakao = '${_img}login_kakao.svg'; 
@@ -82,7 +82,7 @@ abstract final class AppAssets {
   static const String signupCompleteHealthDashboard = '${_img}signup_complete_health_dashboard.svg'; //건강대시보드 바로가기
 
 
-  /* 3. 소개글 */
+  /* 2. 소개글 */
   static const String productMain = '${_img}product_main_1.jpg';
 
   static const String productMainIcon1 = '${_img}product_main_icon1.svg';
@@ -154,8 +154,8 @@ abstract final class AppAssets {
   static const String foodCamera = '${_img}food_camera.svg';
 
 
-  /* 6. 마이페이지 */
-  // 포토프로필 아이콘
+  /* 5. 마이페이지 */
+  // 포토 프로필 사람 아이콘
   static const String mypagePhotoProfileIcon = '${_img}mypage_photo_profile_icon.svg';
 
   // 통계 카드 아이콘 + 테두리
@@ -170,7 +170,7 @@ abstract final class AppAssets {
   static const String cancelIcon1 = '${_img}cancel_icon1.svg';
   
 
-  /* 8. 결제 */
+  /* 6. 결제 */
   // 결제 화면 - 결제수단 아이콘
   static const String payCredit = '${_img}pay_credit.svg';
   static const String payCash = '${_img}pay_cash.svg';
@@ -182,7 +182,7 @@ abstract final class AppAssets {
   static const String paymentCompleteReservationDoctorIcon = '${_img}payment_complete_reservation_doctor_icon.svg'; // 정대진 - 인간아이콘콘
 
 
-  /* 9. 건강콘텐츠 */
+  /* 7. 건강콘텐츠 */
   // 엄지척 아이콘 - 콘텐츠 추천
   static const String thumbUpIcon = '${_img}thumb_up_icon.svg';
   static const String thumbUpIconFilled = '${_img}thumb_up_icon_filled.svg';
@@ -192,7 +192,7 @@ abstract final class AppAssets {
   static const String heartIconFilled = '${_img}content_heart_icon_filled.svg';
 
 
-  /* 10. 빈 화면 */
+  /* 8. 빈 화면 */
   // 빈 화면 아이콘 — '로그인 후 이용 가능합니다' / '~가 없습니다' 문구 위
   static const String emptyWishlistIcon = '${_img}empty_wishlist_icon.svg'; // 찜목록
   static const String emptyAddressIcon = '${_img}empty_address_icon.svg'; // 배송지 관리
@@ -219,7 +219,7 @@ abstract final class AppAssets {
   static const String emptyEventIcon = '${_img}empty_event_icon.svg'; // 이벤트 빈 카드
 
 
-  /*11. 은행 아이콘 (`assets/img/bank/`) */
+  /*9. 은행 아이콘 (`assets/img/bank/`) */
   static const String IBKIcon = '${_bank}bankIcon_IBK.svg';
   static const String KBIcon = '${_bank}bankIcon_KB.svg';
   static const String KEBIcon = '${_bank}bankIcon_KEB.svg';
