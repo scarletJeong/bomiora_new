@@ -1,6 +1,5 @@
 import 'dart:math' show max;
 
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
@@ -10,10 +9,7 @@ import 'product_main_category_tap.dart';
 
 const _sectionLineColor = Color(0xFFD9D9D9);
 
-/// 원장 소개 이미지
-/// - **웹**: `web/img/product_main_intro.png` → 요청 URL은 `{현재 문서 기준}/img/product_main_intro.png`
-///   (`Image.asset`은 Flutter 웹에서 `assets/assets/img/...`로 이중 `assets`가 붙어 404가 나기 쉬움)
-/// - **모바일/데스크톱 앱**: `pubspec` 에셋 `assets/img/product_main_intro.png`
+/// 원장 소개 이미지 (`assets/img/product_main_intro.png`)
 Widget _productMainIntroPhoto({
   required BuildContext context,
   required double width,
@@ -22,37 +18,6 @@ Widget _productMainIntroPhoto({
   Alignment alignment = Alignment.bottomCenter,
   FilterQuality filterQuality = FilterQuality.medium,
 }) {
-  Widget fallback() => Icon(
-        Icons.person_outline,
-        size: healthDp(context, 72),
-        color: Colors.grey[400],
-      );
-
-  if (kIsWeb) {
-    final src = Uri.base.resolve('img/product_main_intro.png').toString();
-    return Image.network(
-      src,
-      width: width.isFinite ? width : null,
-      height: height,
-      fit: fit,
-      alignment: alignment,
-      filterQuality: filterQuality,
-      errorBuilder: (_, __, ___) => fallback(),
-      loadingBuilder: (context, child, progress) {
-        if (progress == null) return child;
-        return Center(
-          child: SizedBox(
-            width: healthDp(context, 28),
-            height: healthDp(context, 28),
-            child: CircularProgressIndicator(
-              strokeWidth: healthDp(context, 2),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
   return Image.asset(
     AppAssets.productIntro,
     width: width.isFinite ? width : null,
@@ -60,7 +25,11 @@ Widget _productMainIntroPhoto({
     fit: fit,
     alignment: alignment,
     filterQuality: filterQuality,
-    errorBuilder: (_, __, ___) => fallback(),
+    errorBuilder: (_, __, ___) => Icon(
+      Icons.person_outline,
+      size: healthDp(context, 72),
+      color: Colors.grey[400],
+    ),
   );
 }
 
