@@ -88,7 +88,9 @@ class QaListScreenState extends State<QaListScreen> {
     }
 
     try {
-      final contacts = await QaService.getMyList();
+      final contacts = await QaService.getMyList(
+        forceRefresh: fromPullRefresh,
+      );
       if (!mounted) return;
       setState(() {
         _inquiries = contacts;
