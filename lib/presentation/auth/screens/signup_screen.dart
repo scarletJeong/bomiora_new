@@ -227,8 +227,12 @@ class _SignupScreenState extends State<SignupScreen> {
     super.dispose();
   }
 
+  static final _emailFormat = RegExp(
+    r"^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$",
+  );
+
   bool _isValidEmailFormat(String email) {
-    return RegExp(r'^[\w\.-]+@([\w-]+\.)+[\w-]{2,}$').hasMatch(email);
+    return _emailFormat.hasMatch(email);
   }
 
   void _onEmailChanged() {
@@ -582,9 +586,11 @@ class _SignupScreenState extends State<SignupScreen> {
                         },
                         hintText: '이메일을 입력해주세요',
                         keyboardType: TextInputType.emailAddress,
+                        autocorrect: false,
+                        enableSuggestions: false,
                         inputFormatters: [
                           FilteringTextInputFormatter.allow(
-                            RegExp(r'[a-zA-Z0-9@._\-+]'),
+                            RegExp(r'[\x21-\x7E]'),
                           ),
                         ],
                         hasError: _emailErrorText != null,
@@ -636,8 +642,7 @@ class _SignupScreenState extends State<SignupScreen> {
                           if (value == null || value.trim().isEmpty) {
                             return '이메일을 입력해주세요.';
                           }
-                          if (!RegExp(r'^[\w\.-]+@([\w-]+\.)+[\w-]{2,}$')
-                              .hasMatch(value.trim())) {
+                          if (!_emailFormat.hasMatch(value.trim())) {
                             return '올바른 이메일 형식을 입력해주세요.';
                           }
                           return null;
@@ -813,6 +818,8 @@ class _SignupTextField extends StatelessWidget {
   final ValueChanged<String>? onFieldSubmitted;
   final Widget? trailing;
   final Color? helperColor;
+  final bool autocorrect;
+  final bool enableSuggestions;
 
   const _SignupTextField({
     required this.label,
@@ -831,6 +838,8 @@ class _SignupTextField extends StatelessWidget {
     this.onFieldSubmitted,
     this.trailing,
     this.helperColor,
+    this.autocorrect = true,
+    this.enableSuggestions = true,
   });
 
   @override
@@ -863,6 +872,8 @@ class _SignupTextField extends StatelessWidget {
                   onFieldSubmitted: onFieldSubmitted,
                   inputFormatters: inputFormatters,
                   obscureText: obscureText,
+                  autocorrect: autocorrect,
+                  enableSuggestions: enableSuggestions,
                   expands: !obscureText,
                   minLines: obscureText ? 1 : null,
                   maxLines: obscureText ? 1 : null,
