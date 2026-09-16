@@ -110,7 +110,7 @@ class _BomioraAppState extends State<BomioraApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       navigatorKey: appNavigatorKey,
-      title: '보미오라1',
+      title: '보미오라',
       builder: (context, child) {
         return LayoutScaffoldMessenger(
           child: child ?? const SizedBox.shrink(),
