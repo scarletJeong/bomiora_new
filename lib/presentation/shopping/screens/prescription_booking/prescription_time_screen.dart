@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:flutter/services.dart';
 import '../../../../core/navigation/app_navigator_key.dart';
 import '../../../../core/network/api_client.dart';
@@ -61,6 +62,7 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
   bool _isSubmitting = false;
   UserModel? _currentUser;
   Map<String, dynamic>? _reservationData;
+  Future<bool>? _profileSaveFuture;
   late final List<DateTime> _availableDates;
   List<String> _availableTimes = const [];
 
@@ -376,7 +378,8 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
         pfMemo: '',
       );
 
-      await HealthProfileService.saveHealthProfile(profile);
+      // 확인 팝업은 로컬 데이터만으로 띄운다. 문진표 저장은 팝업을 막지 않는다.
+      _profileSaveFuture = HealthProfileService.saveHealthProfile(profile);
 
       final odId = DateTime.now().millisecondsSinceEpoch;
       _reservationData = {
@@ -758,11 +761,18 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
       final prefetchFuture = user != null && user.id.isNotEmpty
           ? PaymentPrefetchData.load(user.id)
           : Future<PaymentPrefetchData?>.value(null);
+      final profileSaveFuture = _profileSaveFuture;
 
       final responseFuture =
           ApiClient.post('/api/cart/healthprofile', requestData);
-      final response = await responseFuture;
-      final prefetch = await prefetchFuture;
+      final waited = await Future.wait<Object?>([
+        responseFuture,
+        prefetchFuture,
+        if (profileSaveFuture != null)
+          profileSaveFuture.catchError((_) => false),
+      ]);
+      final response = waited[0] as http.Response;
+      final prefetch = waited[1] as PaymentPrefetchData?;
 
       if (response.statusCode != 200 && response.statusCode != 201) {
         throw Exception('healthprofile 요청 실패 (status=${response.statusCode})');
