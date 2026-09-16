@@ -10,6 +10,7 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_endpoints.dart';
 import '../../../core/utils/web_kcp_popup.dart';
+import '../../common/widgets/mobile_layout_wrapper.dart';
 
 class KcpPaySession {
   const KcpPaySession({required this.html, required this.token});
@@ -52,7 +53,7 @@ class _KcpPayWebViewScreenState extends State<KcpPayWebViewScreen> {
   static const String _androidChromeUa =
       'Mozilla/5.0 (Linux; Android 14; Mobile; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Mobile Safari/537.36';
 
-  /// payplus / Chromium 이 PC로 분기하지 않도록 UA·userAgentData·touch 강제
+  /// payplus / Chromium 이 PC로 분기하지 않도록 UA·화면·touch 강제
   static String get _forceMobileUaScript {
     final ua = defaultTargetPlatform == TargetPlatform.iOS
         ? _iosSafariUa
@@ -95,6 +96,12 @@ class _KcpPayWebViewScreenState extends State<KcpPayWebViewScreen> {
     });
   } catch (e) {}
   try {
+    spoof(Screen.prototype, 'width', 390);
+    spoof(Screen.prototype, 'height', 844);
+    spoof(Screen.prototype, 'availWidth', 390);
+    spoof(Screen.prototype, 'availHeight', 844);
+  } catch (e2) {}
+  try {
     var mm = window.matchMedia;
     window.matchMedia = function (q) {
       try {
@@ -104,12 +111,81 @@ class _KcpPayWebViewScreenState extends State<KcpPayWebViewScreen> {
         if (String(q).indexOf('pointer: coarse') >= 0 || String(q).indexOf('hover: none') >= 0) {
           return { matches: true, media: q, addListener: function(){}, removeListener: function(){}, addEventListener: function(){}, removeEventListener: function(){}, onchange: null, dispatchEvent: function(){ return false; } };
         }
-      } catch (e2) {}
+      } catch (e3) {}
       return mm ? mm.call(window, q) : { matches: false, media: q };
     };
+  } catch (e4) {}
+})();
+''';
+  }
+
+  /// KCP가 새 탭·탑 창으로 나가지 않도록 동일 창에 유지
+  static const String _singleWindowScript = r'''
+(function () {
+  try {
+    window.open = function (u, name, features) {
+      try {
+        if (u != null && u !== '') {
+          var s = (typeof u === 'string') ? u : String(u);
+          if (s !== 'about:blank') {
+            window.location.href = s;
+            return window;
+          }
+        }
+      } catch (e) {}
+      return window;
+    };
+  } catch (e) {}
+  function kcpNormalizeFrameTargets() {
+    try {
+      var els = document.querySelectorAll('a[target], form[target]');
+      for (var i = 0; i < els.length; i++) {
+        var el = els[i];
+        var t = (el.getAttribute('target') || '').toString().toLowerCase().trim();
+        if (t === '_top' || t === '_parent' || t === '_blank') {
+          el.setAttribute('target', '_self');
+        }
+      }
+    } catch (e) {}
+  }
+  try {
+    kcpNormalizeFrameTargets();
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', kcpNormalizeFrameTargets);
+    }
+    try {
+      var mo = new MutationObserver(function () {
+        kcpNormalizeFrameTargets();
+      });
+      mo.observe(document.documentElement, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['target']
+      });
+    } catch (e2) {}
   } catch (e3) {}
 })();
 ''';
+
+  static String _hardenMobilePayHtml(String html) {
+    final injected =
+        '<script>$_forceMobileUaScript</script><script>$_singleWindowScript</script>';
+    var out = html
+        .replaceAll('target="_blank"', 'target="_self"')
+        .replaceAll("target='_blank'", "target='_self'")
+        .replaceAll('target="_top"', 'target="_self"')
+        .replaceAll("target='_top'", "target='_self'")
+        .replaceAll('target="_parent"', 'target="_self"')
+        .replaceAll("target='_parent'", "target='_self'");
+    final headIdx = out.toLowerCase().indexOf('<head');
+    if (headIdx >= 0) {
+      final headEnd = out.indexOf('>', headIdx);
+      if (headEnd >= 0) {
+        return out.substring(0, headEnd + 1) + injected + out.substring(headEnd + 1);
+      }
+    }
+    return injected + out;
   }
 
   /// PC 결제 레이어가 뜨면 화면 폭에 맞게 확대
@@ -312,15 +388,19 @@ class _KcpPayWebViewScreenState extends State<KcpPayWebViewScreen> {
   Future<void> _injectHelpers(InAppWebViewController controller) async {
     try {
       await controller.evaluateJavascript(source: _forceMobileUaScript);
+      await controller.evaluateJavascript(source: _singleWindowScript);
       await controller.evaluateJavascript(source: _fitPaymentLayerScript);
     } catch (_) {}
   }
 
   @override
   Widget build(BuildContext context) {
-    final usePc = widget.usePcLayout || kIsWeb;
+    final usePc = widget.usePcLayout;
     final ua = usePc ? null : _mobileUserAgent();
-    final inlineHtml = _html.trim();
+    final rawHtml = _html.trim();
+    final inlineHtml = !usePc && rawHtml.isNotEmpty
+        ? _hardenMobilePayHtml(rawHtml)
+        : rawHtml;
     final useInlineHtml = inlineHtml.isNotEmpty;
 
     final webView = InAppWebView(
@@ -349,7 +429,7 @@ class _KcpPayWebViewScreenState extends State<KcpPayWebViewScreen> {
                     ? UserPreferredContentMode.RECOMMENDED
                     : UserPreferredContentMode.MOBILE,
                 javaScriptCanOpenWindowsAutomatically: true,
-                supportMultipleWindows: !usePc,
+                supportMultipleWindows: true,
                 thirdPartyCookiesEnabled: true,
                 sharedCookiesEnabled: true,
                 useHybridComposition: true,
@@ -367,6 +447,11 @@ class _KcpPayWebViewScreenState extends State<KcpPayWebViewScreen> {
                   : UnmodifiableListView<UserScript>([
                       UserScript(
                         source: _forceMobileUaScript,
+                        injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
+                        forMainFrameOnly: false,
+                      ),
+                      UserScript(
+                        source: _singleWindowScript,
                         injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
                         forMainFrameOnly: false,
                       ),
@@ -400,47 +485,12 @@ class _KcpPayWebViewScreenState extends State<KcpPayWebViewScreen> {
                   );
                 } catch (_) {}
               },
-              onCreateWindow: usePc
-                  ? null
-                  : (controller, createWindowAction) async {
-                await showDialog<void>(
-                  context: context,
-                  barrierDismissible: false,
-                  builder: (dialogContext) {
-                    return Scaffold(
-                      body: InAppWebView(
-                        windowId: createWindowAction.windowId,
-                        initialSettings: InAppWebViewSettings(
-                          javaScriptEnabled: true,
-                          userAgent: ua,
-                          preferredContentMode:
-                              UserPreferredContentMode.MOBILE,
-                          javaScriptCanOpenWindowsAutomatically: true,
-                          supportMultipleWindows: true,
-                          thirdPartyCookiesEnabled: true,
-                          sharedCookiesEnabled: true,
-                          useHybridComposition: true,
-                          useWideViewPort: true,
-                          loadWithOverviewMode: true,
-                        ),
-                        initialUserScripts: UnmodifiableListView<UserScript>([
-                          UserScript(
-                            source: _forceMobileUaScript,
-                            injectionTime:
-                                UserScriptInjectionTime.AT_DOCUMENT_START,
-                            forMainFrameOnly: false,
-                          ),
-                        ]),
-                        onCloseWindow: (c) {
-                          if (Navigator.of(dialogContext).canPop()) {
-                            Navigator.pop(dialogContext);
-                          }
-                        },
-                      ),
-                    );
-                  },
-                );
-                return true;
+              onCreateWindow: (controller, createWindowAction) async {
+                final req = createWindowAction.request;
+                if (req.url != null) {
+                  await controller.loadUrl(urlRequest: req);
+                }
+                return false;
               },
               onLoadStop: (controller, url) async {
                 if (!mounted) return;
@@ -473,15 +523,22 @@ class _KcpPayWebViewScreenState extends State<KcpPayWebViewScreen> {
           )
         : webView;
 
+    final scaffold = Scaffold(
+      backgroundColor: const Color(0xFF6B6B6B),
+      body: body,
+    );
+
     return WillPopScope(
       onWillPop: () async {
         _returnUserCancelled();
         return false;
       },
-      child: Scaffold(
-        backgroundColor: const Color(0xFF6B6B6B),
-        body: body,
-      ),
+      child: usePc
+          ? scaffold
+          : MobileLayoutWrapper(
+              backgroundColor: const Color(0xFF6B6B6B),
+              child: scaffold,
+            ),
     );
   }
 }

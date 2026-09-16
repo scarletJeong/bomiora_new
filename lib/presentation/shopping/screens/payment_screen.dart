@@ -569,7 +569,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
     return 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36';
   }
 
-  String _kcpRequestUserAgent() => kIsWeb ? _kcpDesktopUserAgent() : _kcpMobileUserAgent();
+  String _kcpRequestUserAgent({required bool mobile}) =>
+      mobile ? _kcpMobileUserAgent() : _kcpDesktopUserAgent();
+
+  /// 앱 패널(최대 650)은 모바일 KCP. 넓은 PC 창만 표준창.
+  bool _useMobileKcpPay(BuildContext context) =>
+      MediaQuery.sizeOf(context).width <= 650;
 
   bool _validateBeforePay() {
     if (_receiverController.text.trim().isEmpty ||
@@ -675,6 +680,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
     });
 
     try {
+      final useMobilePay = _useMobileKcpPay(context);
       Future<KcpPaySession> bootstrap() async {
         unawaited(_maybeSaveDefaultAddress(user.id));
         final response = await ApiClient.post(
@@ -714,15 +720,15 @@ class _PaymentScreenState extends State<PaymentScreen> {
               'addr3': '',
               'memo': _deliveryRequestMemo,
             },
-            'user_agent': kIsWeb
-                ? 'Windows'
-                : (defaultTargetPlatform == TargetPlatform.iOS
+            'user_agent': useMobilePay
+                ? (defaultTargetPlatform == TargetPlatform.iOS
                     ? 'iPhone'
-                    : 'Android'),
-            'is_mobile': !kIsWeb,
+                    : 'Android')
+                : 'Windows',
+            'is_mobile': useMobilePay,
           },
           additionalHeaders: <String, String>{
-            'User-Agent': _kcpRequestUserAgent(),
+            'User-Agent': _kcpRequestUserAgent(mobile: useMobilePay),
           },
         );
 
@@ -741,6 +747,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
         return KcpPaySession(html: html, token: token);
       }
 
+      final payScreen = KcpPayWebViewScreen(
+        usePcLayout: !useMobilePay,
+        bootstrap: bootstrap(),
+      );
       dynamic result;
       if (kIsWeb) {
         result = await Navigator.of(context).push<Map<String, dynamic>>(
@@ -748,10 +758,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
             opaque: true,
             fullscreenDialog: true,
             pageBuilder: (context, animation, secondaryAnimation) {
-              return KcpPayWebViewScreen(
-                usePcLayout: true,
-                bootstrap: bootstrap(),
-              );
+              return payScreen;
             },
             transitionsBuilder: (context, animation, secondaryAnimation, child) {
               return FadeTransition(opacity: animation, child: child);
@@ -761,11 +768,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       } else {
         result = await Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (_) => KcpPayWebViewScreen(
-              bootstrap: bootstrap(),
-            ),
-          ),
+          MaterialPageRoute(builder: (_) => payScreen),
         );
       }
 
