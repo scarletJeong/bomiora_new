@@ -70,7 +70,8 @@ abstract final class AppAssets {
   /* 1. 회원가입/로그인 */
   // 간편로그인 아이콘
   static const String loginNaver = '${_img}login_naver.svg';
-  static const String loginKakao = '${_img}login_kakao.svg'; 
+  static const String loginKakao = '${_img}login_kakao.svg';
+  static const String loginApple = '${_img}login_apple.svg'; 
 
   // 아이디/비밀번호 찾기 실패 아이콘
   static const String loginFail = '${_img}login_fail.svg';

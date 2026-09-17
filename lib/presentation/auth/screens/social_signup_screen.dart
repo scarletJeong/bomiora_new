@@ -21,6 +21,8 @@ class SocialSignupScreen extends StatefulWidget {
   final String? gender;
   final String? birthday;
   final String? profileImageUrl;
+  final String? identityToken;
+  final String? authorizationCode;
 
   const SocialSignupScreen({
     super.key,
@@ -32,6 +34,8 @@ class SocialSignupScreen extends StatefulWidget {
     this.gender,
     this.birthday,
     this.profileImageUrl,
+    this.identityToken,
+    this.authorizationCode,
   });
 
   @override
@@ -57,6 +61,9 @@ class _SocialSignupScreenState extends State<SocialSignupScreen> {
   String? _errorText;
 
   bool get _isNaver => widget.provider.toLowerCase() == 'naver';
+  bool get _isApple => widget.provider.toLowerCase() == 'apple';
+  bool get _showEmailField =>
+      _isNaver || _isApple || (widget.email == null || widget.email!.trim().isEmpty);
 
   @override
   void initState() {
@@ -113,6 +120,8 @@ class _SocialSignupScreenState extends State<SocialSignupScreen> {
       gender: widget.gender,
       birthday: widget.birthday,
       profileImageUrl: widget.profileImageUrl,
+      identityToken: widget.identityToken,
+      authorizationCode: widget.authorizationCode,
       agreements: {
         'terms': _terms,
         'privacy': _privacy,
@@ -146,9 +155,8 @@ class _SocialSignupScreenState extends State<SocialSignupScreen> {
         token: NodeValueParser.asString(data['token']),
       );
       await LastLoginViaService.save(
-        widget.provider == 'naver'
-            ? LastLoginViaService.naver
-            : LastLoginViaService.kakao,
+        LastLoginViaService.normalize(widget.provider) ??
+            LastLoginViaService.kakao,
       );
 
       if (!mounted) return;
@@ -166,7 +174,11 @@ class _SocialSignupScreenState extends State<SocialSignupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final providerLabel = _isNaver ? '네이버' : '카카오';
+    final providerLabel = _isApple
+        ? 'Apple'
+        : _isNaver
+            ? '네이버'
+            : '카카오';
 
     return MobileAppLayoutWrapper(
       backgroundColor: Colors.white,
@@ -200,7 +212,7 @@ class _SocialSignupScreenState extends State<SocialSignupScreen> {
                 ),
                 SizedBox(height: healthDp(context, 24)),
                 _buildPhoneRow(),
-                if (_isNaver) ...[
+                if (_showEmailField) ...[
                   SizedBox(height: healthDp(context, 20)),
                   TextField(
                     controller: _emailController,
@@ -421,7 +433,7 @@ class _SocialSignupScreenState extends State<SocialSignupScreen> {
           _hp3,
           focusNode: _hp3Focus,
           maxLen: 4,
-          nextFocus: _isNaver ? _emailFocus : null,
+          nextFocus: _showEmailField ? _emailFocus : null,
           previousFocus: _hp2Focus,
           hint: '5678',
         ),

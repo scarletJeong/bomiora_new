@@ -214,6 +214,24 @@ class AuthRepository {
     );
   }
 
+  static Future<Map<String, dynamic>> loginWithApple({
+    required String appleId,
+    String? email,
+    String? name,
+    String? identityToken,
+    String? authorizationCode,
+  }) {
+    return loginWithSocial(
+      provider: 'apple',
+      identifier: appleId,
+      email: email,
+      name: name,
+      accessToken: identityToken,
+      authorizationCode: authorizationCode,
+      identityToken: identityToken,
+    );
+  }
+
   static Future<Map<String, dynamic>> loginWithSocial({
     required String provider,
     required String identifier,
@@ -224,19 +242,24 @@ class AuthRepository {
     String? accessToken,
     String? gender,
     String? birthday,
+    String? identityToken,
+    String? authorizationCode,
   }) async {
     try {
       final endpoint = provider == 'naver'
           ? ApiEndpoints.naverLogin
           : provider == 'kakao'
               ? ApiEndpoints.kakaoLogin
-              : ApiEndpoints.socialLogin;
+              : provider == 'apple'
+                  ? ApiEndpoints.appleLogin
+                  : ApiEndpoints.socialLogin;
 
       final response = await ApiClient.post(endpoint, {
         'provider': provider,
         'identifier': identifier,
         if (provider == 'kakao') 'kakaoId': identifier,
         if (provider == 'naver') 'naverId': identifier,
+        if (provider == 'apple') 'appleId': identifier,
         if (email != null && email.isNotEmpty) 'email': email,
         if (nickname != null && nickname.isNotEmpty) 'nickname': nickname,
         if (name != null && name.isNotEmpty) 'name': name,
@@ -244,6 +267,10 @@ class AuthRepository {
           'profileImageUrl': profileImageUrl,
         if (accessToken != null && accessToken.isNotEmpty)
           'accessToken': accessToken,
+        if (identityToken != null && identityToken.isNotEmpty)
+          'identityToken': identityToken,
+        if (authorizationCode != null && authorizationCode.isNotEmpty)
+          'authorizationCode': authorizationCode,
         if (gender != null && gender.isNotEmpty) 'gender': gender,
         if (birthday != null && birthday.isNotEmpty) 'birthday': birthday,
       });
@@ -267,6 +294,8 @@ class AuthRepository {
     String? gender,
     String? birthday,
     String? profileImageUrl,
+    String? identityToken,
+    String? authorizationCode,
     Map<String, bool>? agreements,
   }) async {
     try {
@@ -275,6 +304,7 @@ class AuthRepository {
         'identifier': identifier,
         if (provider == 'kakao') 'kakaoId': identifier,
         if (provider == 'naver') 'naverId': identifier,
+        if (provider == 'apple') 'appleId': identifier,
         'phone': phone,
         'email': email,
         'name': name,
@@ -283,6 +313,10 @@ class AuthRepository {
         if (birthday != null && birthday.isNotEmpty) 'birthday': birthday,
         if (profileImageUrl != null && profileImageUrl.isNotEmpty)
           'profileImageUrl': profileImageUrl,
+        if (identityToken != null && identityToken.isNotEmpty)
+          'identityToken': identityToken,
+        if (authorizationCode != null && authorizationCode.isNotEmpty)
+          'authorizationCode': authorizationCode,
         'agreements': agreements ??
             const {
               'terms': true,

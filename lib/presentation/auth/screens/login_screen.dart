@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../../data/repositories/auth/auth_repository.dart';
 import '../../../data/services/auth_service.dart';
+import '../../../data/services/apple_auth_service.dart';
 import '../../../data/services/kakao_auth_service.dart';
 import '../../../data/services/last_login_via_service.dart';
 import '../../../data/services/naver_auth_service.dart';
@@ -301,6 +302,12 @@ class _LoginScreenState extends State<LoginScreen> {
                 imagePath: AppAssets.loginKakao,
                 onTap: _isLoading ? null : _handleKakaoLogin,
                 showRecentBadge: _lastLoginVia == LastLoginViaService.kakao,
+              ),
+              SizedBox(width: healthDp(context, 10)),
+              _buildSocialIconButton(
+                imagePath: AppAssets.loginApple,
+                onTap: _isLoading ? null : _handleAppleLogin,
+                showRecentBadge: _lastLoginVia == LastLoginViaService.apple,
               ),
             ],
           ),
@@ -805,6 +812,8 @@ class _LoginScreenState extends State<LoginScreen> {
     String? gender,
     String? birthday,
     String? profileImageUrl,
+    String? identityToken,
+    String? authorizationCode,
     Map<String, dynamic>? prefill,
   }) async {
     final p = prefill != null ? NodeValueParser.normalizeMap(prefill) : null;
@@ -821,6 +830,8 @@ class _LoginScreenState extends State<LoginScreen> {
         'birthday': birthday ?? p?['birthday']?.toString(),
         'profileImageUrl':
             profileImageUrl ?? p?['profileImageUrl']?.toString(),
+        'identityToken': identityToken,
+        'authorizationCode': authorizationCode,
       },
     );
   }
@@ -835,13 +846,14 @@ class _LoginScreenState extends State<LoginScreen> {
     String? profileImageUrl,
     String? gender,
     String? birthday,
+    String? identityToken,
+    String? authorizationCode,
   }) async {
     if (result['success'] == true) {
       await _completeSocialLogin(
         result,
-        via: provider == 'naver'
-            ? LastLoginViaService.naver
-            : LastLoginViaService.kakao,
+        via: LastLoginViaService.normalize(provider) ??
+            LastLoginViaService.kakao,
       );
       return;
     }
@@ -849,13 +861,15 @@ class _LoginScreenState extends State<LoginScreen> {
     if (result['needRegister'] == true) {
       await _openSocialSignup(
         provider: provider,
-        identifier: identifier,
+        identifier: result['identifier']?.toString() ?? identifier,
         email: email,
         nickname: nickname,
         name: name,
         gender: gender,
         birthday: birthday,
         profileImageUrl: profileImageUrl,
+        identityToken: identityToken,
+        authorizationCode: authorizationCode,
         prefill: result['prefill'] is Map
             ? Map<String, dynamic>.from(result['prefill'] as Map)
             : null,
@@ -1064,6 +1078,63 @@ class _LoginScreenState extends State<LoginScreen> {
       birthday: naverData['birthday']?.toString(),
       profileImageUrl: naverData['profileImageUrl']?.toString(),
     );
+  }
+
+  Future<void> _handleAppleLogin() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final appleResult = await AppleAuthService.login();
+      if (!appleResult['success']) {
+        if (!mounted) return;
+        if (appleResult['cancelled'] != true) {
+          final msg = appleResult['error']?.toString();
+          if (msg != null && msg.isNotEmpty) {
+            AppToastOverlay.show(context, msg);
+          }
+        }
+        return;
+      }
+
+      final appleData = appleResult['data'] as Map<String, dynamic>;
+      final appleId = appleData['appleId']?.toString() ?? '';
+      if (appleId.isEmpty) {
+        if (!mounted) return;
+        AppToastOverlay.show(context, 'Apple 사용자 정보를 가져오지 못했습니다.');
+        return;
+      }
+
+      final email = appleData['email']?.toString();
+      final name = appleData['name']?.toString();
+      final result = await AuthRepository.loginWithApple(
+        appleId: appleId,
+        email: email,
+        name: name,
+        identityToken: appleData['identityToken']?.toString(),
+        authorizationCode: appleData['authorizationCode']?.toString(),
+      );
+
+      await _handleSocialAuthResult(
+        result,
+        provider: 'apple',
+        identifier: appleId,
+        email: email,
+        name: name,
+        identityToken: appleData['identityToken']?.toString(),
+        authorizationCode: appleData['authorizationCode']?.toString(),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      AppToastOverlay.show(context, 'Apple 로그인 오류: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   Future<void> _handleNaverLogin() async {

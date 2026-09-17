@@ -250,6 +250,8 @@ class _BomioraAppState extends State<BomioraApp> {
             gender: args?['gender']?.toString(),
             birthday: args?['birthday']?.toString(),
             profileImageUrl: args?['profileImageUrl']?.toString(),
+            identityToken: args?['identityToken']?.toString(),
+            authorizationCode: args?['authorizationCode']?.toString(),
           );
         },
       },

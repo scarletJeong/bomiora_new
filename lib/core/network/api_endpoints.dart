@@ -16,6 +16,7 @@ class ApiEndpoints {
   static const String otpVerify = '/api/auth/otp/verify';
   static const String kakaoLogin = '/api/auth/kakao/login';
   static const String naverLogin = '/api/auth/naver/login';
+  static const String appleLogin = '/api/auth/apple/login';
   static String naverOAuthAuthorize(String returnTo) =>
       '/api/auth/naver/authorize?returnTo=${Uri.encodeComponent(returnTo)}';
   static String naverOAuthResult(String token) =>
