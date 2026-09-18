@@ -92,6 +92,17 @@ class _MyPageScreenState extends State<MyPageScreen> {
   @override
   void initState() {
     super.initState();
+    AuthService.sessionTick.addListener(_onSessionTick);
+    _loadCurrentUser();
+  }
+
+  @override
+  void dispose() {
+    AuthService.sessionTick.removeListener(_onSessionTick);
+    super.dispose();
+  }
+
+  void _onSessionTick() {
     _loadCurrentUser();
   }
 
@@ -491,7 +502,11 @@ class _MyPageScreenState extends State<MyPageScreen> {
         ),
         SizedBox(width: healthDp(context, 8)),
         ElevatedButton(
-          onPressed: () => Navigator.pushNamed(context, '/login'),
+          onPressed: () async {
+            await Navigator.pushNamed(context, '/login');
+            if (!mounted) return;
+            await _loadCurrentUser();
+          },
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFFFF3787),
             padding: EdgeInsets.symmetric(

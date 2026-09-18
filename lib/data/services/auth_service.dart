@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -23,8 +24,13 @@ class AuthService {
   static const String _autoLoginKey = 'auto_login';
   static UserModel? _memoryUser;
   static int _sessionEpoch = 0;
+  static final ValueNotifier<int> sessionTick = ValueNotifier<int>(0);
 
   static UserModel? get currentUser => _memoryUser;
+
+  static void _bumpSessionTick() {
+    sessionTick.value++;
+  }
 
   /// 찜·배송지 목록을 로그인/스플래시에서 미리 받아 화면 진입 시 네트워크를 건너뛴다.
   static void prefetchMemberLists([String? mbId]) {
@@ -70,6 +76,7 @@ class AuthService {
     }
     await prefs.setBool(_isLoggedInKey, true);
     await prefs.setBool(_autoLoginKey, autoLogin);
+    _bumpSessionTick();
 
     // 부가 동기화는 로그인 화면 전환을 막지 않는다.
     unawaited(RecentViewService.syncLocalToAccount(user.id));
@@ -126,6 +133,7 @@ class AuthService {
     final userId = (_memoryUser?.id ?? '').trim();
     _sessionEpoch++;
     _memoryUser = null;
+    _bumpSessionTick();
 
     try {
       final prefs = await SharedPreferences.getInstance();

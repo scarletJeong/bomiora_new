@@ -105,6 +105,7 @@ class AppAlertDialog extends StatelessWidget {
                   fontSize: healthSp(context, 20),
                   fontFamily: 'Gmarket Sans TTF',
                   fontWeight: FontWeight.w700,
+                  height: 1,
                 ),
               ),
               SizedBox(height: healthDp(context, 20)),
@@ -112,6 +113,10 @@ class AppAlertDialog extends StatelessWidget {
             Text(
               message,
               textAlign: TextAlign.center,
+              textHeightBehavior: const TextHeightBehavior(
+                applyHeightToFirstAscent: false,
+                applyHeightToLastDescent: false,
+              ),
               style: TextStyle(
                 color: const Color(0xFF898686),
                 fontSize: healthSp(context, 14),
