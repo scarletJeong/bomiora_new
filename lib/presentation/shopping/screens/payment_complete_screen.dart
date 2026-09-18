@@ -41,13 +41,6 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
   static const Color _ink = Color(0xFF1A1A1E);
   static const Color _muted = Color(0xFF898686);
   static const String _font = 'Gmarket Sans TTF';
-  static const _deliveryMemoPresets = <String>[
-    '문 앞에 놓아주세요',
-    '경비실에 맡겨주세요',
-    '직접 받겠습니다',
-    '배송 전 연락바랍니다',
-    '부재 시 연락주세요',
-  ];
 
   bool _loading = true;
   String? _error;
@@ -169,7 +162,16 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
       context,
       '/order-detail',
       arguments: {'orderNumber': order.odId, 'odId': order.odId},
-    );
+    ).then((result) {
+      if (!mounted) return;
+      if (result is Map && result['cancelled'] == true) {
+        OrderFlowDialogs.openCancelledOrderPage(
+          context,
+          odId: (result['odId'] ?? order.odId).toString(),
+          isPrescription: order.isPrescriptionOrder,
+        );
+      }
+    });
   }
 
   /// 비대면 주문 여부 (플래그 + 라인상품 kind)
@@ -230,17 +232,10 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
       orderDetail: order,
     );
     if (ok && mounted) {
-      Navigator.pushNamedAndRemoveUntil(
+      await OrderFlowDialogs.openCancelledOrderPage(
         context,
-        '/order',
-        (route) => route.isFirst,
-        arguments: {
-          'status': 'cancelled',
-          'openOdId': order.odId,
-          'productType': order.isPrescriptionOrder
-              ? DeliveryProductType.prescription
-              : DeliveryProductType.general,
-        },
+        odId: order.odId,
+        isPrescription: order.isPrescriptionOrder,
       );
     }
   }
@@ -399,7 +394,6 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
     return DeliveryDetailAddressSection(
       order: order,
       deliveryMemo: _deliveryMemo,
-      memoPresets: _deliveryMemoPresets,
       onMemoChanged: _onDeliveryMemoChanged,
       memoEditable: true,
       showChangeButton: showAddressChange,

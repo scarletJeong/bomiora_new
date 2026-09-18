@@ -56,13 +56,6 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
   String _deliveryMemo = '';
   List<String> _reviewedItIds = const [];
 
-  static const _deliveryMemoPresets = <String>[
-    '부재시 경비실에 맡겨 주세요',
-    '부재시 문 앞에 놓아주세요',
-    '배송 전 연락 바랍니다',
-    '직접 받겠습니다',
-  ];
-
   static const Color _kInk = Color(0xFF1A1A1A);
 
   @override
@@ -232,7 +225,6 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
               DeliveryDetailAddressSection(
                 order: order,
                 deliveryMemo: _deliveryMemo,
-                memoPresets: _deliveryMemoPresets,
                 memoEditable: false,
                 showChangeButton: false,
               ),
@@ -297,7 +289,6 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
                 DeliveryDetailAddressSection(
                   order: order,
                   deliveryMemo: _deliveryMemo,
-                  memoPresets: _deliveryMemoPresets,
                   onMemoChanged:
                       canChangeAddress ? _onDeliveryMemoChanged : null,
                   memoEditable: canChangeAddress,
@@ -326,7 +317,6 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
                 DeliveryDetailAddressSection(
                   order: order,
                   deliveryMemo: _deliveryMemo,
-                  memoPresets: _deliveryMemoPresets,
                   memoEditable: false,
                   showChangeButton: false,
                 ),
@@ -375,7 +365,6 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
                 DeliveryDetailAddressSection(
                   order: order,
                   deliveryMemo: _deliveryMemo,
-                  memoPresets: _deliveryMemoPresets,
                   onMemoChanged:
                       canChangeAddress ? _onDeliveryMemoChanged : null,
                   memoEditable: canChangeAddress,
@@ -401,7 +390,6 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
                 DeliveryDetailAddressSection(
                   order: order,
                   deliveryMemo: _deliveryMemo,
-                  memoPresets: _deliveryMemoPresets,
                   memoEditable: false,
                   showChangeButton: false,
                 ),
@@ -690,10 +678,11 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
       orderDetail: _orderDetail,
     );
     if (ok && mounted) {
-      Navigator.pop(context, {
-        'cancelled': true,
-        'odId': _orderDetail!.odId,
-      });
+      await OrderFlowDialogs.openCancelledOrderPage(
+        context,
+        odId: _orderDetail!.odId,
+        isPrescription: _orderDetail!.isPrescriptionOrder,
+      );
     }
   }
 

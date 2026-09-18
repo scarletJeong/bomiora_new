@@ -9,6 +9,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../health/health_common/widgets/health_app_bar.dart';
 import '../../common/widgets/dropdown_btn.dart';
+import '../../common/widgets/delivery_memo_dropdown.dart';
 import '../../common/widgets/app_toast_overlay.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../core/utils/web_kcp_popup.dart';
@@ -99,15 +100,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
   static const _figmaBrown = Color(0xFF584045);
   static const _figmaDark = Color(0xFF1A1B1F);
 
-  static const _deliveryMemoPresets = <String>[
-    '문 앞에 놓아주세요',
-    '경비실에 맡겨주세요',
-    '직접 받겠습니다',
-    '배송 전 연락바랍니다',
-    '부재 시 연락주세요',
-  ];
-  static const _deliveryMemoCustomLabel = '직접 입력';
-
   final TextEditingController _pointController = TextEditingController();
   final TextEditingController _addressNameController = TextEditingController();
   final TextEditingController _receiverController = TextEditingController();
@@ -116,7 +108,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
   final TextEditingController _addressController = TextEditingController();
   final TextEditingController _detailAddressController =
       TextEditingController();
-  final TextEditingController _memoController = TextEditingController();
+
+  String _deliveryMemo = '';
 
   bool _loading = true;
   bool _submitting = false;
@@ -136,8 +129,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
   String _addressLabelChip = '집';
   bool _saveAsDefault = false;
   bool _showCustomAddressName = false;
-  bool _memoIsCustom = false;
-  bool _memoCustomFocused = false;
 
   @override
   void initState() {
@@ -171,7 +162,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
     _zipController.dispose();
     _addressController.dispose();
     _detailAddressController.dispose();
-    _memoController.dispose();
     _scrollProgress.dispose();
     super.dispose();
   }
@@ -217,8 +207,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
         _pointController.clear();
       }
       _loading = false;
+      _applyAddressMode();
     });
-    _applyAddressMode();
     // 기본 배송지 없으면 회원 성함/연락처 프리필
     if (_defaultAddress == null) {
       setState(() {
@@ -256,8 +246,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
         _pointController.clear();
       }
       _loading = false;
+      _applyAddressMode();
     });
-    _applyAddressMode();
     if (_defaultAddress == null) {
       setState(() {
         if (_receiverController.text.trim().isEmpty) {
@@ -485,9 +475,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
     _detailAddressController.clear();
     final addressMemo = _safe(ad?['adMemo']);
     if (addressMemo.isNotEmpty || !preserveDeliveryMemo) {
-      _memoController.text = addressMemo;
-      _memoIsCustom = addressMemo.isNotEmpty &&
-          !_deliveryMemoPresets.contains(addressMemo);
+      _deliveryMemo = addressMemo;
     }
   }
 
@@ -509,7 +497,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   /// 배송요청사항 드롭다운 선택값 → 주문 `od_memo`
-  String get _deliveryRequestMemo => _memoController.text.trim();
+  String get _deliveryRequestMemo => _deliveryMemo.trim();
 
   String _safe(dynamic value) => (value ?? '').toString().trim();
 
@@ -1173,85 +1161,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   Widget _buildDeliveryMemoDropdown() {
-    final dropdownValue = _memoIsCustom
-        ? _deliveryMemoCustomLabel
-        : (_deliveryMemoPresets.contains(_memoController.text.trim())
-            ? _memoController.text.trim()
-            : '');
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        DropdownBtn(
-          buttonHeight: healthDp(context, _kDeliveryFieldHeight),
-          items: [..._deliveryMemoPresets, _deliveryMemoCustomLabel],
-          value: dropdownValue,
-          emptyText: '배송메모를 선택해주세요',
-          emptyTextColor: _muted,
-          valueTextColor: const Color(0xFF1A1A1E),
-          borderColor: _border,
-          itemFontSizeBase: 12,
-          itemTextAlign: TextAlign.left,
-          onChanged: (value) {
-            setState(() {
-              if (value == _deliveryMemoCustomLabel) {
-                _memoIsCustom = true;
-                if (_deliveryMemoPresets.contains(_memoController.text.trim())) {
-                  _memoController.clear();
-                }
-              } else {
-                _memoIsCustom = false;
-                _memoCustomFocused = false;
-                _memoController.text = value;
-              }
-            });
-          },
-        ),
-        if (_memoIsCustom) ...[
-          SizedBox(height: healthDp(context, 10)),
-          _deliveryMemoCustomField(),
-        ],
-      ],
-    );
-  }
-
-  Widget _deliveryMemoCustomField() {
-    return Focus(
-      onFocusChange: (focused) {
-        if (_memoCustomFocused == focused) return;
-        setState(() => _memoCustomFocused = focused);
-      },
-      child: _deliveryFieldBox(
-        fillColor: Colors.white,
-        borderColor: _memoCustomFocused ? _pink : _border,
-        child: TextField(
-          controller: _memoController,
-          textAlignVertical: TextAlignVertical.center,
-          cursorColor: const Color(0xFF1A1A1A),
-          style: TextStyle(
-            fontSize: healthSp(context, 12),
-            fontFamily: 'Gmarket Sans TTF',
-            fontWeight: FontWeight.w500,
-            height: 1.2,
-            color: const Color(0xFF1A1A1E),
-          ),
-          decoration: InputDecoration(
-            isDense: true,
-            border: InputBorder.none,
-            enabledBorder: InputBorder.none,
-            focusedBorder: InputBorder.none,
-            contentPadding: EdgeInsets.zero,
-            isCollapsed: true,
-            hintText: '배송 요청사항을 입력해 주세요.',
-            hintStyle: TextStyle(
-              color: _muted,
-              fontSize: healthSp(context, 12),
-              fontFamily: 'Gmarket Sans TTF',
-              fontWeight: FontWeight.w300,
-              height: 1.2,
-            ),
-          ),
-        ),
-      ),
+    return DeliveryMemoDropdown(
+      value: _deliveryMemo,
+      commitCustomOnUnfocus: false,
+      onChanged: (value) => _deliveryMemo = value,
     );
   }
 
@@ -1358,16 +1271,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
             ),
           ],
           SizedBox(height: healthDp(context, 10)),
-          Text(
-            '배송 요청 사항',
-            style: TextStyle(
-              color: _muted,
-              fontSize: healthSp(context, 12),
-              fontFamily: 'Gmarket Sans TTF',
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          SizedBox(height: healthDp(context, 2)),
           _buildDeliveryMemoDropdown(),
           SizedBox(height: healthDp(context, 5)),
           Align(
@@ -1516,16 +1419,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
             ),
           ],
           SizedBox(height: healthDp(context, 10)),
-          Text(
-            '배송 요청 사항',
-            style: TextStyle(
-              color: _muted,
-              fontSize: healthSp(context, 12),
-              fontFamily: 'Gmarket Sans TTF',
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          SizedBox(height: healthDp(context, 2)),
           _buildDeliveryMemoDropdown(),
           SizedBox(height: healthDp(context, 10)),
           Align(
