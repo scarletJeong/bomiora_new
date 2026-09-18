@@ -367,7 +367,7 @@ class _CouponScreenState extends State<CouponScreen> {
               fit: BoxFit.scaleDown,
               alignment: Alignment.center,
               child: Text(
-                selected ? '$label$count' : label,
+                selected && index == 0 ? '$label$count' : label,
                 textAlign: TextAlign.center,
                 maxLines: 1,
                 softWrap: false,
