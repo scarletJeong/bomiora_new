@@ -311,6 +311,7 @@ class OrderService {
     required String mbId,
     required String reservationDate,
     required String reservationTime,
+    String? reservationEndTime,
   }) async {
     try {
       final response = await ApiClient.put(
@@ -319,6 +320,8 @@ class OrderService {
           'mbId': mbId,
           'reservationDate': reservationDate,
           'reservationTime': reservationTime,
+          if (reservationEndTime != null && reservationEndTime.isNotEmpty)
+            'reservationEndTime': reservationEndTime,
         },
       );
 

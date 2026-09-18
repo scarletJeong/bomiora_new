@@ -12,8 +12,13 @@ import '../../../health/health_common/health_responsive_scale.dart';
 class ReservationPickResult {
   final DateTime date;
   final String time;
+  final String endTime;
 
-  const ReservationPickResult({required this.date, required this.time});
+  const ReservationPickResult({
+    required this.date,
+    required this.time,
+    required this.endTime,
+  });
 }
 
 class ReservationTimeChangePopup extends StatefulWidget {
@@ -177,9 +182,7 @@ class _ReservationTimeChangePopupState
     }
 
     if (widget.pickOnly) {
-      _close(
-        ReservationPickResult(date: _selectedDate!, time: _selectedTime!),
-      );
+      _close(_pickedResult());
       return;
     }
 
@@ -194,20 +197,28 @@ class _ReservationTimeChangePopupState
 
     final day =
         '${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}';
+    final picked = _pickedResult();
     final result = await order_service.OrderService.changeReservationTime(
       odId: widget.orderId,
       mbId: user.id,
       reservationDate: day,
-      reservationTime: _selectedTime!,
+      reservationTime: picked.time,
+      reservationEndTime: picked.endTime,
     );
     if (!mounted) return;
     setState(() => _isSubmitting = false);
     if (result['success'] == true) {
       AppToastOverlay.show(context, '예약시간이 변경되었습니다.');
-      _close(
-        ReservationPickResult(date: _selectedDate!, time: _selectedTime!),
-      );
+      _close(picked);
     }
+  }
+
+  ReservationPickResult _pickedResult() {
+    return ReservationPickResult(
+      date: _selectedDate!,
+      time: _selectedTime!,
+      endTime: _endTimeFor(_selectedTime!),
+    );
   }
 
   void _close([ReservationPickResult? result]) {

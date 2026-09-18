@@ -1248,18 +1248,6 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
     return et;
   }
 
-  String _plusMinutes(String time, int minutes) {
-    final match = RegExp(r'^(\d{1,2}):(\d{2})').firstMatch(time.trim());
-    if (match == null) return time;
-    var hour = int.parse(match.group(1)!);
-    var minute = int.parse(match.group(2)!) + minutes;
-    if (minute >= 60) {
-      hour += minute ~/ 60;
-      minute %= 60;
-    }
-    return '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
-  }
-
   /// 주문 상세 화면으로 이동 (복귀 시 목록 갱신 — 수령확인/취소 반영)
   Future<void> _navigateToOrderDetail(OrderListModel order) async {
     final result = await Navigator.pushNamed(
@@ -1767,7 +1755,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
       (current) => current.copyWith(
         reservationDate: day,
         reservationTime: picked.time,
-        reservationEndTime: _plusMinutes(picked.time, 20),
+        reservationEndTime: picked.endTime,
       ),
     );
   }

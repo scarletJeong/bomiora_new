@@ -1,3 +1,11 @@
+int _toPositiveInt(dynamic value, int fallback) {
+  if (value is int && value > 0) return value;
+  if (value is num && value > 0) return value.toInt();
+  final parsed = int.tryParse(value?.toString() ?? '');
+  if (parsed != null && parsed > 0) return parsed;
+  return fallback;
+}
+
 class ReservationSettingsModel {
   final DaySettings monday;
   final DaySettings tuesday;
@@ -36,7 +44,7 @@ class ReservationSettingsModel {
       sunday: DaySettings.fromJson(json['sunday'] ?? {}),
       lunch: LunchSettings.fromJson(json['lunch'] ?? {}),
       holiday: DaySettings.fromJson(json['holiday'] ?? {}),
-      relayTime: json['relay_time'] ?? 30,
+      relayTime: _toPositiveInt(json['relay_time'], 30),
       limitPerson: json['limit_person'] ?? 15,
     );
   }
