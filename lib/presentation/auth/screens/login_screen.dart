@@ -164,7 +164,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   child: Text(
                                     _loginErrorText!,
                                     style: TextStyle(
-                                      color: const Color(0xFFEF4444),
+                                      color: const Color(0xFFFF5A8D),
                                       fontSize: healthSp(context, 12),
                                       fontFamily: 'Gmarket Sans TTF',
                                       fontWeight: FontWeight.w500,
@@ -480,12 +480,12 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           errorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(radius),
-            borderSide: const BorderSide(color: Color(0xFFEF4444)),
+            borderSide: const BorderSide(color: Color(0xFFFF5A8D)),
           ),
           focusedErrorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(radius),
             borderSide: BorderSide(
-              color: const Color(0xFFEF4444),
+              color: const Color(0xFFFF5A8D),
               width: healthDp(context, 1.2),
             ),
           ),
@@ -569,12 +569,12 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           errorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(healthDp(context, 7)),
-            borderSide: const BorderSide(color: Color(0xFFEF4444)),
+            borderSide: const BorderSide(color: Color(0xFFFF5A8D)),
           ),
           focusedErrorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(healthDp(context, 7)),
             borderSide: BorderSide(
-              color: const Color(0xFFEF4444),
+              color: const Color(0xFFFF5A8D),
               width: healthDp(context, 1.2),
             ),
           ),
