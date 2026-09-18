@@ -62,6 +62,8 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
 
   String? _pendingOpenOdId;
   bool _routeArgsApplied = false;
+  bool _productTypeFromRoute = false;
+  bool _didAutoSelectProductType = false;
 
   @override
   void initState() {
@@ -69,7 +71,9 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       _applyRouteArgs();
-      await _loadOrders(force: _pendingOpenOdId != null);
+      await _loadOrders(
+        force: _pendingOpenOdId != null || _productTypeFromRoute,
+      );
       if (mounted) await _openPendingOrderDetail();
     });
   }
@@ -91,6 +95,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
     if (productType == DeliveryProductType.general ||
         productType == DeliveryProductType.prescription) {
       _selectedProductType = productType!;
+      _productTypeFromRoute = true;
     }
     if (status != null && status.isNotEmpty) {
       _selectedStatus = status;
@@ -146,6 +151,15 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
         
         // 날짜순 내림차순 정렬 (최신순)
         allOrders.sort((a, b) => b.orderDateTime.compareTo(a.orderDateTime));
+
+        if (!_productTypeFromRoute &&
+            !_didAutoSelectProductType &&
+            allOrders.isNotEmpty) {
+          _didAutoSelectProductType = true;
+          _selectedProductType = allOrders.first.isPrescriptionOrder
+              ? DeliveryProductType.prescription
+              : DeliveryProductType.general;
+        }
         
         if (!mounted || gen != _ordersLoadGen) return;
         setState(() {
@@ -1219,7 +1233,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
   }
 
   String _reservationLine(OrderListModel order) {
-    if (!order.isPrescriptionOrder) return '';
+    if (_isCancelledStage(order) || !order.isPrescriptionOrder) return '';
     final dateLabel = _formatReservationDate(order.reservationDate);
     final timeLabel = _formatReservationTimeRange(
       order.reservationTime,

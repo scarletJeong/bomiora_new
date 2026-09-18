@@ -30,6 +30,7 @@ import 'widgets/detail/delivery_detail_reservation_products_card.dart';
 import 'widgets/detail/delivery_detail_reservation_section.dart';
 import 'widgets/detail/delivery_detail_section_style.dart';
 import 'widgets/detail/delivery_detail_status_card.dart';
+import 'widgets/delivery_status_filter_bar.dart';
 import 'widgets/order_flow_dialogs.dart';
 import 'widgets/reservation_time_change_popup.dart';
 
@@ -40,10 +41,14 @@ class DeliveryDetailScreen extends StatefulWidget {
   /// 목록에서 넘기면 상세 API 전에 즉시 화면을 그릴 수 있음
   final OrderDetailModel? initialOrder;
 
+  /// 결제완료에서 들어온 경우, 뒤로가기는 결제완료가 아니라 주문내역으로
+  final bool returnToOrderList;
+
   const DeliveryDetailScreen({
     super.key,
     required this.orderNumber,
     this.initialOrder,
+    this.returnToOrderList = false,
   });
 
   @override
@@ -126,20 +131,47 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
     return pendingReviewProducts(order, _reviewedItIds).isNotEmpty;
   }
 
+  void _goBack() {
+    if (widget.returnToOrderList) {
+      final isRx = _orderDetail?.isPrescriptionOrder == true;
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        '/order',
+        (route) => route.isFirst,
+        arguments: {
+          'productType': isRx
+              ? DeliveryProductType.prescription
+              : DeliveryProductType.general,
+        },
+      );
+      return;
+    }
+    Navigator.pop(context);
+  }
+
   @override
   Widget build(BuildContext context) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontFamily: 'Gmarket Sans TTF', color: _kInk),
-      child: MobileAppLayoutWrapper(
-        backgroundColor: Colors.white,
-        appBar: const HealthAppBar(title: '주문 내역'),
-        child: Material(
-          color: Colors.white,
-          child: _isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : _orderDetail == null
-                  ? _buildErrorState()
-                  : _buildOrderDetail(),
+      child: PopScope(
+        canPop: !widget.returnToOrderList,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) _goBack();
+        },
+        child: MobileAppLayoutWrapper(
+          backgroundColor: Colors.white,
+          appBar: HealthAppBar(
+            title: '주문 내역',
+            onBack: _goBack,
+          ),
+          child: Material(
+            color: Colors.white,
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _orderDetail == null
+                    ? _buildErrorState()
+                    : _buildOrderDetail(),
+          ),
         ),
       ),
     );

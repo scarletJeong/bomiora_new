@@ -24,6 +24,7 @@ import '../../../data/models/user/user_model.dart';
 import '../../../data/services/address_service.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/coupon_service.dart';
+import '../../../data/services/delivery_service.dart';
 import '../../../data/services/point_service.dart';
 import '../../user/delivery/widgets/delivery_address_change_popup_ver2.dart';
 import '../../health/health_common/health_responsive_scale.dart';
@@ -791,6 +792,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
         }
 
         if (!mounted) return;
+        OrderService.invalidateOrderList();
         if (orderId.isNotEmpty) {
           Navigator.of(context).pushNamedAndRemoveUntil(
             '/payment-complete',

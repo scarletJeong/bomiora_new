@@ -214,6 +214,9 @@ class _BomioraAppState extends State<BomioraApp> {
           return DeliveryDetailScreen(
             orderNumber: orderNumber,
             initialOrder: initialOrder,
+            returnToOrderList: args is Map &&
+                (args['returnToOrderList'] == true ||
+                    args['fromPaymentComplete'] == true),
           );
         },
         '/announcement': (context) => const AnnouncementListScreen(),

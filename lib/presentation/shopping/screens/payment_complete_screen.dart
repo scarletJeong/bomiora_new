@@ -161,7 +161,11 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
     Navigator.pushNamed(
       context,
       '/order-detail',
-      arguments: {'orderNumber': order.odId, 'odId': order.odId},
+      arguments: {
+        'orderNumber': order.odId,
+        'odId': order.odId,
+        'returnToOrderList': true,
+      },
     ).then((result) {
       if (!mounted) return;
       if (result is Map && result['cancelled'] == true) {
