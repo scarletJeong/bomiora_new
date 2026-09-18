@@ -11,10 +11,12 @@ class CenteredEmptyState extends StatelessWidget {
   const CenteredEmptyState({
     super.key,
     required this.message,
+    this.subtitle,
     this.icon,
     this.iconWidget,
     this.iconColor = kEmptyStateIconColor,
     this.messageStyle,
+    this.subtitleStyle,
     this.gap,
     this.trailingGap,
     this.trailing,
@@ -22,10 +24,12 @@ class CenteredEmptyState extends StatelessWidget {
   });
 
   final String message;
+  final String? subtitle;
   final IconData? icon;
   final Widget? iconWidget;
   final Color iconColor;
   final TextStyle? messageStyle;
+  final TextStyle? subtitleStyle;
   final double? gap;
   final double? trailingGap;
   final List<Widget>? trailing;
@@ -34,11 +38,19 @@ class CenteredEmptyState extends StatelessWidget {
   final bool fillAvailable;
 
   static TextStyle defaultMessageStyle(BuildContext context) => TextStyle(
-        fontSize: healthSp(context, 15),
+        fontSize: healthSp(context, 14),
+        fontFamily: 'Gmarket Sans TTF',
+        fontWeight: FontWeight.w500,
+        color: const Color(0xFFC0C0C0),
+        height: 1.0,
+      );
+
+  static TextStyle defaultSubtitleStyle(BuildContext context) => TextStyle(
+        fontSize: healthSp(context, 12),
         fontFamily: 'Gmarket Sans TTF',
         fontWeight: FontWeight.w300,
-        color: const Color(0xFFBDBDBD),
-        height: 1.4,
+        color: const Color(0xFFB0B0B0),
+        height: 1.0,
       );
 
   /// 빈 화면 / 로그인 유도용 SVG 아이콘 (문구 위)
@@ -128,6 +140,19 @@ class CenteredEmptyState extends StatelessWidget {
             style: messageStyle ?? CenteredEmptyState.defaultMessageStyle(context),
           ),
         ),
+        if (subtitle != null) ...[
+          SizedBox(height: healthDp(context, 10)),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: healthDp(context, 27)),
+            child: Text(
+              subtitle!,
+              textAlign: TextAlign.center,
+              textScaler: TextScaler.noScaling,
+              style: subtitleStyle ??
+                  CenteredEmptyState.defaultSubtitleStyle(context),
+            ),
+          ),
+        ],
         if (trailing != null) ...[
           SizedBox(height: trailingGap ?? spacing),
           ...trailing!,
