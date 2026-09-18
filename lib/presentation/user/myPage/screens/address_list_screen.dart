@@ -23,10 +23,12 @@ class AddressManagementScreen extends StatefulWidget {
 
 class _AddressManagementScreenState extends State<AddressManagementScreen> {
   static const double _confirmDialogWidth = 272;
+  static const int _collapsedAddressCount = 4;
 
   UserModel? _currentUser;
   List<Map<String, dynamic>> _addresses = [];
   bool _isLoadingAddresses = false;
+  bool _showAllAddresses = false;
 
   @override
   void initState() {
@@ -98,7 +100,7 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
   Future<void> _goToRegister() async {
     if (_addresses.length >= 10) {
       if (!mounted) return;
-      AppToastOverlay.show(context, '배송지는 최대 10개까지 등록할 수 있습니다.');
+      AppToastOverlay.showAlert(context, '배송지는 최대 10개까지 등록할 수 있습니다.');
       return;
     }
 
@@ -157,6 +159,43 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
     } else {
       await _loadAddresses();
     }
+  }
+
+  Widget _buildMoreButton() {
+    final radius = BorderRadius.circular(healthDp(context, 10));
+    return InkWell(
+      onTap: () => setState(() => _showAllAddresses = true),
+      borderRadius: radius,
+      child: Container(
+        width: double.infinity,
+        height: healthDp(context, 40),
+        padding: EdgeInsets.all(healthDp(context, 10)),
+        clipBehavior: Clip.antiAlias,
+        alignment: Alignment.center,
+        decoration: ShapeDecoration(
+          color: Colors.white,
+          shape: RoundedRectangleBorder(
+            side: BorderSide(
+              width: healthDp(context, 1),
+              color: const Color(0xFFD2D2D2),
+            ),
+            borderRadius: radius,
+          ),
+        ),
+        child: Text(
+          '더보기',
+          textAlign: TextAlign.center,
+          textScaler: TextScaler.noScaling,
+          style: TextStyle(
+            color: const Color(0xFF898686),
+            fontSize: healthSp(context, 16),
+            fontFamily: 'Gmarket Sans TTF',
+            fontWeight: FontWeight.w500,
+            height: 1,
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildAddAddressButton() {
@@ -332,6 +371,16 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                           );
                         }
 
+                        final visibleAddresses = _showAllAddresses ||
+                                _addresses.length <= _collapsedAddressCount
+                            ? _addresses
+                            : _addresses
+                                .take(_collapsedAddressCount)
+                                .toList();
+                        final showMoreButton =
+                            !_showAllAddresses &&
+                            _addresses.length > _collapsedAddressCount;
+
                         return SingleChildScrollView(
                           padding: contentPadding,
                           child: Column(
@@ -339,9 +388,10 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                             children: [
                               _buildAddAddressButton(),
                               SizedBox(height: healthDp(context, 20)),
-                              ..._addresses.asMap().entries.map((entry) {
-                                final isLast =
-                                    entry.key == _addresses.length - 1;
+                              ...visibleAddresses.asMap().entries.map((entry) {
+                                final isLast = entry.key ==
+                                        visibleAddresses.length - 1 &&
+                                    !showMoreButton;
                                 return Padding(
                                   padding: EdgeInsets.only(
                                     bottom: isLast ? 0 : healthDp(context, 10),
@@ -349,6 +399,7 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                                   child: _buildAddressCard(entry.value),
                                 );
                               }),
+                              if (showMoreButton) _buildMoreButton(),
                             ],
                           ),
                         );
