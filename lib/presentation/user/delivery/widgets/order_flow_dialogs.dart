@@ -6,6 +6,7 @@ import '../../../../data/services/refund_account_service.dart';
 import '../../../common/widgets/app_toast_overlay.dart';
 import '../../../common/widgets/confirm_dialog.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
+import 'delivery_status_filter_bar.dart';
 import 'refund_account_popup.dart';
 
 /// 주문 취소 / 수령 확인 등 주문 플로우용 다이얼로그.
@@ -93,6 +94,26 @@ class OrderFlowDialogs {
       result['message']?.toString() ?? '주문 취소에 실패했습니다.',
     );
     return false;
+  }
+
+  /// 취소 완료 후 해당 주문의 취소 상세로 이동 (결제완료 화면은 스택에서 제거).
+  static Future<void> openCancelledOrderPage(
+    BuildContext context, {
+    required String odId,
+    required bool isPrescription,
+  }) {
+    return Navigator.pushNamedAndRemoveUntil(
+      context,
+      '/order',
+      (route) => route.isFirst,
+      arguments: {
+        'status': 'cancelled',
+        'openOdId': odId,
+        'productType': isPrescription
+            ? DeliveryProductType.prescription
+            : DeliveryProductType.general,
+      },
+    );
   }
 
   /// 1단계: 취소 확인 → true == 확인
