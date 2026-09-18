@@ -160,33 +160,52 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
   }
 
   Widget _buildAddAddressButton() {
+    final radius = BorderRadius.circular(healthDp(context, 50));
+    final iconSize = healthDp(context, 12);
     return InkWell(
       onTap: _goToRegister,
-      borderRadius: BorderRadius.circular(healthDp(context, 7)),
+      borderRadius: radius,
       child: Container(
         width: double.infinity,
-        height: healthDp(context, 39),
-        padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
-        clipBehavior: Clip.antiAlias,
+        height: healthDp(context, 40),
+        alignment: Alignment.center,
         decoration: ShapeDecoration(
-          color: const Color(0x00FF5A8D),
+          color: Colors.white,
           shape: RoundedRectangleBorder(
             side: BorderSide(
-              width: healthDp(context, 1),
-              color: const Color(0xFFD2D2D2),
+              width: healthDp(context, 1.5),
+              color: const Color(0xFFFF5A8D),
             ),
-            borderRadius: BorderRadius.circular(healthDp(context, 7)),
+            borderRadius: radius,
           ),
         ),
-        alignment: Alignment.center,
-        child: Text(
-          '+ 배송지 신규입력',
-          style: TextStyle(
-            color: const Color(0xFF898686),
-            fontSize: healthSp(context, 12),
-            fontFamily: 'Gmarket Sans TTF',
-            fontWeight: FontWeight.w500,
-          ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: iconSize,
+              height: iconSize,
+              child: const CustomPaint(
+                painter: _AddAddressPlusPainter(
+                  color: Color(0xFFFF5A8D),
+                ),
+              ),
+            ),
+            SizedBox(width: healthDp(context, 4)),
+            Text(
+              '배송지 신규입력',
+              textScaler: TextScaler.noScaling,
+              style: TextStyle(
+                color: const Color(0xFFFF5A8D),
+                fontSize: healthSp(context, 12),
+                fontFamily: 'Gmarket Sans TTF',
+                fontWeight: FontWeight.w500,
+                height: 1.0,
+                leadingDistribution: TextLeadingDistribution.even,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -199,6 +218,7 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
 
   Widget _buildCardActionButton({
     required String label,
+    required Color labelColor,
     required VoidCallback onTap,
   }) {
     return InkWell(
@@ -224,7 +244,7 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
         child: Text(
           label,
           style: TextStyle(
-            color: const Color(0xFF898686),
+            color: labelColor,
             fontSize: healthSp(context, 12),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w500,
@@ -248,7 +268,6 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
       child: MobileAppLayoutWrapper(
         appBar: HealthAppBar(
           title: '배송지 관리',
-          titleFontSize: healthSp(context, 18),
           leadingIconSize: healthDp(context, 24),
         ),
         child: DefaultTextStyle.merge(
@@ -281,11 +300,9 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                     )
                   : LayoutBuilder(
                       builder: (context, constraints) {
-                        final contentPadding = EdgeInsets.only(
-                          left: healthDp(context, 27),
-                          right: healthDp(context, 27),
-                          bottom: healthDp(context, 20),
-                          top: healthDp(context, 20),
+                        final contentPadding = EdgeInsets.symmetric(
+                          horizontal: healthDp(context, 20),
+                          vertical: healthDp(context, 10),
                         );
 
                         if (_addresses.isEmpty) {
@@ -295,7 +312,7 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 _buildAddAddressButton(),
-                                SizedBox(height: healthDp(context, 16)),
+                                SizedBox(height: healthDp(context, 10)),
                                 Expanded(
                                   child: Center(
                                     child: CenteredEmptyState(
@@ -304,6 +321,7 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                                         AppAssets.emptyAddressIcon,
                                       ),
                                       message: '등록된 배송지가 없습니다',
+                                      subtitle: '배송지를 등록해주세요',
                                     ),
                                   ),
                                 ),
@@ -318,7 +336,7 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               _buildAddAddressButton(),
-                              SizedBox(height: healthDp(context, 16)),
+                              SizedBox(height: healthDp(context, 10)),
                               ..._addresses.asMap().entries.map((entry) {
                                 final isLast =
                                     entry.key == _addresses.length - 1;
@@ -354,6 +372,13 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
         subject.isEmpty ? titleName : '$titleName ($subject)';
     final fullAddress = detail.isEmpty ? address1 : '$address1 $detail';
 
+    const bodyStyle = TextStyle(
+      color: Color(0xFF898383),
+      fontSize: 12,
+      fontFamily: 'Gmarket Sans TTF',
+      fontWeight: FontWeight.w500,
+    );
+
     return Container(
       width: double.infinity,
       padding: EdgeInsets.all(healthDp(context, 10)),
@@ -364,7 +389,7 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
             width: healthDp(context, 1),
             color: isDefault
                 ? const Color(0xFFFF5C8F)
-                : const Color(0x7FD2D2D2),
+                : const Color(0xFFD2D2D2),
           ),
           borderRadius: BorderRadius.circular(healthDp(context, 12)),
         ),
@@ -417,29 +442,13 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
           if (phone.isNotEmpty) ...[
             Text(
               phone,
-              style: TextStyle(
-                color: const Color(0xFF898383),
-                fontSize: healthSp(context, 12),
-                fontFamily: 'Gmarket Sans TTF',
-                fontWeight: FontWeight.w500,
-              ),
+              style: bodyStyle.copyWith(fontSize: healthSp(context, 12)),
             ),
             SizedBox(height: healthDp(context, 5)),
           ],
           Text(
             fullAddress.isEmpty ? '-' : fullAddress,
-            style: TextStyle(
-              color: const Color(0xFF898383),
-              fontSize: healthSp(context, 12),
-              fontFamily: 'Gmarket Sans TTF',
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          SizedBox(height: healthDp(context, 10)),
-          Container(
-            width: double.infinity,
-            height: healthDp(context, 1),
-            color: const Color(0x7FD2D2D2),
+            style: bodyStyle.copyWith(fontSize: healthSp(context, 12)),
           ),
           SizedBox(height: healthDp(context, 10)),
           Row(
@@ -447,11 +456,13 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
             children: [
               _buildCardActionButton(
                 label: '삭제',
+                labelColor: const Color(0xFF898686),
                 onTap: () => _deleteAddress(address),
               ),
               SizedBox(width: healthDp(context, 5)),
               _buildCardActionButton(
                 label: '수정',
+                labelColor: const Color(0xFFFF5A8D),
                 onTap: () => _goToEdit(address),
               ),
             ],
@@ -460,4 +471,28 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
       ),
     );
   }
+}
+
+class _AddAddressPlusPainter extends CustomPainter {
+  const _AddAddressPlusPainter({required this.color});
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1.5
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+    final arm = size.shortestSide / 2 - paint.strokeWidth / 2;
+    canvas.drawLine(Offset(cx - arm, cy), Offset(cx + arm, cy), paint);
+    canvas.drawLine(Offset(cx, cy - arm), Offset(cx, cy + arm), paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _AddAddressPlusPainter oldDelegate) =>
+      oldDelegate.color != color;
 }
