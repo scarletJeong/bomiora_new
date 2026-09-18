@@ -106,6 +106,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
     '배송 전 연락바랍니다',
     '부재 시 연락주세요',
   ];
+  static const _deliveryMemoCustomLabel = '직접 입력';
 
   final TextEditingController _pointController = TextEditingController();
   final TextEditingController _addressNameController = TextEditingController();
@@ -135,6 +136,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
   String _addressLabelChip = '집';
   bool _saveAsDefault = false;
   bool _showCustomAddressName = false;
+  bool _memoIsCustom = false;
+  bool _memoCustomFocused = false;
 
   @override
   void initState() {
@@ -483,6 +486,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
     final addressMemo = _safe(ad?['adMemo']);
     if (addressMemo.isNotEmpty || !preserveDeliveryMemo) {
       _memoController.text = addressMemo;
+      _memoIsCustom = addressMemo.isNotEmpty &&
+          !_deliveryMemoPresets.contains(addressMemo);
     }
   }
 
@@ -1167,6 +1172,89 @@ class _PaymentScreenState extends State<PaymentScreen> {
     );
   }
 
+  Widget _buildDeliveryMemoDropdown() {
+    final dropdownValue = _memoIsCustom
+        ? _deliveryMemoCustomLabel
+        : (_deliveryMemoPresets.contains(_memoController.text.trim())
+            ? _memoController.text.trim()
+            : '');
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        DropdownBtn(
+          buttonHeight: healthDp(context, _kDeliveryFieldHeight),
+          items: [..._deliveryMemoPresets, _deliveryMemoCustomLabel],
+          value: dropdownValue,
+          emptyText: '배송메모를 선택해주세요',
+          emptyTextColor: _muted,
+          valueTextColor: const Color(0xFF1A1A1E),
+          borderColor: _border,
+          itemFontSizeBase: 12,
+          itemTextAlign: TextAlign.left,
+          onChanged: (value) {
+            setState(() {
+              if (value == _deliveryMemoCustomLabel) {
+                _memoIsCustom = true;
+                if (_deliveryMemoPresets.contains(_memoController.text.trim())) {
+                  _memoController.clear();
+                }
+              } else {
+                _memoIsCustom = false;
+                _memoCustomFocused = false;
+                _memoController.text = value;
+              }
+            });
+          },
+        ),
+        if (_memoIsCustom) ...[
+          SizedBox(height: healthDp(context, 10)),
+          _deliveryMemoCustomField(),
+        ],
+      ],
+    );
+  }
+
+  Widget _deliveryMemoCustomField() {
+    return Focus(
+      onFocusChange: (focused) {
+        if (_memoCustomFocused == focused) return;
+        setState(() => _memoCustomFocused = focused);
+      },
+      child: _deliveryFieldBox(
+        fillColor: Colors.white,
+        borderColor: _memoCustomFocused ? _pink : _border,
+        child: TextField(
+          controller: _memoController,
+          textAlignVertical: TextAlignVertical.center,
+          cursorColor: const Color(0xFF1A1A1A),
+          style: TextStyle(
+            fontSize: healthSp(context, 12),
+            fontFamily: 'Gmarket Sans TTF',
+            fontWeight: FontWeight.w500,
+            height: 1.2,
+            color: const Color(0xFF1A1A1E),
+          ),
+          decoration: InputDecoration(
+            isDense: true,
+            border: InputBorder.none,
+            enabledBorder: InputBorder.none,
+            focusedBorder: InputBorder.none,
+            contentPadding: EdgeInsets.zero,
+            isCollapsed: true,
+            hintText: '배송 요청사항을 입력해 주세요.',
+            hintStyle: TextStyle(
+              color: _muted,
+              fontSize: healthSp(context, 12),
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w300,
+              height: 1.2,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _deliveryTextField({
     required TextEditingController controller,
     required String hint,
@@ -1224,12 +1312,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
     final title = label.isEmpty ? name : '$name ($label)';
     final phone = _formatPhoneDisplay(_phoneController.text.trim());
     final fullAddress = _fullDeliveryAddressText();
-    final memo = _memoController.text.trim();
-    final memoItems = [
-      ..._deliveryMemoPresets,
-      if (memo.isNotEmpty && !_deliveryMemoPresets.contains(memo)) memo,
-    ];
-
     return _sectionCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1286,20 +1368,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
             ),
           ),
           SizedBox(height: healthDp(context, 2)),
-          DropdownBtn(
-            buttonHeight: healthDp(context, _kDeliveryFieldHeight),
-            items: memoItems,
-            value: memo,
-            emptyText: '배송메모를 선택해주세요',
-            emptyTextColor: _muted,
-            valueTextColor: const Color(0xFF1A1A1E),
-            borderColor: _border,
-            itemFontSizeBase: 12,
-            itemTextAlign: TextAlign.left,
-            onChanged: (value) {
-              setState(() => _memoController.text = value);
-            },
-          ),
+          _buildDeliveryMemoDropdown(),
           SizedBox(height: healthDp(context, 5)),
           Align(
             alignment: Alignment.centerRight,
@@ -1320,11 +1389,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   Widget _buildDeliveryEmptyForm(BuildContext context) {
-    final memo = _memoController.text.trim();
-    final memoItems = [
-      ..._deliveryMemoPresets,
-      if (memo.isNotEmpty && !_deliveryMemoPresets.contains(memo)) memo,
-    ];
     final addressDisplay = [
       if (_zipController.text.trim().isNotEmpty) '(${_zipController.text.trim()})',
       _addressController.text.trim(),
@@ -1462,20 +1526,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
             ),
           ),
           SizedBox(height: healthDp(context, 2)),
-          DropdownBtn(
-            buttonHeight: healthDp(context, _kDeliveryFieldHeight),
-            items: memoItems,
-            value: memo,
-            emptyText: '배송메모를 선택해주세요',
-            emptyTextColor: _muted,
-            valueTextColor: const Color(0xFF1A1A1E),
-            borderColor: _border,
-            itemFontSizeBase: 12,
-            itemTextAlign: TextAlign.left,
-            onChanged: (value) {
-              setState(() => _memoController.text = value);
-            },
-          ),
+          _buildDeliveryMemoDropdown(),
           SizedBox(height: healthDp(context, 10)),
           Align(
             alignment: Alignment.centerRight,
