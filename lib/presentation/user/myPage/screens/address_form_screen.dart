@@ -408,7 +408,7 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
       // 신규 등록 시 mb_id당 최대 10개
       if (widget.address == null && existing.length >= 10) {
         if (!mounted) return;
-        AppToastOverlay.show(context, '배송지는 최대 10개까지 등록할 수 있습니다.');
+        AppToastOverlay.showAlert(context, '배송지는 최대 10개까지 등록할 수 있습니다.');
         return;
       }
 
@@ -456,7 +456,7 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
         AppToastOverlay.show(
           context,
           defaultChanged
-              ? '기본배송지가 변경되었어요.'
+              ? '기본배송지가 변경되었습니다.'
               : (isNew ? '배송지를 추가했습니다.' : '배송지를 수정했습니다.'),
         );
         Navigator.of(context).pop(<String, dynamic>{
@@ -530,7 +530,8 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
                         controller: _subjectController,
                         hintText: '예) 집, 회사 등 배송지명을 입력해 주세요.',
                         hintColor: const Color(0xFF898383),
-                        highlightBorder: true,
+                        highlightBorder:
+                            _subjectController.text.trim().isEmpty,
                       ),
                     ],
                     SizedBox(height: healthDp(context, 16)),
@@ -788,7 +789,7 @@ class _FieldLabel extends StatelessWidget {
   }
 }
 
-class _BoxField extends StatelessWidget {
+class _BoxField extends StatefulWidget {
   const _BoxField({
     required this.controller,
     this.hintText,
@@ -810,6 +811,35 @@ class _BoxField extends StatelessWidget {
   final ValueChanged<String>? onChanged;
 
   @override
+  State<_BoxField> createState() => _BoxFieldState();
+}
+
+class _BoxFieldState extends State<_BoxField> {
+  late final FocusNode _focusNode;
+  bool _focused = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode = FocusNode();
+    _focusNode.addListener(_onFocusChanged);
+  }
+
+  void _onFocusChanged() {
+    if (!mounted) return;
+    final focused = _focusNode.hasFocus;
+    if (_focused == focused) return;
+    setState(() => _focused = focused);
+  }
+
+  @override
+  void dispose() {
+    _focusNode.removeListener(_onFocusChanged);
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final fieldHeight = healthDp(context, 45);
     final radius = healthDp(context, 10);
@@ -818,12 +848,13 @@ class _BoxField extends StatelessWidget {
     // TextFormField+OutlineInputBorder는 내부 패딩 때문에 실제 높이가 줄어듦.
     // 칩/주소검색 박스와 동일하게 Container 높이로 고정한다.
     return FormField<String>(
-      initialValue: controller.text,
-      validator: validator,
+      initialValue: widget.controller.text,
+      validator: widget.validator,
       builder: (field) {
-        final borderColor = (field.hasError || highlightBorder)
-            ? const Color(0xFFFF5A8D)
-            : const Color(0xFFD2D2D2);
+        final borderColor =
+            (field.hasError || widget.highlightBorder || _focused)
+                ? const Color(0xFFFF5A8D)
+                : const Color(0xFFD2D2D2);
         return Container(
           width: double.infinity,
           height: fieldHeight,
@@ -840,10 +871,11 @@ class _BoxField extends StatelessWidget {
             ),
           ),
           child: TextField(
-            controller: controller,
-            keyboardType: keyboardType,
-            inputFormatters: inputFormatters,
-            cursorColor: const Color(0xFFFF5A8D),
+            controller: widget.controller,
+            focusNode: _focusNode,
+            keyboardType: widget.keyboardType,
+            inputFormatters: widget.inputFormatters,
+            cursorColor: const Color(0xFF1A1A1A),
             style: TextStyle(
               color: const Color(0xFF1A1A1A),
               fontSize: healthSp(context, 12),
@@ -858,9 +890,9 @@ class _BoxField extends StatelessWidget {
               focusedBorder: InputBorder.none,
               errorBorder: InputBorder.none,
               disabledBorder: InputBorder.none,
-              hintText: hintText,
+              hintText: widget.hintText,
               hintStyle: TextStyle(
-                color: hintColor ?? const Color(0xFF898686),
+                color: widget.hintColor ?? const Color(0xFF898686),
                 fontSize: healthSp(context, 12),
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: FontWeight.w300,
@@ -869,7 +901,7 @@ class _BoxField extends StatelessWidget {
             ),
             onChanged: (value) {
               field.didChange(value);
-              onChanged?.call(value);
+              widget.onChanged?.call(value);
             },
           ),
         );

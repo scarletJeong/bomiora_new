@@ -878,6 +878,7 @@ class _SignupTextField extends StatelessWidget {
                   maxLines: obscureText ? 1 : null,
                   validator: validator,
                   textAlignVertical: TextAlignVertical.center,
+                  cursorColor: const Color(0xFF1A1A1A),
                   style: TextStyle(
                     color: Color(0xFF1A1A1A),
                     fontSize: healthSp(context, 16),

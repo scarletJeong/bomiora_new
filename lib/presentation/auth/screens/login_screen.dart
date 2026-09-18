@@ -640,13 +640,13 @@ class _LoginScreenState extends State<LoginScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          TextButton(
-            onPressed: () => Navigator.pushNamed(context, '/find-account'),
-            style: TextButton.styleFrom(padding: EdgeInsets.zero),
+          GestureDetector(
+            onTap: () => Navigator.pushNamed(context, '/find-account'),
+            behavior: HitTestBehavior.opaque,
             child: Text(
               '아이디/비밀번호 찾기',
               style: TextStyle(
-                color: Color(0xFF898383),
+                color: const Color(0xFF898383),
                 fontSize: healthSp(context, 14),
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: FontWeight.w500,
@@ -659,13 +659,13 @@ class _LoginScreenState extends State<LoginScreen> {
             margin: EdgeInsets.symmetric(horizontal: healthDp(context, 20)),
             color: const Color(0xFF898383),
           ),
-          TextButton(
-            onPressed: _isLoading ? null : _openSignup,
-            style: TextButton.styleFrom(padding: EdgeInsets.zero),
+          GestureDetector(
+            onTap: _isLoading ? null : _openSignup,
+            behavior: HitTestBehavior.opaque,
             child: Text(
               '회원가입',
               style: TextStyle(
-                color: Color(0xFF898383),
+                color: const Color(0xFF898383),
                 fontSize: healthSp(context, 14),
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: FontWeight.w500,

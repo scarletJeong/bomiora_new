@@ -212,21 +212,21 @@ class _RefundAccountPopupState extends State<RefundAccountPopup> {
                             _fieldBlock(
                               context,
                               label: '계좌번호',
-                              child: _textFieldBox(
-                                context,
+                              child: _RefundTextFieldBox(
                                 height: fieldH,
                                 controller: _accountController,
                                 hint: '계좌번호를 입력해주세요.(-는 제외)',
                                 keyboardType: TextInputType.number,
-                                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.digitsOnly,
+                                ],
                               ),
                             ),
                             SizedBox(height: healthDp(context, 20)),
                             _fieldBlock(
                               context,
                               label: '예금주명',
-                              child: _textFieldBox(
-                                context,
+                              child: _RefundTextFieldBox(
                                 height: fieldH,
                                 controller: _holderController,
                                 hint: '예금주 이름을 입력해주세요.',
@@ -330,37 +330,83 @@ class _RefundAccountPopupState extends State<RefundAccountPopup> {
     );
   }
 
-  Widget _textFieldBox(
-    BuildContext context, {
-    required double height,
-    required TextEditingController controller,
-    required String hint,
-    TextInputType? keyboardType,
-    List<TextInputFormatter>? inputFormatters,
-  }) {
+}
+
+class _RefundTextFieldBox extends StatefulWidget {
+  const _RefundTextFieldBox({
+    required this.height,
+    required this.controller,
+    required this.hint,
+    this.keyboardType,
+    this.inputFormatters,
+  });
+
+  final double height;
+  final TextEditingController controller;
+  final String hint;
+  final TextInputType? keyboardType;
+  final List<TextInputFormatter>? inputFormatters;
+
+  @override
+  State<_RefundTextFieldBox> createState() => _RefundTextFieldBoxState();
+}
+
+class _RefundTextFieldBoxState extends State<_RefundTextFieldBox> {
+  late final FocusNode _focusNode;
+  bool _focused = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode = FocusNode();
+    _focusNode.addListener(_onFocusChanged);
+  }
+
+  void _onFocusChanged() {
+    final focused = _focusNode.hasFocus;
+    if (_focused == focused) return;
+    setState(() => _focused = focused);
+  }
+
+  @override
+  void dispose() {
+    _focusNode.removeListener(_onFocusChanged);
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final padH = healthDp(context, 10);
     final radius = healthDp(context, 10);
     final borderW = healthDp(context, 1);
 
     return SizedBox(
-      height: height,
+      height: widget.height,
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(radius),
-          border: Border.all(width: borderW, color: _border),
+          border: Border.all(
+            width: borderW,
+            color: _focused
+                ? _RefundAccountPopupState._pink
+                : _RefundAccountPopupState._border,
+          ),
         ),
         child: Padding(
           padding: EdgeInsets.symmetric(horizontal: padH),
           child: TextField(
-            controller: controller,
-            keyboardType: keyboardType,
-            inputFormatters: inputFormatters,
+            controller: widget.controller,
+            focusNode: _focusNode,
+            keyboardType: widget.keyboardType,
+            inputFormatters: widget.inputFormatters,
             expands: true,
             maxLines: null,
             textAlignVertical: TextAlignVertical.center,
+            cursorColor: _RefundAccountPopupState._ink,
             style: TextStyle(
-              color: _ink,
+              color: _RefundAccountPopupState._ink,
               fontSize: healthSp(context, 12),
               fontWeight: FontWeight.w500,
               height: 1,
@@ -368,9 +414,9 @@ class _RefundAccountPopupState extends State<RefundAccountPopup> {
             decoration: InputDecoration(
               isCollapsed: true,
               contentPadding: EdgeInsets.zero,
-              hintText: hint,
+              hintText: widget.hint,
               hintStyle: TextStyle(
-                color: _muted,
+                color: _RefundAccountPopupState._muted,
                 fontSize: healthSp(context, 12),
                 fontWeight: FontWeight.w300,
                 height: 1,

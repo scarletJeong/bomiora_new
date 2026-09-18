@@ -436,7 +436,7 @@ class _FieldLabel extends StatelessWidget {
   }
 }
 
-class _BoxField extends StatelessWidget {
+class _BoxField extends StatefulWidget {
   const _BoxField({
     required this.controller,
     required this.hintText,
@@ -452,16 +452,44 @@ class _BoxField extends StatelessWidget {
   final String? Function(String?)? validator;
 
   @override
+  State<_BoxField> createState() => _BoxFieldState();
+}
+
+class _BoxFieldState extends State<_BoxField> {
+  late final FocusNode _focusNode;
+  bool _focused = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode = FocusNode();
+    _focusNode.addListener(_onFocusChanged);
+  }
+
+  void _onFocusChanged() {
+    final focused = _focusNode.hasFocus;
+    if (_focused == focused) return;
+    setState(() => _focused = focused);
+  }
+
+  @override
+  void dispose() {
+    _focusNode.removeListener(_onFocusChanged);
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final fieldHeight = healthDp(context, 40);
     final radius = healthDp(context, 10);
     final borderWidth = healthDp(context, 1);
 
     return FormField<String>(
-      initialValue: controller.text,
-      validator: (v) => validator?.call(controller.text),
+      initialValue: widget.controller.text,
+      validator: (v) => widget.validator?.call(widget.controller.text),
       builder: (field) {
-        final borderColor = field.hasError
+        final borderColor = (field.hasError || _focused)
             ? const Color(0xFFFF5A8D)
             : const Color(0xFFD2D2D2);
         return Column(
@@ -481,10 +509,11 @@ class _BoxField extends StatelessWidget {
                 ),
               ),
               child: TextField(
-                controller: controller,
-                keyboardType: keyboardType,
-                inputFormatters: inputFormatters,
-                cursorColor: const Color(0xFFFF5A8D),
+                controller: widget.controller,
+                focusNode: _focusNode,
+                keyboardType: widget.keyboardType,
+                inputFormatters: widget.inputFormatters,
+                cursorColor: const Color(0xFF1A1A1A),
                 style: TextStyle(
                   color: const Color(0xFF1A1A1A),
                   fontSize: healthSp(context, 12),
@@ -499,7 +528,7 @@ class _BoxField extends StatelessWidget {
                   focusedBorder: InputBorder.none,
                   errorBorder: InputBorder.none,
                   disabledBorder: InputBorder.none,
-                  hintText: hintText,
+                  hintText: widget.hintText,
                   hintStyle: TextStyle(
                     color: const Color(0xFF898686),
                     fontSize: healthSp(context, 12),

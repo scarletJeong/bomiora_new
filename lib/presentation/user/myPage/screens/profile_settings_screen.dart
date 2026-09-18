@@ -537,6 +537,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
             inputFormatters: _digitsOnlyFormatters,
             maxLength: maxLength,
             textAlign: TextAlign.center,
+            cursorColor: const Color(0xFF1A1A1A),
             onChanged: (_) => _onPhoneDigitsChanged(),
             decoration: const InputDecoration(
               counterText: '',
@@ -726,6 +727,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                   controller: _nicknameController,
                   readOnly: !_canChangeNicknameNow(),
                   inputFormatters: _nicknameFormatters,
+                  cursorColor: const Color(0xFF1A1A1A),
                   onChanged: (_) => _onFormChanged(),
                   decoration: InputDecoration(
                     border: InputBorder.none,
@@ -816,6 +818,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                       signed: false,
                     ),
                     inputFormatters: _digitsOnlyFormatters,
+                    cursorColor: const Color(0xFF1A1A1A),
                     onChanged: (_) {
                       if (_contactOtpErrorText != null) {
                         setState(() => _contactOtpErrorText = null);
@@ -920,6 +923,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                   child: TextField(
                     controller: _newPasswordController,
                     obscureText: _obscureNewPassword,
+                    cursorColor: const Color(0xFF1A1A1A),
                     onChanged: (_) {
                       _recomputePasswordMismatch();
                       _onFormChanged();
@@ -969,6 +973,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                   child: TextField(
                     controller: _confirmPasswordController,
                     obscureText: _obscureConfirmPassword,
+                    cursorColor: const Color(0xFF1A1A1A),
                     onChanged: (_) {
                       _recomputePasswordMismatch();
                       _onFormChanged();
@@ -1078,7 +1083,7 @@ class _Hyphen extends StatelessWidget {
   }
 }
 
-class _InputBox extends StatelessWidget {
+class _InputBox extends StatefulWidget {
   const _InputBox({
     required this.child,
     this.borderColor = const Color(0xFFD2D2D2),
@@ -1092,27 +1097,47 @@ class _InputBox extends StatelessWidget {
   final AlignmentGeometry alignment;
 
   @override
+  State<_InputBox> createState() => _InputBoxState();
+}
+
+class _InputBoxState extends State<_InputBox> {
+  bool _focused = false;
+
+  static const _error = Color(0xFFEF4444);
+  static const _pink = Color(0xFFFF5A8D);
+
+  @override
   Widget build(BuildContext context) {
     final h = healthDp(context, 40);
-    final pad = padding ??
+    final pad = widget.padding ??
         EdgeInsets.symmetric(
           horizontal: healthDp(context, 10),
           vertical: healthDp(context, 10),
         );
     final radius = healthDp(context, 10);
-    return Container(
-      height: h,
-      padding: pad,
-      decoration: ShapeDecoration(
-        color: Colors.white,
-        shape: RoundedRectangleBorder(
-          side: BorderSide(width: healthDp(context, 1), color: borderColor),
-          borderRadius: BorderRadius.circular(radius),
+    final isError = widget.borderColor == _error;
+    final borderColor = isError
+        ? widget.borderColor
+        : (_focused ? _pink : widget.borderColor);
+    return Focus(
+      onFocusChange: (focused) {
+        if (_focused == focused) return;
+        setState(() => _focused = focused);
+      },
+      child: Container(
+        height: h,
+        padding: pad,
+        decoration: ShapeDecoration(
+          color: Colors.white,
+          shape: RoundedRectangleBorder(
+            side: BorderSide(width: healthDp(context, 1), color: borderColor),
+            borderRadius: BorderRadius.circular(radius),
+          ),
         ),
-      ),
-      child: Align(
-        alignment: alignment,
-        child: child,
+        child: Align(
+          alignment: widget.alignment,
+          child: widget.child,
+        ),
       ),
     );
   }
