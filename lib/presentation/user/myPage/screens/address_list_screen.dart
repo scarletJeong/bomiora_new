@@ -132,9 +132,10 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
     if (isDefault) {
       await AppAlertDialog.show(
         context,
-        title: '기본 배송지 설정',
+        title: '기본 배송지 삭제 불가',
         message: '다른 배송지를 기본 배송지로 \n설정 후 삭제해주세요.',
         width: _confirmDialogWidth,
+        confirmButtonHeight: 40,
       );
       return;
     }
@@ -167,7 +168,7 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
       borderRadius: radius,
       child: Container(
         width: double.infinity,
-        height: healthDp(context, 40),
+        height: healthDp(context, 44),
         alignment: Alignment.center,
         decoration: ShapeDecoration(
           color: Colors.white,
@@ -300,9 +301,11 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                     )
                   : LayoutBuilder(
                       builder: (context, constraints) {
-                        final contentPadding = EdgeInsets.symmetric(
-                          horizontal: healthDp(context, 20),
-                          vertical: healthDp(context, 10),
+                        final contentPadding = EdgeInsets.fromLTRB(
+                          healthDp(context, 20),
+                          healthDp(context, 10),
+                          healthDp(context, 20),
+                          healthDp(context, 10),
                         );
 
                         if (_addresses.isEmpty) {
@@ -336,7 +339,7 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               _buildAddAddressButton(),
-                              SizedBox(height: healthDp(context, 10)),
+                              SizedBox(height: healthDp(context, 20)),
                               ..._addresses.asMap().entries.map((entry) {
                                 final isLast =
                                     entry.key == _addresses.length - 1;
@@ -449,6 +452,12 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
           Text(
             fullAddress.isEmpty ? '-' : fullAddress,
             style: bodyStyle.copyWith(fontSize: healthSp(context, 12)),
+          ),
+          SizedBox(height: healthDp(context, 10)),
+          Container(
+            width: double.infinity,
+            height: healthDp(context, 1),
+            color: const Color(0x7FD2D2D2),
           ),
           SizedBox(height: healthDp(context, 10)),
           Row(
