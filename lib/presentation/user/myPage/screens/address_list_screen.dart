@@ -135,7 +135,6 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
         title: '기본 배송지 삭제 불가',
         message: '다른 배송지를 기본 배송지로 \n설정 후 삭제해주세요.',
         width: _confirmDialogWidth,
-        confirmButtonHeight: 40,
       );
       return;
     }
