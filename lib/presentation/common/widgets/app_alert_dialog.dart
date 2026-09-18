@@ -123,7 +123,7 @@ class AppAlertDialog extends StatelessWidget {
             SizedBox(height: healthDp(context, 20)),
             SizedBox(
               width: double.infinity,
-              height: healthDp(context, 50),
+              height: healthDp(context, 40),
               child: Material(
                 color: const Color(0xFFFF5A8D),
                 borderRadius: BorderRadius.circular(healthDp(context, 10)),
