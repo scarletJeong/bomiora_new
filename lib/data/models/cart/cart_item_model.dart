@@ -1,5 +1,6 @@
 import 'dart:convert';
 import '../../../core/utils/node_value_parser.dart';
+import '../product/product_option_model.dart';
 
 class CartItem {
   final int ctId; // 장바구니 ID
@@ -85,6 +86,19 @@ class CartItem {
     final p = parentItId?.trim() ?? '';
     if (p.isNotEmpty) return true;
     return kind == 'supply_add' || ctKind.startsWith('supply_add|');
+  }
+
+  /// 옵션 바텀시트와 같은 표시 문구. `io_id`가 있으면 그 값을 우선한다.
+  String get displayOptionText {
+    final io = ioId?.trim() ?? '';
+    if (io.isNotEmpty) {
+      final fromIo = ProductOption.fromJson({
+        'io_id': io,
+        'it_id': itId,
+      }).displayText.trim();
+      if (fromIo.isNotEmpty) return fromIo;
+    }
+    return ctOption.trim();
   }
 
   /// 라인 결제금액 (io_type 1~3은 io_price 반영)

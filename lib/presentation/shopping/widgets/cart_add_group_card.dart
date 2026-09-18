@@ -263,7 +263,7 @@ class _SupplyAddRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final item = line.primary;
-    final option = item.ctOption.trim();
+    final option = item.displayOptionText;
     final thumb = healthDp(context, 44);
     final canDecrease = canEdit &&
         line.totalQty > 1 &&

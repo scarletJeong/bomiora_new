@@ -1656,12 +1656,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
     return _parseGeneralCartItems(cart).map((e) => e.ctId).toSet();
   }
 
-  String _ctOptionText(ProductOption option) {
-    if (option.months != null) {
-      return '${option.step} / ${option.months}일';
-    }
-    return option.step;
-  }
+  String _ctOptionText(ProductOption option) => option.displayText.trim();
 
   Future<List<CartItem>> _resolveGeneralBuyNowPayItems({
     required Set<int> beforeIds,
