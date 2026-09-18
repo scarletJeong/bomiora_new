@@ -252,7 +252,7 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
       return;
     }
 
-    final changeResult = await showGeneralDialog<bool>(
+    final changeResult = await showGeneralDialog<ReservationPickResult?>(
       context: context,
       barrierDismissible: true,
       barrierLabel: '예약시간 변경',
@@ -277,7 +277,7 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
       },
     );
 
-    if (changeResult == true && mounted) {
+    if (changeResult != null && mounted) {
       await _loadOrder();
     }
   }

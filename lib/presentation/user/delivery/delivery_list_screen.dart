@@ -1734,7 +1734,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
     }
     if (date.isEmpty || time.isEmpty || !mounted) return;
 
-    final changeResult = await showGeneralDialog<Object>(
+    final changeResult = await showGeneralDialog<ReservationPickResult?>(
       context: context,
       barrierDismissible: true,
       barrierLabel: '예약시간 변경',

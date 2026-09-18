@@ -650,7 +650,7 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
     final orderIdToUse =
         widget.orderNumber.isNotEmpty ? widget.orderNumber : _orderDetail!.odId;
     
-    final result = await showGeneralDialog<bool>(
+    final result = await showGeneralDialog<ReservationPickResult?>(
       context: context,
       barrierDismissible: true,
       barrierLabel: '예약시간 변경',
@@ -675,7 +675,7 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
       },
     );
 
-    if (result == true && mounted) _loadOrderDetail();
+    if (result != null && mounted) _loadOrderDetail();
   }
 
   Future<void> _cancelOrder() async {

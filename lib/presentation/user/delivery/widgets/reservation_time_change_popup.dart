@@ -177,8 +177,7 @@ class _ReservationTimeChangePopupState
     }
 
     if (widget.pickOnly) {
-      Navigator.pop(
-        context,
+      _close(
         ReservationPickResult(date: _selectedDate!, time: _selectedTime!),
       );
       return;
@@ -205,11 +204,17 @@ class _ReservationTimeChangePopupState
     setState(() => _isSubmitting = false);
     if (result['success'] == true) {
       AppToastOverlay.show(context, '예약시간이 변경되었습니다.');
-      Navigator.pop(
-        context,
+      _close(
         ReservationPickResult(date: _selectedDate!, time: _selectedTime!),
       );
     }
+  }
+
+  void _close([ReservationPickResult? result]) {
+    if (!mounted) return;
+    final nav = Navigator.of(context);
+    if (!nav.canPop()) return;
+    nav.pop(result);
   }
 
   Widget _buildScheduleBanner({
@@ -609,7 +614,11 @@ class _ReservationTimeChangePopupState
                         child: Material(
                           color: const Color(0xFFF7F7F7),
                           child: InkWell(
-                            onTap: () => Navigator.pop(context, false),
+                            onTap: () {
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                _close();
+                              });
+                            },
                             child: Center(
                               child: Text(
                                 '취소',
