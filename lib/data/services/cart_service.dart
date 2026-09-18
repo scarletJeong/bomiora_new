@@ -193,16 +193,9 @@ class CartService {
       linePrice = (product.price + option.price) * quantity;
     }
 
-    String ctOptionText;
-    if (option.months != null) {
-      ctOptionText = '${option.step} / ${option.months}일';
-    } else if (option.subOption.isNotEmpty) {
-      ctOptionText = option.subOption.isNotEmpty
-          ? '${option.step} / ${option.subOption}'
-          : option.step;
-      if (option.step.isEmpty) ctOptionText = option.displayText;
-    } else {
-      ctOptionText = option.step.isNotEmpty ? option.step : option.displayText;
+    String ctOptionText = option.displayText.trim();
+    if (ctOptionText.isEmpty) {
+      ctOptionText = option.step.isNotEmpty ? option.step : option.id.trim();
     }
 
     return addOrMergeToCart(
@@ -889,15 +882,23 @@ class CartService {
         };
       }
 
-      final response =
-          await ApiClient.delete('${ApiEndpoints.removeCartItem}/$ctId');
+      final response = await ApiClient.delete(
+        '${ApiEndpoints.removeCartItem}/$ctId'
+        '?mb_id=${Uri.encodeComponent(user.id)}',
+      );
+      invalidateCartCache();
 
-      if (response.statusCode == 200 || response.statusCode == 204) {
-        final data = json.decode(response.body);
-        invalidateCartCache();
+      if (response.statusCode == 200 ||
+          response.statusCode == 204 ||
+          response.statusCode == 404) {
+        Map<String, dynamic>? data;
+        try {
+          final decoded = json.decode(response.body);
+          if (decoded is Map<String, dynamic>) data = decoded;
+        } catch (_) {}
         return {
-          'success': data['success'] ?? true,
-          'message': data['message'] ?? '장바구니에서 삭제되었습니다.',
+          'success': data?['success'] ?? true,
+          'message': data?['message'] ?? '장바구니에서 삭제되었습니다.',
         };
       } else {
         return {

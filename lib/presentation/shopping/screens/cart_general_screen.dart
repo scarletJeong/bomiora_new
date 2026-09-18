@@ -319,7 +319,7 @@ class _CartScreenState extends State<CartScreen> {
           selectedItems.remove(ctId);
         });
         AppToastOverlay.show(context, '장바구니에서 상품이 삭제됐어요.');
-        _loadCart(showCachedData: true); // 장바구니 다시 로드 (캐시 표시)
+        _loadCart(showCachedData: true, forceRefresh: true);
       }
     }
   }
@@ -347,7 +347,7 @@ class _CartScreenState extends State<CartScreen> {
     });
 
     await _persistCartSelection();
-    _loadCart(showCachedData: true);
+    _loadCart(showCachedData: true, forceRefresh: true);
   }
 
   Future<void> _deleteSoldOutItems() async {
@@ -377,7 +377,7 @@ class _CartScreenState extends State<CartScreen> {
       selectedItems.removeAll(toDelete);
     });
     await _persistCartSelection();
-    _loadCart(showCachedData: true);
+    _loadCart(showCachedData: true, forceRefresh: true);
   }
 
   // 선택된 아이템들의 총구매금액 계산

@@ -283,7 +283,7 @@ class _CartScreenState extends State<CartScreen> {
           selectedItems.remove(ctId);
         });
         AppToastOverlay.show(context, '장바구니에서 상품이 삭제됐어요.');
-        _loadCart(showCachedData: true); // 장바구니 다시 로드 (캐시 표시)
+        _loadCart(showCachedData: true, forceRefresh: true);
       }
     }
   }
@@ -311,7 +311,7 @@ class _CartScreenState extends State<CartScreen> {
     });
 
     await _persistCartSelection();
-    _loadCart(showCachedData: true);
+    _loadCart(showCachedData: true, forceRefresh: true);
   }
 
   Future<void> _deleteSoldOutItems() async {
@@ -341,7 +341,7 @@ class _CartScreenState extends State<CartScreen> {
       selectedItems.removeAll(toDelete);
     });
     await _persistCartSelection();
-    _loadCart(showCachedData: true);
+    _loadCart(showCachedData: true, forceRefresh: true);
   }
 
   // 선택된 아이템들의 총구매금액 계산
@@ -949,7 +949,7 @@ class _CartScreenState extends State<CartScreen> {
 
   /// 옵션/규격 줄 — `ct_option`의 ` / ` 또는 `it_subject` + `ct_option` 조합
   Widget? _buildCartItemOptionRow(CartItem item) {
-    final opt = item.ctOption.trim();
+    final opt = item.displayOptionText;
     final sub = item.itSubject?.trim() ?? '';
 
     if (opt.contains(' / ')) {
