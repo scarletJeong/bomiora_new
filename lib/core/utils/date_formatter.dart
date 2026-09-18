@@ -4,6 +4,69 @@ class DateDisplayFormatter {
     return dt.toUtc().add(const Duration(hours: 9));
   }
 
+  static bool _hasExplicitTimeZone(String raw) {
+    final t = raw.trim();
+    if (RegExp(r'Z$', caseSensitive: false).hasMatch(t)) return true;
+    final head = t.replaceFirst(RegExp(r'\s*\([^)]*\)\s*$'), '');
+    return RegExp(r'[+-]\d{2}:?\d{2}$').hasMatch(head);
+  }
+
+  /// 주문 DATETIME. 타임존 없으면 적힌 한국 벽시계 그대로, 있으면 KST로 변환.
+  static String formatOrderDateTime(
+    String? raw, {
+    bool withTime = true,
+    bool withSeconds = true,
+  }) {
+    if (raw == null || raw.isEmpty || raw == '-') return '-';
+    final t = raw.trim();
+
+    int y;
+    int mo;
+    int d;
+    int h = 0;
+    int mi = 0;
+    int s = 0;
+    var hasTime = false;
+
+    if (_hasExplicitTimeZone(t)) {
+      final parsed = DateTime.tryParse(t);
+      if (parsed != null) {
+        final kst = toKoreaTime(parsed);
+        y = kst.year;
+        mo = kst.month;
+        d = kst.day;
+        h = kst.hour;
+        mi = kst.minute;
+        s = kst.second;
+        hasTime = true;
+      } else {
+        return t;
+      }
+    } else {
+      final digits = t.replaceAll(RegExp(r'[^0-9]'), '');
+      if (digits.length < 8) return t;
+      y = int.parse(digits.substring(0, 4));
+      mo = int.parse(digits.substring(4, 6));
+      d = int.parse(digits.substring(6, 8));
+      if (digits.length >= 12) {
+        h = int.parse(digits.substring(8, 10));
+        mi = int.parse(digits.substring(10, 12));
+        hasTime = true;
+      }
+      if (digits.length >= 14) {
+        s = int.parse(digits.substring(12, 14));
+      }
+    }
+
+    final date =
+        '${y.toString().padLeft(4, '0')}.${mo.toString().padLeft(2, '0')}.${d.toString().padLeft(2, '0')}';
+    if (!withTime || !hasTime) return date;
+    final hm =
+        '${h.toString().padLeft(2, '0')}:${mi.toString().padLeft(2, '0')}';
+    if (!withSeconds) return '$date $hm';
+    return '$date $hm:${s.toString().padLeft(2, '0')}';
+  }
+
   /// API/DB 시각 문자열 → KST `yyyy.MM.dd HH:mm` (UTC+9 고정)
   static String formatDotDateTimeKorea(String? raw) {
     if (raw == null || raw.isEmpty || raw == '-') return '-';

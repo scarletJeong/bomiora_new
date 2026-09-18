@@ -69,7 +69,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       _applyRouteArgs();
-      await _loadOrders();
+      await _loadOrders(force: _pendingOpenOdId != null);
       if (mounted) await _openPendingOrderDetail();
     });
   }
@@ -424,7 +424,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '주문일자: ${order.orderDate}',
+                          '주문일자: ${DateDisplayFormatter.formatOrderDateTime(order.orderDate, withTime: false)}',
                           style: TextStyle(
                             color: _kMuted,
                             fontSize: healthSp(context, 10),

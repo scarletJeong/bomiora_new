@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../../core/utils/date_formatter.dart';
 import '../../../../../core/utils/price_formatter.dart';
 import '../../../../../data/models/delivery/delivery_model.dart';
 import '../../../../health/health_common/health_responsive_scale.dart';
@@ -61,21 +62,7 @@ class _DeliveryDetailPaymentSectionState
 
   /// `2026.01.01 10:16:00` (초 포함, 콜론 뒤 공백 없음)
   String get _paymentDateLabel {
-    final raw = widget.order.orderDate.trim();
-    if (raw.isEmpty) return '-';
-    final digits = raw.replaceAll(RegExp(r'[^0-9]'), '');
-    if (digits.length >= 14) {
-      return '${digits.substring(0, 4)}.${digits.substring(4, 6)}.${digits.substring(6, 8)} '
-          '${digits.substring(8, 10)}:${digits.substring(10, 12)}:${digits.substring(12, 14)}';
-    }
-    if (digits.length >= 12) {
-      return '${digits.substring(0, 4)}.${digits.substring(4, 6)}.${digits.substring(6, 8)} '
-          '${digits.substring(8, 10)}:${digits.substring(10, 12)}:00';
-    }
-    if (digits.length >= 8) {
-      return '${digits.substring(0, 4)}.${digits.substring(4, 6)}.${digits.substring(6, 8)}';
-    }
-    return raw;
+    return DateDisplayFormatter.formatOrderDateTime(widget.order.orderDate);
   }
 
   static const String _kVirtualAccountHolder = '(주)보미오라';
@@ -111,18 +98,7 @@ class _DeliveryDetailPaymentSectionState
   }
 
   String get _cancelDateLabel {
-    final raw = (widget.order.cancelDate ?? '').trim();
-    if (raw.isEmpty) return '-';
-    final digits = raw.replaceAll(RegExp(r'[^0-9]'), '');
-    if (digits.length >= 14) {
-      return '${digits.substring(0, 4)}.${digits.substring(4, 6)}.${digits.substring(6, 8)} '
-          '${digits.substring(8, 10)}:${digits.substring(10, 12)}:${digits.substring(12, 14)}';
-    }
-    if (digits.length >= 12) {
-      return '${digits.substring(0, 4)}.${digits.substring(4, 6)}.${digits.substring(6, 8)} '
-          '${digits.substring(8, 10)}:${digits.substring(10, 12)}:00';
-    }
-    return raw;
+    return DateDisplayFormatter.formatOrderDateTime(widget.order.cancelDate);
   }
 
   int get _cancelledAmount {

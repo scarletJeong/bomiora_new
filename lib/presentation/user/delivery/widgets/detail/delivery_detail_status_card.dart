@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../../../core/utils/date_formatter.dart';
 import '../../../../../data/models/delivery/delivery_model.dart';
 import '../../../../health/health_common/health_responsive_scale.dart';
 import '../../../../common/widgets/app_toast_overlay.dart';
@@ -23,22 +24,10 @@ class DeliveryDetailStatusCard extends StatelessWidget {
 
   /// 주문일자에서 초 단위 제거 (`2025.10.13 11:00:38` → `2025.10.13 11:00`)
   static String formatOrderDateNoSeconds(String raw) {
-    final trimmed = raw.trim();
-    if (trimmed.isEmpty) return '-';
-    final digits = trimmed.replaceAll(RegExp(r'[^0-9]'), '');
-    if (digits.length >= 12) {
-      return '${digits.substring(0, 4)}.${digits.substring(4, 6)}.${digits.substring(6, 8)} '
-          '${digits.substring(8, 10)}:${digits.substring(10, 12)}';
-    }
-    if (digits.length >= 8) {
-      return '${digits.substring(0, 4)}.${digits.substring(4, 6)}.${digits.substring(6, 8)}';
-    }
-    // `HH:MM:SS` 꼬리만 있는 경우 초 제거
-    final match = RegExp(
-      r'^(.+?\d{1,2}:\d{2}):\d{2}\s*$',
-    ).firstMatch(trimmed);
-    if (match != null) return match.group(1)!.trim();
-    return trimmed;
+    return DateDisplayFormatter.formatOrderDateTime(
+      raw,
+      withSeconds: false,
+    );
   }
 
   @override
