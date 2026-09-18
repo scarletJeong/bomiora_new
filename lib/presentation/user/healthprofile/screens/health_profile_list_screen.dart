@@ -169,7 +169,6 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
       child: MobileAppLayoutWrapper(
         appBar: HealthAppBar(
           title: widget.appBarTitle,
-          titleFontSize: healthSp(context, 16),
           leadingIconSize: healthDp(context, 24),
           bottom: _isPrescriptionBooking
               ? PreferredSize(

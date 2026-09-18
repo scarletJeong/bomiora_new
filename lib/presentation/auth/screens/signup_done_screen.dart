@@ -60,7 +60,6 @@ class SignupDoneScreen extends StatelessWidget {
             appBar: HealthAppBar(
               title: '회원가입',
               onBack: () => _goHome(context),
-              titleFontSize: healthSp(context, 16),
               leadingIconSize: healthDp(context, 24),
             ),
             child: Column(

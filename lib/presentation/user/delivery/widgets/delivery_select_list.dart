@@ -156,7 +156,6 @@ class _DeliverySelectListState extends State<DeliverySelectList> {
       backgroundColor: Colors.white,
       appBar: HealthAppBar(
         title: '리뷰쓰기',
-        titleFontSize: healthSp(context, 16),
         leadingIconSize: healthDp(context, 24),
       ),
       child: Column(

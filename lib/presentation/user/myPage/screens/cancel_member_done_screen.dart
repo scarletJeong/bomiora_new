@@ -17,7 +17,6 @@ class CancelMemberDoneScreen extends StatelessWidget {
     return MobileAppLayoutWrapper(
       appBar: HealthAppBar(
         title: '회원 탈퇴',
-        titleFontSize: healthSp(context, 16),
         leadingIconSize: healthDp(context, 24),
         onBack: goHome,
       ),

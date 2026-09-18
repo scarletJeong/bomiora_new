@@ -391,7 +391,6 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
             backgroundColor: Colors.white,
             appBar: HealthAppBar(
               title: _isEditMode ? '리뷰수정' : '리뷰쓰기',
-              titleFontSize: healthSp(context, 18),
               leadingIconSize: healthDp(context, 24),
             ),
             child: Form(

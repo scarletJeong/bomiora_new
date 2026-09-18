@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'qa_write_screen.dart';
 import 'qa_detail_screen.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
@@ -672,7 +672,6 @@ class QaListScreenState extends State<QaListScreen> {
             backgroundColor: Colors.white,
             appBar: HealthAppBar(
               title: '1:1 문의',
-              titleFontSize: healthSp(context, 16),
               leadingIconSize: healthDp(context, 24),
             ),
             child: ColoredBox(

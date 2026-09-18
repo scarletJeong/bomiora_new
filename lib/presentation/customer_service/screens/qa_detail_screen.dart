@@ -246,7 +246,6 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
       backgroundColor: Colors.white,
       appBar: HealthAppBar(
         title: '문의내역',
-        titleFontSize: healthSp(context, 17),
       ),
       child: _buildBody(context),
     );

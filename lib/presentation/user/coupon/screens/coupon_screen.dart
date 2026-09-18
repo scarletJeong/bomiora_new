@@ -190,7 +190,6 @@ class _CouponScreenState extends State<CouponScreen> {
         backgroundColor: Colors.white,
         appBar: HealthAppBar(
           title: '쿠폰',
-          titleFontSize: healthSp(context, 16),
           leadingIconSize: healthDp(context, 24),
         ),
         child: ColoredBox(

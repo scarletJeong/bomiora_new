@@ -16,10 +16,12 @@ class HealthAppBar extends StatelessWidget
     implements HealthResponsivePreferredSizeWidget {
   static const double toolbarHeightBase = healthAppBarTotalHeightBase;
 
+  /// 뒤로가기 앱바 제목 크기 (375 기준). 모든 화면에서 [healthSp] 16으로 고정입니다.
+  static const double titleFontSizeBase = 16;
+
   final String title;
   final List<Widget>? actions;
   final VoidCallback? onBack;
-  final double? titleFontSize;
   final double? leadingIconSize;
   final PreferredSizeWidget? bottom;
   final bool showLeading;
@@ -34,7 +36,6 @@ class HealthAppBar extends StatelessWidget
     required this.title,
     this.actions,
     this.onBack,
-    this.titleFontSize,
     this.leadingIconSize,
     this.bottom,
     this.showLeading = true,
@@ -54,7 +55,6 @@ class HealthAppBar extends StatelessWidget
         title = '',
         actions = null,
         onBack = null,
-        titleFontSize = null,
         leadingIconSize = null,
         showLeading = true;
 
@@ -105,7 +105,7 @@ class HealthAppBar extends StatelessWidget
         fontFamily: 'Gmarket Sans TTF',
         fontWeight: FontWeight.w500,
         color: Colors.black,
-        fontSize: titleFontSize ?? healthSp(context, 16),
+        fontSize: healthSp(context, titleFontSizeBase),
         height: 1,
       ),
     );

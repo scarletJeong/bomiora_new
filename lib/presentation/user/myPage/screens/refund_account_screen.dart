@@ -168,7 +168,6 @@ class _RefundAccountScreenState extends State<RefundAccountScreen> {
       child: MobileAppLayoutWrapper(
         appBar: HealthAppBar(
           title: '환불 계좌 관리',
-          titleFontSize: healthSp(context, 16),
           leadingIconSize: healthDp(context, 24),
         ),
         child: DefaultTextStyle.merge(

@@ -1048,7 +1048,6 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
             backgroundColor: Colors.white,
             appBar: HealthAppBar(
               title: '내 리뷰',
-              titleFontSize: healthSp(context, 18),
               leadingIconSize: healthDp(context, 24),
             ),
             child: _isLoading && _reviews.isEmpty

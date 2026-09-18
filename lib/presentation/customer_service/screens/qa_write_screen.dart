@@ -289,7 +289,6 @@ class _QaWriteScreenState extends State<QaWriteScreen> {
             resizeToAvoidBottomInset: true,
             appBar: HealthAppBar(
               title: '1:1 문의',
-              titleFontSize: healthSp(context, 16),
               leadingIconSize: healthDp(context, 24),
             ),
             child: ColoredBox(

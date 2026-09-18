@@ -150,7 +150,6 @@ class _PointScreenState extends State<PointScreen> {
             backgroundColor: Colors.white,
             appBar: HealthAppBar(
               title: '포인트',
-              titleFontSize: healthSp(context, 16),
               leadingIconSize: healthDp(context, 24),
             ),
             child: _isLoading

@@ -510,7 +510,6 @@ class _SignupScreenState extends State<SignupScreen> {
             appBar: HealthAppBar(
               title: '회원가입',
               onBack: _handleBack,
-              titleFontSize: healthSp(context, 16),
               leadingIconSize: healthDp(context, 24),
             ),
             child: switch (_step) {

@@ -170,7 +170,6 @@ class _FindPasswordResetScreenState extends State<FindPasswordResetScreen> {
             backgroundColor: Colors.white,
             appBar: HealthAppBar(
               title: '비밀번호 재설정',
-              titleFontSize: healthSp(context, 16),
               leadingIconSize: healthDp(context, 24),
             ),
             child: SafeArea(

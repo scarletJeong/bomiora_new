@@ -100,7 +100,6 @@ class _Cancel2MemberScreenState extends State<Cancel2MemberScreen> {
     return MobileAppLayoutWrapper(
       appBar: HealthAppBar(
         title: '회원 탈퇴',
-        titleFontSize: healthSp(context, 16),
         leadingIconSize: healthDp(context, 24),
       ),
       child: DefaultTextStyle.merge(

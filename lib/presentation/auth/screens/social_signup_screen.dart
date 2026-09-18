@@ -184,7 +184,6 @@ class _SocialSignupScreenState extends State<SocialSignupScreen> {
       backgroundColor: Colors.white,
       appBar: HealthAppBar(
         title: '$providerLabel 회원가입',
-        titleFontSize: healthSp(context, 16),
         leadingIconSize: healthDp(context, 24),
       ),
       child: SafeArea(

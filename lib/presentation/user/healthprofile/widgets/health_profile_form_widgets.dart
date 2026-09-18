@@ -135,7 +135,6 @@ class HealthProfileFormFrame extends StatelessWidget {
             title: isPrescriptionBooking
                 ? '진료 예약 중 _ 01 문진표'
                 : (isSectionEdit ? '$appBarEditTitle 수정' : '문진표 작성하기'),
-            titleFontSize: healthSp(context, 16),
             leadingIconSize: healthDp(context, 24),
             onBack: () => HealthProfileFormUi.popAllFormRoutes(context),
             bottom: isPrescriptionBooking

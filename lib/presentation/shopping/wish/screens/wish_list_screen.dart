@@ -252,7 +252,6 @@ class _WishListScreenState extends State<WishListScreen> {
       child: MobileAppLayoutWrapper(
         appBar: HealthAppBar(
           title: '찜목록',
-          titleFontSize: healthSp(context, 16),
           leadingIconSize: healthDp(context, 24),
         ),
         child: DefaultTextStyle.merge(
