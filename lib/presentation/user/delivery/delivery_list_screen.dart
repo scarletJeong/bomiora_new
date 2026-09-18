@@ -373,7 +373,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
                       ),
                     ),
                   ),
-                if (!_isLoading)
+                if (!_isLoading && _displayedOrders.isNotEmpty)
                   SliverToBoxAdapter(
                     child: SizedBox(height: healthDp(context, 48)),
                   ),

@@ -7,9 +7,7 @@ import '../../health/health_common/health_responsive_scale.dart';
 const Color kEmptyStateIconColor = Color(0xFFBDBDBD);
 
 /// 빈 화면 중앙 아이콘 + 안내 문구 (로그인 필요, 목록 비어 있음 등 공통)
-///
-/// 남는 본문 영역이 아니라 **화면(페이지) 세로 중앙**에 맞춘다.
-class CenteredEmptyState extends StatefulWidget {
+class CenteredEmptyState extends StatelessWidget {
   const CenteredEmptyState({
     super.key,
     required this.message,
@@ -31,6 +29,8 @@ class CenteredEmptyState extends StatefulWidget {
   final double? gap;
   final double? trailingGap;
   final List<Widget>? trailing;
+
+  /// 남는 영역을 채울지. `SliverFillRemaining` 안에서는 부모 제약만으로 중앙 정렬한다.
   final bool fillAvailable;
 
   static TextStyle defaultMessageStyle(BuildContext context) => TextStyle(
@@ -100,79 +100,37 @@ class CenteredEmptyState extends StatefulWidget {
     ];
   }
 
-  @override
-  State<CenteredEmptyState> createState() => _CenteredEmptyStateState();
-}
-
-class _CenteredEmptyStateState extends State<CenteredEmptyState> {
-  double _pageCenterDy = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback(_syncPageCenter);
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    WidgetsBinding.instance.addPostFrameCallback(_syncPageCenter);
-  }
-
-  @override
-  void didUpdateWidget(covariant CenteredEmptyState oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    WidgetsBinding.instance.addPostFrameCallback(_syncPageCenter);
-  }
-
-  void _syncPageCenter(Duration _) {
-    if (!mounted) return;
-    final box = context.findRenderObject() as RenderBox?;
-    if (box == null || !box.hasSize) return;
-    final top = box.localToGlobal(Offset.zero).dy;
-    final boxH = box.size.height;
-    final screenH = MediaQuery.sizeOf(context).height;
-    // 카드/섹션 안 작은 빈 상태는 페이지 중앙으로 끌어올리지 않는다.
-    final dy = (!widget.fillAvailable || boxH < screenH * 0.28)
-        ? 0.0
-        : (screenH / 2) - (top + boxH / 2);
-    if ((dy - _pageCenterDy).abs() > 0.5) {
-      setState(() => _pageCenterDy = dy);
-    }
-  }
-
   Widget _buildContent(BuildContext context) {
     final iconSize = healthDp(context, 70);
-    final spacing = widget.gap ?? healthDp(context, 15);
+    final spacing = gap ?? healthDp(context, 15);
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (widget.iconWidget != null) ...[
-          SizedBox(width: iconSize, height: iconSize, child: widget.iconWidget),
+        if (iconWidget != null) ...[
+          SizedBox(width: iconSize, height: iconSize, child: iconWidget),
           SizedBox(height: spacing),
-        ] else if (widget.icon != null) ...[
+        ] else if (icon != null) ...[
           Icon(
-            widget.icon,
+            icon,
             size: iconSize,
-            color: widget.iconColor,
+            color: iconColor,
           ),
           SizedBox(height: spacing),
         ],
         Padding(
           padding: EdgeInsets.symmetric(horizontal: healthDp(context, 27)),
           child: Text(
-            widget.message,
+            message,
             textAlign: TextAlign.center,
             textScaler: TextScaler.noScaling,
-            style: widget.messageStyle ??
-                CenteredEmptyState.defaultMessageStyle(context),
+            style: messageStyle ?? CenteredEmptyState.defaultMessageStyle(context),
           ),
         ),
-        if (widget.trailing != null) ...[
-          SizedBox(height: widget.trailingGap ?? spacing),
-          ...widget.trailing!,
+        if (trailing != null) ...[
+          SizedBox(height: trailingGap ?? spacing),
+          ...trailing!,
         ],
       ],
     );
@@ -180,24 +138,6 @@ class _CenteredEmptyStateState extends State<CenteredEmptyState> {
 
   @override
   Widget build(BuildContext context) {
-    final content = Transform.translate(
-      offset: Offset(0, _pageCenterDy),
-      child: _buildContent(context),
-    );
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final maxHeight = constraints.maxHeight;
-        final centered = Center(child: content);
-
-        if (!widget.fillAvailable ||
-            !maxHeight.isFinite ||
-            maxHeight <= 0) {
-          return centered;
-        }
-
-        return SizedBox.expand(child: centered);
-      },
-    );
+    return Center(child: _buildContent(context));
   }
 }
