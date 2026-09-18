@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../health/health_common/health_responsive_scale.dart';
 import 'app_clickable.dart';
 
 /// 공통 체크박스. 체크 여부에 따라 20×20 박스 안에 16 체크가 보입니다.
@@ -20,27 +21,36 @@ class CheckBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final size = healthDp(context, _size);
+    final iconSize = healthDp(context, _iconSize);
+    final radius = healthDp(context, 4);
+    final borderWidth = healthDp(context, 1);
+    final strokeWidth = healthDp(context, 1.5);
+
     final box = Container(
-      width: _size,
-      height: _size,
+      width: size,
+      height: size,
       clipBehavior: Clip.antiAlias,
       decoration: ShapeDecoration(
         color: Colors.white,
         shape: RoundedRectangleBorder(
-          side: const BorderSide(
-            width: 1,
+          side: BorderSide(
+            width: borderWidth,
             color: _border,
           ),
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(radius),
         ),
       ),
       child: value
-          ? const Center(
+          ? Center(
               child: SizedBox(
-                width: _iconSize,
-                height: _iconSize,
+                width: iconSize,
+                height: iconSize,
                 child: CustomPaint(
-                  painter: _CheckBoxTickPainter(color: _check),
+                  painter: _CheckBoxTickPainter(
+                    color: _check,
+                    strokeWidth: strokeWidth,
+                  ),
                 ),
               ),
             )
@@ -57,15 +67,19 @@ class CheckBox extends StatelessWidget {
 }
 
 class _CheckBoxTickPainter extends CustomPainter {
-  const _CheckBoxTickPainter({required this.color});
+  const _CheckBoxTickPainter({
+    required this.color,
+    required this.strokeWidth,
+  });
 
   final Color color;
+  final double strokeWidth;
 
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
       ..color = color
-      ..strokeWidth = 1.5
+      ..strokeWidth = strokeWidth
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round
       ..style = PaintingStyle.stroke;
@@ -78,5 +92,5 @@ class _CheckBoxTickPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _CheckBoxTickPainter oldDelegate) =>
-      oldDelegate.color != color;
+      oldDelegate.color != color || oldDelegate.strokeWidth != strokeWidth;
 }
