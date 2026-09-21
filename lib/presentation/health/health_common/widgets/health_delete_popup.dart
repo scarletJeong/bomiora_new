@@ -92,15 +92,15 @@ class HealthDeletePopup extends StatelessWidget {
               builder: (context, constraints) {
                 final top = healthDp(context, 20);
                 final titleSlot = healthDp(context, 20);
-                final gapTitleMsg = healthDp(context, 20);
-                final msgBox = healthDp(context, 88);
-                final gapMsgBtnBase = healthDp(context, 20);
+                final gapTitleMsg = healthDp(context, 16);
+                final msgBox = healthDp(context, 48); // 높이 대폭 축소 (불필요한 공간 제거)
+                final gapMsgBtnBase = healthDp(context, 16);
                 final btnRow = healthDp(context, 50);
 
                 final fixedSum =
                     top + titleSlot + gapTitleMsg + msgBox + gapMsgBtnBase + btnRow;
                 final slack =
-                    (constraints.maxHeight - fixedSum).clamp(0.0, double.infinity);
+                    (constraints.maxHeight - fixedSum).clamp(0.0, 10.0); // 과도한 유격 제한
                 final gapMsgBtn = gapMsgBtnBase + slack;
 
                 return Column(
