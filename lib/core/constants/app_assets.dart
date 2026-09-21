@@ -237,29 +237,27 @@ abstract final class AppAssets {
   static const String JBIcon = '${_bank}bankIcon_JB.svg';   // 광주/전북은행
   static const String JJIcon = '${_bank}bankIcon_JJ.svg';   // 제주은행
 
-  static const String SUHUIcon = '${_bank}bankIcon_SUHUIcon .svg';   // 수협은행
+  static const String SUHUIcon = '${_bank}bankIcon_SUHUIcon.svg'; // 수협은행
   static const String POSTIcon = '${_bank}bankIcon_POST.svg';   // 우체국
   static const String SCIcon = '${_bank}bankIcon_SC.svg';       // SC제일은행
   static const String CITIIcon = '${_bank}bankIcon_CITI.svg';   // 씨티은행
-  
 
   /// 환불 계좌 등 은행명 → 아이콘 경로
   static String? bankIconForName(String bankName) {
     final n = bankName.trim();
     if (n.isEmpty) return null;
     if (n.contains('국민')) return KBIcon;
-    if (n.contains('신한은행')) return SHIcon;
-    if (n.contains('수협')) return SHIcon;
+    if (n.contains('신한')) return SHIcon;
+    if (n.contains('수협')) return SUHUIcon;
     if (n.contains('우리')) return WOORIIcon;
-    if (n.contains('하나')) return KEBIcon;
+    if (n.contains('하나')) return HANAIcon;
     if (n.contains('농협')) return NHIcon;
     if (n.contains('기업')) return IBKIcon;
     if (n.contains('카카오')) return KAKAOIcon;
     if (n.contains('케이뱅크')) return KIcon;
     if (n.contains('토스')) return TOSSIcon;
-    if (n.contains('부산') || n.contains('대구') || n.contains('경남')) {
-      return DGIcon;
-    }
+    if (n.contains('대구')) return DGBIcon;
+    if (n.contains('부산') || n.contains('경남')) return BNKIcon;
     if (n.contains('광주') || n.contains('전북')) return JBIcon;
     if (n.contains('제주')) return JJIcon;
     if (n.contains('우체국')) return POSTIcon;

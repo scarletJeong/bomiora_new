@@ -167,6 +167,7 @@ class MobileLayoutWrapper extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[100],
+      resizeToAvoidBottomInset: false,
       body: LayoutBuilder(
         builder: (context, constraints) {
           final contentWidth = constraints.maxWidth > maxWidth
@@ -385,6 +386,7 @@ class MobileAppLayoutWrapper extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: outerBackgroundColor ?? Colors.grey[100],
+      resizeToAvoidBottomInset: false,
       body: LayoutBuilder(
         builder: (context, constraints) {
           final contentWidth = constraints.maxWidth > maxWidth

@@ -8,13 +8,13 @@ import '../navigation/app_navigator_key.dart';
 import 'inf_code_tracker.dart';
 
 /// 상품 공유: 시스템 공유 시트(카톡 등)로 제목·링크 전달.
-/// 링크는 현재 웹 호스트 기준 Flutter 해시 라우트(`/#/product/:id`)를 사용합니다.
+/// 링크는 현재 웹 호스트 기준 path 라우트(`/product/:id`)를 사용합니다.
 class ProductShare {
   ProductShare._();
 
   static const String _productionWebOrigin = 'https://bomiora.net';
 
-  /// 공유·복사용 상품 URL (`http://localhost:55223/#/product/...` 또는 `https://bomiora.net/#/product/...`)
+  /// 공유·복사용 상품 URL (`http://localhost:55223/product/...` 또는 `https://bomiora.net/product/...`)
   static String buildPublicProductUrl(
     String itId, {
     String? productKind,
@@ -34,12 +34,11 @@ class ProductShare {
       path: '/$path/$id',
       queryParameters: query.isEmpty ? null : query,
     );
-    final hashPath = routeUri.toString();
 
     if (kIsWeb) {
-      return '${Uri.base.origin}/#$hashPath';
+      return '${Uri.base.origin}${routeUri.toString()}';
     }
-    return '$_productionWebOrigin/#$hashPath';
+    return '$_productionWebOrigin${routeUri.toString()}';
   }
 
   static Future<bool> shareProduct({

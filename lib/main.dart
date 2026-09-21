@@ -1,6 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'presentation/home/screens/home_screen.dart';
 import 'presentation/common/screens/splash_screen.dart';
@@ -69,6 +70,7 @@ void _installWebDisposedViewErrorGuard() {
 void main() async {
   // Flutter 바인딩 초기화
   WidgetsFlutterBinding.ensureInitialized();
+  usePathUrlStrategy();
   _installWebDisposedViewErrorGuard();
 
   if (!kIsWeb) {
