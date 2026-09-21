@@ -31,6 +31,18 @@
   <title>보미오라</title>
   <link rel="manifest" href="manifest.json">
 
+  <!-- 예전 해시 주소(#/product/...)를 path 주소로 맞춤 -->
+  <script>
+    (function () {
+      var hash = window.location.hash || '';
+      if (hash.indexOf('#/') !== 0) return;
+      var next = hash.slice(1);
+      var search = window.location.search || '';
+      if (next.indexOf('?') === -1 && search) next += search;
+      window.history.replaceState(null, '', next);
+    })();
+  </script>
+
   <!-- 포트 설정 및 개발 서버 설정 -->
   <script>
     // 개발 서버 포트 설정
