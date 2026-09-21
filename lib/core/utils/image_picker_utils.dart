@@ -40,9 +40,9 @@ class ImagePickerUtils {
                 Navigator.of(dialogContext).pop();
                 final XFile? image = await _picker.pickImage(
                   source: ImageSource.camera,
-                  imageQuality: 75,
-                  maxWidth: 1920,
-                  maxHeight: 1920,
+                  imageQuality: 60,
+                  maxWidth: 1080,
+                  maxHeight: 1080,
                 );
                 onImageSelected(image);
               },
@@ -53,9 +53,9 @@ class ImagePickerUtils {
                 Navigator.of(dialogContext).pop();
                 final XFile? image = await _picker.pickImage(
                   source: ImageSource.gallery,
-                  imageQuality: 75,
-                  maxWidth: 1920,
-                  maxHeight: 1920,
+                  imageQuality: 60,
+                  maxWidth: 1080,
+                  maxHeight: 1080,
                 );
                 onImageSelected(image);
               },
@@ -73,9 +73,9 @@ class ImagePickerUtils {
     try {
       return await _picker.pickImage(
         source: ImageSource.camera,
-        imageQuality: 75,
-        maxWidth: 1920,
-        maxHeight: 1920,
+        imageQuality: 60,
+        maxWidth: 1080,
+        maxHeight: 1080,
       );
     } catch (e) {
       return null;
@@ -88,16 +88,40 @@ class ImagePickerUtils {
     required BuildContext anchorContext,
     required void Function(XFile?) onImageSelected,
     double? menuWidth,
-  }) {
+  }) async {
     FocusManager.instance.primaryFocus?.unfocus();
+
+    final resolvedMenuWidth = menuWidth ?? healthDp(context, 150);
+    const itemFontSizeBase = 12.0;
+    final itemPadding = EdgeInsets.symmetric(
+      vertical: healthDp(context, 10),
+      horizontal: healthDp(context, 12),
+    );
+
+    final neededHeight = DropdownBtn.resolvePanelMaxHeight(
+      context: context,
+      itemCount: photoSourceLabels.length,
+      itemFontSizeBase: itemFontSizeBase,
+      itemPadding: itemPadding,
+    );
+
+    await DropdownBtn.ensureSpaceBelowForMenu(
+      context: context,
+      anchorContext: anchorContext,
+      neededHeight: neededHeight + healthDp(context, 20), // 여유 공간 추가
+    );
+
+    if (!context.mounted) return;
+
     DropdownBtn.showMenu(
       context: context,
       anchorContext: anchorContext,
       items: photoSourceLabels,
-      menuWidth: menuWidth ?? healthDp(context, 110),
-      itemFontSizeBase: 10,
+      menuWidth: resolvedMenuWidth,
+      itemFontSizeBase: itemFontSizeBase,
       itemFontFamily: 'Gmarket Sans TTF',
       itemFontWeight: FontWeight.w300,
+      itemPadding: itemPadding,
       blurBackdrop: true,
       blurSigma: 2,
       backdropOpacity: 0.35,
@@ -151,9 +175,9 @@ class ImagePickerUtils {
     try {
       return await _picker.pickImage(
         source: ImageSource.gallery,
-        imageQuality: 75,
-        maxWidth: 1920,
-        maxHeight: 1920,
+        imageQuality: 60,
+        maxWidth: 1080,
+        maxHeight: 1080,
       );
     } catch (e) {
       return null;
