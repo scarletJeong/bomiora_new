@@ -5,6 +5,7 @@ import '../../health_common/health_responsive_scale.dart';
 import '../../health_common/widgets/health_app_bar.dart';
 import '../../health_common/widgets/health_delete_popup.dart';
 import '../../health_common/widgets/health_date_selector.dart';
+import '../../../common/widgets/keyboard_aware_form_body.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/login_required_dialog.dart';
 import '../../../../data/models/health/blood_pressure/blood_pressure_record_model.dart';
@@ -233,57 +234,45 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
           data: MediaQuery.of(context).copyWith(
             textScaler: TextScaler.linear(textScale),
           ),
-          child: Column(
-            children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: healthDp(context, 27),
-                  ),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SizedBox(height: healthDp(context, 5)),
-                        Text(
-                          '오늘의 혈압을 등록해주세요',
-                          textScaler: TextScaler.noScaling,
-                          style: TextStyle(
-                            color: const Color(0xFF1A1A1A),
-                            fontSize: healthSp(context, 14),
-                            fontFamily: 'Gmarket Sans TTF',
-                            fontWeight: FontWeight.w300,
-                            height: 1,
-                          ),
-                        ),
-                        SizedBox(height: healthDp(context, 20)),
-                        _buildDateTimeCard(),
-                        SizedBox(height: healthDp(context, 20)),
-                        _buildSystolicInput(),
-                        SizedBox(height: healthDp(context, 20)),
-                        _buildDiastolicInput(),
-                        SizedBox(height: healthDp(context, 20)),
-                        _buildPulseInput(),
-                        SizedBox(height: healthDp(context, 20)),
-                      ],
+          child: KeyboardAwareFormBody(
+            formPadding: EdgeInsets.symmetric(
+              horizontal: healthDp(context, 27),
+            ),
+            bottomPadding: EdgeInsets.fromLTRB(
+              healthDp(context, 27),
+              healthDp(context, 8),
+              healthDp(context, 27),
+              healthDp(context, 16),
+            ),
+            form: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(height: healthDp(context, 5)),
+                  Text(
+                    '오늘의 혈압을 등록해주세요',
+                    textScaler: TextScaler.noScaling,
+                    style: TextStyle(
+                      color: const Color(0xFF1A1A1A),
+                      fontSize: healthSp(context, 14),
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w300,
+                      height: 1,
                     ),
                   ),
-                ),
+                  SizedBox(height: healthDp(context, 20)),
+                  _buildDateTimeCard(),
+                  SizedBox(height: healthDp(context, 20)),
+                  _buildSystolicInput(),
+                  SizedBox(height: healthDp(context, 20)),
+                  _buildDiastolicInput(),
+                  SizedBox(height: healthDp(context, 20)),
+                  _buildPulseInput(),
+                ],
               ),
-              SafeArea(
-                top: false,
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    healthDp(context, 27),
-                    healthDp(context, 8),
-                    healthDp(context, 27),
-                    healthDp(context, 16),
-                  ),
-                  child: _buildActionButtons(),
-                ),
-              ),
-            ],
+            ),
+            bottom: _buildActionButtons(),
           ),
         ),
       ),

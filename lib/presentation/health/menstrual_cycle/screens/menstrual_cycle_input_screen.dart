@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import '../../../common/widgets/keyboard_aware_form_body.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/login_required_dialog.dart';
 import '../../health_common/health_responsive_scale.dart';
@@ -437,54 +438,42 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
           data: MediaQuery.of(context).copyWith(
             textScaler: TextScaler.linear(textScale),
           ),
-          child: Column(
-            children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.fromLTRB(
-                    healthDp(context, 27),
-                    healthDp(context, 5),
-                    healthDp(context, 27),
-                    healthDp(context, 16),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        '마지막 생리는 언제였나요?',
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontSize: 14,
-                          fontFamily: 'Gmarket Sans TTF',
-                          fontWeight: FontWeight.w300,
-                        ),
-                      ),
-                      SizedBox(height: healthDp(context, 20)),
-                      _buildCalendar(),
-                      SizedBox(height: healthDp(context, 20)),
-                      _buildCycleLengthSection(),
-                      SizedBox(height: healthDp(context, 20)),
-                    ],
+          child: KeyboardAwareFormBody(
+            formPadding: EdgeInsets.fromLTRB(
+              healthDp(context, 27),
+              healthDp(context, 5),
+              healthDp(context, 27),
+              healthDp(context, 16),
+            ),
+            bottomPadding: EdgeInsets.fromLTRB(
+              healthDp(context, 27),
+              healthDp(context, 8),
+              healthDp(context, 27),
+              healthDp(context, 16),
+            ),
+            form: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  '마지막 생리는 언제였나요?',
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: 14,
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w300,
                   ),
                 ),
-              ),
-              SafeArea(
-                top: false,
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    healthDp(context, 27),
-                    healthDp(context, 8),
-                    healthDp(context, 27),
-                    healthDp(context, 16),
-                  ),
-                  child: SizedBox(
-                    width: double.infinity,
-                    height: healthDp(context, 38),
-                    child: _buildSaveButton(),
-                  ),
-                ),
-              ),
-            ],
+                SizedBox(height: healthDp(context, 20)),
+                _buildCalendar(),
+                SizedBox(height: healthDp(context, 20)),
+                _buildCycleLengthSection(),
+              ],
+            ),
+            bottom: SizedBox(
+              width: double.infinity,
+              height: healthDp(context, 38),
+              child: _buildSaveButton(),
+            ),
           ),
         ),
       ),

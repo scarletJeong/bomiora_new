@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../../common/widgets/keyboard_aware_form_body.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/confirm_dialog.dart';
 import '../../../common/widgets/app_toast_overlay.dart';
@@ -489,15 +490,20 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
         style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
         child: Form(
           key: _formKey,
-          child: Column(
-            children: [
-              Expanded(
-                child: ListView(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: healthDp(context, 20),
-                    vertical: healthDp(context, 10),
-                  ),
-                  children: [
+          child: KeyboardAwareFormBody(
+            formPadding: EdgeInsets.symmetric(
+              horizontal: healthDp(context, 20),
+              vertical: healthDp(context, 10),
+            ),
+            bottomPadding: EdgeInsets.fromLTRB(
+              healthDp(context, 20),
+              healthDp(context, 10),
+              healthDp(context, 20),
+              healthDp(context, 10),
+            ),
+            form: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
                     const _FieldLabel('배송지명 (선택)'),
                     SizedBox(height: healthDp(context, 8)),
                     Row(
@@ -630,19 +636,9 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
                         ],
                       ),
                     ),
-                  ],
-                ),
-              ),
-              SafeArea(
-                top: false,
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    healthDp(context, 20),
-                    healthDp(context, 10),
-                    healthDp(context, 20),
-                    healthDp(context, 10),
-                  ),
-                  child: SizedBox(
+              ],
+            ),
+            bottom: SizedBox(
                     width: double.infinity,
                     height: healthDp(context, 45),
                     child: ElevatedButton(
@@ -686,10 +682,7 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
                               ),
                             ),
                     ),
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),

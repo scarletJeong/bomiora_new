@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'dart:io';
 import 'dart:math' as math;
 import 'package:image_picker/image_picker.dart';
+import '../../../common/widgets/keyboard_aware_form_body.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/login_required_dialog.dart';
 import '../../health_common/health_responsive_scale.dart';
@@ -298,58 +299,46 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
           data: MediaQuery.of(context).copyWith(
             textScaler: TextScaler.linear(textScale),
           ),
-          child: Column(
-            children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.fromLTRB(
-                    healthDp(context, 27),
-                    healthDp(context, 5),
-                    healthDp(context, 27),
-                    healthDp(context, 16),
-                  ),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '당신의 현재 체중을 입력해주세요.',
-                          textScaler: TextScaler.noScaling,
-                          style: TextStyle(
-                            color: const Color(0xFF1A1A1A),
-                            fontSize: healthSp(context, 14),
-                            fontFamily: 'Gmarket Sans TTF',
-                            fontWeight: FontWeight.w300,
-                          ),
-                        ),
-                        SizedBox(height: healthDp(context, 20)),
-                        _buildDateTimeCard(),
-                        SizedBox(height: healthDp(context, 20)),
-                        _buildHeightInput(),
-                        SizedBox(height: healthDp(context, 20)),
-                        _buildWeightInput(),
-                        SizedBox(height: healthDp(context, 20)),
-                        _buildBodyImagesSection(),
-                        SizedBox(height: healthDp(context, 20)),
-                      ],
+          child: KeyboardAwareFormBody(
+            formPadding: EdgeInsets.fromLTRB(
+              healthDp(context, 27),
+              healthDp(context, 5),
+              healthDp(context, 27),
+              healthDp(context, 16),
+            ),
+            bottomPadding: EdgeInsets.fromLTRB(
+              healthDp(context, 27),
+              healthDp(context, 8),
+              healthDp(context, 27),
+              healthDp(context, 16),
+            ),
+            form: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '당신의 현재 체중을 입력해주세요.',
+                    textScaler: TextScaler.noScaling,
+                    style: TextStyle(
+                      color: const Color(0xFF1A1A1A),
+                      fontSize: healthSp(context, 14),
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w300,
                     ),
                   ),
-                ),
+                  SizedBox(height: healthDp(context, 20)),
+                  _buildDateTimeCard(),
+                  SizedBox(height: healthDp(context, 20)),
+                  _buildHeightInput(),
+                  SizedBox(height: healthDp(context, 20)),
+                  _buildWeightInput(),
+                  SizedBox(height: healthDp(context, 20)),
+                  _buildBodyImagesSection(),
+                ],
               ),
-              SafeArea(
-                top: false,
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    healthDp(context, 27),
-                    healthDp(context, 8),
-                    healthDp(context, 27),
-                    healthDp(context, 16),
-                  ),
-                  child: _buildActionButtons(),
-                ),
-              ),
-            ],
+            ),
+            bottom: _buildActionButtons(),
           ),
         ),
       ),

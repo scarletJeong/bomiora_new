@@ -7,6 +7,7 @@ import '../../../../data/repositories/health/dashboard/health_dashboard_reposito
 import '../../../../data/repositories/health/health_goal/health_goal_repository.dart';
 import '../../../../core/health/health_refresh_bus.dart';
 import '../../../../data/services/auth_service.dart';
+import '../../../common/widgets/keyboard_aware_form_body.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../health_common/health_responsive_scale.dart';
 import '../../health_common/widgets/health_app_bar.dart';
@@ -171,133 +172,107 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
   @override
   Widget build(BuildContext context) {
     final textScale = healthTextScaleByWidth(MediaQuery.of(context).size.width);
-    return MobileLayoutWrapper(
+    return MobileAppLayoutWrapper(
+      backgroundColor: Colors.white,
+      appBar: const HealthAppBar(title: '목표설정'),
       child: MediaQuery(
         data: MediaQuery.of(context).copyWith(
           textScaler: TextScaler.linear(textScale),
         ),
-        child: Scaffold(
-          backgroundColor: Colors.white,
-          appBar: const HealthAppBar(title: '목표설정'),
-          body: SafeArea(
-            child: _loading
-                ? const Center(child: CircularProgressIndicator())
-                : Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Padding(
-                        padding: EdgeInsets.fromLTRB(
-                          healthDp(context, 27),
-                          healthDp(context, 5),
-                          healthDp(context, 27),
-                          healthDp(context, 20),
-                        ),
-                        child: Text(
-                          '목표를 설정해주세요.',
-                          textScaler: TextScaler.noScaling,
-                          style: TextStyle(
-                            color: const Color(0xFF1A1A1A),
-                            fontSize: healthSp(context, 14),
-                            fontFamily: 'Gmarket Sans TTF',
-                            fontWeight: FontWeight.w300,
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        child: SingleChildScrollView(
-                          padding: EdgeInsets.fromLTRB(
-                            healthDp(context, 27),
-                            healthDp(context, 0),
-                            healthDp(context, 27),
-                            healthDp(context, 20),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                            _buildInputSection(
-                              title: '현재 체중(kg)',
-                              hint: '몸무게를 입력해주세요.',
-                              controller: _currentWeightController,
-                              keyboardType:
-                                  const TextInputType.numberWithOptions(
-                                      decimal: true),
-                            ),
-                            const SizedBox(height: 20),
-                            _buildInputSection(
-                              title: '목표 체중(kg)',
-                              hint: '몸무게를 입력해주세요.',
-                              controller: _targetWeightController,
-                              keyboardType:
-                                  const TextInputType.numberWithOptions(
-                                      decimal: true),
-                            ),
-                            const SizedBox(height: 20),
-                            _buildStepsPickerSection(),
-                            const SizedBox(height: 20),
-                          ],
-                        ),
+        child: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : KeyboardAwareFormBody(
+                formPadding: EdgeInsets.fromLTRB(
+                  healthDp(context, 27),
+                  healthDp(context, 5),
+                  healthDp(context, 27),
+                  healthDp(context, 20),
+                ),
+                bottomPadding: EdgeInsets.fromLTRB(
+                  healthDp(context, 27),
+                  healthDp(context, 8),
+                  healthDp(context, 27),
+                  healthDp(context, 16),
+                ),
+                form: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '목표를 설정해주세요.',
+                      textScaler: TextScaler.noScaling,
+                      style: TextStyle(
+                        color: const Color(0xFF1A1A1A),
+                        fontSize: healthSp(context, 14),
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w300,
                       ),
                     ),
-                    SafeArea(
-                      top: false,
-                      child: Padding(
-                        padding: EdgeInsets.fromLTRB(
-                          healthDp(context, 27),
-                          healthDp(context, 8),
-                          healthDp(context, 27),
-                          healthDp(context, 16),
-                        ),
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(
-                              healthDp(context, 10),
-                            ),
-                            child: Material(
-                              color: _submitting
-                                  ? const Color(0xFFFF5A8D)
-                                      .withValues(alpha: 0.5)
-                                  : const Color(0xFFFF5A8D),
-                              child: InkWell(
-                                onTap: _submitting ? null : _onRegister,
-                                child: Padding(
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: healthDp(context, 16),
-                                    vertical: healthDp(context, 10),
-                                  ),
-                                  child: Center(
-                                    child: _submitting
-                                        ? SizedBox(
-                                            height: healthDp(context, 22),
-                                            width: healthDp(context, 22),
-                                            child:
-                                                const CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                              color: Colors.white,
-                                            ),
-                                          )
-                                        : Text(
-                                            '등록',
-                                            textScaler: TextScaler.noScaling,
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontSize: healthSp(context, 16),
-                                              fontFamily: 'Gmarket Sans TTF',
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                          ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
+                    SizedBox(height: healthDp(context, 20)),
+                    _buildInputSection(
+                      title: '현재 체중(kg)',
+                      hint: '몸무게를 입력해주세요.',
+                      controller: _currentWeightController,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
                       ),
                     ),
+                    SizedBox(height: healthDp(context, 20)),
+                    _buildInputSection(
+                      title: '목표 체중(kg)',
+                      hint: '몸무게를 입력해주세요.',
+                      controller: _targetWeightController,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                    ),
+                    SizedBox(height: healthDp(context, 20)),
+                    _buildStepsPickerSection(),
                   ],
                 ),
-          ),
-        ),
+                bottom: SizedBox(
+                  width: double.infinity,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(
+                      healthDp(context, 10),
+                    ),
+                    child: Material(
+                      color: _submitting
+                          ? const Color(0xFFFF5A8D).withValues(alpha: 0.5)
+                          : const Color(0xFFFF5A8D),
+                      child: InkWell(
+                        onTap: _submitting ? null : _onRegister,
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: healthDp(context, 16),
+                            vertical: healthDp(context, 10),
+                          ),
+                          child: Center(
+                            child: _submitting
+                                ? SizedBox(
+                                    height: healthDp(context, 22),
+                                    width: healthDp(context, 22),
+                                    child: const CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : Text(
+                                    '등록',
+                                    textScaler: TextScaler.noScaling,
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: healthSp(context, 16),
+                                      fontFamily: 'Gmarket Sans TTF',
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
       ),
     );
   }
