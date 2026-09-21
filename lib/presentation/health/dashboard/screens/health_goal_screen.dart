@@ -37,6 +37,7 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
   bool _loading = true;
   bool _submitting = false;
   int _lastStepsWheelTickMs = 0;
+  double _stepsPanAccum = 0;
 
   int get _stepsItemCount => ((_stepMax - _stepMin) ~/ _stepUnit) + 1;
 
@@ -65,6 +66,20 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
         duration: const Duration(milliseconds: 90),
         curve: Curves.easeOut,
       );
+    }
+  }
+
+  void _onStepsPanUpdate(DragUpdateDetails details) {
+    _stepsPanAccum += details.delta.dy;
+    final threshold = healthDp(context, _stepsItemExtentBase) * 0.55;
+    while (_stepsPanAccum.abs() >= threshold) {
+      if (_stepsPanAccum > 0) {
+        _changeStepsIndexBy(-1);
+        _stepsPanAccum -= threshold;
+      } else {
+        _changeStepsIndexBy(1);
+        _stepsPanAccum += threshold;
+      }
     }
   }
 
@@ -301,25 +316,28 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
             border: Border.all(color: const Color(0x7FD2D2D2)),
             color: Colors.white,
           ),
-          child: Listener(
-            onPointerSignal: (event) {
-              if (!kIsWeb || event is! PointerScrollEvent) return;
-              final nowMs = DateTime.now().millisecondsSinceEpoch;
-              if (nowMs - _lastStepsWheelTickMs < _wheelTickDebounceMs) {
-                return;
-              }
-              _lastStepsWheelTickMs = nowMs;
-              final delta = event.scrollDelta.dy > 0 ? 1 : -1;
-              _changeStepsIndexBy(delta);
-            },
-            child: ListWheelScrollView.useDelegate(
-              controller: _stepsWheelController,
-              itemExtent: itemExtent,
-              diameterRatio: 2.6,
-              perspective: 0.003,
-              physics: kIsWeb
-                  ? const NeverScrollableScrollPhysics()
-                  : const FixedExtentScrollPhysics(),
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onVerticalDragStart: (_) => _stepsPanAccum = 0,
+            onVerticalDragUpdate: _onStepsPanUpdate,
+            onVerticalDragEnd: (_) => _stepsPanAccum = 0,
+            child: Listener(
+              onPointerSignal: (event) {
+                if (!kIsWeb || event is! PointerScrollEvent) return;
+                final nowMs = DateTime.now().millisecondsSinceEpoch;
+                if (nowMs - _lastStepsWheelTickMs < _wheelTickDebounceMs) {
+                  return;
+                }
+                _lastStepsWheelTickMs = nowMs;
+                final delta = event.scrollDelta.dy > 0 ? 1 : -1;
+                _changeStepsIndexBy(delta);
+              },
+              child: ListWheelScrollView.useDelegate(
+                controller: _stepsWheelController,
+                itemExtent: itemExtent,
+                diameterRatio: 2.6,
+                perspective: 0.003,
+                physics: const NeverScrollableScrollPhysics(),
               onSelectedItemChanged: (index) {
                 final next = _stepsFromIndex(index);
                 if (next == _selectedSteps) return;
@@ -359,6 +377,7 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
                   );
                 },
               ),
+            ),
             ),
           ),
         ),
