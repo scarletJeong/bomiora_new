@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
+import '../../../../core/constants/app_assets.dart';
 import '../../../../core/utils/image_url_helper.dart';
 import '../../food/screens/food_list_screen.dart';
 import '../../health_common/health_responsive_scale.dart';
@@ -347,13 +349,6 @@ class _TodayMealItemCard extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: radius,
             border: Border.all(color: const Color(0xFFEAEAEA)),
-            gradient: _hasMeal && !_hasValidImage
-                ? const LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [Color(0xFFB8B8B8), Color(0xFF6C6C6C)],
-                  )
-                : null,
             color: _hasMeal ? null : const Color(0xFFE2E2E2),
           ),
           child: Stack(
@@ -368,6 +363,15 @@ class _TodayMealItemCard extends StatelessWidget {
                   height: double.infinity,
                   errorBuilder: (_, __, ___) =>
                       const ColoredBox(color: Color(0xFF6C6C6C)),
+                )
+              else if (_hasMeal)
+                Container(
+                  color: const Color(0xFFFDF2F8),
+                  alignment: Alignment.center,
+                  child: SvgPicture.asset(
+                    AppAssets.foodCaloriesCard,
+                    fit: BoxFit.contain,
+                  ),
                 ),
               if (_hasMeal)
                 Container(

@@ -399,7 +399,9 @@ class _TodayDietScreenState extends State<TodayDietScreen>
     VoidCallback? onTap,
   }) {
     final isEmptyMeal = mealRecord == null ||
-        (mealRecord.items.isEmpty && (mealRecord.calories ?? 0) == 0);
+        (mealRecord.items.isEmpty &&
+            (mealRecord.calories ?? 0) == 0 &&
+            (mealRecord.imagePaths ?? []).isEmpty);
     String? representativeImagePath;
     for (final p in mealRecord?.imagePaths ?? const []) {
       if (p.isNotEmpty && !ImageUrlHelper.isCorruptStoredImagePath(p)) {

@@ -262,6 +262,29 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
     }
   }
 
+  Future<void> _deletePhoto(int index) async {
+    final paths = List<String>.from(_localImagePaths);
+    if (index < 0 || index >= paths.length) return;
+
+    final recordId = widget.foodRecordId;
+    if (recordId.isEmpty) return;
+
+    final confirmed = await showHealthDeletePopup(
+      context: context,
+      title: '이미지 삭제',
+      message: '이미지를 삭제하시겠습니까?',
+    );
+    if (confirmed != true) return;
+
+    final targetPath = paths.removeAt(index);
+    final ok = await FoodRepository.updateRecordImagePaths(recordId, paths);
+    if (!mounted) return;
+    if (ok) {
+      setState(() => _localImagePaths = _sanitizeImagePaths(paths));
+      _notifyParentRefresh();
+    }
+  }
+
   void _notifyParentRefresh() {
     if (!mounted) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -400,6 +423,7 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
           isUploading: _isUploadingPhoto,
           onAddTap: _openPhotoSourceDropdown,
           onPhotoTap: _setRepresentativePhoto,
+          onDeleteTap: _deletePhoto,
         ),
         SizedBox(height: healthDp(context, 5)),
         Row(
@@ -981,12 +1005,14 @@ class _MealPhotoStrip extends StatelessWidget {
     required this.isUploading,
     required this.onAddTap,
     required this.onPhotoTap,
+    required this.onDeleteTap,
   });
 
   final List<String> imagePaths;
   final bool isUploading;
   final void Function(BuildContext anchorContext) onAddTap;
   final void Function(int index) onPhotoTap;
+  final void Function(int index) onDeleteTap;
 
   @override
   Widget build(BuildContext context) {
@@ -1019,6 +1045,7 @@ class _MealPhotoStrip extends StatelessWidget {
                   imagePath: paths[i],
                   isRepresentative: i == 0,
                   onTap: i == 0 ? null : () => onPhotoTap(i),
+                  onDelete: () => onDeleteTap(i),
                 ),
               ],
             ],
@@ -1098,12 +1125,14 @@ class _MealPhotoThumbnail extends StatelessWidget {
     required this.imagePath,
     required this.isRepresentative,
     this.onTap,
+    this.onDelete,
   });
 
   final double size;
   final String imagePath;
   final bool isRepresentative;
   final VoidCallback? onTap;
+  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -1122,6 +1151,8 @@ class _MealPhotoThumbnail extends StatelessWidget {
                 ImageUrlHelper.getImageUrl(imagePath),
                 key: ValueKey(imagePath),
                 fit: BoxFit.cover,
+                width: double.infinity,
+                height: double.infinity,
                 errorBuilder: (_, __, ___) =>
                     const ColoredBox(color: Color(0xFF6C6C6C)),
               ),
@@ -1142,6 +1173,26 @@ class _MealPhotoThumbnail extends StatelessWidget {
                         height: 1.0,
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w300,
+                      ),
+                    ),
+                  ),
+                ),
+              if (onDelete != null)
+                Positioned(
+                  top: healthDp(context, 4),
+                  right: healthDp(context, 4),
+                  child: GestureDetector(
+                    onTap: onDelete,
+                    child: Container(
+                      padding: EdgeInsets.all(healthDp(context, 4)),
+                      decoration: const BoxDecoration(
+                        color: Colors.black54,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.close,
+                        size: healthDp(context, 14),
+                        color: Colors.white,
                       ),
                     ),
                   ),
