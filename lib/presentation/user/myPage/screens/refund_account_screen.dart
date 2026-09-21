@@ -331,20 +331,22 @@ class _BankIconLeading extends StatelessWidget {
     if (asset == null) {
       return SizedBox(width: size, height: size);
     }
+    final scale = AppAssets.bankIconVisualScale(bankName);
+    final Widget image = asset.endsWith('.png')
+        ? Padding(
+            padding: EdgeInsets.all(size * 0.18),
+            child: Image.asset(asset, fit: BoxFit.contain),
+          )
+        : SvgPicture.asset(
+            asset,
+            width: size,
+            height: size,
+            fit: BoxFit.contain,
+          );
     return SizedBox(
       width: size,
       height: size,
-      child: asset.endsWith('.png')
-          ? Padding(
-              padding: EdgeInsets.all(size * 0.18),
-              child: Image.asset(asset, fit: BoxFit.contain),
-            )
-          : SvgPicture.asset(
-              asset,
-              width: size,
-              height: size,
-              fit: BoxFit.contain,
-            ),
+      child: scale == 1 ? image : Transform.scale(scale: scale, child: image),
     );
   }
 }

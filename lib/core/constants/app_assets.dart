@@ -265,4 +265,13 @@ abstract final class AppAssets {
     if (n.contains('씨티')) return CITIIcon;
     return null;
   }
+
+  /// 아이콘 SVG 여백이 달라 보이는 크기를 맞춘다.
+  static double bankIconVisualScale(String bankName) {
+    final n = bankName.trim();
+    if (n.contains('신한')) return 0.74;
+    if (n.contains('수협')) return 0.86;
+    if (n.contains('제주')) return 1.22;
+    return 1.0;
+  }
 }
