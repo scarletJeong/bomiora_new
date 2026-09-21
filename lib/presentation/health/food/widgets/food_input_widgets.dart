@@ -141,27 +141,30 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
     if (_isAdding) return;
     setState(() => _isAdding = true);
     try {
-      final records = await FoodRepository.getRecordsForDate(widget.mbId, widget.selectedDate);
-      final foodTime = FoodRepository.foodTimeFromMealKey(widget.mealKey);
-      FoodRecordSummary? record;
-      for (final r in records) {
-        if (r.foodTime == foodTime) {
-          record = r;
-          break;
+      String? recordId = widget.foodRecordId;
+      if (recordId.isEmpty) {
+        final records = await FoodRepository.getRecordsForDate(widget.mbId, widget.selectedDate);
+        final foodTime = FoodRepository.foodTimeFromMealKey(widget.mealKey).toLowerCase();
+        for (final r in records) {
+          if ((r.foodTime ?? '').toLowerCase() == foodTime) {
+            recordId = r.id;
+            break;
+          }
         }
       }
-      if (record == null) {
+
+      if (recordId == null || recordId.isEmpty) {
         final created = await FoodRepository.createRecord(
           widget.mbId,
           widget.selectedDate,
           widget.mealKey,
         );
-        if (created == null) {
-          return;
-        }
-        record = created;
+        recordId = created?.id;
       }
-      final ok = await FoodRepository.addItemToRecord(record.id, item);
+
+      if (recordId == null || recordId.isEmpty) return;
+
+      final ok = await FoodRepository.addItemToRecord(recordId, item);
       if (mounted) {
         if (ok) {
           widget.onItemAdded?.call();
@@ -773,88 +776,67 @@ class SearchResultRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final noScale = MediaQuery.of(context).copyWith(textScaler: TextScaler.noScaling);
-    return Padding(
-      padding: EdgeInsets.symmetric(
-        horizontal: healthDp(context, 12),
-        vertical: healthDp(context, 10),
-      ),
-      child: MediaQuery(
-        data: noScale,
-        child: Row(
-          children: [
-            Expanded(
-              child: Row(
-                children: [
-                  Flexible(
-                    child: Text(
-                      '$name ${kcal}kcal',
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: healthSp(context, 12),
-                        fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w500,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  if (desc.isNotEmpty) ...[
-                    SizedBox(width: healthDp(context, 6)),
+    final noScale =
+        MediaQuery.of(context).copyWith(textScaler: TextScaler.noScaling);
+    return InkWell(
+      onTap: onSelect,
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: healthDp(context, 12),
+          vertical: healthDp(context, 10),
+        ),
+        child: MediaQuery(
+          data: noScale,
+          child: Row(
+            children: [
+              Expanded(
+                child: Row(
+                  children: [
                     Flexible(
                       child: Text(
-                        desc,
+                        '$name ${kcal}kcal',
                         style: TextStyle(
-                          color: const Color(0xFF898383),
-                          fontSize: healthSp(context, 10),
+                          color: Colors.black,
+                          fontSize: healthSp(context, 12),
                           fontFamily: 'Gmarket Sans TTF',
-                          fontWeight: FontWeight.w300,
+                          fontWeight: FontWeight.w500,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
+                    if (desc.isNotEmpty) ...[
+                      SizedBox(width: healthDp(context, 6)),
+                      Flexible(
+                        child: Text(
+                          desc,
+                          style: TextStyle(
+                            color: const Color(0xFF898383),
+                            fontSize: healthSp(context, 10),
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontWeight: FontWeight.w300,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
                   ],
-                ],
-              ),
-            ),
-            SizedBox(width: healthDp(context, 8)),
-            SizedBox(
-              width: healthDp(context, 26),
-              height: healthDp(context, 19),
-              child: TextButton(
-                onPressed: onSelect,
-                style: TextButton.styleFrom(
-                  padding: EdgeInsets.zero,
-                  minimumSize: Size(
-                    healthDp(context, 26),
-                    healthDp(context, 19),
-                  ),
-                  fixedSize: Size(
-                    healthDp(context, 26),
-                    healthDp(context, 19),
-                  ),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  overlayColor: Colors.transparent,
-                  splashFactory: NoSplash.splashFactory,
-                  side: const BorderSide(color: Color(0xFFD2D2D2)),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(healthDp(context, 4)),
-                  ),
-                ),
-                child: Text(
-                  '선택',
-                  style: TextStyle(
-                    color: const Color(0xFF898383),
-                    fontSize: healthSp(context, 8),
-                    height: 1.0,
-                    fontFamily: 'Gmarket Sans TTF',
-                    fontWeight: FontWeight.w500,
-                  ),
                 ),
               ),
-            ),
-          ],
+              SizedBox(width: healthDp(context, 8)),
+              Icon(
+                Icons.add_circle_outline,
+                size: healthDp(context, 20),
+                color: const Color(0xFFFF5A8D),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
         ),
       ),
     );

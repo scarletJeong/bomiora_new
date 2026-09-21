@@ -486,47 +486,19 @@ class FoodRepository {
     try {
       final q = keyword.trim();
       if (q.isEmpty) return [];
-      if (limit <= 0) return [];
-      if (offset < 0) offset = 0;
 
-      // 공백 포함 검색어는 전체 문장 + 토큰 단위 재검색으로 회수율 보완
-      // 예) "스타벅스 커피" -> ["스타벅스 커피", "스타벅스", "커피"]
-      final queries = <String>{q};
-      final baseTokens = _splitKeywordTokens(q);
-      if (baseTokens.length > 1) {
-        queries.addAll(baseTokens);
-      }
+      // API 호출 횟수 최소화: 전체 문장으로 1번만 요청
+      final list = await _fetchFoodSearchRaw(q, limit: limit, offset: offset);
 
-      final merged = <FoodSearchItem>[];
-      final dedup = <String>{};
-      final neededCount = offset + limit;
-      for (final query in queries) {
-        final fetchLimit = query == q ? neededCount : (neededCount * 2);
-        final list =
-            await _fetchFoodSearchRaw(query, limit: fetchLimit, offset: 0);
-        for (final item in list) {
-          final key = '${item.foodCode}|${item.foodName}';
-          if (dedup.add(key)) {
-            merged.add(item);
-          }
-        }
-      }
+      // 클라이언트 측 정렬 (음식 코드 우선순위 반영)
+      list.sort((a, b) {
+        final pA = _foodCodePriority(a.foodCode);
+        final pB = _foodCodePriority(b.foodCode);
+        if (pA != pB) return pA.compareTo(pB);
+        return a.foodName.compareTo(b.foodName);
+      });
 
-      final filtered =
-          merged.where((item) => _matchesAllTokens(item, baseTokens)).toList();
-      final sorted = (filtered.isNotEmpty ? filtered : merged)
-        ..sort((a, b) {
-          final pA = _foodCodePriority(a.foodCode);
-          final pB = _foodCodePriority(b.foodCode);
-          if (pA != pB) return pA.compareTo(pB);
-          return a.foodName.compareTo(b.foodName);
-        });
-
-      if (offset >= sorted.length) return [];
-      final end =
-          (offset + limit) > sorted.length ? sorted.length : (offset + limit);
-      final result = sorted.sublist(offset, end);
-      return result;
+      return list;
     } catch (e) {
       return [];
     }
