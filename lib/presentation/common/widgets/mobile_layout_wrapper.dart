@@ -242,7 +242,6 @@ class MobileAppLayoutWrapper extends StatelessWidget {
   }) {
     return Scaffold(
       key: scaffoldKey,
-      primary: appBar is! HealthResponsivePreferredSizeWidget,
       backgroundColor: backgroundColor ?? Colors.white,
       appBar: wrappedAppBar ?? appBar,
       drawer: drawer,
@@ -268,7 +267,6 @@ class MobileAppLayoutWrapper extends StatelessWidget {
         child: MediaQuery(
           data: media.copyWith(
             size: Size(contentWidth, media.size.height),
-            padding: media.padding.copyWith(top: 0),
           ),
           child: appBar,
         ),
