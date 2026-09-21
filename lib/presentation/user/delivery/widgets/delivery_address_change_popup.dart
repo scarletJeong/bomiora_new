@@ -227,6 +227,22 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
 
     _addresses = addresses;
 
+    // 현재 주문과 매칭되는 배송지를 맨 위로 올림
+    final initialMatchedId = _matchAddressIdFromSnapshot(
+      name: widget.recipientName ?? '',
+      phone: widget.recipientPhone ?? '',
+      addr1: widget.recipientAddress ?? '',
+      addr2: widget.recipientAddressDetail ?? '',
+    );
+    if (initialMatchedId != null) {
+      final idx =
+          _addresses.indexWhere((a) => _asAddressId(a['adId']) == initialMatchedId);
+      if (idx > 0) {
+        final item = _addresses.removeAt(idx);
+        _addresses.insert(0, item);
+      }
+    }
+
     if (preferSelectId != null && _hasAddressId(preferSelectId)) {
       _selectedAddressId = preferSelectId;
     } else {
@@ -240,8 +256,20 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
     // 주문 수령지 매칭은 UI 표시 후 백그라운드에서 보정
     final matchedId = await _matchOrderAddressId(user.id);
     if (!mounted || matchedId == null) return;
-    if (_hasAddressId(matchedId) && _selectedAddressId != matchedId) {
-      setState(() => _selectedAddressId = matchedId);
+    if (_hasAddressId(matchedId)) {
+      if (_selectedAddressId != matchedId) {
+        setState(() => _selectedAddressId = matchedId);
+      }
+
+      // 백그라운드 매칭 시에도 해당 배송지를 상단으로 이동
+      final idx =
+          _addresses.indexWhere((a) => _asAddressId(a['adId']) == matchedId);
+      if (idx > 0) {
+        setState(() {
+          final item = _addresses.removeAt(idx);
+          _addresses.insert(0, item);
+        });
+      }
     }
   }
 
@@ -553,6 +581,13 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
         });
       }
       if (!mounted) return;
+
+      // 배송지 변경 모드에서는 신규입력/수정 완료 시 즉시 주문 수령지로 적용하고 팝업 종료
+      if (addressId != null) {
+        await _changeOrderAddress(addressId);
+        return;
+      }
+
       final defaultChanged = _isDefault && !_wasDefault;
       await _goToList();
       if (!mounted) return;
