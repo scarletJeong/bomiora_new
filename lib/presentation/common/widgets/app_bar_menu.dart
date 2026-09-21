@@ -25,6 +25,7 @@ enum AppBarMenuActionsStyle { home, myPage }
 class AppBarMenu extends StatefulWidget
     implements HealthResponsivePreferredSizeWidget {
   final VoidCallback onMenuPressed;
+
   /// 지정 시 검색 아이콘 탭 동작 (미지정이면 무동작)
   final VoidCallback? onSearchPressed;
   final AppBarMenuActionsStyle actionsStyle;
@@ -289,6 +290,7 @@ class _AppBarMenuState extends State<AppBarMenu> {
     final iconSz = healthDp(context, 19.82);
     final menuIconW = healthDp(context, 18);
     final menuIconH = healthDp(context, 14);
+
     /// [Row.spacing]은 0 이상만 허용. 예전 음수 간격과 같은 밀도는 `Stack`으로 겹침 배치.
     final actionOverlap = healthDp(context, 12);
     final logoW = healthDp(context, 99.09);
@@ -327,7 +329,6 @@ class _AppBarMenuState extends State<AppBarMenu> {
             width: tapBoxW,
             height: barH,
             iconSz: healthDp(context, 14),
-            badge: _notificationCountBadge(),
             onPressed: () {
               Navigator.of(context).push<void>(
                 MaterialPageRoute<void>(

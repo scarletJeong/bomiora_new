@@ -121,6 +121,23 @@ class DropdownBtn extends StatefulWidget {
     final size = box.size;
     final offset = box.localToGlobal(Offset.zero);
     final panelWidth = menuWidth ?? size.width;
+
+    final media = MediaQuery.of(context);
+    final screenW = media.size.width;
+    final screenH = media.size.height;
+    final safeBottom = media.padding.bottom;
+    final safeTop = media.padding.top;
+    final horizontalMargin = healthDp(context, 16);
+
+    // 가로 위치 최적화: 화면 밖으로 나가지 않도록 조정
+    double menuLeft = offset.dx;
+    if (menuLeft + panelWidth > screenW - horizontalMargin) {
+      menuLeft = screenW - panelWidth - horizontalMargin;
+    }
+    if (menuLeft < horizontalMargin) {
+      menuLeft = horizontalMargin;
+    }
+
     var maxPanelH = resolvePanelMaxHeight(
       context: context,
       itemCount: items.length,
@@ -130,11 +147,6 @@ class DropdownBtn extends StatefulWidget {
       scrollWhenItemCountExceeds: scrollWhenItemCountExceeds,
       maxVisibleItemsWhenScrolling: maxVisibleItemsWhenScrolling,
     );
-
-    final media = MediaQuery.of(context);
-    final screenH = media.size.height;
-    final safeBottom = media.padding.bottom;
-    final safeTop = media.padding.top;
 
     final spaceBelow =
         screenH - safeBottom - (offset.dy + size.height + menuGap);
@@ -189,7 +201,7 @@ class DropdownBtn extends StatefulWidget {
               ),
             ),
             Positioned(
-              left: offset.dx,
+              left: menuLeft,
               top: menuTop,
               width: panelWidth,
               child: Material(
