@@ -187,17 +187,39 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
     return created?.id;
   }
 
-  void _openPhotoSourceDropdown(BuildContext anchorContext) {
+  void _openPhotoSourceDropdown(BuildContext anchorContext) async {
     if (_isUploadingPhoto) return;
     FocusManager.instance.primaryFocus?.unfocus();
+
+    final itemPadding = EdgeInsets.symmetric(
+      vertical: healthDp(context, 10),
+      horizontal: healthDp(context, 12),
+    );
+
+    final neededHeight = DropdownBtn.resolvePanelMaxHeight(
+      context: context,
+      itemCount: _photoSourceLabels.length,
+      itemFontSizeBase: 12,
+      itemPadding: itemPadding,
+    );
+
+    await DropdownBtn.ensureSpaceBelowForMenu(
+      context: context,
+      anchorContext: anchorContext,
+      neededHeight: neededHeight + healthDp(context, 20),
+    );
+
+    if (!mounted) return;
+
     DropdownBtn.showMenu(
       context: context,
       anchorContext: anchorContext,
       items: _photoSourceLabels,
-      menuWidth: healthDp(context, 110),
-      itemFontSizeBase: 10,
+      menuWidth: healthDp(context, 150),
+      itemFontSizeBase: 12,
       itemFontFamily: 'Gmarket Sans TTF',
       itemFontWeight: FontWeight.w300,
+      itemPadding: itemPadding,
       blurBackdrop: true,
       blurSigma: 2,
       backdropOpacity: 0.35,
