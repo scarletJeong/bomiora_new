@@ -487,6 +487,7 @@ class FoodRepository {
       final q = keyword.trim();
       if (q.isEmpty) return [];
 
+      final sw = Stopwatch()..start();
       // API 호출 횟수 최소화: 전체 문장으로 1번만 요청
       final list = await _fetchFoodSearchRaw(q, limit: limit, offset: offset);
 
@@ -497,6 +498,8 @@ class FoodRepository {
         if (pA != pB) return pA.compareTo(pB);
         return a.foodName.compareTo(b.foodName);
       });
+      sw.stop();
+      debugPrint('[FoodRepo] searchFood("$q") took ${sw.elapsedMilliseconds}ms');
 
       return list;
     } catch (e) {

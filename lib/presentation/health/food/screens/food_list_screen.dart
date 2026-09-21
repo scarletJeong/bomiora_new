@@ -60,7 +60,11 @@ class _TodayDietScreenState extends State<TodayDietScreen>
       setState(() => _dayRecords = []);
       return;
     }
+    final sw = Stopwatch()..start();
     final list = await FoodRepository.getRecordsForDate(mbId, selectedDate);
+    sw.stop();
+    debugPrint('[FoodList] _loadMealData took ${sw.elapsedMilliseconds}ms');
+
     if (!mounted) return;
     final calories = list.fold<int>(0, (sum, r) => sum + (r.calories ?? 0));
     final carbs = list.fold<num>(0, (sum, r) => sum + (r.carbs ?? 0));

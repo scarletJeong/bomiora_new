@@ -365,12 +365,10 @@ class _TodayMealItemCard extends StatelessWidget {
                       const ColoredBox(color: Color(0xFF6C6C6C)),
                 )
               else if (_hasMeal)
-                Container(
-                  color: const Color(0xFFFDF2F8),
-                  alignment: Alignment.center,
+                SizedBox.expand(
                   child: SvgPicture.asset(
                     AppAssets.foodCaloriesCard,
-                    fit: BoxFit.contain,
+                    fit: BoxFit.cover,
                   ),
                 ),
               if (_hasMeal)

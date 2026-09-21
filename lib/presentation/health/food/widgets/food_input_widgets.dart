@@ -164,7 +164,11 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
 
       if (recordId == null || recordId.isEmpty) return;
 
+      final sw = Stopwatch()..start();
       final ok = await FoodRepository.addItemToRecord(recordId, item);
+      sw.stop();
+      debugPrint('[FoodInput] addItemToRecord took ${sw.elapsedMilliseconds}ms');
+
       if (mounted) {
         if (ok) {
           widget.onItemAdded?.call();
@@ -832,11 +836,6 @@ class SearchResultRow extends StatelessWidget {
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
         ),
       ),
     );
