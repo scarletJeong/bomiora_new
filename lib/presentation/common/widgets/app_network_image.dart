@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
@@ -34,8 +36,7 @@ class AppNetworkImage extends StatefulWidget {
     this.onSettled,
   });
 
-  static bool _isFinitePositive(double? v) =>
-      v != null && v.isFinite && v > 0;
+  static bool _isFinitePositive(double? v) => v != null && v.isFinite && v > 0;
 
   static int? cachePx(BuildContext context, double? logical) {
     if (!_isFinitePositive(logical)) return null;
@@ -144,6 +145,10 @@ class _AppNetworkImageState extends State<AppNetworkImage> {
           kIsWeb ? WebHtmlElementStrategy.prefer : WebHtmlElementStrategy.never,
       filterQuality: FilterQuality.low,
       errorBuilder: (context, error, stackTrace) {
+        debugPrint('[AppNetworkImage] decode fail: ${widget.url} → $error');
+        if (!kIsWeb) {
+          unawaited(NetworkImage(widget.url).evict());
+        }
         _markSettled();
         return widget.errorBuilder?.call(context, error, stackTrace) ??
             const SizedBox.shrink();
