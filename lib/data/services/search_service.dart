@@ -5,9 +5,6 @@ import '../../core/network/api_endpoints.dart';
 import '../models/announcement/announcement_model.dart';
 import '../models/event/event_model.dart';
 import '../models/product/product_model.dart';
-import '../repositories/product/product_repository.dart';
-import 'announcement_service.dart';
-import 'event_service.dart';
 
 class SearchResult {
   final String query;
@@ -31,17 +28,9 @@ class SearchResult {
 class SearchService {
   SearchService._();
 
-  /// 비대면 진료 카탈로그 (`ProductCategoryCatalog.prescriptionCategories`)
-  static const List<String> _rxCatalogCategoryIds = ['10', '20', '80', '50'];
-
-  /// 스토어 카탈로그 (`ProductCategoryCatalog.generalCategories`)
-  static const List<String> _storeCatalogCategoryIds = [
-    '11',
-    '21',
-    '51',
-    '60',
-    '70',
-  ];
+  static const Duration _cacheTtl = Duration(minutes: 2);
+  static final Map<String, (DateTime, SearchResult)> _cache = {};
+  static final Map<String, Future<SearchResult>> _inFlight = {};
 
   static List<Map<String, dynamic>> _asMapList(dynamic raw) {
     if (raw is! List) return const [];
@@ -136,51 +125,6 @@ class SearchService {
         .toList(growable: false);
   }
 
-  static bool _eventMatchesQuery(EventModel event, String query) {
-    return _eventTitleMatchesQuery(event, query);
-  }
-
-  static Future<List<EventModel>> _searchEvents(String query) async {
-    final q = query.trim();
-    if (q.isEmpty) return const [];
-
-    try {
-      final results = await Future.wait([
-        EventService.getActiveEvents(),
-        EventService.getEndedEvents(),
-      ]);
-      final byId = <int, EventModel>{};
-      for (final list in results) {
-        for (final event in list) {
-          byId.putIfAbsent(event.wrId, () => event);
-        }
-      }
-      return byId.values
-          .where((event) => !event.isEnded && _eventMatchesQuery(event, q))
-          .toList(growable: false);
-    } catch (_) {
-      return const [];
-    }
-  }
-
-  static Future<List<AnnouncementModel>> _searchAnnouncements(String query) async {
-    final q = query.trim();
-    if (q.isEmpty) return const [];
-
-    try {
-      final result = await AnnouncementService.getAnnouncements(
-        page: 1,
-        size: 20,
-        query: q,
-      );
-      if (result['success'] != true) return const [];
-      final items = (result['items'] as List<AnnouncementModel>?) ?? const [];
-      return _filterAnnouncementsByTitle(items, q);
-    } catch (_) {
-      return const [];
-    }
-  }
-
   static List<EventModel> _parseEvents(dynamic raw) {
     return _asMapList(raw)
         .map((m) => EventModel.fromJson(m))
@@ -193,63 +137,35 @@ class SearchService {
         .toList(growable: false);
   }
 
-  static bool _productMatchesQuery(Product product, String query) {
-    return _productTitleMatchesQuery(product, query);
-  }
-
-  /// 검색 API가 인플루언서·기타 채널 위주로 반환할 때 공식 카탈로그에서 보완.
-  static Future<List<Product>> _searchCatalogProducts({
-    required String query,
-    required List<String> categoryIds,
-    required String productKind,
-  }) async {
-    final q = query.trim();
-    if (q.isEmpty || categoryIds.isEmpty) return const [];
-
-    try {
-      final lists = await Future.wait(
-        categoryIds.map(
-          (categoryId) => ProductRepository.getProductsByCategory(
-            categoryId: categoryId,
-            productKind: productKind,
-            page: 1,
-            pageSize: 100,
-          ),
-        ),
-      );
-
-      return lists
-          .expand((list) => list)
-          .where((p) => !p.isInfluencerProduct)
-          .where((p) => _productMatchesQuery(p, q))
-          .toList(growable: false);
-    } catch (_) {
-      return const [];
-    }
-  }
-
-  /// 카탈로그 매칭을 우선, 검색 API 결과는 중복 없이 뒤에 합침.
-  static List<Product> _mergeProductsById(
-    List<Product> primary,
-    List<Product> secondary,
-  ) {
-    final seen = <String>{};
-    final merged = <Product>[];
-
-    void addAll(Iterable<Product> items) {
-      for (final product in items) {
-        if (seen.add(product.id)) {
-          merged.add(product);
-        }
-      }
-    }
-
-    addAll(primary);
-    addAll(secondary);
-    return merged;
-  }
-
   static Future<SearchResult> searchAll(
+    String query, {
+    int rxLimit = 20,
+    int storeLimit = 20,
+    int contentLimit = 20,
+  }) {
+    final q = query.trim();
+    final key = '${q.toLowerCase()}|$rxLimit|$storeLimit|$contentLimit';
+    final cached = _cache[key];
+    if (cached != null && DateTime.now().difference(cached.$1) < _cacheTtl) {
+      return Future.value(cached.$2);
+    }
+    final pending = _inFlight[key];
+    if (pending != null) return pending;
+
+    final request = _searchAllNetwork(
+      q,
+      rxLimit: rxLimit,
+      storeLimit: storeLimit,
+      contentLimit: contentLimit,
+    );
+    _inFlight[key] = request;
+    return request.then((result) {
+      _cache[key] = (DateTime.now(), result);
+      return result;
+    }).whenComplete(() => _inFlight.remove(key));
+  }
+
+  static Future<SearchResult> _searchAllNetwork(
     String query, {
     int rxLimit = 20,
     int storeLimit = 20,
@@ -267,29 +183,11 @@ class SearchService {
       );
     }
 
-    final endpoint =
-        '${ApiEndpoints.search}?q=${Uri.encodeQueryComponent(q)}'
+    final endpoint = '${ApiEndpoints.search}?q=${Uri.encodeQueryComponent(q)}'
         '&rxLimit=$rxLimit&storeLimit=$storeLimit&contentLimit=$contentLimit';
 
     final responseFuture = ApiClient.get(endpoint);
-    final catalogRxFuture = _searchCatalogProducts(
-      query: q,
-      categoryIds: _rxCatalogCategoryIds,
-      productKind: 'prescription',
-    );
-    final catalogStoreFuture = _searchCatalogProducts(
-      query: q,
-      categoryIds: _storeCatalogCategoryIds,
-      productKind: 'general',
-    );
-    final eventsFuture = _searchEvents(q);
-    final announcementsFuture = _searchAnnouncements(q);
-
     final response = await responseFuture;
-    final catalogRxItems = await catalogRxFuture;
-    final catalogStoreItems = await catalogStoreFuture;
-    final eventItems = await eventsFuture;
-    final announcementItems = await announcementsFuture;
 
     if (response.statusCode != 200) {
       throw Exception('검색 API 실패 (status=${response.statusCode})');
@@ -331,38 +229,16 @@ class SearchService {
     final apiEventItems = _parseEvents(event['items']);
     final apiAnnouncementItems = _parseAnnouncements(announcement['items']);
 
-    List<EventModel> mergedEvents = _filterEventsByTitle(eventItems, q);
-    if (apiEventItems.isNotEmpty) {
-      final seen = mergedEvents.map((e) => e.wrId).toSet();
-      mergedEvents = [
-        ...mergedEvents,
-        ..._filterEventsByTitle(apiEventItems, q).where((e) => seen.add(e.wrId)),
-      ];
-    }
-
-    List<AnnouncementModel> mergedAnnouncements =
-        _filterAnnouncementsByTitle(announcementItems, q);
-    if (apiAnnouncementItems.isNotEmpty) {
-      final seen = mergedAnnouncements.map((e) => e.id).toSet();
-      mergedAnnouncements = [
-        ...mergedAnnouncements,
-        ..._filterAnnouncementsByTitle(apiAnnouncementItems, q)
-            .where((e) => seen.add(e.id)),
-      ];
-    }
+    final mergedEvents = _filterEventsByTitle(apiEventItems, q);
+    final mergedAnnouncements =
+        _filterAnnouncementsByTitle(apiAnnouncementItems, q);
 
     final filteredContentItems = _filterContentsByTitle(contentItems, q);
 
     return SearchResult(
       query: (body['query'] ?? q).toString(),
-      prescriptionProducts: _filterProductsByTitle(
-        _mergeProductsById(catalogRxItems, apiRxItems),
-        q,
-      ),
-      storeProducts: _filterProductsByTitle(
-        _mergeProductsById(catalogStoreItems, apiStoreItems),
-        q,
-      ),
+      prescriptionProducts: _filterProductsByTitle(apiRxItems, q),
+      storeProducts: _filterProductsByTitle(apiStoreItems, q),
       events: mergedEvents,
       announcements: mergedAnnouncements,
       contents: filteredContentItems,
