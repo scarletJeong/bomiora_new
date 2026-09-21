@@ -131,16 +131,31 @@ class DropdownBtn extends StatefulWidget {
       maxVisibleItemsWhenScrolling: maxVisibleItemsWhenScrolling,
     );
 
-    // 항상 아래로 열림. 화면 하단을 넘지 않도록 높이만 클램프.
     final media = MediaQuery.of(context);
     final screenH = media.size.height;
     final safeBottom = media.padding.bottom;
+    final safeTop = media.padding.top;
+
     final spaceBelow =
         screenH - safeBottom - (offset.dy + size.height + menuGap);
-    if (spaceBelow > 0 && maxPanelH > spaceBelow) {
-      maxPanelH = spaceBelow;
+    final spaceAbove = offset.dy - safeTop - menuGap;
+
+    // 아래 공간이 부족하고 위 공간이 더 많으면 위로 열기
+    bool openUpwards = false;
+    if (spaceBelow < maxPanelH && spaceAbove > spaceBelow) {
+      openUpwards = true;
+      if (maxPanelH > spaceAbove) {
+        maxPanelH = spaceAbove.clamp(healthDp(context, 100), double.infinity);
+      }
+    } else {
+      if (spaceBelow > 0 && maxPanelH > spaceBelow) {
+        maxPanelH = spaceBelow.clamp(healthDp(context, 100), double.infinity);
+      }
     }
-    final menuTop = offset.dy + size.height + menuGap;
+
+    final menuTop = openUpwards
+        ? offset.dy - maxPanelH - menuGap
+        : offset.dy + size.height + menuGap;
 
     void close() {
       closeMenu();

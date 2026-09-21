@@ -582,7 +582,7 @@ class _WeightListScreenState extends State<WeightListScreen>
 
                             // 6. 눈바디 이미지
                             _buildBodyImages(),
-                            SizedBox(height: healthDp(context, 20)),
+                            SizedBox(height: healthDp(context, 120)),
                           ],
                         ),
                       ),

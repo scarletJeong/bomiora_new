@@ -355,6 +355,7 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
                   _buildWeightInput(),
                   SizedBox(height: healthDp(context, 20)),
                   _buildBodyImagesSection(),
+                  SizedBox(height: healthDp(context, 80)),
                 ],
               ),
             ),
