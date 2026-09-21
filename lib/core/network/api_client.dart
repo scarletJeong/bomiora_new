@@ -21,6 +21,7 @@ class ApiClient {
   // 네트워크가 변경되면 이 값을 업데이트해야 합니다
   // Windows에서 확인: ipconfig 명령어로 IPv4 주소 확인
   static const String _localPcIp = '172.30.1.81'; // PC의 실제 IP 주소
+  static const bool _useLocalBackend = false;
 
   static String get baseUrl {
     if (_overrideBaseUrl.trim().isNotEmpty) {
@@ -30,7 +31,6 @@ class ApiClient {
     if (kIsWeb) {
       // 웹 환경: 브라우저의 현재 URL 확인
       final currentHost = Uri.base.host;
-      final currentPort = Uri.base.port;
 
       // 현재 브라우저 URL이 localhost인지 확인
       if (currentHost.contains('localhost') ||
@@ -41,9 +41,11 @@ class ApiClient {
         return _devServerUrl; // 개발 서버
       }
     } else {
-      // 모바일: 로컬 백엔드(npm start) 우선. 원격은 아래 주석 전환.
-      return 'http://$_localPcIp:9000';
-      // return _devServerUrl;
+      // 모바일: 기본은 배포 서버. 로컬이 필요하면 _useLocalBackend를 true.
+      if (_useLocalBackend) {
+        return 'http://$_localPcIp:9000';
+      }
+      return _devServerUrl;
     }
   }
 
