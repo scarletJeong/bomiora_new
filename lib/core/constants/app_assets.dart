@@ -221,23 +221,27 @@ abstract final class AppAssets {
 
 
   /*9. 은행 아이콘 (`assets/img/bank/`) */
-  static const String IBKIcon = '${_bank}bankIcon_IBK.svg';
-  static const String KBIcon = '${_bank}bankIcon_KB.svg';
-  static const String KEBIcon = '${_bank}bankIcon_KEB.svg';
-  static const String NHIcon = '${_bank}bankIcon_NH.svg';
-  static const String SCIcon = '${_bank}bankIcon_SC.svg';
-  /// 대구·부산·경남 공통
-  static const String DGIcon = '${_bank}bankIcon_DG.svg';
-  static const String SHIcon = '${_bank}bankIcon_SH.svg';
-  static const String JJIcon = '${_bank}bankIcon_JJ.svg';
-  /// 전북·광주 공통 (광주는 JBIcon 사용)
-  static const String JBIcon = '${_bank}bankIcon_JB.svg';
-  static const String CITIIcon = '${_bank}bankIcon_CITI.svg';
-  static const String WOORIIcon = '${_bank}bankIcon_WOORI.svg';
-  static const String POSTIcon = '${_bank}bankIcon_POST.svg';
-  static const String KAKAOIcon = '${_bank}bankIcon_KAKAO.svg';
-  static const String KIcon = '${_bank}bankIcon_K.svg';
-  static const String TOSSIcon = '${_bank}bankIcon_TOSS.png';
+  static const String KBIcon = '${_bank}bankIcon_KB.svg';   // 국민은행
+  static const String SHIcon = '${_bank}bankIcon_SH.svg';   // 신한은행
+  static const String WOORIIcon = '${_bank}bankIcon_WOORI.svg'; // 우리은행
+  static const String HANAIcon = '${_bank}bankIcon_HANA.svg'; // 하나은행
+
+  static const String NHIcon = '${_bank}bankIcon_NH.svg';   // 농협은행 
+  static const String IBKIcon = '${_bank}bankIcon_IBK.svg'; // 기업은행
+  static const String KAKAOIcon = '${_bank}bankIcon_KAKAO.svg'; // 카카오뱅크
+  static const String KIcon = '${_bank}bankIcon_K.svg';         // 케이뱅크
+  static const String TOSSIcon = '${_bank}bankIcon_TOSS.png';   // 토스 
+
+  static const String BNKIcon = '${_bank}bankIcon_BNK.svg'; //부산/경남 은행 
+  static const String DGBIcon = '${_bank}bankIcon_DGB.svg'; // 대구 은행
+  static const String JBIcon = '${_bank}bankIcon_JB.svg';   // 광주/전북은행
+  static const String JJIcon = '${_bank}bankIcon_JJ.svg';   // 제주은행
+
+  static const String SUHUIcon = '${_bank}bankIcon_SUHUIcon .svg';   // 수협은행
+  static const String POSTIcon = '${_bank}bankIcon_POST.svg';   // 우체국
+  static const String SCIcon = '${_bank}bankIcon_SC.svg';       // SC제일은행
+  static const String CITIIcon = '${_bank}bankIcon_CITI.svg';   // 씨티은행
+  
 
   /// 환불 계좌 등 은행명 → 아이콘 경로
   static String? bankIconForName(String bankName) {
