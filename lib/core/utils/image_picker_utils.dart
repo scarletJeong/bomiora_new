@@ -40,9 +40,9 @@ class ImagePickerUtils {
                 Navigator.of(dialogContext).pop();
                 final XFile? image = await _picker.pickImage(
                   source: ImageSource.camera,
-                  imageQuality: 60,
-                  maxWidth: 1080,
-                  maxHeight: 1080,
+                  imageQuality: 50,
+                  maxWidth: 800,
+                  maxHeight: 800,
                 );
                 onImageSelected(image);
               },
@@ -53,9 +53,9 @@ class ImagePickerUtils {
                 Navigator.of(dialogContext).pop();
                 final XFile? image = await _picker.pickImage(
                   source: ImageSource.gallery,
-                  imageQuality: 60,
-                  maxWidth: 1080,
-                  maxHeight: 1080,
+                  imageQuality: 50,
+                  maxWidth: 800,
+                  maxHeight: 800,
                 );
                 onImageSelected(image);
               },
@@ -73,9 +73,9 @@ class ImagePickerUtils {
     try {
       return await _picker.pickImage(
         source: ImageSource.camera,
-        imageQuality: 60,
-        maxWidth: 1080,
-        maxHeight: 1080,
+        imageQuality: 50,
+        maxWidth: 800,
+        maxHeight: 800,
       );
     } catch (e) {
       return null;
@@ -175,9 +175,9 @@ class ImagePickerUtils {
     try {
       return await _picker.pickImage(
         source: ImageSource.gallery,
-        imageQuality: 60,
-        maxWidth: 1080,
-        maxHeight: 1080,
+        imageQuality: 50,
+        maxWidth: 800,
+        maxHeight: 800,
       );
     } catch (e) {
       return null;
