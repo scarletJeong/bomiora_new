@@ -6,6 +6,7 @@ import 'dart:math' as math;
 import 'package:image_picker/image_picker.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/btn_record.dart';
+import '../../../common/widgets/app_toast_overlay.dart';
 import '../../../common/chart_layout.dart';
 import '../../health_common/widgets/health_date_selector.dart';
 import '../../health_common/widgets/health_edit_bottom_sheet.dart';
@@ -595,9 +596,9 @@ class _WeightListScreenState extends State<WeightListScreen>
                           child: Container(
                             color: Colors.transparent,
                             alignment: Alignment.center,
-                    child: const CircularProgressIndicator(
-                      color: Color(0xFFFF5A8D),
-                    ),
+                            child: const CircularProgressIndicator(
+                              color: Color(0xFFFF5A8D),
+                            ),
                           ),
                         ),
                       ),
@@ -1842,6 +1843,14 @@ class _WeightListScreenState extends State<WeightListScreen>
 
   // 이미지 선택 및 업로드
   void _selectImage(String type, BuildContext anchorContext) {
+    if (selectedRecord?.frontImagePath != null &&
+        selectedRecord?.sideImagePath != null) {
+      AppToastOverlay.showAlert(
+        context,
+        '하루에 최대 2장까지 등록할 수 있습니다.',
+      );
+      return;
+    }
     try {
       ImagePickerUtils.showPhotoSourceDropdown(
         context: context,

@@ -17,6 +17,7 @@ import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/review_policy_footer.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../health/health_common/widgets/health_app_bar.dart';
+import '../../health/health_common/widgets/health_focus_outline_box.dart';
 
 /// 리뷰 작성 화면용 사진 슬롯 (기존 URL 또는 새로 고른 파일)
 class _ReviewDraftImage {
@@ -26,8 +27,7 @@ class _ReviewDraftImage {
   final String? serverPath;
   final Uint8List? previewBytes;
 
-  bool get isServer =>
-      serverPath != null && serverPath!.trim().isNotEmpty;
+  bool get isServer => serverPath != null && serverPath!.trim().isNotEmpty;
 }
 
 /// 일반 상품 리뷰 — 본문 `is_positive_review_text`, 별점 `total_is_score` 만 사용
@@ -53,7 +53,8 @@ class ReviewWriteGeneralScreen extends StatefulWidget {
   bool get _isEditMode => initialReview != null;
 
   @override
-  State<ReviewWriteGeneralScreen> createState() => _ReviewWriteGeneralScreenState();
+  State<ReviewWriteGeneralScreen> createState() =>
+      _ReviewWriteGeneralScreenState();
 }
 
 class _GeneralReviewDraft {
@@ -71,9 +72,11 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
 
   final _formKey = GlobalKey<FormState>();
   final _reviewController = TextEditingController();
+
   /// 0 = 만족도 미선택, 0.1~5(0.1 단위) = `total_is_score`
   double _score = 0;
   bool _isLoading = false;
+
   /// 카드 밖에 표시 (입력란 안에는 검증 문구 없음)
   String? _reviewBodyError;
   static const int _maxImages = 3;
@@ -90,16 +93,14 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
     if (selected != null && selected.isNotEmpty) return selected;
     final od = widget.orderDetail;
     if (od == null || od.products.isEmpty) return const [];
-    return od.products
-        .where((p) {
-          if (p.itId.trim().isEmpty) return false;
-          final parent = (p.parent ?? '').trim();
-          if (parent.isNotEmpty) return false;
-          final kind = (p.ctKind ?? '').toLowerCase().trim();
-          if (kind.startsWith('supply_add|')) return false;
-          return true;
-        })
-        .toList();
+    return od.products.where((p) {
+      if (p.itId.trim().isEmpty) return false;
+      final parent = (p.parent ?? '').trim();
+      if (parent.isNotEmpty) return false;
+      final kind = (p.ctKind ?? '').toLowerCase().trim();
+      if (kind.startsWith('supply_add|')) return false;
+      return true;
+    }).toList();
   }
 
   bool get _isMulti => !widget._isEditMode && _targetProducts.length > 1;
@@ -336,7 +337,7 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
   }
 
   void _showPhotoLimitToast() {
-    AppToastOverlay.show(context, '사진은 최대 3장까지 등록 가능합니다.');
+    AppToastOverlay.showAlert(context, '사진은 최대 3장까지 등록할 수 있습니다.');
   }
 
   void _openPhotoSourceDropdown(BuildContext anchorContext) {
@@ -397,7 +398,8 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
         .toList();
   }
 
-  Widget _draftImageThumb(BuildContext context, _ReviewDraftImage draft, double size) {
+  Widget _draftImageThumb(
+      BuildContext context, _ReviewDraftImage draft, double size) {
     if (draft.isServer) {
       final url = ImageUrlHelper.getImageUrl(draft.serverPath);
       return Image.network(
@@ -505,9 +507,7 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
         if (result['success'] == true) {
           AppToastOverlay.show(
             context,
-            (message != null && message.isNotEmpty)
-                ? message
-                : '리뷰가 수정되었습니다.',
+            (message != null && message.isNotEmpty) ? message : '리뷰가 수정되었습니다.',
           );
           Navigator.pop(context, true);
         } else {
@@ -549,8 +549,7 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
         if (paths.length !=
             imgs.where((d) => d.isServer || d.file != null).length) {
           if (mounted) {
-            AppToastOverlay.show(
-                context, '${i + 1}번 상품 이미지 업로드에 실패했습니다.');
+            AppToastOverlay.show(context, '${i + 1}번 상품 이미지 업로드에 실패했습니다.');
           }
           return;
         }
@@ -596,9 +595,7 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
       if (mounted) {
         AppToastOverlay.show(
           context,
-          widget._isEditMode
-              ? '리뷰 수정 중 오류가 발생했습니다.'
-              : '리뷰 작성 중 오류가 발생했습니다.',
+          widget._isEditMode ? '리뷰 수정 중 오류가 발생했습니다.' : '리뷰 작성 중 오류가 발생했습니다.',
         );
       }
     } finally {
@@ -613,11 +610,9 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
     final baseTheme = Theme.of(context);
     final gmarketTheme = baseTheme.copyWith(
       textTheme: baseTheme.textTheme.apply(fontFamily: _kFont),
-      primaryTextTheme:
-          baseTheme.primaryTextTheme.apply(fontFamily: _kFont),
+      primaryTextTheme: baseTheme.primaryTextTheme.apply(fontFamily: _kFont),
     );
-    final textScale =
-        healthTextScaleByWidth(MediaQuery.sizeOf(context).width);
+    final textScale = healthTextScaleByWidth(MediaQuery.sizeOf(context).width);
 
     return Theme(
       data: gmarketTheme,
@@ -707,9 +702,8 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
     final isLast = !_isMulti || _productIndex >= _targetProducts.length - 1;
     final isFirst = !_isMulti || _productIndex <= 0;
     final leftLabel = widget._isEditMode ? '취소' : '이전';
-    final rightLabel = widget._isEditMode
-        ? '수정'
-        : (_isMulti ? (isLast ? '완료' : '다음') : '완료');
+    final rightLabel =
+        widget._isEditMode ? '수정' : (_isMulti ? (isLast ? '완료' : '다음') : '완료');
 
     return SafeArea(
       top: false,
@@ -911,7 +905,8 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
     return fallback();
   }
 
-  Widget _productCard(BuildContext context, OrderItem? item, ReviewModel? edit) {
+  Widget _productCard(
+      BuildContext context, OrderItem? item, ReviewModel? edit) {
     if (item != null) {
       return Container(
         padding: EdgeInsets.symmetric(
@@ -931,27 +926,28 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
               child: SizedBox(
                 width: healthDp(context, 80),
                 height: healthDp(context, 80),
-                child: (item.imageUrl != null && item.imageUrl!.trim().isNotEmpty)
-                    ? Image.network(
-                        ImageUrlHelper.getImageUrl(item.imageUrl),
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
-                          color: const Color(0xFFE9E9E9),
-                          child: Icon(
-                            Icons.image_outlined,
-                            color: _kMuted,
-                            size: healthDp(context, 28),
+                child:
+                    (item.imageUrl != null && item.imageUrl!.trim().isNotEmpty)
+                        ? Image.network(
+                            ImageUrlHelper.getImageUrl(item.imageUrl),
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(
+                              color: const Color(0xFFE9E9E9),
+                              child: Icon(
+                                Icons.image_outlined,
+                                color: _kMuted,
+                                size: healthDp(context, 28),
+                              ),
+                            ),
+                          )
+                        : Container(
+                            color: const Color(0xFFE9E9E9),
+                            child: Icon(
+                              Icons.image_outlined,
+                              color: _kMuted,
+                              size: healthDp(context, 28),
+                            ),
                           ),
-                        ),
-                      )
-                    : Container(
-                        color: const Color(0xFFE9E9E9),
-                        child: Icon(
-                          Icons.image_outlined,
-                          color: _kMuted,
-                          size: healthDp(context, 28),
-                        ),
-                      ),
               ),
             ),
             SizedBox(width: healthDp(context, 20)),
@@ -969,7 +965,9 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
                   ),
                   SizedBox(height: healthDp(context, 10)),
                   Text(
-                    item.ctOption?.isNotEmpty == true ? item.ctOption! : '옵션 없음',
+                    item.ctOption?.isNotEmpty == true
+                        ? item.ctOption!
+                        : '옵션 없음',
                     style: TextStyle(
                       color: const Color(0xFF898383),
                       fontSize: healthSp(context, 10),
@@ -1070,24 +1068,21 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
   Widget _reviewInputBlock(BuildContext context) {
     final len = _reviewController.text.length;
     final meetsMin = len >= 20;
-    return Container(
+    return HealthFocusOutlineBox(
       height: healthDp(context, 120),
       padding: EdgeInsets.symmetric(
         horizontal: healthDp(context, 20),
         vertical: healthDp(context, 20),
       ),
-      decoration: ShapeDecoration(
-        color: Colors.white,
-        shape: RoundedRectangleBorder(
-          side: BorderSide(width: healthDp(context, 1), color: _kBorder),
-          borderRadius: BorderRadius.circular(healthDp(context, 7)),
-        ),
-      ),
-      child: Stack(
+      borderRadius: healthDp(context, 7),
+      fillColor: Colors.white,
+      builder: (focusNode) => Stack(
         children: [
           Positioned.fill(
             child: TextFormField(
               controller: _reviewController,
+              focusNode: focusNode,
+              textInputAction: TextInputAction.done,
               maxLines: null,
               expands: true,
               onChanged: (_) {
@@ -1119,6 +1114,7 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
                   bottom: healthDp(context, 14),
                 ),
               ),
+              onFieldSubmitted: (_) => focusNode.unfocus(),
             ),
           ),
           if (_reviewBodyError != null)
@@ -1150,9 +1146,7 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
                     color: _kPink,
                   )
                 : Text(
-                    len == 0
-                        ? '최소 20자 이상 작성'
-                        : '${20 - len}자 더 필요',
+                    len == 0 ? '최소 20자 이상 작성' : '${20 - len}자 더 필요',
                     style: TextStyle(
                       fontFamily: _kFont,
                       color: len == 0

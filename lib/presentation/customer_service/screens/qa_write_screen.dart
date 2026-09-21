@@ -75,7 +75,8 @@ class _QaWriteScreenState extends State<QaWriteScreen> {
       !_isLockedProduct && !_isEtcInquiry && _hasDetailType;
 
   bool get _showCompose =>
-      _isEtcInquiry || (_hasInquiryType && _hasDetailType && _hasSelectedProduct);
+      _isEtcInquiry ||
+      (_hasInquiryType && _hasDetailType && _hasSelectedProduct);
 
   bool get _isPhotoRequired =>
       (_selectedInquiryType ?? '').trim() == '배송' &&
@@ -226,20 +227,21 @@ class _QaWriteScreenState extends State<QaWriteScreen> {
 
   void _openPhotoSourceDropdown(BuildContext anchorContext, {int? slotIndex}) {
     if (!_isPhotoRequired && _images.length >= _maxImages) {
-      AppToastOverlay.show(context, '사진은 최대 3장까지 업로드할 수 있습니다.');
+      AppToastOverlay.showAlert(context, '사진은 최대 3장까지 업로드할 수 있습니다.');
       return;
     }
     ImagePickerUtils.showPhotoSourceDropdown(
       context: context,
       anchorContext: anchorContext,
-      onImageSelected: (image) => _applyPickedImage(image, slotIndex: slotIndex),
+      onImageSelected: (image) =>
+          _applyPickedImage(image, slotIndex: slotIndex),
     );
   }
 
   Future<void> _applyPickedImage(XFile? image, {int? slotIndex}) async {
     if (image == null || !mounted) return;
     if (!_isPhotoRequired && _images.length >= _maxImages) {
-      AppToastOverlay.show(context, '사진은 최대 3장까지 업로드할 수 있습니다.');
+      AppToastOverlay.showAlert(context, '사진은 최대 3장까지 업로드할 수 있습니다.');
       return;
     }
     try {
@@ -270,8 +272,7 @@ class _QaWriteScreenState extends State<QaWriteScreen> {
       primaryTextTheme:
           baseTheme.primaryTextTheme.apply(fontFamily: 'Gmarket Sans TTF'),
     );
-    final textScale =
-        healthTextScaleByWidth(MediaQuery.sizeOf(context).width);
+    final textScale = healthTextScaleByWidth(MediaQuery.sizeOf(context).width);
 
     return Theme(
       data: gmarketTheme,
@@ -377,9 +378,8 @@ class _QaWriteScreenState extends State<QaWriteScreen> {
                               SizedBox(width: healthDp(context, 10)),
                               Expanded(
                                 child: _LandingDropdown(
-                                  hint: _isEtcInquiry
-                                      ? '상세내용 선택없음'
-                                      : '상세 내용 선택',
+                                  hint:
+                                      _isEtcInquiry ? '상세내용 선택없음' : '상세 내용 선택',
                                   value: _isEtcInquiry
                                       ? null
                                       : _selectedDetailType,
@@ -540,7 +540,7 @@ class _QaWriteScreenState extends State<QaWriteScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-            const _SectionTitle(label: '문의내용', fontSize: 15),
+        const _SectionTitle(label: '문의내용', fontSize: 15),
         SizedBox(height: healthDp(context, 5)),
         Container(
           width: double.infinity,
@@ -571,8 +571,7 @@ class _QaWriteScreenState extends State<QaWriteScreen> {
                     isDense: true,
                     border: InputBorder.none,
                     counterText: '',
-                    hintText:
-                        '문의하실 내용을 구체적으로 적어주시면\n정확하고 빠른 답변이 가능합니다.',
+                    hintText: '문의하실 내용을 구체적으로 적어주시면\n정확하고 빠른 답변이 가능합니다.',
                     hintStyle: TextStyle(
                       color: const Color(0x7F1B1B1B),
                       fontSize: healthSp(context, 14),

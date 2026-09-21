@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../common/widgets/keyboard_aware_form_body.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/login_required_dialog.dart';
+import '../../../common/widgets/app_toast_overlay.dart';
 import '../../health_common/health_input_complete.dart';
 import '../../health_common/health_responsive_scale.dart';
 import '../../health_common/widgets/health_app_bar.dart';
@@ -844,6 +845,13 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
 
   // 이미지 선택
   void _selectImage(String type, BuildContext anchorContext) {
+    if (_frontImagePath != null && _sideImagePath != null) {
+      AppToastOverlay.showAlert(
+        context,
+        '하루에 최대 2장까지 등록할 수 있습니다.',
+      );
+      return;
+    }
     try {
       ImagePickerUtils.showPhotoSourceDropdown(
         context: context,

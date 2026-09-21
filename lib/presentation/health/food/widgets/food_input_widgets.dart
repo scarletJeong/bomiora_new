@@ -9,6 +9,7 @@ import '../../../../core/constants/app_assets.dart';
 import '../../../../core/utils/image_picker_utils.dart';
 import '../../../../core/utils/image_url_helper.dart';
 import '../../../../data/repositories/health/food/food_repository.dart';
+import '../../../common/widgets/app_toast_overlay.dart';
 import '../../../common/widgets/dropdown_btn.dart';
 import '../../health_common/health_responsive_scale.dart';
 import '../../health_common/widgets/health_delete_popup.dart';
@@ -143,8 +144,10 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
     try {
       String? recordId = widget.foodRecordId;
       if (recordId.isEmpty) {
-        final records = await FoodRepository.getRecordsForDate(widget.mbId, widget.selectedDate);
-        final foodTime = FoodRepository.foodTimeFromMealKey(widget.mealKey).toLowerCase();
+        final records = await FoodRepository.getRecordsForDate(
+            widget.mbId, widget.selectedDate);
+        final foodTime =
+            FoodRepository.foodTimeFromMealKey(widget.mealKey).toLowerCase();
         for (final r in records) {
           if ((r.foodTime ?? '').toLowerCase() == foodTime) {
             recordId = r.id;
@@ -167,7 +170,8 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
       final sw = Stopwatch()..start();
       final ok = await FoodRepository.addItemToRecord(recordId, item);
       sw.stop();
-      debugPrint('[FoodInput] addItemToRecord took ${sw.elapsedMilliseconds}ms');
+      debugPrint(
+          '[FoodInput] addItemToRecord took ${sw.elapsedMilliseconds}ms');
 
       if (mounted) {
         if (ok) {
@@ -196,6 +200,13 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
 
   void _openPhotoSourceDropdown(BuildContext anchorContext) async {
     if (_isUploadingPhoto) return;
+    if (_localImagePaths.length >= FoodRepository.maxMealImages) {
+      AppToastOverlay.showAlert(
+        context,
+        '한 식사 기록에는 사진을 최대 3장까지 등록할 수 있습니다.',
+      );
+      return;
+    }
     FocusManager.instance.primaryFocus?.unfocus();
 
     final itemPadding = EdgeInsets.symmetric(
@@ -260,8 +271,7 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
       ...paths.sublist(0, index),
       ...paths.sublist(index + 1),
     ];
-    final ok =
-        await FoodRepository.updateRecordImagePaths(recordId, reordered);
+    final ok = await FoodRepository.updateRecordImagePaths(recordId, reordered);
     if (!mounted) return;
     if (ok) {
       setState(() => _localImagePaths = _sanitizeImagePaths(reordered));
@@ -313,11 +323,18 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
       if (imageUrl == null) return;
 
       final current = List<String>.from(_localImagePaths);
-      if (current.length >= FoodRepository.maxMealImages) return;
+      if (current.length >= FoodRepository.maxMealImages) {
+        if (mounted) {
+          AppToastOverlay.showAlert(
+            context,
+            '한 식사 기록에는 사진을 최대 3장까지 등록할 수 있습니다.',
+          );
+        }
+        return;
+      }
 
       final updated = [...current, imageUrl];
-      final ok =
-          await FoodRepository.updateRecordImagePaths(recordId, updated);
+      final ok = await FoodRepository.updateRecordImagePaths(recordId, updated);
       if (!mounted) return;
       if (ok) {
         setState(() => _localImagePaths = _sanitizeImagePaths(updated));
@@ -328,7 +345,8 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
     }
   }
 
-  Future<void> _deleteItem(BuildContext context, String foodRecordId, String itemId, String foodName) async {
+  Future<void> _deleteItem(BuildContext context, String foodRecordId,
+      String itemId, String foodName) async {
     final confirmed = await showHealthDeletePopup(
       context: context,
       title: '음식 삭제',
@@ -375,7 +393,8 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
     return false;
   }
 
-  List<String> _mergeImagePathLists(List<String> primary, List<String> secondary) {
+  List<String> _mergeImagePathLists(
+      List<String> primary, List<String> secondary) {
     final seen = <String>{};
     final out = <String>[];
     for (final list in [primary, secondary]) {
@@ -537,7 +556,8 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
               ),
             ),
           ),
-        ] else if (_searchController.text.trim().isNotEmpty && _results.isEmpty) ...[
+        ] else if (_searchController.text.trim().isNotEmpty &&
+            _results.isEmpty) ...[
           SizedBox(height: healthDp(context, 3)),
           Container(
             padding: EdgeInsets.symmetric(vertical: healthDp(context, 12)),
@@ -582,7 +602,8 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
               itemBuilder: (context, i) {
                 if (i >= _results.length) {
                   return Padding(
-                    padding: EdgeInsets.symmetric(vertical: healthDp(context, 10)),
+                    padding:
+                        EdgeInsets.symmetric(vertical: healthDp(context, 10)),
                     child: Center(
                       child: SizedBox(
                         width: healthDp(context, 18),
@@ -612,9 +633,8 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
             final item = widget.addedItems[i];
             return Padding(
               padding: EdgeInsets.only(
-                bottom: i < widget.addedItems.length - 1
-                    ? healthDp(context, 6)
-                    : 0,
+                bottom:
+                    i < widget.addedItems.length - 1 ? healthDp(context, 6) : 0,
               ),
               child: AddedFoodCard(
                 name: item.foodName,
@@ -622,14 +642,15 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
                 desc: item.desc,
                 itemId: item.itemId,
                 foodRecordId: widget.foodRecordId,
-                onDelete: widget.foodRecordId.isNotEmpty && item.itemId.isNotEmpty
-                    ? () => _deleteItem(
-                          context,
-                          widget.foodRecordId,
-                          item.itemId,
-                          item.foodName,
-                        )
-                    : null,
+                onDelete:
+                    widget.foodRecordId.isNotEmpty && item.itemId.isNotEmpty
+                        ? () => _deleteItem(
+                              context,
+                              widget.foodRecordId,
+                              item.itemId,
+                              item.foodName,
+                            )
+                        : null,
               ),
             );
           }),
@@ -660,7 +681,8 @@ class AddedFoodCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final noScale = MediaQuery.of(context).copyWith(textScaler: TextScaler.noScaling);
+    final noScale =
+        MediaQuery.of(context).copyWith(textScaler: TextScaler.noScaling);
     return Container(
       width: double.infinity,
       padding: EdgeInsets.all(healthDp(context, 10)),
@@ -860,7 +882,8 @@ class SearchResultCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final noScale = MediaQuery.of(context).copyWith(textScaler: TextScaler.noScaling);
+    final noScale =
+        MediaQuery.of(context).copyWith(textScaler: TextScaler.noScaling);
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
@@ -961,8 +984,8 @@ class MacroLegend extends StatelessWidget {
         ),
         SizedBox(width: healthDp(context, 3)),
         MediaQuery(
-          data: MediaQuery.of(context)
-              .copyWith(textScaler: TextScaler.noScaling),
+          data:
+              MediaQuery.of(context).copyWith(textScaler: TextScaler.noScaling),
           child: Text(
             label,
             style: TextStyle(
@@ -1010,17 +1033,13 @@ class _MealPhotoStrip extends StatelessWidget {
           scrollDirection: Axis.horizontal,
           child: Row(
             children: [
-              if (paths.length < FoodRepository.maxMealImages)
-                _MealPhotoAddTile(
-                  size: tile,
-                  isUploading: isUploading,
-                  onTap: isUploading
-                      ? null
-                      : () => onAddTap(anchorContext),
-                ),
+              _MealPhotoAddTile(
+                size: tile,
+                isUploading: isUploading,
+                onTap: isUploading ? null : () => onAddTap(anchorContext),
+              ),
               for (var i = 0; i < paths.length; i++) ...[
-                if (i > 0 || paths.length < FoodRepository.maxMealImages)
-                  SizedBox(width: gap),
+                SizedBox(width: gap),
                 _MealPhotoThumbnail(
                   size: tile,
                   imagePath: paths[i],
