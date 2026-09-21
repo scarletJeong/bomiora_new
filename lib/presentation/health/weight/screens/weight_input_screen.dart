@@ -8,10 +8,12 @@ import 'package:image_picker/image_picker.dart';
 import '../../../common/widgets/keyboard_aware_form_body.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/login_required_dialog.dart';
+import '../../health_common/health_input_complete.dart';
 import '../../health_common/health_responsive_scale.dart';
 import '../../health_common/widgets/health_app_bar.dart';
 import '../../health_common/widgets/health_delete_popup.dart';
 import '../../health_common/widgets/health_date_selector.dart';
+import '../../health_common/widgets/health_focus_outline_box.dart';
 import '../../../../data/models/health/weight/weight_record_model.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/repositories/health/weight/weight_repository.dart';
@@ -42,6 +44,8 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
   final _weightController = TextEditingController();
   final _heightController = TextEditingController();
   final _notesController = TextEditingController();
+  final _heightFocus = FocusNode();
+  final _weightFocus = FocusNode();
 
   DateTime _selectedDateTime = DateTime.now();
   double? _calculatedBMI;
@@ -155,7 +159,21 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
     }
   }
 
+  bool get _isFormComplete {
+    final height = double.tryParse(_heightController.text.trim());
+    final weight = double.tryParse(_weightController.text.trim());
+    return height != null &&
+        height > 0 &&
+        height <= 250 &&
+        weight != null &&
+        weight > 0;
+  }
+
   Future<void> _save() async {
+    if (!_isFormComplete) {
+      HealthInputComplete.showRequiredToast(context);
+      return;
+    }
     if (!_formKey.currentState!.validate()) return;
 
     final now = DateTime.now();
@@ -275,6 +293,8 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
     _weightController.dispose();
     _heightController.dispose();
     _notesController.dispose();
+    _heightFocus.dispose();
+    _weightFocus.dispose();
     super.dispose();
   }
 
@@ -421,12 +441,16 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
           controller: _heightController,
           hintText: '예: 170',
           suffixText: 'cm',
+          focusNode: _heightFocus,
+          textInputAction: TextInputAction.next,
+          onFieldSubmitted: (_) => _weightFocus.requestFocus(),
           validator: (value) {
-            if (value != null && value.isNotEmpty) {
-              final height = double.tryParse(value);
-              if (height == null || height <= 0 || height > 250) {
-                return '올바른 키를 입력해주세요 (0~250cm)';
-              }
+            if (value == null || value.isEmpty) {
+              return '키를 입력해주세요';
+            }
+            final height = double.tryParse(value);
+            if (height == null || height <= 0 || height > 250) {
+              return '올바른 키를 입력해주세요 (0~250cm)';
             }
             return null;
           },
@@ -446,6 +470,9 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
           hintText: '예: 65.5',
           compactHint: true,
           suffixText: 'kg',
+          focusNode: _weightFocus,
+          textInputAction: TextInputAction.done,
+          onFieldSubmitted: (_) => _weightFocus.unfocus(),
           validator: (value) {
             if (value == null || value.isEmpty) {
               return '체중을 입력해주세요';
@@ -567,51 +594,61 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
     required String? Function(String?) validator,
     String? suffixText,
     bool compactHint = false,
+    FocusNode? focusNode,
+    TextInputAction textInputAction = TextInputAction.done,
+    ValueChanged<String>? onFieldSubmitted,
   }) {
-    return _buildFixedHeightFieldBox(
-      child: TextFormField(
-        controller: controller,
-        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-        inputFormatters: [
-          FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
-        ],
-        validator: validator,
-        textAlignVertical: const TextAlignVertical(y: 0.45),
-        style: const TextStyle(
-          color: Color(0xFF1A1A1A),
-          fontSize: 16,
-          height: 1.0,
-          fontFamily: 'Gmarket Sans TTF',
-          fontWeight: FontWeight.w300,
-        ),
-        decoration: InputDecoration(
-          hintText: hintText,
-          hintStyle: TextStyle(
-            color:
-                compactHint ? const Color(0xFFB7B7B7) : const Color(0xFF1A1A1A),
-            fontSize: compactHint ? 12 : 16,
+    return HealthFocusOutlineBox(
+      focusNode: focusNode,
+      builder: (node) {
+        return TextFormField(
+          controller: controller,
+          focusNode: node,
+          textInputAction: textInputAction,
+          onFieldSubmitted: onFieldSubmitted,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          inputFormatters: [
+            FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
+          ],
+          validator: validator,
+          textAlignVertical: const TextAlignVertical(y: 0.45),
+          style: const TextStyle(
+            color: Color(0xFF1A1A1A),
+            fontSize: 16,
             height: 1.0,
             fontFamily: 'Gmarket Sans TTF',
-            fontWeight: compactHint ? FontWeight.w300 : FontWeight.w500,
+            fontWeight: FontWeight.w300,
           ),
-          suffixText: suffixText,
-          suffixStyle: const TextStyle(
-            color: Color(0xFF7C7C7C),
-            fontSize: 14,
-            height: 1.0,
-            fontFamily: 'Gmarket Sans TTF',
-            fontWeight: FontWeight.w400,
+          decoration: InputDecoration(
+            hintText: hintText,
+            hintStyle: TextStyle(
+              color: compactHint
+                  ? const Color(0xFFB7B7B7)
+                  : const Color(0xFF1A1A1A),
+              fontSize: compactHint ? 12 : 16,
+              height: 1.0,
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: compactHint ? FontWeight.w300 : FontWeight.w500,
+            ),
+            suffixText: suffixText,
+            suffixStyle: const TextStyle(
+              color: Color(0xFF7C7C7C),
+              fontSize: 14,
+              height: 1.0,
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w400,
+            ),
+            border: InputBorder.none,
+            enabledBorder: InputBorder.none,
+            focusedBorder: InputBorder.none,
+            errorBorder: InputBorder.none,
+            focusedErrorBorder: InputBorder.none,
+            isDense: true,
+            contentPadding: EdgeInsets.zero,
+            isCollapsed: true,
           ),
-          border: InputBorder.none,
-          enabledBorder: InputBorder.none,
-          focusedBorder: InputBorder.none,
-          errorBorder: InputBorder.none,
-          focusedErrorBorder: InputBorder.none,
-          isDense: true,
-          contentPadding: EdgeInsets.zero,
-          isCollapsed: true,
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -652,7 +689,10 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
             child: ElevatedButton(
               onPressed: _isSaving ? null : _save,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFF5A8D),
+                backgroundColor: _isFormComplete
+                    ? HealthInputComplete.activeColor
+                    : HealthInputComplete.inactiveColor,
+                disabledBackgroundColor: HealthInputComplete.inactiveColor,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(healthDp(context, 10)),

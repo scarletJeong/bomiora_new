@@ -9,8 +9,10 @@ import '../../../../core/health/health_refresh_bus.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../common/widgets/keyboard_aware_form_body.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
+import '../../health_common/health_input_complete.dart';
 import '../../health_common/health_responsive_scale.dart';
 import '../../health_common/widgets/health_app_bar.dart';
+import '../../health_common/widgets/health_focus_outline_box.dart';
 
 class HealthGoalScreen extends StatefulWidget {
   const HealthGoalScreen({super.key});
@@ -31,6 +33,8 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
       TextEditingController();
   final TextEditingController _targetWeightController =
       TextEditingController();
+  final FocusNode _currentWeightFocus = FocusNode();
+  final FocusNode _targetWeightFocus = FocusNode();
   late final FixedExtentScrollController _stepsWheelController;
 
   int _selectedSteps = 6000;
@@ -89,7 +93,22 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
     _stepsWheelController = FixedExtentScrollController(
       initialItem: _indexFromSteps(_selectedSteps),
     );
+    _currentWeightController.addListener(_onFieldsChanged);
+    _targetWeightController.addListener(_onFieldsChanged);
     _loadLatestGoal();
+  }
+
+  void _onFieldsChanged() {
+    if (mounted) setState(() {});
+  }
+
+  bool get _isFormComplete {
+    final current = _parseWeightField(_currentWeightController.text);
+    final target = _parseWeightField(_targetWeightController.text);
+    return current != null &&
+        current > 0 &&
+        target != null &&
+        target > 0;
   }
 
   Future<void> _loadLatestGoal() async {
@@ -142,6 +161,11 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
   }
 
   Future<void> _onRegister() async {
+    if (!_isFormComplete) {
+      HealthInputComplete.showRequiredToast(context);
+      return;
+    }
+
     final user = await AuthService.getUser();
     final mbId = user?.id;
     if (mbId == null || mbId.isEmpty) {
@@ -180,6 +204,8 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
   void dispose() {
     _currentWeightController.dispose();
     _targetWeightController.dispose();
+    _currentWeightFocus.dispose();
+    _targetWeightFocus.dispose();
     _stepsWheelController.dispose();
     super.dispose();
   }
@@ -227,6 +253,10 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
                       title: '현재 체중(kg)',
                       hint: '몸무게를 입력해주세요.',
                       controller: _currentWeightController,
+                      focusNode: _currentWeightFocus,
+                      textInputAction: TextInputAction.next,
+                      onFieldSubmitted: (_) =>
+                          _targetWeightFocus.requestFocus(),
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                       ),
@@ -236,6 +266,9 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
                       title: '목표 체중(kg)',
                       hint: '몸무게를 입력해주세요.',
                       controller: _targetWeightController,
+                      focusNode: _targetWeightFocus,
+                      textInputAction: TextInputAction.done,
+                      onFieldSubmitted: (_) => _targetWeightFocus.unfocus(),
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                       ),
@@ -252,8 +285,11 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
                     ),
                     child: Material(
                       color: _submitting
-                          ? const Color(0xFFFF5A8D).withValues(alpha: 0.5)
-                          : const Color(0xFFFF5A8D),
+                          ? HealthInputComplete.activeColor
+                              .withValues(alpha: 0.5)
+                          : (_isFormComplete
+                              ? HealthInputComplete.activeColor
+                              : HealthInputComplete.inactiveColor),
                       child: InkWell(
                         onTap: _submitting ? null : _onRegister,
                         child: Padding(
@@ -390,6 +426,9 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
     required String hint,
     required TextEditingController controller,
     TextInputType? keyboardType,
+    FocusNode? focusNode,
+    TextInputAction? textInputAction,
+    ValueChanged<String>? onFieldSubmitted,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -409,6 +448,9 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
           controller: controller,
           hint: hint,
           keyboardType: keyboardType,
+          focusNode: focusNode,
+          textInputAction: textInputAction,
+          onFieldSubmitted: onFieldSubmitted,
         ),
       ],
     );
@@ -421,60 +463,59 @@ class _GoalTextField extends StatelessWidget {
     required this.controller,
     required this.hint,
     this.keyboardType,
+    this.focusNode,
+    this.textInputAction,
+    this.onFieldSubmitted,
   });
 
   final TextEditingController controller;
   final String hint;
   final TextInputType? keyboardType;
+  final FocusNode? focusNode;
+  final TextInputAction? textInputAction;
+  final ValueChanged<String>? onFieldSubmitted;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: healthDp(context, 40),
-      padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
-      alignment: Alignment.centerLeft,
-      clipBehavior: Clip.none,
-      decoration: ShapeDecoration(
-        shape: RoundedRectangleBorder(
-          side: BorderSide(
-            width: healthDp(context, 1),
-            color: const Color(0x7FD2D2D2),
+    return HealthFocusOutlineBox(
+      focusNode: focusNode,
+      builder: (node) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            textScaler: TextScaler.noScaling,
           ),
-          borderRadius: BorderRadius.circular(healthDp(context, 7)),
-        ),
-      ),
-      child: MediaQuery(
-        data: MediaQuery.of(context).copyWith(
-          textScaler: TextScaler.noScaling,
-        ),
-        child: TextFormField(
-          controller: controller,
-          keyboardType: keyboardType,
-          textAlignVertical: TextAlignVertical.center,
-          style: TextStyle(
-            color: const Color(0xFF1A1A1A),
-            fontSize: healthSp(context, 16),
-            height: 1.0,
-            fontFamily: 'Gmarket Sans TTF',
-            fontWeight: FontWeight.w400,
-          ),
-          decoration: InputDecoration(
-            hintText: hint,
-            hintStyle: TextStyle(
-              color: const Color(0xFF898383),
+          child: TextFormField(
+            controller: controller,
+            focusNode: node,
+            keyboardType: keyboardType,
+            textInputAction: textInputAction,
+            onFieldSubmitted: onFieldSubmitted,
+            textAlignVertical: TextAlignVertical.center,
+            style: TextStyle(
+              color: const Color(0xFF1A1A1A),
               fontSize: healthSp(context, 16),
               height: 1.0,
               fontFamily: 'Gmarket Sans TTF',
-              fontWeight: FontWeight.w300,
+              fontWeight: FontWeight.w400,
             ),
-            border: InputBorder.none,
-            isDense: true,
-            contentPadding: EdgeInsets.only(
-              bottom: healthDp(context, 2),
+            decoration: InputDecoration(
+              hintText: hint,
+              hintStyle: TextStyle(
+                color: const Color(0xFF898383),
+                fontSize: healthSp(context, 16),
+                height: 1.0,
+                fontFamily: 'Gmarket Sans TTF',
+                fontWeight: FontWeight.w300,
+              ),
+              border: InputBorder.none,
+              isDense: true,
+              contentPadding: EdgeInsets.only(
+                bottom: healthDp(context, 2),
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

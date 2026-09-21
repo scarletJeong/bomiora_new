@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import '../../health_common/health_input_complete.dart';
 import '../../health_common/health_responsive_scale.dart';
 import '../../health_common/widgets/health_app_bar.dart';
 import '../../health_common/widgets/health_delete_popup.dart';
 import '../../health_common/widgets/health_date_selector.dart';
+import '../../health_common/widgets/health_focus_outline_box.dart';
 import '../../../common/widgets/keyboard_aware_form_body.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/login_required_dialog.dart';
@@ -34,6 +36,7 @@ class BloodSugarInputScreen extends StatefulWidget {
 class _BloodSugarInputScreenState extends State<BloodSugarInputScreen> {
   final _formKey = GlobalKey<FormState>();
   final _bloodSugarController = TextEditingController();
+  final _bloodSugarFocus = FocusNode();
 
   DateTime _selectedDateTime = DateTime.now();
   String _selectedMeasurementType = '공복';
@@ -64,7 +67,16 @@ class _BloodSugarInputScreenState extends State<BloodSugarInputScreen> {
             healthDefaultNewRecordDateTime(widget.recordContextDate!);
       }
     }
+    _bloodSugarController.addListener(_onFieldsChanged);
   }
+
+  void _onFieldsChanged() {
+    if (mounted) setState(() {});
+  }
+
+  bool get _isFormComplete =>
+      int.tryParse(_bloodSugarController.text.trim()) != null &&
+      _selectedMeasurementType.trim().isNotEmpty;
 
   Future<void> _selectDate() async {
     final latest = DateTime.now();
@@ -110,6 +122,10 @@ class _BloodSugarInputScreenState extends State<BloodSugarInputScreen> {
   }
 
   Future<void> _save() async {
+    if (!_isFormComplete) {
+      HealthInputComplete.showRequiredToast(context);
+      return;
+    }
     if (!_formKey.currentState!.validate()) return;
 
     final now = DateTime.now();
@@ -236,6 +252,7 @@ class _BloodSugarInputScreenState extends State<BloodSugarInputScreen> {
   @override
   void dispose() {
     _bloodSugarController.dispose();
+    _bloodSugarFocus.dispose();
     super.dispose();
   }
 
@@ -440,55 +457,50 @@ class _BloodSugarInputScreenState extends State<BloodSugarInputScreen> {
           ),
         ),
         SizedBox(height: healthDp(context, 10)),
-        Container(
-          height: healthDp(context, 40),
-          padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
-          decoration: ShapeDecoration(
-            shape: RoundedRectangleBorder(
-              side: BorderSide(
-                width: healthDp(context, 1),
-                color: const Color(0x7FD2D2D2),
-              ),
-              borderRadius: BorderRadius.circular(healthDp(context, 7)),
-            ),
-          ),
-          child: TextFormField(
-            controller: _bloodSugarController,
-            keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return '혈당 수치를 입력해주세요';
-              }
-              final bloodSugar = int.tryParse(value);
-              if (bloodSugar == null || bloodSugar < 20 || bloodSugar > 600) {
-                return '올바른 혈당 수치를 입력해주세요 (20~600mg/dL)';
-              }
-              return null;
-            },
-            textAlignVertical: const TextAlignVertical(y: 0.45),
-            style: TextStyle(
-              color: const Color(0xFF1A1A1A),
-              fontSize: 16,
-              fontFamily: 'Gmarket Sans TTF',
-              fontWeight: FontWeight.w300,
-            ),
-            decoration: InputDecoration(
-              hintText: '수치를 입력하세요',
-              hintStyle: TextStyle(
+        HealthFocusOutlineBox(
+          focusNode: _bloodSugarFocus,
+          builder: (node) {
+            return TextFormField(
+              controller: _bloodSugarController,
+              focusNode: node,
+              textInputAction: TextInputAction.done,
+              onFieldSubmitted: (_) => _bloodSugarFocus.unfocus(),
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return '혈당 수치를 입력해주세요';
+                }
+                final bloodSugar = int.tryParse(value);
+                if (bloodSugar == null || bloodSugar < 20 || bloodSugar > 600) {
+                  return '올바른 혈당 수치를 입력해주세요 (20~600mg/dL)';
+                }
+                return null;
+              },
+              textAlignVertical: const TextAlignVertical(y: 0.45),
+              style: TextStyle(
                 color: const Color(0xFF1A1A1A),
                 fontSize: 16,
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: FontWeight.w300,
               ),
-              border: InputBorder.none,
-              isDense: true,
-              contentPadding: EdgeInsets.only(
-                top: healthDp(context, 8),
-                bottom: healthDp(context, 1),
+              decoration: InputDecoration(
+                hintText: '수치를 입력하세요',
+                hintStyle: TextStyle(
+                  color: const Color(0xFF1A1A1A),
+                  fontSize: 16,
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w300,
+                ),
+                border: InputBorder.none,
+                isDense: true,
+                contentPadding: EdgeInsets.only(
+                  top: healthDp(context, 8),
+                  bottom: healthDp(context, 1),
+                ),
               ),
-            ),
-          ),
+            );
+          },
         ),
       ],
     );
@@ -537,7 +549,10 @@ class _BloodSugarInputScreenState extends State<BloodSugarInputScreen> {
             child: ElevatedButton(
               onPressed: _isSaving ? null : _save,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFF5A8D),
+                backgroundColor: _isFormComplete
+                    ? HealthInputComplete.activeColor
+                    : HealthInputComplete.inactiveColor,
+                disabledBackgroundColor: HealthInputComplete.inactiveColor,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(healthDp(context, 10)),

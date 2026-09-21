@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import '../../health_common/health_input_complete.dart';
 import '../../health_common/health_responsive_scale.dart';
 import '../../health_common/widgets/health_app_bar.dart';
 import '../../health_common/widgets/health_delete_popup.dart';
 import '../../health_common/widgets/health_date_selector.dart';
+import '../../health_common/widgets/health_focus_outline_box.dart';
 import '../../../common/widgets/keyboard_aware_form_body.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/login_required_dialog.dart';
@@ -31,6 +33,9 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
   final _systolicController = TextEditingController();
   final _diastolicController = TextEditingController();
   final _pulseController = TextEditingController();
+  final _systolicFocus = FocusNode();
+  final _diastolicFocus = FocusNode();
+  final _pulseFocus = FocusNode();
 
   DateTime _selectedDateTime = DateTime.now();
   bool _isSaving = false;
@@ -49,6 +54,20 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
       _selectedDateTime =
           healthDefaultNewRecordDateTime(widget.recordContextDate!);
     }
+    _systolicController.addListener(_onFieldsChanged);
+    _diastolicController.addListener(_onFieldsChanged);
+    _pulseController.addListener(_onFieldsChanged);
+  }
+
+  void _onFieldsChanged() {
+    if (mounted) setState(() {});
+  }
+
+  bool get _isFormComplete {
+    final systolic = int.tryParse(_systolicController.text.trim());
+    final diastolic = int.tryParse(_diastolicController.text.trim());
+    final pulse = int.tryParse(_pulseController.text.trim());
+    return systolic != null && diastolic != null && pulse != null;
   }
 
   Future<void> _selectDate() async {
@@ -95,6 +114,10 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
   }
 
   Future<void> _save() async {
+    if (!_isFormComplete) {
+      HealthInputComplete.showRequiredToast(context);
+      return;
+    }
     if (!_formKey.currentState!.validate()) return;
 
     final now = DateTime.now();
@@ -210,6 +233,9 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
     _systolicController.dispose();
     _diastolicController.dispose();
     _pulseController.dispose();
+    _systolicFocus.dispose();
+    _diastolicFocus.dispose();
+    _pulseFocus.dispose();
     super.dispose();
   }
 
@@ -367,6 +393,9 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
       label: '수축기(mmHg)',
       controller: _systolicController,
       hintText: '수치를 입력하세요',
+      focusNode: _systolicFocus,
+      textInputAction: TextInputAction.next,
+      onFieldSubmitted: (_) => _diastolicFocus.requestFocus(),
       validator: (value) {
         if (value == null || value.isEmpty) {
           return '수축기 혈압을 입력해주세요';
@@ -385,6 +414,9 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
     required TextEditingController controller,
     required String hintText,
     required String? Function(String?) validator,
+    FocusNode? focusNode,
+    TextInputAction textInputAction = TextInputAction.done,
+    ValueChanged<String>? onFieldSubmitted,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -399,46 +431,41 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
           ),
         ),
         SizedBox(height: healthDp(context, 5)),
-        Container(
-          height: healthDp(context, 40),
-          padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
-          decoration: ShapeDecoration(
-            shape: RoundedRectangleBorder(
-              side: BorderSide(
-                width: healthDp(context, 1),
-                color: const Color(0x7FD2D2D2),
-              ),
-              borderRadius: BorderRadius.circular(healthDp(context, 7)),
-            ),
-          ),
-          child: TextFormField(
-            controller: controller,
-            keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            validator: validator,
-            textAlignVertical: const TextAlignVertical(y: 0.45),
-            style: TextStyle(
-              color: const Color(0xFF1A1A1A),
-              fontSize: 16,
-              fontFamily: 'Gmarket Sans TTF',
-              fontWeight: FontWeight.w300,
-            ),
-            decoration: InputDecoration(
-              hintText: hintText,
-              hintStyle: TextStyle(
+        HealthFocusOutlineBox(
+          focusNode: focusNode,
+          builder: (node) {
+            return TextFormField(
+              controller: controller,
+              focusNode: node,
+              textInputAction: textInputAction,
+              onFieldSubmitted: onFieldSubmitted,
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              validator: validator,
+              textAlignVertical: const TextAlignVertical(y: 0.45),
+              style: TextStyle(
                 color: const Color(0xFF1A1A1A),
                 fontSize: 16,
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: FontWeight.w300,
               ),
-              border: InputBorder.none,
-              isDense: true,
-              contentPadding: EdgeInsets.only(
-                top: healthDp(context, 8),
-                bottom: healthDp(context, 1),
+              decoration: InputDecoration(
+                hintText: hintText,
+                hintStyle: TextStyle(
+                  color: const Color(0xFF1A1A1A),
+                  fontSize: 16,
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w300,
+                ),
+                border: InputBorder.none,
+                isDense: true,
+                contentPadding: EdgeInsets.only(
+                  top: healthDp(context, 8),
+                  bottom: healthDp(context, 1),
+                ),
               ),
-            ),
-          ),
+            );
+          },
         ),
       ],
     );
@@ -449,6 +476,9 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
       label: '이완기(mmHg)',
       controller: _diastolicController,
       hintText: '수치를 입력하세요',
+      focusNode: _diastolicFocus,
+      textInputAction: TextInputAction.next,
+      onFieldSubmitted: (_) => _pulseFocus.requestFocus(),
       validator: (value) {
         if (value == null || value.isEmpty) {
           return '이완기 혈압을 입력해주세요';
@@ -467,6 +497,9 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
       label: '심박수(bpm)',
       controller: _pulseController,
       hintText: '수치를 입력하세요',
+      focusNode: _pulseFocus,
+      textInputAction: TextInputAction.done,
+      onFieldSubmitted: (_) => _pulseFocus.unfocus(),
       validator: (value) {
         if (value == null || value.isEmpty) {
           return '심박수를 입력해주세요';
@@ -517,7 +550,10 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
             child: ElevatedButton(
               onPressed: _isSaving ? null : _save,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFF5A8D),
+                backgroundColor: _isFormComplete
+                    ? HealthInputComplete.activeColor
+                    : HealthInputComplete.inactiveColor,
+                disabledBackgroundColor: HealthInputComplete.inactiveColor,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(healthDp(context, 10)),

@@ -6,9 +6,11 @@ import 'package:intl/intl.dart';
 import '../../../common/widgets/keyboard_aware_form_body.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/login_required_dialog.dart';
+import '../../health_common/health_input_complete.dart';
 import '../../health_common/health_responsive_scale.dart';
 import '../../health_common/widgets/health_app_bar.dart';
 import '../../health_common/widgets/health_date_selector.dart';
+import '../../health_common/widgets/health_focus_outline_box.dart';
 import '../widgets/health_year_month_picker_dialog.dart';
 import '../../../../data/models/health/menstrual_cycle/menstrual_cycle_model.dart';
 import '../../../../data/repositories/health/menstrual_cycle/menstrual_cycle_repository.dart';
@@ -32,6 +34,7 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
   int _cycleLength = 28;
   bool _isLoading = false;
   late final TextEditingController _cycleLengthController;
+  final FocusNode _cycleLengthFocus = FocusNode();
   List<MenstrualCycleRecord> _historyRecords = const [];
 
   /// 달력에서 이력 범위를 탭해 고른 행(또는 화면 진입 시 existing). 저장 시 이 id로 update.
@@ -59,6 +62,9 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
   void initState() {
     super.initState();
     _cycleLengthController = TextEditingController(text: '$_cycleLength');
+    _cycleLengthFocus.addListener(() {
+      if (mounted) setState(() {});
+    });
     _calendarPageController = PageController(
       initialPage: _monthPageIndex(_focusedDay),
       viewportFraction: 1.0,
@@ -113,6 +119,7 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
   void dispose() {
     _calendarPageController.dispose();
     _cycleLengthController.dispose();
+    _cycleLengthFocus.dispose();
     super.dispose();
   }
 
@@ -917,6 +924,12 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
                 decoration: ShapeDecoration(
                   color: Colors.white,
                   shape: RoundedRectangleBorder(
+                    side: BorderSide(
+                      width: healthDp(context, 1),
+                      color: _cycleLengthFocus.hasFocus
+                          ? HealthFocusOutlineBox.focusColor
+                          : Colors.transparent,
+                    ),
                     borderRadius: BorderRadius.circular(healthDp(context, 5)),
                   ),
                   shadows: [
@@ -932,9 +945,12 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
                 child: Center(
                   child: TextField(
                     controller: _cycleLengthController,
+                    focusNode: _cycleLengthFocus,
                     textAlign: TextAlign.center,
                     textAlignVertical: TextAlignVertical.center,
                     keyboardType: TextInputType.number,
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) => _cycleLengthFocus.unfocus(),
                     inputFormatters: [
                       FilteringTextInputFormatter.digitsOnly,
                       LengthLimitingTextInputFormatter(3),
@@ -952,10 +968,12 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
                       contentPadding: EdgeInsets.zero,
                     ),
                     onChanged: (value) {
-                      final parsed = int.tryParse(value);
-                      if (parsed != null && parsed > 0) {
-                        _cycleLength = parsed;
-                      }
+                      setState(() {
+                        final parsed = int.tryParse(value);
+                        if (parsed != null && parsed > 0) {
+                          _cycleLength = parsed;
+                        }
+                      });
                     },
                   ),
                 ),
@@ -977,11 +995,19 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
     );
   }
 
+  bool get _isFormComplete =>
+      _lastPeriodStart != null &&
+      _lastPeriodEnd != null &&
+      (int.tryParse(_cycleLengthController.text.trim()) ?? 0) > 0;
+
   Widget _buildSaveButton() {
     return ElevatedButton(
       onPressed: _isLoading ? null : _onSavePressed,
       style: ElevatedButton.styleFrom(
-        backgroundColor: _kAccentPink,
+        backgroundColor: _isFormComplete
+            ? HealthInputComplete.activeColor
+            : HealthInputComplete.inactiveColor,
+        disabledBackgroundColor: HealthInputComplete.inactiveColor,
         foregroundColor: Colors.white,
         padding: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
@@ -1012,6 +1038,10 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
   }
 
   Future<void> _onSavePressed() async {
+    if (!_isFormComplete) {
+      HealthInputComplete.showRequiredToast(context);
+      return;
+    }
     // “수정하기” 진입(기존 기록 기반)인 경우만 확인 팝업 노출
     final isEditFlow = widget.existingRecord != null;
     if (isEditFlow) {

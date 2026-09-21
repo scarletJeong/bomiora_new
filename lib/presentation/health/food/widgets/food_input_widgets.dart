@@ -12,6 +12,7 @@ import '../../../../data/repositories/health/food/food_repository.dart';
 import '../../../common/widgets/dropdown_btn.dart';
 import '../../health_common/health_responsive_scale.dart';
 import '../../health_common/widgets/health_delete_popup.dart';
+import '../../health_common/widgets/health_focus_outline_box.dart';
 
 /// 칼로리 검색 입력 + 검색 결과 카드 블록 (각 식사 카드 아래에 배치)
 /// "음식을 검색하세요" 입력 후 검색 시 API 연동, 카드 탭 시 해당 식사에 추가
@@ -342,6 +343,9 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
     super.initState();
     _localImagePaths = _sanitizeImagePaths(widget.mealImagePaths);
     _resultsScrollController.addListener(_onResultsScroll);
+    _focusNode.addListener(() {
+      if (mounted) setState(() {});
+    });
   }
 
   @override
@@ -416,7 +420,9 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
           decoration: BoxDecoration(
             border: Border.all(
               width: healthDp(context, 1),
-              color: const Color(0xFFD2D2D2),
+              color: _focusNode.hasFocus
+                  ? HealthFocusOutlineBox.focusColor
+                  : const Color(0xFFD2D2D2),
             ),
             borderRadius: BorderRadius.circular(healthDp(context, 10)),
           ),
@@ -426,6 +432,7 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
                 child: TextField(
                   controller: _searchController,
                   focusNode: _focusNode,
+                  textInputAction: TextInputAction.search,
                   decoration: const InputDecoration(
                     hintText: '음식을 입력하세요.',
                     hintStyle: TextStyle(
