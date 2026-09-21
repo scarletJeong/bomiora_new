@@ -805,7 +805,7 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
         );
       },
     );
-    if (result == true && mounted) _loadOrderDetail();
+    if (result != null && result != false && mounted) _loadOrderDetail();
   }
 
   Future<void> _writeReviewFromDetail() async {
