@@ -23,6 +23,7 @@ class ImagePickerUtils {
     BuildContext context,
     Function(XFile?) onImageSelected,
   ) async {
+    FocusManager.instance.primaryFocus?.unfocus();
     await showDialog<void>(
       context: context,
       builder: (BuildContext dialogContext) {
@@ -68,6 +69,7 @@ class ImagePickerUtils {
 
   /// 카메라에서 이미지 선택
   static Future<XFile?> pickImageFromCamera() async {
+    FocusManager.instance.primaryFocus?.unfocus();
     try {
       return await _picker.pickImage(
         source: ImageSource.camera,
@@ -87,6 +89,7 @@ class ImagePickerUtils {
     required void Function(XFile?) onImageSelected,
     double? menuWidth,
   }) {
+    FocusManager.instance.primaryFocus?.unfocus();
     DropdownBtn.showMenu(
       context: context,
       anchorContext: anchorContext,
@@ -118,6 +121,7 @@ class ImagePickerUtils {
 
   /// 파일에서 이미지 선택
   static Future<XFile?> pickImageFromFile() async {
+    FocusManager.instance.primaryFocus?.unfocus();
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.image,
@@ -143,6 +147,7 @@ class ImagePickerUtils {
 
   /// 갤러리에서 이미지 선택
   static Future<XFile?> pickImageFromGallery() async {
+    FocusManager.instance.primaryFocus?.unfocus();
     try {
       return await _picker.pickImage(
         source: ImageSource.gallery,

@@ -189,6 +189,7 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
 
   void _openPhotoSourceDropdown(BuildContext anchorContext) {
     if (_isUploadingPhoto) return;
+    FocusManager.instance.primaryFocus?.unfocus();
     DropdownBtn.showMenu(
       context: context,
       anchorContext: anchorContext,
