@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">보미오라</string>
+    <string name="app_name">bomiora</string>
     
     <!-- Naver Login SDK (웹 운영 키와 동일 — 네이버 개발자센터에 Android 패키지 com.bomiora.app 등록 필요) -->
     <string name="client_id">Hs4ROpnhwpmaV4762Tu1</string>
