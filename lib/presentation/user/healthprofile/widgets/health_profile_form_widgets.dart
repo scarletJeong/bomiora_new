@@ -18,9 +18,10 @@ abstract final class HealthProfileFormUi {
   HealthProfileFormUi._();
 
   static void popAllFormRoutes(BuildContext context) {
-    Navigator.of(context).popUntil(
-      (route) => !HealthProfileFormCommon.isFormRouteName(route.settings.name),
-    );
+    Navigator.of(context).popUntil((route) {
+      if (route.isFirst) return true;
+      return !HealthProfileFormCommon.isFormRouteName(route.settings.name);
+    });
   }
 
   static Future<void> submit({
@@ -48,7 +49,12 @@ abstract final class HealthProfileFormUi {
           session.currentUser!.id,
         );
         if (!context.mounted) return;
-        Navigator.of(context).pushReplacement(
+        final navigator = Navigator.of(context);
+        navigator.popUntil((route) {
+          if (route.isFirst) return true;
+          return !HealthProfileFormCommon.isFormRouteName(route.settings.name);
+        });
+        navigator.push(
           MaterialPageRoute<void>(
             builder: (context) => PrescriptionTimeScreen(
               productId: booking.productId,
@@ -69,7 +75,7 @@ abstract final class HealthProfileFormUi {
 
       AppToastOverlay.show(context, '문진표를 수정하였습니다');
       if (Navigator.of(context).canPop()) {
-        Navigator.of(context).pop(true);
+        popAllFormRoutes(context);
       } else {
         Navigator.of(context).pushNamedAndRemoveUntil(
           '/profile',

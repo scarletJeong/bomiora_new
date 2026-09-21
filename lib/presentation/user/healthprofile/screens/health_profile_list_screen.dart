@@ -1205,19 +1205,19 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
       _openPrescriptionFormReplace();
       return;
     }
-    final result = await HealthProfileFormFlow.open(
+    await HealthProfileFormFlow.open(
       context,
     );
-    if (result == true) await _reloadAfterForm(scrollToTop: true);
+    if (mounted) await _reloadAfterForm(scrollToTop: true);
   }
 
   void _navigateToEditForm() async {
-    final result = await HealthProfileFormFlow.open(
+    await HealthProfileFormFlow.open(
       context,
       existingProfile: _healthProfile,
       prescriptionBooking: widget.prescriptionBooking,
     );
-    if (result == true) await _reloadAfterForm(scrollToTop: true);
+    if (mounted) await _reloadAfterForm(scrollToTop: true);
   }
 
   void _openSectionForEdit(
@@ -1226,19 +1226,18 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
   }) async {
     if (sectionIndices.isEmpty) return;
     final savedOffset = _listScrollPosition?.pixels;
-    final result = await HealthProfileFormFlow.open(
+    await HealthProfileFormFlow.open(
       context,
       existingProfile: _healthProfile,
       initialSectionIndices: sectionIndices,
       editScreenTitle: screenTitle,
     );
-    if (result == true) {
-      await _reloadAfterForm(
-        scrollToTop: false,
-        restoreOffset: savedOffset,
-        sectionKey: _sectionKeyFor(sectionIndices),
-      );
-    }
+    if (!mounted) return;
+    await _reloadAfterForm(
+      scrollToTop: false,
+      restoreOffset: savedOffset,
+      sectionKey: _sectionKeyFor(sectionIndices),
+    );
   }
 
   GlobalKey _sectionKeyFor(List<int> sectionIndices) {
