@@ -9,6 +9,7 @@ import '../../common/widgets/centered_empty_state.dart';
 import '../../common/widgets/app_star_rating.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../health/health_common/widgets/health_app_bar.dart';
+import '../../health/health_common/widgets/health_focus_outline_box.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../data/models/review/review_model.dart';
@@ -35,6 +36,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
   int _historyVisibleCount = _historyPageSize;
 
   ReviewModel? _activeReview;
+
   /// 방금 접힌 리뷰는 '이전 리뷰 내역' 맨 위로
   int? _historyHeadId;
   String _productNameQuery = '';
@@ -89,8 +91,12 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
   /// `it_kind` 또는 `is_rvkind` 가 일반일 때 일반 리뷰 작성/수정 화면 사용
   bool _reviewUsesGeneralWriteEditor(ReviewModel r) {
     if (r.isRvkind.toLowerCase() == 'general') return true;
-    final raw = (r.itKind ?? '').trim().toLowerCase().replaceAll(RegExp(r'[\s_-]'), '');
-    return raw == 'general' || raw == 'normal' || raw == 'goods' || raw == 'product';
+    final raw =
+        (r.itKind ?? '').trim().toLowerCase().replaceAll(RegExp(r'[\s_-]'), '');
+    return raw == 'general' ||
+        raw == 'normal' ||
+        raw == 'goods' ||
+        raw == 'product';
   }
 
   /// 정수는 `4`, 0.1 단위 소수는 `3.1`, `4.8` 형태로 표시
@@ -228,8 +234,8 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
       if (!mounted) return;
       setState(() {
         final next = _collapsedOrdered();
-        _historyVisibleCount = (_historyVisibleCount + _historyPageSize)
-            .clamp(0, next.length);
+        _historyVisibleCount =
+            (_historyVisibleCount + _historyPageSize).clamp(0, next.length);
       });
     }
   }
@@ -426,8 +432,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(healthDp(context, 12)),
-            border: Border.all(
-                width: healthDp(context, 1), color: _kBorder),
+            border: Border.all(width: healthDp(context, 1), color: _kBorder),
           ),
           child: Text(
             body,
@@ -565,7 +570,8 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
 
   Widget _headerActionsInline(ReviewModel r) {
     final enabled = r.isId != null;
-    final actionColor = enabled ? _kHeaderAction : _kHeaderAction.withValues(alpha: 0.5);
+    final actionColor =
+        enabled ? _kHeaderAction : _kHeaderAction.withValues(alpha: 0.5);
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -830,7 +836,9 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      r.isTime == null ? '-' : DateDisplayFormatter.formatYmd(r.isTime!),
+                      r.isTime == null
+                          ? '-'
+                          : DateDisplayFormatter.formatYmd(r.isTime!),
                       style: TextStyle(
                         color: _kDateBrown,
                         fontSize: healthSp(context, 10),
@@ -871,7 +879,6 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
     final radius = healthDp(context, 15);
     final padH = healthDp(context, 8);
     final iconSize = healthDp(context, 12);
-    final borderW = healthDp(context, 1);
     final fontSize = healthSp(context, 10);
     final query = _productNameFilterController.text;
     final isEmpty = query.isEmpty;
@@ -887,13 +894,12 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
     return SizedBox(
       width: healthDp(context, 140),
       height: fieldH,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(radius),
-          border: Border.all(width: borderW, color: _kBorderStrong),
-        ),
-        child: Row(
+      child: HealthFocusOutlineBox(
+        height: fieldH,
+        padding: EdgeInsets.zero,
+        borderRadius: radius,
+        fillColor: Colors.white,
+        builder: (focusNode) => Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Expanded(
@@ -904,6 +910,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                   children: [
                     TextField(
                       controller: _productNameFilterController,
+                      focusNode: focusNode,
                       maxLines: 1,
                       textAlignVertical: TextAlignVertical.center,
                       strutStyle: StrutStyle(
@@ -1033,8 +1040,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
       primaryTextTheme:
           baseTheme.primaryTextTheme.apply(fontFamily: 'Gmarket Sans TTF'),
     );
-    final textScale =
-        healthTextScaleByWidth(MediaQuery.sizeOf(context).width);
+    final textScale = healthTextScaleByWidth(MediaQuery.sizeOf(context).width);
 
     return Theme(
       data: gmarketTheme,
@@ -1094,8 +1100,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                                           '이전 리뷰 내역',
                                           style: TextStyle(
                                             color: _kMuted,
-                                            fontSize:
-                                                healthSp(context, 12),
+                                            fontSize: healthSp(context, 12),
                                             fontWeight: FontWeight.w500,
                                             height: 1.67,
                                           ),
@@ -1118,8 +1123,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                                         if (index == shownHistory.length) {
                                           if (!canLoadMoreHistory) {
                                             return SizedBox(
-                                                height:
-                                                    healthDp(context, 24));
+                                                height: healthDp(context, 24));
                                           }
                                           return Padding(
                                             padding: EdgeInsets.only(
@@ -1132,8 +1136,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                                         }
                                         return Padding(
                                           padding: EdgeInsets.only(
-                                              bottom:
-                                                  healthDp(context, 12)),
+                                              bottom: healthDp(context, 12)),
                                           child: _collapsedTile(
                                               shownHistory[index]),
                                         );

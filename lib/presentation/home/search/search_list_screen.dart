@@ -17,6 +17,7 @@ import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/product_card.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../health/health_common/widgets/health_app_bar.dart';
+import '../../health/health_common/widgets/health_focus_outline_box.dart';
 
 /// 통합 검색 결과 — 카테고리별 리스트.
 class SearchListScreen extends StatefulWidget {
@@ -42,6 +43,7 @@ class _SearchListScreenState extends State<SearchListScreen> {
 
   late final TextEditingController _queryController;
   Timer? _debounce;
+  int _searchRequestId = 0;
 
   List<Product> _rx = const [];
   List<Product> _store = const [];
@@ -80,7 +82,7 @@ class _SearchListScreenState extends State<SearchListScreen> {
 
   void _onQueryChanged() {
     _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 300), () {
+    _debounce = Timer(const Duration(milliseconds: 180), () {
       if (!mounted) return;
       _runSearch(_queryController.text);
     });
@@ -98,6 +100,7 @@ class _SearchListScreenState extends State<SearchListScreen> {
 
   Future<void> _runSearch(String raw) async {
     final q = raw.trim();
+    final requestId = ++_searchRequestId;
     if (q.isEmpty) {
       setState(() {
         _rx = const [];
@@ -120,7 +123,7 @@ class _SearchListScreenState extends State<SearchListScreen> {
     try {
       if (!mounted) return;
       final result = await SearchService.searchAll(q);
-      if (!mounted) return;
+      if (!mounted || requestId != _searchRequestId) return;
       setState(() {
         _rx = result.prescriptionProducts;
         _store = result.storeProducts;
@@ -131,7 +134,7 @@ class _SearchListScreenState extends State<SearchListScreen> {
         _initialLoad = false;
       });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || requestId != _searchRequestId) return;
       setState(() {
         _loading = false;
         _initialLoad = false;
@@ -629,21 +632,17 @@ class _SearchListScreenState extends State<SearchListScreen> {
   }
 
   Widget _buildSearchBar() {
-    return Container(
+    return HealthFocusOutlineBox(
       height: healthDp(context, 34),
       padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
-      decoration: ShapeDecoration(
-        color: Colors.white,
-        shape: RoundedRectangleBorder(
-          side: const BorderSide(width: 1, color: Color(0xFFD1D5DB)),
-          borderRadius: BorderRadius.circular(healthDp(context, 10)),
-        ),
-      ),
-      child: Row(
+      borderRadius: healthDp(context, 10),
+      fillColor: Colors.white,
+      builder: (focusNode) => Row(
         children: [
           Expanded(
             child: TextField(
               controller: _queryController,
+              focusNode: focusNode,
               onSubmitted: (s) => _commitSearch(s),
               style: TextStyle(
                 color: const Color(0xFF333333),

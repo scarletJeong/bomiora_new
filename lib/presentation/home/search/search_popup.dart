@@ -5,6 +5,7 @@ import '../../../core/constants/app_assets.dart';
 import '../../../data/services/recent_search_service.dart';
 import '../../common/widgets/app_blur_backdrop.dart';
 import '../../health/health_common/health_responsive_scale.dart';
+import '../../health/health_common/widgets/health_focus_outline_box.dart';
 import 'search_list_screen.dart';
 
 /// 앱바 검색 아이콘용: 오버레이 스타일 검색·최근 검색어 팝업 후 [SearchListScreen]으로 이동.
@@ -139,25 +140,18 @@ class _SearchPopupDialogState extends State<_SearchPopupDialog> {
                 ),
               ),
               SizedBox(height: healthDp(context, 4)),
-              Container(
+              HealthFocusOutlineBox(
                 height: healthDp(context, 36),
                 padding:
                     EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
-                alignment: Alignment.center,
-                decoration: ShapeDecoration(
-                  shape: RoundedRectangleBorder(
-                    side: const BorderSide(
-                      width: 1,
-                      color: Color(0xFFD2D2D2),
-                    ),
-                    borderRadius: BorderRadius.circular(healthDp(context, 10)),
-                  ),
-                ),
-                child: Row(
+                borderRadius: healthDp(context, 10),
+                fillColor: Colors.white,
+                builder: (focusNode) => Row(
                   children: [
                     Expanded(
                       child: TextField(
                         controller: _controller,
+                        focusNode: focusNode,
                         autofocus: true,
                         onSubmitted: (_) => _submit(),
                         style: TextStyle(
