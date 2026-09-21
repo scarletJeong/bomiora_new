@@ -24,6 +24,7 @@ import '../../../../core/health/health_refresh_bus.dart';
 import '../../../../core/health/health_refresh_listener.dart';
 import '../widgets/weight_chart_section.dart';
 import '../utils/weight_goal_progress.dart';
+import '../../health_common/widgets/health_delete_popup.dart';
 import '../../health_common/health_chart_axis_style.dart';
 import '../../health_common/health_chart_metrics.dart';
 import '../../health_common/health_responsive_scale.dart';
@@ -1911,22 +1912,10 @@ class _WeightListScreenState extends State<WeightListScreen>
   Future<void> _deleteImage(String imagePath) async {
     try {
       // 확인 다이얼로그
-      final confirmed = await showDialog<bool>(
+      final confirmed = await showHealthDeletePopup(
         context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('이미지 삭제'),
-          content: const Text('이미지를 삭제하시겠습니까?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('취소'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('삭제'),
-            ),
-          ],
-        ),
+        title: '이미지 삭제',
+        message: '이미지를 삭제하시겠습니까?',
       );
 
       if (confirmed == true && selectedRecord != null) {
