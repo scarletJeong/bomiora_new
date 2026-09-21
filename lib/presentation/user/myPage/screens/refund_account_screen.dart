@@ -99,9 +99,13 @@ class _RefundAccountScreenState extends State<RefundAccountScreen> {
       final data = await RefundAccountService.fetch(mbId);
       if (!mounted) return;
       if (data['success'] == true) {
-        final bank = '${data['refundBank'] ?? data['mb_refund_bank'] ?? ''}'.trim();
-        final acc = '${data['refundAccount'] ?? data['mb_refund_account'] ?? ''}'.trim();
-        final holder = '${data['refundHolder'] ?? data['mb_refund_holder'] ?? ''}'.trim();
+        final bank =
+            '${data['refundBank'] ?? data['mb_refund_bank'] ?? ''}'.trim();
+        final acc =
+            '${data['refundAccount'] ?? data['mb_refund_account'] ?? ''}'
+                .trim();
+        final holder =
+            '${data['refundHolder'] ?? data['mb_refund_holder'] ?? ''}'.trim();
         setState(() {
           _selectedBank = bank;
         });
@@ -135,7 +139,8 @@ class _RefundAccountScreenState extends State<RefundAccountScreen> {
       return;
     }
 
-    final digitsOnly = _accountController.text.replaceAll(RegExp(r'[^0-9]'), '');
+    final digitsOnly =
+        _accountController.text.replaceAll(RegExp(r'[^0-9]'), '');
     if (digitsOnly.length < 10) {
       return;
     }
@@ -173,143 +178,144 @@ class _RefundAccountScreenState extends State<RefundAccountScreen> {
         child: DefaultTextStyle.merge(
           style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
           child: _isLoggedIn
-                ? _loadingRefund
-                    ? Center(
-                        child: SizedBox(
-                          width: healthDp(context, 36),
-                          height: healthDp(context, 36),
-                          child: const CircularProgressIndicator(
-                              color: Color(0xFFFF5A8D)),
-                        ),
-                      )
-                    : Column(
-                        children: [
-                          Expanded(
-                            child: Form(
-                              key: _formKey,
-                              child: ListView(
-                               padding: EdgeInsets.fromLTRB(
-                                  healthDp(context, 20),
-                                  healthDp(context, 10),
-                                  healthDp(context, 20),
-                                  healthDp(context, 20),
-                                ),
-                                children: [
-                                  const _FieldLabel('은행 선택'),
-                                  SizedBox(height: healthDp(context, 5)),
-                                  DropdownBtn(
-                                    items: _bankItemsForDropdown,
-                                    value: _selectedBank,
-                                    emptyText: _bankEmptyHint,
-                                    buttonHeight: healthDp(context, 40),
-                                    panelMaxHeight: healthDp(context, 320),
-                                    itemFontSizeBase: 12,
-                                    itemTextAlign: TextAlign.start,
-                                    itemLeadingGapBase: 8,
-                                    leadingBuilder: (name) => _BankIconLeading(
-                                      bankName: name,
-                                      size: healthDp(context, 22),
-                                    ),
-                                    onChanged: (v) =>
-                                        setState(() => _selectedBank = v),
-                                  ),
-                                  SizedBox(height: healthDp(context, 20)),
-                                  const _FieldLabel('계좌번호'),
-                                  SizedBox(height: healthDp(context, 5)),
-                                  _BoxField(
-                                    controller: _accountController,
-                                    hintText: '계좌번호를 입력해주세요.(- 는 제외)',
-                                    keyboardType: TextInputType.number,
-                                    inputFormatters: [
-                                      FilteringTextInputFormatter.digitsOnly,
-                                    ],
-                                    validator: (v) =>
-                                        (v == null || v.trim().isEmpty)
-                                            ? '계좌번호를 입력해주세요'
-                                            : null,
-                                  ),
-                                  const SizedBox(height: 20),
-                                  const _FieldLabel('예금주명'),
-                                  SizedBox(height: healthDp(context, 5)),
-                                  _BoxField(
-                                    controller: _ownerController,
-                                    hintText: '예금주 이름을 입력해주세요.',
-                                    validator: (v) =>
-                                        (v == null || v.trim().isEmpty)
-                                            ? '예금주명을 입력해주세요'
-                                            : null,
-                                  ),
-                                  SizedBox(height: healthDp(context, 10)),
-                                  Text(
-                                    '*환불 처리를 위해 정확한 계좌정보를 입력해 주세요.',
-                                    style: TextStyle(
-                                      color: const Color(0xFF898686),
-                                      fontSize: healthSp(context, 10),
-                                      fontWeight: FontWeight.w300,
-                                    ),
-                                  ),
-                                  SizedBox(height: healthDp(context, 10)),
-                                  Text(
-                                    '입력하신 정보가 부정확할 경우 환불이 지연되거나 처리되지 않을 수 있으며, 이에 대한 책임은 입력자 본인에게 있습니다.',
-                                    style: TextStyle(
-                                      color: const Color(0xFF898686),
-                                      fontSize: healthSp(context, 10),
-                                      fontWeight: FontWeight.w300,
-                                      height: 1.1,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          SafeArea(
-                            top: false,
-                            child: Padding(
+              ? _loadingRefund
+                  ? Center(
+                      child: SizedBox(
+                        width: healthDp(context, 36),
+                        height: healthDp(context, 36),
+                        child: const CircularProgressIndicator(
+                            color: Color(0xFFFF5A8D)),
+                      ),
+                    )
+                  : Column(
+                      children: [
+                        Expanded(
+                          child: Form(
+                            key: _formKey,
+                            child: ListView(
                               padding: EdgeInsets.fromLTRB(
                                 healthDp(context, 20),
                                 healthDp(context, 10),
                                 healthDp(context, 20),
-                                healthDp(context, 10),
+                                healthDp(context, 20),
                               ),
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: _RefundFormButton(
-                                      label: '취소',
-                                      filled: false,
-                                      onTap: () => Navigator.pop(context),
-                                    ),
+                              children: [
+                                const _FieldLabel('은행 선택'),
+                                SizedBox(height: healthDp(context, 5)),
+                                DropdownBtn(
+                                  items: _bankItemsForDropdown,
+                                  value: _selectedBank,
+                                  emptyText: _bankEmptyHint,
+                                  buttonHeight: healthDp(context, 40),
+                                  panelMaxHeight: healthDp(context, 320),
+                                  itemFontSizeBase: 12,
+                                  itemTextAlign: TextAlign.start,
+                                  itemLeadingGapBase: 8,
+                                  leadingBuilder: (name) => _BankIconLeading(
+                                    bankName: name,
+                                    size: healthDp(context, 22),
                                   ),
-                                  SizedBox(width: healthDp(context, 20)),
-                                  Expanded(
-                                    child: _RefundFormButton(
-                                      label: '확인',
-                                      filled: true,
-                                      enabled: _canSubmit,
-                                      onTap: _submit,
-                                    ),
+                                  onChanged: (v) =>
+                                      setState(() => _selectedBank = v),
+                                ),
+                                SizedBox(height: healthDp(context, 20)),
+                                const _FieldLabel('계좌번호'),
+                                SizedBox(height: healthDp(context, 5)),
+                                _BoxField(
+                                  controller: _accountController,
+                                  hintText: '계좌번호를 입력해주세요.(- 는 제외)',
+                                  keyboardType: TextInputType.number,
+                                  inputFormatters: [
+                                    FilteringTextInputFormatter.digitsOnly,
+                                  ],
+                                  validator: (v) =>
+                                      (v == null || v.trim().isEmpty)
+                                          ? '계좌번호를 입력해주세요'
+                                          : null,
+                                ),
+                                const SizedBox(height: 20),
+                                const _FieldLabel('예금주명'),
+                                SizedBox(height: healthDp(context, 5)),
+                                _BoxField(
+                                  controller: _ownerController,
+                                  hintText: '예금주 이름을 입력해주세요.',
+                                  isLast: true,
+                                  validator: (v) =>
+                                      (v == null || v.trim().isEmpty)
+                                          ? '예금주명을 입력해주세요'
+                                          : null,
+                                ),
+                                SizedBox(height: healthDp(context, 10)),
+                                Text(
+                                  '*환불 처리를 위해 정확한 계좌정보를 입력해 주세요.',
+                                  style: TextStyle(
+                                    color: const Color(0xFF898686),
+                                    fontSize: healthSp(context, 10),
+                                    fontWeight: FontWeight.w300,
                                   ),
-                                ],
-                              ),
+                                ),
+                                SizedBox(height: healthDp(context, 10)),
+                                Text(
+                                  '입력하신 정보가 부정확할 경우 환불이 지연되거나 처리되지 않을 수 있으며, 이에 대한 책임은 입력자 본인에게 있습니다.',
+                                  style: TextStyle(
+                                    color: const Color(0xFF898686),
+                                    fontSize: healthSp(context, 10),
+                                    fontWeight: FontWeight.w300,
+                                    height: 1.1,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        ],
-                      )
-                : CenteredEmptyState(
-                    iconWidget: CenteredEmptyState.assetIcon(
-                      context,
-                      AppAssets.emptyRefundIcon,
-                    ),
-                    message: '로그인 후 이용 가능합니다.',
-                    trailing: CenteredEmptyState.loginButtonTrailing(
-                      context,
-                      onPressed: () async {
-                        await Navigator.pushNamed(context, '/login');
-                        if (!mounted) return;
-                        await _loadUser();
-                      },
-                    ),
+                        ),
+                        SafeArea(
+                          top: false,
+                          child: Padding(
+                            padding: EdgeInsets.fromLTRB(
+                              healthDp(context, 20),
+                              healthDp(context, 10),
+                              healthDp(context, 20),
+                              healthDp(context, 10),
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: _RefundFormButton(
+                                    label: '취소',
+                                    filled: false,
+                                    onTap: () => Navigator.pop(context),
+                                  ),
+                                ),
+                                SizedBox(width: healthDp(context, 20)),
+                                Expanded(
+                                  child: _RefundFormButton(
+                                    label: '확인',
+                                    filled: true,
+                                    enabled: _canSubmit,
+                                    onTap: _submit,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    )
+              : CenteredEmptyState(
+                  iconWidget: CenteredEmptyState.assetIcon(
+                    context,
+                    AppAssets.emptyRefundIcon,
                   ),
+                  message: '로그인 후 이용 가능합니다.',
+                  trailing: CenteredEmptyState.loginButtonTrailing(
+                    context,
+                    onPressed: () async {
+                      await Navigator.pushNamed(context, '/login');
+                      if (!mounted) return;
+                      await _loadUser();
+                    },
+                  ),
+                ),
         ),
       ),
     );
@@ -445,6 +451,7 @@ class _BoxField extends StatefulWidget {
     this.keyboardType,
     this.inputFormatters,
     this.validator,
+    this.isLast = false,
   });
 
   final TextEditingController controller;
@@ -452,6 +459,7 @@ class _BoxField extends StatefulWidget {
   final TextInputType? keyboardType;
   final List<TextInputFormatter>? inputFormatters;
   final String? Function(String?)? validator;
+  final bool isLast;
 
   @override
   State<_BoxField> createState() => _BoxFieldState();
@@ -514,6 +522,8 @@ class _BoxFieldState extends State<_BoxField> {
                 controller: widget.controller,
                 focusNode: _focusNode,
                 keyboardType: widget.keyboardType,
+                textInputAction:
+                    widget.isLast ? TextInputAction.done : TextInputAction.next,
                 inputFormatters: widget.inputFormatters,
                 cursorColor: const Color(0xFF1A1A1A),
                 style: TextStyle(
@@ -542,6 +552,13 @@ class _BoxFieldState extends State<_BoxField> {
                 onChanged: (value) {
                   field.didChange(value);
                   if (field.hasError) field.validate();
+                },
+                onSubmitted: (_) {
+                  if (widget.isLast) {
+                    _focusNode.unfocus();
+                  } else {
+                    FocusScope.of(context).nextFocus();
+                  }
                 },
               ),
             ),

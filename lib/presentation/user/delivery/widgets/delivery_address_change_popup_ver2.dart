@@ -80,7 +80,8 @@ class _DeliveryAddressChangePopupState
         _addresses.any((a) => _asAddressId(a['adId']) == preferSelectId)) {
       // 신규/수정한 배송지를 선택
       _selectedAddressId = preferSelectId;
-    } else if (_addresses.any((a) => _asAddressId(a['adId']) == _selectedAddressId)) {
+    } else if (_addresses
+        .any((a) => _asAddressId(a['adId']) == _selectedAddressId)) {
       // 기존 선택 유지
     } else {
       final matchedId = _matchInitiallySelectedAddressId();
@@ -132,8 +133,7 @@ class _DeliveryAddressChangePopupState
 
     final zip = _zipOf(initial);
     final name = _addrField(initial, 'adName');
-    final hp = _addrField(initial, 'adHp')
-        .replaceAll(RegExp(r'\D'), '');
+    final hp = _addrField(initial, 'adHp').replaceAll(RegExp(r'\D'), '');
     final addr1 = _normText(_addrField(initial, 'adAddr1'));
     final addr2 = _normText(_addrField(initial, 'adAddr2'));
     if (zip.isEmpty &&
@@ -295,8 +295,7 @@ class _DeliveryAddressChangePopupState
 
   Widget _buildAddressCard(BuildContext context, Map<String, dynamic> a) {
     final adId = _asAddressId(a['adId']);
-    final selected =
-        _selectedAddressId != null && _selectedAddressId == adId;
+    final selected = _selectedAddressId != null && _selectedAddressId == adId;
     final subject = (a['adSubject'] ?? '').toString().trim();
     final name = (a['adName'] ?? '').toString().trim();
     final title = subject.isNotEmpty ? '$name($subject)' : name;
@@ -309,9 +308,8 @@ class _DeliveryAddressChangePopupState
     final isDefault = a['adDefault'] == 1;
 
     return InkWell(
-      onTap: adId == null
-          ? null
-          : () => setState(() => _selectedAddressId = adId),
+      onTap:
+          adId == null ? null : () => setState(() => _selectedAddressId = adId),
       borderRadius: BorderRadius.circular(healthDp(context, 12)),
       child: Container(
         width: double.infinity,
@@ -398,8 +396,7 @@ class _DeliveryAddressChangePopupState
                   ),
                   decoration: BoxDecoration(
                     color: _kPink,
-                    borderRadius:
-                        BorderRadius.circular(healthDp(context, 999)),
+                    borderRadius: BorderRadius.circular(healthDp(context, 999)),
                   ),
                   child: Text(
                     '기본배송지',
@@ -630,8 +627,7 @@ class _AddressFormDialogState extends State<_AddressFormDialog>
     if (m == null) return;
 
     _nameController.text = (m['adName'] ?? '').toString().trim();
-    _phoneController.text =
-        (m['adHp'] ?? m['adTel'] ?? '').toString().trim();
+    _phoneController.text = (m['adHp'] ?? m['adTel'] ?? '').toString().trim();
     _zipController.text = (m['adZip1'] ?? '').toString().trim();
     _addr1Controller.text = (m['adAddr1'] ?? '').toString().trim();
     _addr2Controller.text = (m['adAddr2'] ?? '').toString().trim();
@@ -827,6 +823,7 @@ class _AddressFormDialogState extends State<_AddressFormDialog>
     required String pulseKey,
     TextInputType? keyboardType,
     List<TextInputFormatter>? inputFormatters,
+    TextInputAction textInputAction = TextInputAction.next,
   }) {
     final borderColor = _pulseBorderColor(pulseKey);
     final radius = healthDp(context, 10);
@@ -836,11 +833,19 @@ class _AddressFormDialogState extends State<_AddressFormDialog>
       child: TextField(
         controller: controller,
         keyboardType: keyboardType,
+        textInputAction: textInputAction,
         inputFormatters: inputFormatters,
         cursorColor: _kPink,
         onChanged: (_) {
           if (_pulseFields.contains(pulseKey)) {
             setState(() => _pulseFields = {..._pulseFields}..remove(pulseKey));
+          }
+        },
+        onSubmitted: (_) {
+          if (textInputAction == TextInputAction.done) {
+            FocusScope.of(context).unfocus();
+          } else {
+            FocusScope.of(context).nextFocus();
           }
         },
         style: TextStyle(
@@ -1002,7 +1007,8 @@ class _AddressFormDialogState extends State<_AddressFormDialog>
     );
   }
 
-  Widget _subjectChip(BuildContext context, String label, _SubjectPreset preset) {
+  Widget _subjectChip(
+      BuildContext context, String label, _SubjectPreset preset) {
     final selected = _subjectPreset == preset;
     return Expanded(
       child: InkWell(
@@ -1143,97 +1149,98 @@ class _AddressFormDialogState extends State<_AddressFormDialog>
                               fontWeight: FontWeight.w700,
                             ),
                           ),
-                            SizedBox(height: healthDp(context, 20)),
-                            Text(
-                              '배송지',
-                              style: TextStyle(
-                                color: _kInk,
-                                fontSize: healthSp(context, 16),
-                                fontFamily: _kFont,
-                                fontWeight: FontWeight.w500,
-                              ),
+                          SizedBox(height: healthDp(context, 20)),
+                          Text(
+                            '배송지',
+                            style: TextStyle(
+                              color: _kInk,
+                              fontSize: healthSp(context, 16),
+                              fontFamily: _kFont,
+                              fontWeight: FontWeight.w500,
                             ),
-                            SizedBox(height: healthDp(context, 10)),
-                            Text(
-                              '배송지명 (선택)',
-                              style: TextStyle(
-                                color: _kMuted,
-                                fontSize: healthSp(context, 12),
-                                fontFamily: _kFont,
-                                fontWeight: FontWeight.w500,
-                              ),
+                          ),
+                          SizedBox(height: healthDp(context, 10)),
+                          Text(
+                            '배송지명 (선택)',
+                            style: TextStyle(
+                              color: _kMuted,
+                              fontSize: healthSp(context, 12),
+                              fontFamily: _kFont,
+                              fontWeight: FontWeight.w500,
                             ),
-                            SizedBox(height: healthDp(context, 8)),
-                            Row(
-                              children: [
-                                _subjectChip(context, '집', _SubjectPreset.home),
-                                SizedBox(width: healthDp(context, 8)),
-                                _subjectChip(
-                                    context, '회사', _SubjectPreset.office),
-                                SizedBox(width: healthDp(context, 8)),
-                                _subjectChip(
-                                    context, '직접입력', _SubjectPreset.custom),
-                              ],
-                            ),
-                            if (_subjectPreset == _SubjectPreset.custom) ...[
-                              SizedBox(height: healthDp(context, 8)),
-                              _field(
-                                context: context,
-                                controller: _subjectController,
-                                hint: '배송지명을 입력해 주세요.',
-                                pulseKey: 'subject',
-                              ),
+                          ),
+                          SizedBox(height: healthDp(context, 8)),
+                          Row(
+                            children: [
+                              _subjectChip(context, '집', _SubjectPreset.home),
+                              SizedBox(width: healthDp(context, 8)),
+                              _subjectChip(
+                                  context, '회사', _SubjectPreset.office),
+                              SizedBox(width: healthDp(context, 8)),
+                              _subjectChip(
+                                  context, '직접입력', _SubjectPreset.custom),
                             ],
-                            SizedBox(height: healthDp(context, 16)),
-                            _requiredLabel(context, '받으시는 분'),
+                          ),
+                          if (_subjectPreset == _SubjectPreset.custom) ...[
                             SizedBox(height: healthDp(context, 8)),
                             _field(
                               context: context,
-                              controller: _nameController,
-                              hint: '수령인의 이름을 입력해 주세요.',
-                              pulseKey: 'name',
+                              controller: _subjectController,
+                              hint: '배송지명을 입력해 주세요.',
+                              pulseKey: 'subject',
                             ),
-                            SizedBox(height: healthDp(context, 16)),
-                            _requiredLabel(context, '연락처'),
-                            SizedBox(height: healthDp(context, 8)),
-                            _field(
-                              context: context,
-                              controller: _phoneController,
-                              hint: "'-' 없이 기입해 주세요.",
-                              pulseKey: 'phone',
-                              keyboardType: TextInputType.phone,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.digitsOnly,
-                                LengthLimitingTextInputFormatter(11),
-                              ],
-                            ),
-                            SizedBox(height: healthDp(context, 16)),
-                            _requiredLabel(context, '배송지 주소'),
-                            SizedBox(height: healthDp(context, 8)),
-                            _addressSearchRow(context),
-                            if (hasAddress) ...[
-                              SizedBox(height: healthDp(context, 8)),
-                              _readOnlyBox(
-                                context,
-                                _addr1Controller.text,
-                                hint: '기본 주소',
-                              ),
-                              SizedBox(height: healthDp(context, 8)),
-                              _field(
-                                context: context,
-                                controller: _addr2Controller,
-                                hint: '상세 주소를 입력해 주세요.',
-                                pulseKey: 'addr2',
-                              ),
-                            ],
-                            SizedBox(height: healthDp(context, 16)),
-                            _defaultCheckbox(context),
                           ],
-                        );
-                      },
-                    ),
+                          SizedBox(height: healthDp(context, 16)),
+                          _requiredLabel(context, '받으시는 분'),
+                          SizedBox(height: healthDp(context, 8)),
+                          _field(
+                            context: context,
+                            controller: _nameController,
+                            hint: '수령인의 이름을 입력해 주세요.',
+                            pulseKey: 'name',
+                          ),
+                          SizedBox(height: healthDp(context, 16)),
+                          _requiredLabel(context, '연락처'),
+                          SizedBox(height: healthDp(context, 8)),
+                          _field(
+                            context: context,
+                            controller: _phoneController,
+                            hint: "'-' 없이 기입해 주세요.",
+                            pulseKey: 'phone',
+                            keyboardType: TextInputType.phone,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                              LengthLimitingTextInputFormatter(11),
+                            ],
+                          ),
+                          SizedBox(height: healthDp(context, 16)),
+                          _requiredLabel(context, '배송지 주소'),
+                          SizedBox(height: healthDp(context, 8)),
+                          _addressSearchRow(context),
+                          if (hasAddress) ...[
+                            SizedBox(height: healthDp(context, 8)),
+                            _readOnlyBox(
+                              context,
+                              _addr1Controller.text,
+                              hint: '기본 주소',
+                            ),
+                            SizedBox(height: healthDp(context, 8)),
+                            _field(
+                              context: context,
+                              controller: _addr2Controller,
+                              hint: '상세 주소를 입력해 주세요.',
+                              pulseKey: 'addr2',
+                              textInputAction: TextInputAction.done,
+                            ),
+                          ],
+                          SizedBox(height: healthDp(context, 16)),
+                          _defaultCheckbox(context),
+                        ],
+                      );
+                    },
                   ),
                 ),
+              ),
               SizedBox(
                 height: btnH,
                 child: Row(
@@ -1242,9 +1249,7 @@ class _AddressFormDialogState extends State<_AddressFormDialog>
                       child: Material(
                         color: const Color(0xFFF7F7F7),
                         child: InkWell(
-                          onTap: _saving
-                              ? null
-                              : () => Navigator.pop(context),
+                          onTap: _saving ? null : () => Navigator.pop(context),
                           child: Center(
                             child: Text(
                               '취소',
@@ -1299,4 +1304,3 @@ class _AddressFormDialogState extends State<_AddressFormDialog>
     );
   }
 }
-

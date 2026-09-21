@@ -41,9 +41,11 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
   bool _isLoading = false;
   bool _isDefault = false;
   bool _wasDefault = false;
+
   /// 기본배송지를 해제할 수 없는지 (최초 등록 / 현재 유일한 기본배송지)
   bool _mustKeepDefault = false;
   bool _showDetailAddress = false;
+
   /// 주소 검색 직후 상세주소 칸 핑크 테두리 강조
   bool _highlightDetailAddress = false;
   _SubjectPreset _subjectPreset = _SubjectPreset.none;
@@ -244,9 +246,7 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: TextStyle(
-          color: hasValue
-              ? const Color(0xFF1A1A1A)
-              : const Color(0xFF898686),
+          color: hasValue ? const Color(0xFF1A1A1A) : const Color(0xFF898686),
           fontSize: healthSp(context, 12),
           fontWeight: hasValue ? FontWeight.w500 : FontWeight.w300,
         ),
@@ -328,8 +328,7 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
       } else if (preset == _SubjectPreset.office) {
         _subjectController.text = '회사';
       } else if (preset == _SubjectPreset.custom) {
-        if (_subjectController.text == '집' ||
-            _subjectController.text == '회사') {
+        if (_subjectController.text == '집' || _subjectController.text == '회사') {
           _subjectController.text = '';
         }
       } else {
@@ -504,184 +503,176 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
             form: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                    const _FieldLabel('배송지명 (선택)'),
-                    SizedBox(height: healthDp(context, 8)),
-                    Row(
-                      children: [
-                        _SubjectChip(
-                          label: '집',
-                          selected: _subjectPreset == _SubjectPreset.home,
-                          onTap: () =>
-                              _selectSubjectPreset(_SubjectPreset.home),
-                        ),
-                        SizedBox(width: healthDp(context, 8)),
-                        _SubjectChip(
-                          label: '회사',
-                          selected: _subjectPreset == _SubjectPreset.office,
-                          onTap: () =>
-                              _selectSubjectPreset(_SubjectPreset.office),
-                        ),
-                        SizedBox(width: healthDp(context, 8)),
-                        _SubjectChip(
-                          label: '직접입력',
-                          selected: _subjectPreset == _SubjectPreset.custom,
-                          onTap: () =>
-                              _selectSubjectPreset(_SubjectPreset.custom),
-                        ),
-                      ],
+                const _FieldLabel('배송지명 (선택)'),
+                SizedBox(height: healthDp(context, 8)),
+                Row(
+                  children: [
+                    _SubjectChip(
+                      label: '집',
+                      selected: _subjectPreset == _SubjectPreset.home,
+                      onTap: () => _selectSubjectPreset(_SubjectPreset.home),
                     ),
-                    if (_subjectPreset == _SubjectPreset.custom) ...[
-                      SizedBox(height: healthDp(context, 8)),
-                      _BoxField(
-                        controller: _subjectController,
-                        hintText: '예) 집, 회사 등 배송지명을 입력해 주세요.',
-                        hintColor: const Color(0xFF898383),
-                        highlightBorder:
-                            _subjectController.text.trim().isEmpty,
+                    SizedBox(width: healthDp(context, 8)),
+                    _SubjectChip(
+                      label: '회사',
+                      selected: _subjectPreset == _SubjectPreset.office,
+                      onTap: () => _selectSubjectPreset(_SubjectPreset.office),
+                    ),
+                    SizedBox(width: healthDp(context, 8)),
+                    _SubjectChip(
+                      label: '직접입력',
+                      selected: _subjectPreset == _SubjectPreset.custom,
+                      onTap: () => _selectSubjectPreset(_SubjectPreset.custom),
+                    ),
+                  ],
+                ),
+                if (_subjectPreset == _SubjectPreset.custom) ...[
+                  SizedBox(height: healthDp(context, 8)),
+                  _BoxField(
+                    controller: _subjectController,
+                    hintText: '예) 집, 회사 등 배송지명을 입력해 주세요.',
+                    hintColor: const Color(0xFF898383),
+                    highlightBorder: _subjectController.text.trim().isEmpty,
+                  ),
+                ],
+                SizedBox(height: healthDp(context, 16)),
+                const _FieldLabel('받으시는 분', isRequired: true),
+                SizedBox(height: healthDp(context, 8)),
+                _BoxField(
+                  controller: _nameController,
+                  hintText: '수령인의 이름을 입력해주세요.',
+                  validator: (v) => (v == null || v.trim().isEmpty)
+                      ? '받으시는 분을 입력해주세요.'
+                      : null,
+                ),
+                SizedBox(height: healthDp(context, 16)),
+                const _FieldLabel('연락처', isRequired: true),
+                SizedBox(height: healthDp(context, 8)),
+                _BoxField(
+                  controller: _phoneController,
+                  hintText: "'-' 없이 기입해주세요.",
+                  keyboardType: TextInputType.phone,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(11),
+                  ],
+                  validator: (v) {
+                    final t = v?.trim() ?? '';
+                    if (t.isEmpty) return '연락처를 입력해주세요.';
+                    if (t.length != 11) return '연락처는 11자리로 입력해주세요.';
+                    return null;
+                  },
+                ),
+                SizedBox(height: healthDp(context, 16)),
+                const _FieldLabel('배송지 주소', isRequired: true),
+                SizedBox(height: healthDp(context, 8)),
+                if (!_showDetailAddress)
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: _buildReadonlyBox(
+                          text: '',
+                          hintText: '주소를 검색해주세요.',
+                        ),
+                      ),
+                      SizedBox(width: healthDp(context, 10)),
+                      _buildAddressSearchButton(fieldHeight),
+                    ],
+                  )
+                else ...[
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: _buildReadonlyBox(
+                          text: _zipController.text.trim(),
+                          hintText: '우편번호',
+                        ),
+                      ),
+                      SizedBox(width: healthDp(context, 10)),
+                      _buildAddressSearchButton(fieldHeight),
+                    ],
+                  ),
+                  SizedBox(height: healthDp(context, 8)),
+                  _buildReadonlyBox(
+                    text: _address1Controller.text.trim(),
+                    hintText: '주소',
+                  ),
+                  SizedBox(height: healthDp(context, 8)),
+                  _BoxField(
+                    controller: _address2Controller,
+                    hintText: '상세 주소를 입력해 주세요.',
+                    isLast: true,
+                    highlightBorder: _highlightDetailAddress,
+                    onChanged: (value) {
+                      if (value.trim().isNotEmpty && _highlightDetailAddress) {
+                        setState(() => _highlightDetailAddress = false);
+                      }
+                    },
+                  ),
+                ],
+                SizedBox(height: healthDp(context, 20)),
+                InkWell(
+                  onTap: () => _onDefaultChanged(!_isDefault),
+                  child: Row(
+                    children: [
+                      CheckBox(value: _isDefault),
+                      SizedBox(width: healthDp(context, 8)),
+                      Text(
+                        '기본 배송지로 설정',
+                        style: TextStyle(
+                          color: const Color(0xFF1A1A1E),
+                          fontSize: healthSp(context, 12),
+                          fontFamily: 'Gmarket Sans TTF',
+                          fontWeight: FontWeight.w300,
+                        ),
                       ),
                     ],
-                    SizedBox(height: healthDp(context, 16)),
-                    const _FieldLabel('받으시는 분', isRequired: true),
-                    SizedBox(height: healthDp(context, 8)),
-                    _BoxField(
-                      controller: _nameController,
-                      hintText: '수령인의 이름을 입력해주세요.',
-                      validator: (v) => (v == null || v.trim().isEmpty)
-                          ? '받으시는 분을 입력해주세요.'
-                          : null,
-                    ),
-                    SizedBox(height: healthDp(context, 16)),
-                    const _FieldLabel('연락처', isRequired: true),
-                    SizedBox(height: healthDp(context, 8)),
-                    _BoxField(
-                      controller: _phoneController,
-                      hintText: "'-' 없이 기입해주세요.",
-                      keyboardType: TextInputType.phone,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly,
-                        LengthLimitingTextInputFormatter(11),
-                      ],
-                      validator: (v) {
-                        final t = v?.trim() ?? '';
-                        if (t.isEmpty) return '연락처를 입력해주세요.';
-                        if (t.length != 11) return '연락처는 11자리로 입력해주세요.';
-                        return null;
-                      },
-                    ),
-                    SizedBox(height: healthDp(context, 16)),
-                    const _FieldLabel('배송지 주소', isRequired: true),
-                    SizedBox(height: healthDp(context, 8)),
-                    if (!_showDetailAddress)
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Expanded(
-                            child: _buildReadonlyBox(
-                              text: '',
-                              hintText: '주소를 검색해주세요.',
-                            ),
-                          ),
-                          SizedBox(width: healthDp(context, 10)),
-                          _buildAddressSearchButton(fieldHeight),
-                        ],
-                      )
-                    else ...[
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Expanded(
-                            child: _buildReadonlyBox(
-                              text: _zipController.text.trim(),
-                              hintText: '우편번호',
-                            ),
-                          ),
-                          SizedBox(width: healthDp(context, 10)),
-                          _buildAddressSearchButton(fieldHeight),
-                        ],
-                      ),
-                      SizedBox(height: healthDp(context, 8)),
-                      _buildReadonlyBox(
-                        text: _address1Controller.text.trim(),
-                        hintText: '주소',
-                      ),
-                      SizedBox(height: healthDp(context, 8)),
-                      _BoxField(
-                        controller: _address2Controller,
-                        hintText: '상세 주소를 입력해 주세요.',
-                        highlightBorder: _highlightDetailAddress,
-                        onChanged: (value) {
-                          if (value.trim().isNotEmpty &&
-                              _highlightDetailAddress) {
-                            setState(() => _highlightDetailAddress = false);
-                          }
-                        },
-                      ),
-                    ],
-                    SizedBox(height: healthDp(context, 20)),
-                    InkWell(
-                      onTap: () => _onDefaultChanged(!_isDefault),
-                      child: Row(
-                        children: [
-                          CheckBox(value: _isDefault),
-                          SizedBox(width: healthDp(context, 8)),
-                          Text(
-                            '기본 배송지로 설정',
-                            style: TextStyle(
-                              color: const Color(0xFF1A1A1E),
-                              fontSize: healthSp(context, 12),
-                              fontFamily: 'Gmarket Sans TTF',
-                              fontWeight: FontWeight.w300,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                  ),
+                ),
               ],
             ),
             bottom: SizedBox(
-                    width: double.infinity,
-                    height: healthDp(context, 45),
-                    child: ElevatedButton(
-                      onPressed:
-                          (_isLoading || !_canSave) ? null : _saveAddress,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFFF5A8D),
-                        disabledBackgroundColor: const Color(0xFFD2D2D2),
-                        disabledForegroundColor: Colors.white,
-                        elevation: 0,
-                        visualDensity: VisualDensity.compact,
-                        minimumSize:
-                            Size(double.infinity, healthDp(context, 45)),
-                        maximumSize:
-                            Size(double.infinity, healthDp(context, 45)),
-                        fixedSize: Size(double.infinity, healthDp(context, 45)),
-                        padding: EdgeInsets.zero,
-                        shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(healthDp(context, 10)),
+              width: double.infinity,
+              height: healthDp(context, 45),
+              child: ElevatedButton(
+                onPressed: (_isLoading || !_canSave) ? null : _saveAddress,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFFF5A8D),
+                  disabledBackgroundColor: const Color(0xFFD2D2D2),
+                  disabledForegroundColor: Colors.white,
+                  elevation: 0,
+                  visualDensity: VisualDensity.compact,
+                  minimumSize: Size(double.infinity, healthDp(context, 45)),
+                  maximumSize: Size(double.infinity, healthDp(context, 45)),
+                  fixedSize: Size(double.infinity, healthDp(context, 45)),
+                  padding: EdgeInsets.zero,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(healthDp(context, 10)),
+                  ),
+                ),
+                child: _isLoading
+                    ? SizedBox(
+                        width: healthDp(context, 18),
+                        height: healthDp(context, 18),
+                        child: const CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : Text(
+                        '저장',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: healthSp(context, 16),
+                          fontWeight: FontWeight.w500,
+                          height: 1.0,
                         ),
                       ),
-                      child: _isLoading
-                          ? SizedBox(
-                              width: healthDp(context, 18),
-                              height: healthDp(context, 18),
-                              child: const CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor:
-                                    AlwaysStoppedAnimation<Color>(Colors.white),
-                              ),
-                            )
-                          : Text(
-                              '저장',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: healthSp(context, 16),
-                                fontWeight: FontWeight.w500,
-                                height: 1.0,
-                              ),
-                            ),
-                    ),
+              ),
             ),
           ),
         ),
@@ -715,9 +706,8 @@ class _SubjectChip extends StatelessWidget {
           shape: RoundedRectangleBorder(
             side: BorderSide(
               width: healthDp(context, 1),
-              color: selected
-                  ? const Color(0xFFFF5A8D)
-                  : const Color(0xFFD2D2D2),
+              color:
+                  selected ? const Color(0xFFFF5A8D) : const Color(0xFFD2D2D2),
             ),
             borderRadius: BorderRadius.circular(healthDp(context, 15)),
           ),
@@ -792,6 +782,7 @@ class _BoxField extends StatefulWidget {
     this.highlightBorder = false,
     this.onChanged,
     this.hintColor,
+    this.isLast = false,
   });
 
   final TextEditingController controller;
@@ -802,6 +793,7 @@ class _BoxField extends StatefulWidget {
   final String? Function(String?)? validator;
   final bool highlightBorder;
   final ValueChanged<String>? onChanged;
+  final bool isLast;
 
   @override
   State<_BoxField> createState() => _BoxFieldState();
@@ -867,6 +859,8 @@ class _BoxFieldState extends State<_BoxField> {
             controller: widget.controller,
             focusNode: _focusNode,
             keyboardType: widget.keyboardType,
+            textInputAction:
+                widget.isLast ? TextInputAction.done : TextInputAction.next,
             inputFormatters: widget.inputFormatters,
             cursorColor: const Color(0xFF1A1A1A),
             style: TextStyle(
@@ -895,6 +889,13 @@ class _BoxFieldState extends State<_BoxField> {
             onChanged: (value) {
               field.didChange(value);
               widget.onChanged?.call(value);
+            },
+            onSubmitted: (_) {
+              if (widget.isLast) {
+                _focusNode.unfocus();
+              } else {
+                FocusScope.of(context).nextFocus();
+              }
             },
           ),
         );
