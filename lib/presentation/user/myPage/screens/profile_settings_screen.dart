@@ -26,15 +26,19 @@ class ProfileSettingsScreen extends StatefulWidget {
 
 class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   UserModel? _currentUser;
-  
+
   // 회원정보 입력 컨트롤러
   final TextEditingController _nicknameController = TextEditingController();
   final TextEditingController _phone1Controller = TextEditingController();
   final TextEditingController _phone2Controller = TextEditingController();
   final TextEditingController _phone3Controller = TextEditingController();
+  final FocusNode _phone1Focus = FocusNode();
+  final FocusNode _phone2Focus = FocusNode();
+  final FocusNode _phone3Focus = FocusNode();
   final TextEditingController _verificationController = TextEditingController();
   final TextEditingController _newPasswordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
 
   Timer? _verifyTimer;
   int _secondsLeft = 0;
@@ -73,6 +77,9 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     _phone1Controller.dispose();
     _phone2Controller.dispose();
     _phone3Controller.dispose();
+    _phone1Focus.dispose();
+    _phone2Focus.dispose();
+    _phone3Focus.dispose();
     _verificationController.dispose();
     _newPasswordController.dispose();
     _confirmPasswordController.dispose();
@@ -110,7 +117,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
       _verifyTimer?.cancel();
     });
   }
-  
+
   String _formatTime(int seconds) {
     final m = (seconds ~/ 60).toString().padLeft(2, '0');
     final s = (seconds % 60).toString().padLeft(2, '0');
@@ -157,7 +164,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   DateTime? get _nextNicknameChangeDate {
     final last = _parseNicknameChangedAt(_currentUser?.nicknameChangedAt);
     if (last == null) return null;
-    return DateTime(last.year, last.month + _nicknameChangeIntervalMonths, last.day);
+    return DateTime(
+        last.year, last.month + _nicknameChangeIntervalMonths, last.day);
   }
 
   bool _canChangeNicknameNow() {
@@ -222,8 +230,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   ButtonStyle _confirmOtpButtonStyle() {
     final pink = _confirmOtpActive || _contactOtpVerifying;
     return ElevatedButton.styleFrom(
-      backgroundColor:
-          pink ? const Color(0xFFFF5A8D) : const Color(0xFFD2D2D2),
+      backgroundColor: pink ? const Color(0xFFFF5A8D) : const Color(0xFFD2D2D2),
       disabledBackgroundColor:
           pink ? const Color(0xFFFF5A8D) : const Color(0xFFD2D2D2),
       disabledForegroundColor: Colors.white,
@@ -327,8 +334,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
 
     if (send['success'] != true) {
       setState(() {
-        _contactOtpErrorText =
-            send['error']?.toString() ?? '인증번호 발송에 실패했습니다.';
+        _contactOtpErrorText = send['error']?.toString() ?? '인증번호 발송에 실패했습니다.';
       });
       return;
     }
@@ -378,8 +384,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
 
     if (verify['success'] != true) {
       setState(() {
-        _contactOtpErrorText =
-            verify['error']?.toString() ?? '인증에 실패했습니다.';
+        _contactOtpErrorText = verify['error']?.toString() ?? '인증에 실패했습니다.';
       });
       return;
     }
@@ -426,7 +431,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
       _nicknameController.text = _originalNickname;
       return;
     }
-    
+
     try {
       final phone = _enteredPhoneDigits;
       if (phone != _originalPhoneDigits && !_contactPhoneVerified) {
@@ -441,7 +446,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
             .replaceAll(RegExp(r'[^a-zA-Z0-9ㄱ-ㅎㅏ-ㅣ가-힣]'), ''),
         phone: phone,
       );
-      
+
       if (!mounted) return;
 
       if (result['success'] != true) {
@@ -462,7 +467,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           _nicknameController.text = _originalNickname;
         });
       }
-      
+
       if (result['success'] == true) {
         final newPw = _newPasswordController.text.trim();
         final confirmPw = _confirmPasswordController.text.trim();
@@ -494,8 +499,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         // 사용자 정보 새로고침
         await _loadCurrentUser();
       }
-    } catch (e) {
-    }
+    } catch (e) {}
   }
 
   @override
@@ -517,8 +521,10 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
 
     Widget phoneSegment({
       required TextEditingController controller,
+      required FocusNode focusNode,
       required int maxLength,
       required double width,
+      FocusNode? nextFocus,
     }) {
       return SizedBox(
         width: width,
@@ -530,15 +536,30 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           alignment: Alignment.center,
           child: TextField(
             controller: controller,
+            focusNode: focusNode,
             keyboardType: const TextInputType.numberWithOptions(
               decimal: false,
               signed: false,
             ),
+            textInputAction:
+                nextFocus == null ? TextInputAction.done : TextInputAction.next,
             inputFormatters: _digitsOnlyFormatters,
             maxLength: maxLength,
             textAlign: TextAlign.center,
             cursorColor: const Color(0xFF1A1A1A),
-            onChanged: (_) => _onPhoneDigitsChanged(),
+            onChanged: (value) {
+              _onPhoneDigitsChanged();
+              if (value.length == maxLength && nextFocus != null) {
+                nextFocus.requestFocus();
+              }
+            },
+            onSubmitted: (_) {
+              if (nextFocus != null) {
+                nextFocus.requestFocus();
+              } else {
+                focusNode.unfocus();
+              }
+            },
             decoration: const InputDecoration(
               counterText: '',
               border: InputBorder.none,
@@ -567,22 +588,27 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         children: [
           phoneSegment(
             controller: _phone1Controller,
+            focusNode: _phone1Focus,
             maxLength: 3,
             width: segmentW,
+            nextFocus: _phone2Focus,
           ),
           SizedBox(width: gap),
           _Hyphen(),
           SizedBox(width: gap),
           phoneSegment(
             controller: _phone2Controller,
+            focusNode: _phone2Focus,
             maxLength: 4,
             width: segmentW,
+            nextFocus: _phone3Focus,
           ),
           SizedBox(width: gap),
           _Hyphen(),
           SizedBox(width: gap),
           phoneSegment(
             controller: _phone3Controller,
+            focusNode: _phone3Focus,
             maxLength: 4,
             width: segmentW,
           ),
@@ -700,46 +726,138 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-          _ProfileHeader(
-            name: '${_currentUser!.name} 님',
-            email: _currentUser!.email,
+        _ProfileHeader(
+          name: '${_currentUser!.name} 님',
+          email: _currentUser!.email,
+        ),
+        SizedBox(height: healthDp(context, 16)),
+        Text(
+          '닉네임',
+          style: TextStyle(
+            color: Colors.black,
+            fontSize: healthSp(context, 16),
+            fontWeight: FontWeight.w500,
           ),
-          SizedBox(height: healthDp(context, 16)),
-
-          Text(
-            '닉네임',
-            style: TextStyle(
-              color: Colors.black,
-              fontSize: healthSp(context, 16),
-              fontWeight: FontWeight.w500,
+        ),
+        SizedBox(height: healthDp(context, 5)),
+        GestureDetector(
+          onTap:
+              !_canChangeNicknameNow() ? _showNicknameChangeLimitToast : null,
+          child: AbsorbPointer(
+            absorbing: !_canChangeNicknameNow(),
+            child: _InputBox(
+              padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
+              child: TextField(
+                controller: _nicknameController,
+                readOnly: !_canChangeNicknameNow(),
+                inputFormatters: _nicknameFormatters,
+                cursorColor: const Color(0xFF1A1A1A),
+                onChanged: (_) => _onFormChanged(),
+                decoration: InputDecoration(
+                  border: InputBorder.none,
+                  isCollapsed: true,
+                  contentPadding: EdgeInsets.zero,
+                  hintText: '닉네임을 입력해 주세요',
+                  hintStyle: _inputHintStyle(context),
+                ),
+                style: TextStyle(
+                  color: !_canChangeNicknameNow()
+                      ? const Color(0xFF898686)
+                      : Colors.black,
+                  fontSize: healthSp(context, 16),
+                  fontWeight: FontWeight.w500,
+                  height: 1,
+                ),
+              ),
             ),
           ),
-          SizedBox(height: healthDp(context, 5)),
-          GestureDetector(
-            onTap: !_canChangeNicknameNow()
-                ? _showNicknameChangeLimitToast
-                : null,
-            child: AbsorbPointer(
-              absorbing: !_canChangeNicknameNow(),
+        ),
+        if (!_canChangeNicknameNow() && _nextNicknameChangeDate != null) ...[
+          SizedBox(height: healthDp(context, 4)),
+          Text(
+            '*닉네임은 6개월에 1번 변경할 수 있습니다. \n(다음 변경: ${_formatYmdDot(_nextNicknameChangeDate!)})',
+            style: _hintWarningStyle(context),
+          ),
+        ],
+        SizedBox(height: healthDp(context, 16)),
+        Text(
+          '연락처',
+          style: TextStyle(
+            color: Colors.black,
+            fontSize: healthSp(context, 16),
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        SizedBox(height: healthDp(context, 8)),
+        Row(
+          children: [
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, constraints) =>
+                    buildPhoneRow(constraints.maxWidth),
+              ),
+            ),
+            SizedBox(width: healthDp(context, 8)),
+            SizedBox(
+              height: healthDp(context, 40),
+              child: ElevatedButton(
+                onPressed: _contactOtpSending ? null : _requestContactChangeOtp,
+                style: MyPageButtonStyles.pinkElevated(
+                  padding:
+                      EdgeInsets.symmetric(horizontal: healthDp(context, 20)),
+                ).copyWith(
+                  shape: WidgetStatePropertyAll(
+                    RoundedRectangleBorder(
+                      borderRadius:
+                          BorderRadius.circular(healthDp(context, 10)),
+                    ),
+                  ),
+                ),
+                child: Text(
+                  _contactOtpSending ? '발송 중…' : '변경하기',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: healthSp(context, 14),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: healthDp(context, 8)),
+        Row(
+          children: [
+            Expanded(
               child: _InputBox(
-                padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
+                borderColor: _contactOtpErrorText != null
+                    ? const Color(0xFFEF4444)
+                    : const Color(0xFFD2D2D2),
+                alignment: Alignment.centerLeft,
+                padding:
+                    EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
                 child: TextField(
-                  controller: _nicknameController,
-                  readOnly: !_canChangeNicknameNow(),
-                  inputFormatters: _nicknameFormatters,
+                  controller: _verificationController,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: false,
+                    signed: false,
+                  ),
+                  inputFormatters: _digitsOnlyFormatters,
                   cursorColor: const Color(0xFF1A1A1A),
-                  onChanged: (_) => _onFormChanged(),
+                  onChanged: (_) {
+                    if (_contactOtpErrorText != null) {
+                      setState(() => _contactOtpErrorText = null);
+                    }
+                  },
                   decoration: InputDecoration(
                     border: InputBorder.none,
                     isCollapsed: true,
                     contentPadding: EdgeInsets.zero,
-                    hintText: '닉네임을 입력해 주세요',
+                    hintText: '인증번호를 입력해 주세요',
                     hintStyle: _inputHintStyle(context),
                   ),
                   style: TextStyle(
-                    color: !_canChangeNicknameNow()
-                        ? const Color(0xFF898686)
-                        : Colors.black,
+                    color: Colors.black,
                     fontSize: healthSp(context, 16),
                     fontWeight: FontWeight.w500,
                     height: 1,
@@ -747,268 +865,177 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                 ),
               ),
             ),
-          ),
-          if (!_canChangeNicknameNow() && _nextNicknameChangeDate != null) ...[
-            SizedBox(height: healthDp(context, 4)),
-            Text(
-              '*닉네임은 6개월에 1번 변경할 수 있습니다. \n(다음 변경: ${_formatYmdDot(_nextNicknameChangeDate!)})',
-              style: _hintWarningStyle(context),
-            ),
-          ],
-          SizedBox(height: healthDp(context, 16)),
-
-          Text(
-            '연락처',
-            style: TextStyle(
-              color: Colors.black,
-              fontSize: healthSp(context, 16),
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          SizedBox(height: healthDp(context, 8)),
-          Row(
-            children: [
-              Expanded(
-                child: LayoutBuilder(
-                  builder: (context, constraints) =>
-                      buildPhoneRow(constraints.maxWidth),
-                ),
-              ),
-              SizedBox(width: healthDp(context, 8)),
-              SizedBox(
-                height: healthDp(context, 40),
-                child: ElevatedButton(
-                  onPressed:
-                      _contactOtpSending ? null : _requestContactChangeOtp,
-                  style: MyPageButtonStyles.pinkElevated(
-                    padding: EdgeInsets.symmetric(horizontal: healthDp(context, 20)),
-                  ).copyWith(
-                    shape: WidgetStatePropertyAll(
-                      RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(healthDp(context, 10)),
-                      ),
-                    ),
-                  ),
-                  child: Text(
-                    _contactOtpSending ? '발송 중…' : '변경하기',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: healthSp(context, 14),
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: healthDp(context, 8)),
-          Row(
-            children: [
-              Expanded(
-                child: _InputBox(
-                  borderColor: _contactOtpErrorText != null
-                      ? const Color(0xFFEF4444)
-                      : const Color(0xFFD2D2D2),
-                  alignment: Alignment.centerLeft,
-                  padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
-                  child: TextField(
-                    controller: _verificationController,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: false,
-                      signed: false,
-                    ),
-                    inputFormatters: _digitsOnlyFormatters,
-                    cursorColor: const Color(0xFF1A1A1A),
-                    onChanged: (_) {
-                      if (_contactOtpErrorText != null) {
-                        setState(() => _contactOtpErrorText = null);
-                      }
-                    },
-                    decoration: InputDecoration(
-                      border: InputBorder.none,
-                      isCollapsed: true,
-                      contentPadding: EdgeInsets.zero,
-                      hintText: '인증번호를 입력해 주세요',
-                      hintStyle: _inputHintStyle(context),
-                    ),
-                    style: TextStyle(
-                      color: Colors.black,
-                      fontSize: healthSp(context, 16),
-                      fontWeight: FontWeight.w500,
-                      height: 1,
-                    ),
-                  ),
-                ),
-              ),
-              if (_secondsLeft > 0) ...[
-                SizedBox(width: healthDp(context, 10)),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.access_time,
-                      size: healthDp(context, 14),
-                      color: Color(0xFFFF5A8D),
-                    ),
-                    SizedBox(width: healthDp(context, 2)),
-                    Text(
-                      _formatTime(_secondsLeft),
-                      style: TextStyle(
-                        color: Color(0xFFFF5A8D),
-                        fontSize: healthSp(context, 12),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+            if (_secondsLeft > 0) ...[
               SizedBox(width: healthDp(context, 10)),
-              SizedBox(
-                height: healthDp(context, 40),
-                child: ElevatedButton(
-                  onPressed: (_confirmOtpActive &&
-                          !_contactOtpVerifying &&
-                          !_contactOtpSending)
-                      ? _confirmContactChangeOtp
-                      : null,
-                  style: _confirmOtpButtonStyle(),
-                  child: Text(
-                    _contactOtpVerifying ? '확인 중…' : '확인',
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.access_time,
+                    size: healthDp(context, 14),
+                    color: Color(0xFFFF5A8D),
+                  ),
+                  SizedBox(width: healthDp(context, 2)),
+                  Text(
+                    _formatTime(_secondsLeft),
                     style: TextStyle(
-                      color: Colors.white,
-                      fontSize: healthSp(context, 14),
+                      color: Color(0xFFFF5A8D),
+                      fontSize: healthSp(context, 12),
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                ),
+                ],
               ),
             ],
-          ),
-          if (_contactOtpErrorText != null && _contactOtpErrorText!.isNotEmpty) ...[
-            SizedBox(height: healthDp(context, 6)),
-            Text(
-              _contactOtpErrorText!,
-              style: _hintWarningStyle(context, color: const Color(0xFFEF4444)),
-            ),
-          ] else if (_contactOtpVerifiedSuccess) ...[
-            SizedBox(height: healthDp(context, 6)),
-            Text(
-              '인증번호가 확인되었습니다.',
-              style: TextStyle(
-                color: const Color(0xFF2FAF66),
-                fontSize: healthSp(context, 10),
-                fontFamily: 'Gmarket Sans TTF',
-                fontWeight: FontWeight.w300,
-                height: 1,
+            SizedBox(width: healthDp(context, 10)),
+            SizedBox(
+              height: healthDp(context, 40),
+              child: ElevatedButton(
+                onPressed: (_confirmOtpActive &&
+                        !_contactOtpVerifying &&
+                        !_contactOtpSending)
+                    ? _confirmContactChangeOtp
+                    : null,
+                style: _confirmOtpButtonStyle(),
+                child: Text(
+                  _contactOtpVerifying ? '확인 중…' : '확인',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: healthSp(context, 14),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
               ),
             ),
           ],
-          SizedBox(height: healthDp(context, 16)),
-
+        ),
+        if (_contactOtpErrorText != null &&
+            _contactOtpErrorText!.isNotEmpty) ...[
+          SizedBox(height: healthDp(context, 6)),
           Text(
-            '비밀번호 설정',
+            _contactOtpErrorText!,
+            style: _hintWarningStyle(context, color: const Color(0xFFEF4444)),
+          ),
+        ] else if (_contactOtpVerifiedSuccess) ...[
+          SizedBox(height: healthDp(context, 6)),
+          Text(
+            '인증번호가 확인되었습니다.',
             style: TextStyle(
-              color: Colors.black,
-              fontSize: healthSp(context, 16),
-              fontWeight: FontWeight.w500,
+              color: const Color(0xFF2FAF66),
+              fontSize: healthSp(context, 10),
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w300,
               height: 1,
             ),
           ),
-          SizedBox(height: healthDp(context, 8)),
-          _InputBox(
-            padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _newPasswordController,
-                    obscureText: _obscureNewPassword,
-                    cursorColor: const Color(0xFF1A1A1A),
-                    onChanged: (_) {
-                      _recomputePasswordMismatch();
-                      _onFormChanged();
-                    },
-                    decoration: InputDecoration(
-                      border: InputBorder.none,
-                      isCollapsed: true,
-                      contentPadding: EdgeInsets.zero,
-                      hintText: '새 비밀번호를 입력해 주세요.',
-                      hintStyle: _inputHintStyle(context),
-                    ),
-                    style: TextStyle(
-                      color: Colors.black,
-                      fontSize: healthSp(context, 12),
-                      fontWeight: FontWeight.w500,
-                      height: 1,
-                    ),
-                  ),
-                ),
-                _passwordVisibilityIcon(
-                  obscure: _obscureNewPassword,
-                  onTap: () => setState(
-                    () => _obscureNewPassword = !_obscureNewPassword,
-                  ),
-                ),
-              ],
-            ),
+        ],
+        SizedBox(height: healthDp(context, 16)),
+        Text(
+          '비밀번호 설정',
+          style: TextStyle(
+            color: Colors.black,
+            fontSize: healthSp(context, 16),
+            fontWeight: FontWeight.w500,
+            height: 1,
           ),
+        ),
+        SizedBox(height: healthDp(context, 8)),
+        _InputBox(
+          padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _newPasswordController,
+                  obscureText: _obscureNewPassword,
+                  cursorColor: const Color(0xFF1A1A1A),
+                  onChanged: (_) {
+                    _recomputePasswordMismatch();
+                    _onFormChanged();
+                  },
+                  decoration: InputDecoration(
+                    border: InputBorder.none,
+                    isCollapsed: true,
+                    contentPadding: EdgeInsets.zero,
+                    hintText: '새 비밀번호를 입력해 주세요.',
+                    hintStyle: _inputHintStyle(context),
+                  ),
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: healthSp(context, 12),
+                    fontWeight: FontWeight.w500,
+                    height: 1,
+                  ),
+                ),
+              ),
+              _passwordVisibilityIcon(
+                obscure: _obscureNewPassword,
+                onTap: () => setState(
+                  () => _obscureNewPassword = !_obscureNewPassword,
+                ),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(height: healthDp(context, 4)),
+        Text(
+          '*8~16자/문자,숫자,특수문자 모두 혼용',
+          style: _hintWarningStyle(
+            context,
+            color: _newPasswordController.text.isNotEmpty &&
+                    !isValidAppPassword(_newPasswordController.text)
+                ? const Color(0xFFEF4444)
+                : const Color(0xFF898686),
+          ),
+        ),
+        SizedBox(height: healthDp(context, 8)),
+        _InputBox(
+          borderColor: _passwordMismatch
+              ? const Color(0xFFEF4444)
+              : const Color(0xFFD2D2D2),
+          padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _confirmPasswordController,
+                  obscureText: _obscureConfirmPassword,
+                  cursorColor: const Color(0xFF1A1A1A),
+                  onChanged: (_) {
+                    _recomputePasswordMismatch();
+                    _onFormChanged();
+                  },
+                  decoration: InputDecoration(
+                    border: InputBorder.none,
+                    isCollapsed: true,
+                    contentPadding: EdgeInsets.zero,
+                    hintText: '다시 한번 입력해 주세요.',
+                    hintStyle: _inputHintStyle(context),
+                  ),
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: healthSp(context, 12),
+                    fontWeight: FontWeight.w500,
+                    height: 1,
+                  ),
+                ),
+              ),
+              _passwordVisibilityIcon(
+                obscure: _obscureConfirmPassword,
+                onTap: () => setState(
+                  () => _obscureConfirmPassword = !_obscureConfirmPassword,
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (_passwordMismatch) ...[
           SizedBox(height: healthDp(context, 4)),
           Text(
-            '*8~16자/문자,숫자,특수문자 모두 혼용',
-            style: _hintWarningStyle(
-              context,
-              color: _newPasswordController.text.isNotEmpty &&
-                      !isValidAppPassword(_newPasswordController.text)
-                  ? const Color(0xFFEF4444)
-                  : const Color(0xFF898686),
-            ),
+            '비밀번호가 일치하지 않습니다',
+            style: _hintWarningStyle(context, color: const Color(0xFFEF4444)),
           ),
-          SizedBox(height: healthDp(context, 8)),
-          _InputBox(
-            borderColor: _passwordMismatch ? const Color(0xFFEF4444) : const Color(0xFFD2D2D2),
-            padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _confirmPasswordController,
-                    obscureText: _obscureConfirmPassword,
-                    cursorColor: const Color(0xFF1A1A1A),
-                    onChanged: (_) {
-                      _recomputePasswordMismatch();
-                      _onFormChanged();
-                    },
-                    decoration: InputDecoration(
-                      border: InputBorder.none,
-                      isCollapsed: true,
-                      contentPadding: EdgeInsets.zero,
-                      hintText: '다시 한번 입력해 주세요.',
-                      hintStyle: _inputHintStyle(context),
-                    ),
-                    style: TextStyle(
-                      color: Colors.black,
-                      fontSize: healthSp(context, 12),
-                      fontWeight: FontWeight.w500,
-                      height: 1,
-                    ),
-                  ),
-                ),
-                _passwordVisibilityIcon(
-                  obscure: _obscureConfirmPassword,
-                  onTap: () => setState(
-                    () => _obscureConfirmPassword = !_obscureConfirmPassword,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (_passwordMismatch) ...[
-            SizedBox(height: healthDp(context, 4)),
-            Text(
-              '비밀번호가 일치하지 않습니다',
-              style: _hintWarningStyle(context, color: const Color(0xFFEF4444)),
-            ),
-          ],
+        ],
       ],
     );
   }
@@ -1116,9 +1143,8 @@ class _InputBoxState extends State<_InputBox> {
         );
     final radius = healthDp(context, 10);
     final isError = widget.borderColor == _error;
-    final borderColor = isError
-        ? widget.borderColor
-        : (_focused ? _pink : widget.borderColor);
+    final borderColor =
+        isError ? widget.borderColor : (_focused ? _pink : widget.borderColor);
     return Focus(
       onFocusChange: (focused) {
         if (_focused == focused) return;
@@ -1142,4 +1168,3 @@ class _InputBoxState extends State<_InputBox> {
     );
   }
 }
-
