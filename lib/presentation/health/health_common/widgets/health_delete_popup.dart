@@ -1,6 +1,3 @@
-import 'dart:math' as math;
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 
 import 'package:bomiora_app/presentation/health/health_common/health_responsive_scale.dart';
@@ -14,39 +11,14 @@ Future<bool?> showHealthDeletePopup({
 }) {
   return showDialog<bool>(
     context: context,
+    barrierDismissible: false,
     barrierColor: const Color(0x73000000),
-    builder: (dialogContext) {
-      final screenWidth = MediaQuery.of(dialogContext).size.width;
-      const wrapperWidth = 600.0;
-      final contentSidePadding = healthDp(dialogContext, 27);
-      final wrapperOuterInset =
-          screenWidth > wrapperWidth ? (screenWidth - wrapperWidth) / 2 : 0.0;
-      final horizontalInset = wrapperOuterInset + contentSidePadding;
-
-      final availW = screenWidth - 2 * horizontalInset;
-      final popupW = math.min(healthDp(dialogContext, 272), availW);
-      final popupH = healthDp(dialogContext, 221);
-
-      return Align(
-        alignment: Alignment.center,
-        child: Transform.translate(
-          offset: Offset(0, -healthDp(dialogContext, 48)),
-          child: Material(
-            color: Colors.transparent,
-            child: SizedBox(
-              width: popupW,
-              height: popupH,
-              child: HealthDeletePopup(
-                title: title,
-                message: message,
-                cancelText: cancelText,
-                deleteText: deleteText,
-              ),
-            ),
-          ),
-        ),
-      );
-    },
+    builder: (_) => HealthDeletePopup(
+      title: title,
+      message: message,
+      cancelText: cancelText,
+      deleteText: deleteText,
+    ),
   );
 }
 
@@ -67,182 +39,128 @@ class HealthDeletePopup extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final r = healthDp(context, 20);
-    return ClipRRect(
-        borderRadius: BorderRadius.circular(r),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(
-            sigmaX: healthDp(context, 8),
-            sigmaY: healthDp(context, 8),
-          ),
-          child: Container(
-            width: double.infinity,
-            height: double.infinity,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.95),
-              borderRadius: BorderRadius.circular(r),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0x24000000),
-                  blurRadius: healthDp(context, 24),
-                  offset: Offset(0, healthDp(context, 8)),
+    return Dialog(
+      elevation: 0,
+      backgroundColor: Colors.transparent,
+      insetPadding: EdgeInsets.symmetric(horizontal: healthDp(context, 24)),
+      child: Container(
+        width: healthDp(context, 300),
+        padding: EdgeInsets.all(healthDp(context, 20)),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(r),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0x26000000),
+              blurRadius: healthDp(context, 20),
+              offset: Offset(0, healthDp(context, 8)),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: healthDp(context, 44),
+              height: healthDp(context, 44),
+              decoration: const BoxDecoration(
+                color: Color(0x14FF5A8D),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.delete_outline_rounded,
+                color: const Color(0xFFFF5A8D),
+                size: healthDp(context, 24),
+              ),
+            ),
+            SizedBox(height: healthDp(context, 14)),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: const Color(0xFF1A1A1E),
+                fontSize: healthSp(context, 18),
+                fontFamily: 'Gmarket Sans TTF',
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            SizedBox(height: healthDp(context, 10)),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: const Color(0xFF898686),
+                fontSize: healthSp(context, 13),
+                fontFamily: 'Gmarket Sans TTF',
+                fontWeight: FontWeight.w400,
+                height: 1.5,
+              ),
+            ),
+            SizedBox(height: healthDp(context, 20)),
+            Row(
+              children: [
+                Expanded(
+                  child: _PopupButton(
+                    label: cancelText,
+                    backgroundColor: const Color(0xFFF2F2F2),
+                    textColor: const Color(0xFF666666),
+                    onTap: () => Navigator.pop(context, false),
+                  ),
+                ),
+                SizedBox(width: healthDp(context, 8)),
+                Expanded(
+                  child: _PopupButton(
+                    label: deleteText,
+                    backgroundColor: const Color(0xFFFF5A8D),
+                    textColor: Colors.white,
+                    onTap: () => Navigator.pop(context, true),
+                  ),
                 ),
               ],
             ),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final top = healthDp(context, 20);
-                final titleSlot = healthDp(context, 20);
-                final gapTitleMsg = healthDp(context, 16);
-                final msgBox = healthDp(context, 48); // 높이 대폭 축소 (불필요한 공간 제거)
-                final gapMsgBtnBase = healthDp(context, 16);
-                final btnRow = healthDp(context, 50);
+          ],
+        ),
+      ),
+    );
+  }
+}
 
-                final fixedSum =
-                    top + titleSlot + gapTitleMsg + msgBox + gapMsgBtnBase + btnRow;
-                final slack =
-                    (constraints.maxHeight - fixedSum).clamp(0.0, 10.0); // 과도한 유격 제한
-                final gapMsgBtn = gapMsgBtnBase + slack;
+class _PopupButton extends StatelessWidget {
+  const _PopupButton({
+    required this.label,
+    required this.backgroundColor,
+    required this.textColor,
+    required this.onTap,
+  });
 
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    SizedBox(height: top),
-                    Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: healthDp(context, 24),
-                      ),
-                      child: SizedBox(
-                        height: titleSlot,
-                        width: double.infinity,
-                        child: Center(
-                          child: Text(
-                            title,
-                            textAlign: TextAlign.center,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: const Color(0xFF1F2937),
-                              fontSize: healthSp(context, 20),
-                              fontFamily: 'Gmarket Sans TTF',
-                              fontWeight: FontWeight.w700,
-                              height: 1.0,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: gapTitleMsg),
-                    Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: healthDp(context, 24),
-                      ),
-                      child: SizedBox(
-                        height: msgBox,
-                        width: double.infinity,
-                        child: ClipRect(
-                          child: SingleChildScrollView(
-                            physics: const ClampingScrollPhysics(),
-                            child: Text(
-                              message,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: const Color(0xFF898686),
-                                fontSize: healthSp(context, 14),
-                                height: 1.5,
-                                fontFamily: 'Gmarket Sans TTF',
-                                fontWeight: FontWeight.w400,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: gapMsgBtn),
-                    SizedBox(
-                      height: btnRow,
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: InkWell(
-                              onTap: () => Navigator.pop(context, false),
-                              borderRadius: BorderRadius.only(
-                                bottomLeft: Radius.circular(r),
-                              ),
-                              child: Container(
-                                width: double.infinity,
-                                height: double.infinity,
-                                decoration: ShapeDecoration(
-                                  color: const Color(0xFFF7F7F7),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.only(
-                                      bottomLeft: Radius.circular(r),
-                                    ),
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      cancelText,
-                                      style: TextStyle(
-                                        color: const Color(0xFF898686),
-                                        fontSize: healthSp(context, 16),
-                                        fontFamily: 'Gmarket Sans TTF',
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            child: InkWell(
-                              onTap: () => Navigator.pop(context, true),
-                              borderRadius: BorderRadius.only(
-                                bottomRight: Radius.circular(r),
-                              ),
-                              child: Container(
-                                width: double.infinity,
-                                height: double.infinity,
-                                decoration: ShapeDecoration(
-                                  color: const Color(0xFFFF5A8D),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.only(
-                                      bottomRight: Radius.circular(r),
-                                    ),
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      deleteText,
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: healthSp(context, 16),
-                                        fontFamily: 'Gmarket Sans TTF',
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                );
-              },
+  final String label;
+  final Color backgroundColor;
+  final Color textColor;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: healthDp(context, 44),
+      child: Material(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(healthDp(context, 10)),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(healthDp(context, 10)),
+          child: Center(
+            child: Text(
+              label,
+              style: TextStyle(
+                color: textColor,
+                fontSize: healthSp(context, 14),
+                fontFamily: 'Gmarket Sans TTF',
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
         ),
+      ),
     );
   }
 }
