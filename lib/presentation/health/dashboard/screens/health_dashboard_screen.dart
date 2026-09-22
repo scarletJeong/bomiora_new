@@ -101,7 +101,10 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
     }
   }
 
-  Future<void> _loadData({bool showBlockingLoader = true}) async {
+  Future<void> _loadData({
+    bool showBlockingLoader = true,
+    bool forceRefresh = false,
+  }) async {
     if (showBlockingLoader) {
       setState(() => isLoading = true);
     }
@@ -154,20 +157,27 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
           productKind: 'prescription',
         ),
       );
-      final cached = HealthDashboardRepository.peek(
-        mbId: userId,
-        date: selectedDate,
-      );
-      if (cached != null && mounted) {
-        _applyHealthDashboard(user, cached);
+      if (!forceRefresh) {
+        final cached = HealthDashboardRepository.peek(
+          mbId: userId,
+          date: selectedDate,
+        );
+        if (cached != null && mounted) {
+          _applyHealthDashboard(user, cached);
+        }
       }
 
       final results = await Future.wait<dynamic>([
         HealthDashboardRepository.fetchDashboard(
           mbId: userId,
           date: selectedDate,
+          forceRefresh: forceRefresh,
         ),
-        FoodRepository.getRecordsForDate(userId, selectedDate),
+        FoodRepository.getRecordsForDate(
+          userId,
+          selectedDate,
+          forceRefresh: forceRefresh,
+        ),
       ]);
       final dashboard = results[0] as HealthDashboardPayload?;
 
@@ -186,6 +196,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
         HealthDashboardRepository.fetchDashboard(
           mbId: userId,
           date: selectedDate.subtract(const Duration(days: 1)),
+          forceRefresh: forceRefresh,
         ),
       );
 
@@ -357,13 +368,16 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
                   children: [
                     CircularProgressIndicator(color: Color(0xFFFF5A8D)),
                     SizedBox(height: 16),
-                    Text('Loading data...'),
+                    Text('로딩 중'),
                   ],
                 ),
               )
             : RefreshIndicator(
                 color: const Color(0xFFFF5A8D),
-                onRefresh: () => _loadData(showBlockingLoader: false),
+                onRefresh: () => _loadData(
+                  showBlockingLoader: false,
+                  forceRefresh: true,
+                ),
                 child: SingleChildScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
                   child: Column(
