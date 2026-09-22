@@ -1933,12 +1933,8 @@ class _WeightListScreenState extends State<WeightListScreen>
 
         // 데이터베이스에서 이미지 경로 제거
         final updatedRecord = selectedRecord!.copyWith(
-          frontImagePath: imagePath == selectedRecord!.frontImagePath
-              ? null
-              : selectedRecord!.frontImagePath,
-          sideImagePath: imagePath == selectedRecord!.sideImagePath
-              ? null
-              : selectedRecord!.sideImagePath,
+          clearFrontImage: imagePath == selectedRecord!.frontImagePath,
+          clearSideImage: imagePath == selectedRecord!.sideImagePath,
         );
 
         await WeightRepository.updateWeightRecord(updatedRecord);

@@ -129,11 +129,9 @@ class WeightRecord {
       'weight': weight,
       if (height != null) 'height': height,
       if (bmi != null) 'bmi': bmi,
-      if (notes != null && notes!.isNotEmpty) 'notes': notes,
-      if (frontImagePath != null && frontImagePath!.isNotEmpty)
-        'front_image_path': frontImagePath,
-      if (sideImagePath != null && sideImagePath!.isNotEmpty)
-        'side_image_path': sideImagePath,
+      'notes': notes,
+      'front_image_path': frontImagePath,
+      'side_image_path': sideImagePath,
     };
   }
 
@@ -149,6 +147,8 @@ class WeightRecord {
     String? sideImagePath,
     DateTime? createdAt,
     DateTime? updatedAt,
+    bool clearFrontImage = false,
+    bool clearSideImage = false,
   }) {
     return WeightRecord(
       id: id ?? this.id,
@@ -158,8 +158,8 @@ class WeightRecord {
       height: height ?? this.height,
       bmi: bmi ?? this.bmi,
       notes: notes ?? this.notes,
-      frontImagePath: frontImagePath ?? this.frontImagePath,
-      sideImagePath: sideImagePath ?? this.sideImagePath,
+      frontImagePath: clearFrontImage ? null : (frontImagePath ?? this.frontImagePath),
+      sideImagePath: clearSideImage ? null : (sideImagePath ?? this.sideImagePath),
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
