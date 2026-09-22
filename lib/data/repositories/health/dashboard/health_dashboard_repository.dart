@@ -133,9 +133,44 @@ class HealthDashboardRepository {
         return _fetchLegacyDashboard(mbId: mbId, date: date);
       }
 
-      return _parseBundle(mbId, data);
+      final payload = _parseBundle(mbId, data);
+      if (payload.steps != null) return payload;
+      final steps = await StepsRepository.getStepsRecordByMbId(mbId, date);
+      if (steps == null) return payload;
+      return HealthDashboardPayload(
+        weightRecords: payload.weightRecords,
+        bloodPressureRecords: payload.bloodPressureRecords,
+        bloodSugarRecords: payload.bloodSugarRecords,
+        heartRateRecords: payload.heartRateRecords,
+        menstrualCycle: payload.menstrualCycle,
+        steps: steps,
+        healthGoal: payload.healthGoal,
+      );
     } catch (_) {
       return _fetchLegacyDashboard(mbId: mbId, date: date);
+    }
+  }
+
+  static StepsRecord? _parseSteps(dynamic raw) {
+    if (raw is List) {
+      for (final item in raw) {
+        final parsed = _parseSteps(item);
+        if (parsed != null) return parsed;
+      }
+      return null;
+    }
+    if (raw is! Map) return null;
+    final map = Map<String, dynamic>.from(raw);
+    final hasTotal =
+        map.containsKey('total_steps') || map.containsKey('totalSteps');
+    if (!hasTotal && map['data'] is Map) {
+      return _parseSteps(map['data']);
+    }
+    if (!hasTotal) return null;
+    try {
+      return StepsRecord.fromJson(map);
+    } catch (_) {
+      return null;
     }
   }
 
@@ -154,11 +189,7 @@ class HealthDashboardRepository {
           .toList();
     }
 
-    StepsRecord? steps;
-    final stepsRaw = data['steps'];
-    if (stepsRaw is Map<String, dynamic>) {
-      steps = StepsRecord.fromJson(stepsRaw);
-    }
+    final steps = _parseSteps(data['steps']);
 
     HealthGoalRecordModel? healthGoal;
     final goalRaw = data['healthGoal'];

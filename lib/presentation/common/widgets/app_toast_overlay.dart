@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/constants/app_assets.dart';
+import '../../../core/navigation/app_navigator_key.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import 'mobile_layout_wrapper.dart';
 
@@ -45,6 +46,16 @@ class AppToastOverlay {
       variant: _AppToastVariant.alert,
       duration: duration,
     );
+  }
+
+  /// 화면을 닫은 뒤에도 띄울 수 있는 알림.
+  static void showAlertFromNavigator(
+    String message, {
+    Duration duration = const Duration(seconds: 2),
+  }) {
+    final context = appNavigatorKey.currentContext;
+    if (context == null) return;
+    showAlert(context, message, duration: duration);
   }
 
   static void _present(
