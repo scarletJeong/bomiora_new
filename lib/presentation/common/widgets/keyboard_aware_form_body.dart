@@ -23,24 +23,22 @@ class KeyboardAwareFormBody extends StatelessWidget {
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           child: ConstrainedBox(
             constraints: BoxConstraints(minHeight: constraints.maxHeight),
-            child: IntrinsicHeight(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Padding(
-                    padding: formPadding ?? EdgeInsets.zero,
-                    child: form,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: formPadding ?? EdgeInsets.zero,
+                  child: form,
+                ),
+                SafeArea(
+                  top: false,
+                  child: Padding(
+                    padding: bottomPadding ?? EdgeInsets.zero,
+                    child: bottom,
                   ),
-                  const Spacer(),
-                  SafeArea(
-                    top: false,
-                    child: Padding(
-                      padding: bottomPadding ?? EdgeInsets.zero,
-                      child: bottom,
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         );

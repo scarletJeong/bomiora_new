@@ -114,10 +114,7 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
   void _updateBMI() {
     final weight = double.tryParse(_weightController.text);
     final height = double.tryParse(_heightController.text);
-
-    setState(() {
-      _calculatedBMI = WeightRecord.calculateBMI(weight ?? 0, height);
-    });
+    _calculatedBMI = WeightRecord.calculateBMI(weight ?? 0, height);
   }
 
   Future<void> _selectDateThenTime() async {
@@ -366,7 +363,13 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
                 ],
               ),
             ),
-            bottom: _buildActionButtons(),
+            bottom: ListenableBuilder(
+              listenable: Listenable.merge([
+                _weightController,
+                _heightController,
+              ]),
+              builder: (context, _) => _buildActionButtons(),
+            ),
           ),
         ),
       ),

@@ -564,12 +564,20 @@ class _DropdownHoverItem extends StatefulWidget {
 class _DropdownHoverItemState extends State<_DropdownHoverItem> {
   bool _hovered = false;
 
+  void _setHovered(bool value) {
+    if (_hovered == value) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _hovered == value) return;
+      setState(() => _hovered = value);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final highlighted = _hovered || widget.selected;
     return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
+      onEnter: (_) => _setHovered(true),
+      onExit: (_) => _setHovered(false),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
