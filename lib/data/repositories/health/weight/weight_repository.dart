@@ -9,6 +9,29 @@ class WeightRepository {
   static final Map<String, DateTime> _cacheAt = {};
   static final Map<String, Future<List<WeightRecord>>> _inFlight = {};
 
+  static void seedRecords(String mbId, List<WeightRecord> records) {
+    final id = mbId.trim();
+    if (id.isEmpty) return;
+    _cache[id] = List<WeightRecord>.from(records);
+    _cacheAt[id] = DateTime.now();
+  }
+
+  static List<WeightRecord> optimisticallyRemove(
+    String mbId,
+    int recordId,
+  ) {
+    final id = mbId.trim();
+    final previous = List<WeightRecord>.from(_cache[id] ?? const []);
+    final next = List<WeightRecord>.from(previous)
+      ..removeWhere((record) => record.id == recordId);
+    seedRecords(id, next);
+    return previous;
+  }
+
+  static void restoreRecords(String mbId, List<WeightRecord> records) {
+    seedRecords(mbId, records);
+  }
+
   static void invalidate([String? mbId]) {
     if (mbId == null || mbId.trim().isEmpty) {
       _cache.clear();

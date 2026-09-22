@@ -1,9 +1,11 @@
+import 'dart:async';
+import 'dart:io';
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'dart:io';
-import 'dart:math' as math;
 import 'package:image_picker/image_picker.dart';
 import '../../../common/widgets/keyboard_aware_form_body.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
@@ -265,28 +267,29 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
   // 체중 기록 삭제
   Future<void> _deleteRecord() async {
     if (widget.record?.id == null) return;
+    final record = widget.record!;
+    final previous = WeightRepository.optimisticallyRemove(
+      record.mbId,
+      record.id!,
+    );
+    notifyHealthDataChanged();
+    if (mounted) Navigator.pop(context, true);
+    unawaited(_persistDelete(record, previous));
+  }
 
-    setState(() => _isSaving = true);
-
-    try {
-      final success = await WeightRepository.deleteWeightRecord(
-        widget.record!.id!,
-        mbId: widget.record!.mbId,
-      );
-
-      if (mounted) {
-        if (success) {
-          HealthDashboardRepository.invalidate(widget.record!.mbId);
-          notifyHealthDataChanged();
-          Navigator.pop(context, true); // 성공
-        }
-      }
-    } catch (e) {
-    } finally {
-      if (mounted) {
-        setState(() => _isSaving = false);
-      }
+  Future<void> _persistDelete(
+    WeightRecord record,
+    List<WeightRecord> previous,
+  ) async {
+    final success = await WeightRepository.deleteWeightRecord(
+      record.id!,
+      mbId: record.mbId,
+    );
+    if (!success) {
+      WeightRepository.restoreRecords(record.mbId, previous);
     }
+    HealthDashboardRepository.invalidate(record.mbId);
+    notifyHealthDataChanged();
   }
 
   @override

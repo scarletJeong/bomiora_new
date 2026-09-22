@@ -631,10 +631,6 @@ class _WeightListScreenState extends State<WeightListScreen>
                           ),
                         ),
                       );
-
-                      if (mounted) {
-                        await _loadData();
-                      }
                     },
                     backgroundColor: const Color(0xFFFF5A8D),
                   ),
@@ -2403,10 +2399,6 @@ class _WeightListScreenState extends State<WeightListScreen>
         builder: (context) => WeightInputScreen(record: selectedRecord),
       ),
     );
-
-    if (mounted) {
-      await _loadData();
-    }
   }
 
   Future<void> _openSelectedDateEditorPopup() async {

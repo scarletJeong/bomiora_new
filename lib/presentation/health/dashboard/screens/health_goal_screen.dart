@@ -25,14 +25,14 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
   static const int _stepMin = 0;
   static const int _stepMax = 20000;
   static const int _stepUnit = 100;
+
   /// 375 기준 한 줄 높이; 실제 값은 [healthDp]로 스케일.
   static const double _stepsItemExtentBase = 30;
   static const int _wheelTickDebounceMs = 70;
 
   final TextEditingController _currentWeightController =
       TextEditingController();
-  final TextEditingController _targetWeightController =
-      TextEditingController();
+  final TextEditingController _targetWeightController = TextEditingController();
   final FocusNode _currentWeightFocus = FocusNode();
   final FocusNode _targetWeightFocus = FocusNode();
   late final FixedExtentScrollController _stepsWheelController;
@@ -105,10 +105,7 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
   bool get _isFormComplete {
     final current = _parseWeightField(_currentWeightController.text);
     final target = _parseWeightField(_targetWeightController.text);
-    return current != null &&
-        current > 0 &&
-        target != null &&
-        target > 0;
+    return current != null && current > 0 && target != null && target > 0;
   }
 
   Future<void> _loadLatestGoal() async {
@@ -194,7 +191,7 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
     setState(() => _submitting = false);
 
     if (result.success) {
-      HealthDashboardRepository.invalidate(mbId);
+      HealthDashboardRepository.invalidate(mbId, true);
       notifyHealthDataChanged();
       Navigator.pop(context, true);
     }
@@ -374,46 +371,47 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
                 diameterRatio: 2.6,
                 perspective: 0.003,
                 physics: const NeverScrollableScrollPhysics(),
-              onSelectedItemChanged: (index) {
-                final next = _stepsFromIndex(index);
-                if (next == _selectedSteps) return;
-                setState(() => _selectedSteps = next);
-              },
-              childDelegate: ListWheelChildBuilderDelegate(
-                childCount: _stepsItemCount,
-                builder: (context, index) {
-                  final value = _stepsFromIndex(index);
-                  final distance = (value - _selectedSteps).abs() ~/ _stepUnit;
-
-                  double fontSize;
-                  Color color;
-
-                  if (distance == 0) {
-                    fontSize = 24;
-                    color = const Color(0xFF1A1A1A);
-                  } else if (distance == 1) {
-                    fontSize = 12;
-                    color = const Color(0xFF9A9A9A);
-                  } else {
-                    fontSize = 8;
-                    color = const Color(0xFFBEBEBE);
-                  }
-
-                  return Center(
-                    child: Text(
-                      _formatNumber(value),
-                      style: TextStyle(
-                        color: color,
-                        fontSize: fontSize,
-                        fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w300,
-                        height: 1.0,
-                      ),
-                    ),
-                  );
+                onSelectedItemChanged: (index) {
+                  final next = _stepsFromIndex(index);
+                  if (next == _selectedSteps) return;
+                  setState(() => _selectedSteps = next);
                 },
+                childDelegate: ListWheelChildBuilderDelegate(
+                  childCount: _stepsItemCount,
+                  builder: (context, index) {
+                    final value = _stepsFromIndex(index);
+                    final distance =
+                        (value - _selectedSteps).abs() ~/ _stepUnit;
+
+                    double fontSize;
+                    Color color;
+
+                    if (distance == 0) {
+                      fontSize = 24;
+                      color = const Color(0xFF1A1A1A);
+                    } else if (distance == 1) {
+                      fontSize = 12;
+                      color = const Color(0xFF9A9A9A);
+                    } else {
+                      fontSize = 8;
+                      color = const Color(0xFFBEBEBE);
+                    }
+
+                    return Center(
+                      child: Text(
+                        _formatNumber(value),
+                        style: TextStyle(
+                          color: color,
+                          fontSize: fontSize,
+                          fontFamily: 'Gmarket Sans TTF',
+                          fontWeight: FontWeight.w300,
+                          height: 1.0,
+                        ),
+                      ),
+                    );
+                  },
+                ),
               ),
-            ),
             ),
           ),
         ),
