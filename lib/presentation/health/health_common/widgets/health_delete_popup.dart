@@ -38,76 +38,73 @@ class HealthDeletePopup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final r = healthDp(context, 20);
+    final r = healthDp(context, 23.1);
+    final contentPadding = healthDp(context, 23.1);
     return Dialog(
       elevation: 0,
       backgroundColor: Colors.transparent,
-      insetPadding: EdgeInsets.symmetric(horizontal: healthDp(context, 24)),
+      insetPadding: EdgeInsets.symmetric(horizontal: healthDp(context, 20)),
       child: Container(
-        width: healthDp(context, 300),
-        padding: EdgeInsets.all(healthDp(context, 20)),
+        width: healthDp(context, 314.3),
+        clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(r),
           boxShadow: [
             BoxShadow(
-              color: const Color(0x26000000),
-              blurRadius: healthDp(context, 20),
-              offset: Offset(0, healthDp(context, 8)),
+              color: const Color(0x19000000),
+              blurRadius: healthDp(context, 9.4),
             ),
           ],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: healthDp(context, 44),
-              height: healthDp(context, 44),
-              decoration: const BoxDecoration(
-                color: Color(0x14FF5A8D),
-                shape: BoxShape.circle,
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                contentPadding,
+                contentPadding,
+                contentPadding,
+                contentPadding,
               ),
-              child: Icon(
-                Icons.delete_outline_rounded,
-                color: const Color(0xFFFF5A8D),
-                size: healthDp(context, 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    title,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: const Color(0xFF1A1A1A),
+                      fontSize: healthSp(context, 23.1),
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  SizedBox(height: healthDp(context, 23.1)),
+                  Text(
+                    message,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: const Color(0xFF898686),
+                      fontSize: healthSp(context, 16.2),
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w500,
+                      height: 1.57,
+                    ),
+                  ),
+                ],
               ),
             ),
-            SizedBox(height: healthDp(context, 14)),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: const Color(0xFF1A1A1E),
-                fontSize: healthSp(context, 18),
-                fontFamily: 'Gmarket Sans TTF',
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            SizedBox(height: healthDp(context, 10)),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: const Color(0xFF898686),
-                fontSize: healthSp(context, 13),
-                fontFamily: 'Gmarket Sans TTF',
-                fontWeight: FontWeight.w400,
-                height: 1.5,
-              ),
-            ),
-            SizedBox(height: healthDp(context, 20)),
             Row(
               children: [
                 Expanded(
                   child: _PopupButton(
                     label: cancelText,
-                    backgroundColor: const Color(0xFFF2F2F2),
-                    textColor: const Color(0xFF666666),
+                    backgroundColor: const Color(0xFFF7F7F7),
+                    textColor: const Color(0xFF898686),
                     onTap: () => Navigator.pop(context, false),
                   ),
                 ),
-                SizedBox(width: healthDp(context, 8)),
                 Expanded(
                   child: _PopupButton(
                     label: deleteText,
@@ -141,19 +138,17 @@ class _PopupButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: healthDp(context, 44),
+      height: healthDp(context, 57.8),
       child: Material(
         color: backgroundColor,
-        borderRadius: BorderRadius.circular(healthDp(context, 10)),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(healthDp(context, 10)),
           child: Center(
             child: Text(
               label,
               style: TextStyle(
                 color: textColor,
-                fontSize: healthSp(context, 14),
+                fontSize: healthSp(context, 18.5),
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: FontWeight.w500,
               ),
