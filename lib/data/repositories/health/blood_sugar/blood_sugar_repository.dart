@@ -4,8 +4,51 @@ import '../../../../core/network/api_endpoints.dart';
 import '../../../models/health/blood_sugar/blood_sugar_record_model.dart';
 
 class BloodSugarRepository {
+  static const Duration _cacheTtl = Duration(seconds: 30);
+  static final Map<String, List<BloodSugarRecord>> _cache = {};
+  static final Map<String, DateTime> _cacheAt = {};
+  static final Map<String, Future<List<BloodSugarRecord>>> _inFlight = {};
+
+  static void seedRecords(String userId, List<BloodSugarRecord> records) {
+    final id = userId.trim();
+    if (id.isEmpty) return;
+    _cache[id] = List<BloodSugarRecord>.from(records);
+    _cacheAt[id] = DateTime.now();
+  }
+
+  static void invalidate([String? userId]) {
+    final id = userId?.trim() ?? '';
+    if (id.isEmpty) {
+      _cache.clear();
+      _cacheAt.clear();
+    } else {
+      _cache.remove(id);
+      _cacheAt.remove(id);
+    }
+  }
+
   // 사용자의 모든 혈당 기록 가져오기 (최적화: 한 번에 모든 데이터 로드)
   static Future<List<BloodSugarRecord>> getBloodSugarRecords(
+      String userId) async {
+    final id = userId.trim();
+    final cachedAt = _cacheAt[id];
+    if (cachedAt != null && DateTime.now().difference(cachedAt) < _cacheTtl) {
+      return List<BloodSugarRecord>.from(_cache[id] ?? const []);
+    }
+    final pending = _inFlight[id];
+    if (pending != null) return pending;
+    final request = _fetchBloodSugarRecords(id);
+    _inFlight[id] = request;
+    try {
+      final records = await request;
+      seedRecords(id, records);
+      return List<BloodSugarRecord>.from(records);
+    } finally {
+      _inFlight.remove(id);
+    }
+  }
+
+  static Future<List<BloodSugarRecord>> _fetchBloodSugarRecords(
       String userId) async {
     try {
       final response = await ApiClient.get(
@@ -59,7 +102,9 @@ class BloodSugarRepository {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
-        return data['success'] == true;
+        final ok = data['success'] == true;
+        if (ok) invalidate(record.mbId);
+        return ok;
       }
 
       return false;
@@ -81,7 +126,9 @@ class BloodSugarRepository {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        return data['success'] == true;
+        final ok = data['success'] == true;
+        if (ok) invalidate(record.mbId);
+        return ok;
       }
 
       return false;
@@ -103,7 +150,9 @@ class BloodSugarRepository {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        return data['success'] == true;
+        final ok = data['success'] == true;
+        if (ok) invalidate(id);
+        return ok;
       }
 
       return false;

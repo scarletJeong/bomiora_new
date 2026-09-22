@@ -5,7 +5,40 @@ import '../../../../core/network/api_endpoints.dart';
 import '../../../models/health/heart_rate/heart_rate_record_model.dart';
 
 class HeartRateRepository {
-  static Future<List<HeartRateRecord>> getHeartRateRecords(String userId) async {
+  static const Duration _cacheTtl = Duration(seconds: 30);
+  static final Map<String, List<HeartRateRecord>> _cache = {};
+  static final Map<String, DateTime> _cacheAt = {};
+  static final Map<String, Future<List<HeartRateRecord>>> _inFlight = {};
+
+  static void seedRecords(String userId, List<HeartRateRecord> records) {
+    final id = userId.trim();
+    if (id.isEmpty) return;
+    _cache[id] = List<HeartRateRecord>.from(records);
+    _cacheAt[id] = DateTime.now();
+  }
+
+  static Future<List<HeartRateRecord>> getHeartRateRecords(
+      String userId) async {
+    final id = userId.trim();
+    final cachedAt = _cacheAt[id];
+    if (cachedAt != null && DateTime.now().difference(cachedAt) < _cacheTtl) {
+      return List<HeartRateRecord>.from(_cache[id] ?? const []);
+    }
+    final pending = _inFlight[id];
+    if (pending != null) return pending;
+    final request = _fetchHeartRateRecords(id);
+    _inFlight[id] = request;
+    try {
+      final records = await request;
+      seedRecords(id, records);
+      return List<HeartRateRecord>.from(records);
+    } finally {
+      _inFlight.remove(id);
+    }
+  }
+
+  static Future<List<HeartRateRecord>> _fetchHeartRateRecords(
+      String userId) async {
     try {
       final response = await ApiClient.get(
         '${ApiEndpoints.heartRateRecords}?mb_id=$userId',
@@ -26,7 +59,8 @@ class HeartRateRepository {
     }
   }
 
-  static Future<HeartRateRecord?> getLatestHeartRateRecord(String userId) async {
+  static Future<HeartRateRecord?> getLatestHeartRateRecord(
+      String userId) async {
     try {
       final response = await ApiClient.get(
         '${ApiEndpoints.heartRateRecords}/latest?mb_id=$userId',
