@@ -63,7 +63,6 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
   String? _pendingOpenOdId;
   bool _routeArgsApplied = false;
   bool _productTypeFromRoute = false;
-  bool _didAutoSelectProductType = false;
 
   @override
   void initState() {
@@ -152,15 +151,6 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
         // 날짜순 내림차순 정렬 (최신순)
         allOrders.sort((a, b) => b.orderDateTime.compareTo(a.orderDateTime));
 
-        if (!_productTypeFromRoute &&
-            !_didAutoSelectProductType &&
-            allOrders.isNotEmpty) {
-          _didAutoSelectProductType = true;
-          _selectedProductType = allOrders.first.isPrescriptionOrder
-              ? DeliveryProductType.prescription
-              : DeliveryProductType.general;
-        }
-        
         if (!mounted || gen != _ordersLoadGen) return;
         setState(() {
           _allOrders = allOrders;
