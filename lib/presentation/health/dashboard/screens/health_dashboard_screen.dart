@@ -17,6 +17,8 @@ import '../../../../data/models/health/heart_rate/heart_rate_record_model.dart';
 import '../../../../data/models/health/steps/steps_record_model.dart';
 import '../../../../data/repositories/health/dashboard/health_dashboard_repository.dart';
 import '../../../../data/repositories/health/food/food_repository.dart';
+import '../../../../data/repositories/health/menstrual_cycle/menstrual_cycle_repository.dart';
+import '../../../../data/repositories/product/product_repository.dart';
 import '../../../../data/models/health/health_goal_record_model.dart';
 import '../../weight/screens/weight_list_screen.dart';
 import '../../weight/utils/weight_goal_progress.dart';
@@ -143,6 +145,15 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
       }
 
       final userId = user.id.toString();
+      unawaited(
+        MenstrualCycleRepository.getMenstrualCycleRecords(userId),
+      );
+      unawaited(
+        ProductRepository.getProductsByCategory(
+          categoryId: '80',
+          productKind: 'prescription',
+        ),
+      );
       final cached = HealthDashboardRepository.peek(
         mbId: userId,
         date: selectedDate,
@@ -432,7 +443,8 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
                                             _ensureDashboardFeatureAccess,
                                         onAfterDietReturn: () {
                                           if (mounted) {
-                                            _loadData(showBlockingLoader: false);
+                                            _loadData(
+                                                showBlockingLoader: false);
                                           }
                                         },
                                       ),

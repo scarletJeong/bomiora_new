@@ -43,17 +43,20 @@ class HealthDashboardRepository {
   static final Map<String, DateTime> _cacheAt = {};
   static final Map<String, Future<HealthDashboardPayload?>> _inFlight = {};
 
-  static void invalidate([String? mbId]) {
+  static void invalidate([
+    String? mbId,
+    bool invalidateHealthGoal = false,
+  ]) {
     if (mbId == null || mbId.trim().isEmpty) {
       _cache.clear();
       _cacheAt.clear();
-      HealthGoalRepository.invalidate();
+      if (invalidateHealthGoal) HealthGoalRepository.invalidate();
       return;
     }
     final prefix = '${mbId.trim()}|';
     _cache.removeWhere((key, _) => key.startsWith(prefix));
     _cacheAt.removeWhere((key, _) => key.startsWith(prefix));
-    HealthGoalRepository.invalidate(mbId);
+    if (invalidateHealthGoal) HealthGoalRepository.invalidate(mbId);
   }
 
   static HealthDashboardPayload? peek({
@@ -63,8 +66,7 @@ class HealthDashboardRepository {
     final dateStr = date.toIso8601String().split('T')[0];
     final key = '${mbId.trim()}|$dateStr';
     final cachedAt = _cacheAt[key];
-    if (cachedAt == null ||
-        DateTime.now().difference(cachedAt) >= _cacheTtl) {
+    if (cachedAt == null || DateTime.now().difference(cachedAt) >= _cacheTtl) {
       return null;
     }
     return _cache[key];
@@ -118,7 +120,8 @@ class HealthDashboardRepository {
       if (response.statusCode == 404) {
         return _fetchLegacyDashboard(mbId: mbId, date: date);
       }
-      if (response.statusCode != 200) return _fetchLegacyDashboard(mbId: mbId, date: date);
+      if (response.statusCode != 200)
+        return _fetchLegacyDashboard(mbId: mbId, date: date);
 
       final body = json.decode(response.body) as Map<String, dynamic>?;
       if (body == null || body['success'] != true) {
@@ -170,14 +173,25 @@ class HealthDashboardRepository {
       menstrual = MenstrualCycleRecord.fromJson(menstrualRaw);
     }
 
+    final List<WeightRecord> weightRecords =
+        parseList(data['weight'], WeightRecord.fromJson);
+    final List<BloodPressureRecord> bloodPressureRecords =
+        parseList(data['bloodPressure'], BloodPressureRecord.fromJson);
+    final List<BloodSugarRecord> bloodSugarRecords =
+        parseList(data['bloodSugar'], BloodSugarRecord.fromJson);
+    final List<HeartRateRecord> heartRateRecords =
+        parseList(data['heartRate'], HeartRateRecord.fromJson);
+    WeightRepository.seedRecords(mbId, weightRecords);
+    BloodPressureRepository.seedRecords(mbId, bloodPressureRecords);
+    BloodSugarRepository.seedRecords(mbId, bloodSugarRecords);
+    HeartRateRepository.seedRecords(mbId, heartRateRecords);
+    MenstrualCycleRepository.seedLatest(mbId, menstrual);
+
     return HealthDashboardPayload(
-      weightRecords: parseList(data['weight'], WeightRecord.fromJson),
-      bloodPressureRecords:
-          parseList(data['bloodPressure'], BloodPressureRecord.fromJson),
-      bloodSugarRecords:
-          parseList(data['bloodSugar'], BloodSugarRecord.fromJson),
-      heartRateRecords:
-          parseList(data['heartRate'], HeartRateRecord.fromJson),
+      weightRecords: weightRecords,
+      bloodPressureRecords: bloodPressureRecords,
+      bloodSugarRecords: bloodSugarRecords,
+      heartRateRecords: heartRateRecords,
       menstrualCycle: menstrual,
       steps: steps,
       healthGoal: healthGoal,
@@ -190,7 +204,8 @@ class HealthDashboardRepository {
   }) async {
     try {
       final results = await Future.wait([
-        WeightRepository.getWeightRecords(mbId).catchError((_) => <WeightRecord>[]),
+        WeightRepository.getWeightRecords(mbId)
+            .catchError((_) => <WeightRecord>[]),
         BloodPressureRepository.getBloodPressureRecords(mbId)
             .catchError((_) => <BloodPressureRecord>[]),
         BloodSugarRepository.getBloodSugarRecords(mbId)
@@ -199,7 +214,8 @@ class HealthDashboardRepository {
             .catchError((_) => <HeartRateRecord>[]),
         MenstrualCycleRepository.getLatestMenstrualCycleRecord(mbId)
             .catchError((_) => null),
-        StepsRepository.getStepsRecordByMbId(mbId, date).catchError((_) => null),
+        StepsRepository.getStepsRecordByMbId(mbId, date)
+            .catchError((_) => null),
         HealthGoalRepository.fetchLatest(mbId).catchError((_) => null),
       ]);
 
