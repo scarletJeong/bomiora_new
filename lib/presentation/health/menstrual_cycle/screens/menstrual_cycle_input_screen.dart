@@ -13,6 +13,7 @@ import '../../health_common/widgets/health_app_bar.dart';
 import '../../health_common/widgets/health_date_selector.dart';
 import '../../health_common/widgets/health_focus_outline_box.dart';
 import '../widgets/health_year_month_picker_dialog.dart';
+import '../../../common/widgets/app_toast_overlay.dart';
 import '../../../../data/models/health/menstrual_cycle/menstrual_cycle_model.dart';
 import '../../../../data/repositories/health/menstrual_cycle/menstrual_cycle_repository.dart';
 import '../../../../data/repositories/health/dashboard/health_dashboard_repository.dart';
@@ -891,103 +892,94 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
   }
 
   Widget _buildCycleLengthSection() {
+    final fontSize = healthSp(context, 12);
+    final fieldHeight = healthDp(context, 32);
+    final fieldWidth = healthDp(context, 56);
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Padding(
-          padding: EdgeInsets.only(left: healthDp(context, 10)),
-          child: const Text(
-            '최근 생리주기는 며칠인가요?',
-            style: TextStyle(
-              color: Colors.black,
-              fontSize: 10,
-              fontFamily: 'Gmarket Sans TTF',
-              fontWeight: FontWeight.w300,
+        Expanded(
+          child: Padding(
+            padding: EdgeInsets.only(left: healthDp(context, 10)),
+            child: Text(
+              '최근 생리주기는 며칠인가요?',
+              style: TextStyle(
+                color: Colors.black,
+                fontSize: fontSize,
+                fontFamily: 'Gmarket Sans TTF',
+                fontWeight: FontWeight.w300,
+              ),
             ),
           ),
         ),
+        SizedBox(width: healthDp(context, 8)),
         SizedBox(
-          height: healthDp(context, 20),
-          child: Row(
-            children: [
-              Container(
-                width: healthDp(context, 52),
-                height: healthDp(context, 20),
-                padding: EdgeInsets.fromLTRB(
-                  healthDp(context, 19),
-                  0,
-                  healthDp(context, 19),
-                  healthDp(context, 6),
+          width: fieldWidth,
+          height: fieldHeight,
+          child: DecoratedBox(
+            decoration: ShapeDecoration(
+              color: Colors.white,
+              shape: RoundedRectangleBorder(
+                side: BorderSide(
+                  width: healthDp(context, 1),
+                  color: _cycleLengthFocus.hasFocus
+                      ? HealthFocusOutlineBox.focusColor
+                      : Colors.transparent,
                 ),
-                clipBehavior: Clip.antiAlias,
-                decoration: ShapeDecoration(
-                  color: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    side: BorderSide(
-                      width: healthDp(context, 1),
-                      color: _cycleLengthFocus.hasFocus
-                          ? HealthFocusOutlineBox.focusColor
-                          : Colors.transparent,
-                    ),
-                    borderRadius: BorderRadius.circular(healthDp(context, 5)),
-                  ),
-                  shadows: [
-                    BoxShadow(
-                      color: const Color(0x19000000),
-                      blurRadius: healthDp(context, 2),
-                      offset: Offset.zero,
-                      spreadRadius: 0,
-                    ),
-                  ],
-                ),
-                alignment: Alignment.center,
-                child: Center(
-                  child: TextField(
-                    controller: _cycleLengthController,
-                    focusNode: _cycleLengthFocus,
-                    textAlign: TextAlign.center,
-                    textAlignVertical: TextAlignVertical.center,
-                    keyboardType: TextInputType.number,
-                    textInputAction: TextInputAction.done,
-                    onSubmitted: (_) => _cycleLengthFocus.unfocus(),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.digitsOnly,
-                      LengthLimitingTextInputFormatter(3),
-                    ],
-                    style: const TextStyle(
-                      color: Colors.black,
-                      fontSize: 10,
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w500,
-                      height: 1,
-                    ),
-                    decoration: const InputDecoration(
-                      isCollapsed: true,
-                      border: InputBorder.none,
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                    onChanged: (value) {
-                      setState(() {
-                        final parsed = int.tryParse(value);
-                        if (parsed != null && parsed > 0) {
-                          _cycleLength = parsed;
-                        }
-                      });
-                    },
-                  ),
-                ),
+                borderRadius: BorderRadius.circular(healthDp(context, 5)),
               ),
-              SizedBox(width: healthDp(context, 5)),
-              const Text(
-                '일',
+              shadows: [
+                BoxShadow(
+                  color: const Color(0x19000000),
+                  blurRadius: healthDp(context, 2),
+                  offset: Offset.zero,
+                ),
+              ],
+            ),
+            child: TextField(
+                controller: _cycleLengthController,
+                focusNode: _cycleLengthFocus,
+                textAlign: TextAlign.center,
+                textAlignVertical: TextAlignVertical.center,
+                keyboardType: TextInputType.number,
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => _cycleLengthFocus.unfocus(),
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(3),
+                ],
                 style: TextStyle(
                   color: Colors.black,
-                  fontSize: 10,
+                  fontSize: fontSize,
                   fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w300,
+                  fontWeight: FontWeight.w500,
+                  height: 1.2,
                 ),
+                decoration: InputDecoration(
+                  isCollapsed: true,
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: healthDp(context, 4),
+                  ),
+                ),
+                onChanged: (value) {
+                  setState(() {
+                    final parsed = int.tryParse(value);
+                    if (parsed != null && parsed > 0) {
+                      _cycleLength = parsed;
+                    }
+                  });
+                },
               ),
-            ],
+            ),
+          ),
+        SizedBox(width: healthDp(context, 5)),
+        Text(
+          '일',
+          style: TextStyle(
+            color: Colors.black,
+            fontSize: fontSize,
+            fontFamily: 'Gmarket Sans TTF',
+            fontWeight: FontWeight.w300,
           ),
         ),
       ],
@@ -1331,6 +1323,9 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
         : await MenstrualCycleRepository.addMenstrualCycleRecord(record);
     if (!success) {
       MenstrualCycleRepository.restoreRecords(record.mbId, previous);
+      AppToastOverlay.showAlertFromNavigator(
+        '저장에 실패해서 이전 기록으로 되돌렸습니다.',
+      );
     }
     HealthDashboardRepository.invalidate(record.mbId);
     notifyHealthDataChanged();
