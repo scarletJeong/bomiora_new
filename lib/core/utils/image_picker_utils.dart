@@ -88,7 +88,8 @@ class ImagePickerUtils {
     required BuildContext anchorContext,
     required void Function(XFile?) onImageSelected,
     double? menuWidth,
-  }) async {
+    LayerLink? layerLink,
+  }) {
     FocusManager.instance.primaryFocus?.unfocus();
 
     final resolvedMenuWidth = menuWidth ?? healthDp(context, 150);
@@ -98,26 +99,15 @@ class ImagePickerUtils {
       horizontal: healthDp(context, 12),
     );
 
-    final neededHeight = DropdownBtn.resolvePanelMaxHeight(
-      context: context,
-      itemCount: photoSourceLabels.length,
-      itemFontSizeBase: itemFontSizeBase,
-      itemPadding: itemPadding,
-    );
-
-    await DropdownBtn.ensureSpaceBelowForMenu(
-      context: context,
-      anchorContext: anchorContext,
-      neededHeight: neededHeight + healthDp(context, 20), // 여유 공간 추가
-    );
-
     if (!context.mounted) return;
 
     DropdownBtn.showMenu(
       context: context,
       anchorContext: anchorContext,
       items: photoSourceLabels,
+      gap: 0,
       menuWidth: resolvedMenuWidth,
+      layerLink: layerLink,
       itemFontSizeBase: itemFontSizeBase,
       itemFontFamily: 'Gmarket Sans TTF',
       itemFontWeight: FontWeight.w300,
@@ -193,7 +183,7 @@ class ImagePickerUtils {
   /// 이미지 파일 존재 여부 확인
   static bool isImageFileExists(String? imagePath) {
     if (imagePath == null || imagePath.isEmpty) return false;
-    
+
     if (kIsWeb) {
       // 웹에서는 URL이 유효한지 간단히 체크
       return imagePath.startsWith('http') || imagePath.startsWith('blob:');
@@ -205,7 +195,7 @@ class ImagePickerUtils {
   /// 이미지 파일 삭제
   static Future<bool> deleteImageFile(String? imagePath) async {
     if (imagePath == null || imagePath.isEmpty) return false;
-    
+
     if (kIsWeb) {
       // 웹에서는 파일 삭제가 제한적이므로 항상 true 반환
       return true;
@@ -221,5 +211,48 @@ class ImagePickerUtils {
         return false;
       }
     }
+  }
+}
+
+/// 사진 카드에 메뉴를 붙여 연다.
+class PhotoSourceAnchor extends StatefulWidget {
+  const PhotoSourceAnchor({
+    super.key,
+    required this.child,
+    required this.onImageSelected,
+    this.canOpen,
+  });
+
+  final Widget child;
+  final void Function(XFile? image) onImageSelected;
+  final bool Function()? canOpen;
+
+  @override
+  State<PhotoSourceAnchor> createState() => _PhotoSourceAnchorState();
+}
+
+class _PhotoSourceAnchorState extends State<PhotoSourceAnchor> {
+  final LayerLink _link = LayerLink();
+
+  void _open() {
+    if (widget.canOpen != null && !widget.canOpen!()) return;
+    ImagePickerUtils.showPhotoSourceDropdown(
+      context: context,
+      anchorContext: context,
+      layerLink: _link,
+      onImageSelected: widget.onImageSelected,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return CompositedTransformTarget(
+      link: _link,
+      child: GestureDetector(
+        onTap: _open,
+        behavior: HitTestBehavior.opaque,
+        child: widget.child,
+      ),
+    );
   }
 }
