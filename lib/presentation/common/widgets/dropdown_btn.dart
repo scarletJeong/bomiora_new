@@ -99,6 +99,7 @@ class DropdownBtn extends StatefulWidget {
     double backdropOpacity = 0.72,
     int? scrollWhenItemCountExceeds,
     double? maxVisibleItemsWhenScrolling,
+    LayerLink? layerLink,
   }) {
     closeMenu();
 
@@ -119,24 +120,28 @@ class DropdownBtn extends StatefulWidget {
     final dividerWidth = healthDp(context, 0.5);
 
     final size = box.size;
-    final offset = box.localToGlobal(Offset.zero);
+    final globalOffset = box.localToGlobal(Offset.zero);
     final panelWidth = menuWidth ?? size.width;
 
+    final overlay = Overlay.of(context);
+    final overlayRender = overlay.context.findRenderObject();
+    final overlayBox = overlayRender is RenderBox ? overlayRender : null;
+    final anchorInOverlay = overlayBox != null && overlayBox.hasSize
+        ? overlayBox.globalToLocal(globalOffset)
+        : globalOffset;
+
     final media = MediaQuery.of(context);
-    final screenW = media.size.width;
-    final screenH = media.size.height;
+    final boundsW = overlayBox?.size.width ?? media.size.width;
+    final boundsH = overlayBox?.size.height ?? media.size.height;
     final safeBottom = media.padding.bottom;
     final safeTop = media.padding.top;
-    final horizontalMargin = healthDp(context, 16);
 
-    // 가로 위치 최적화: 화면 밖으로 나가지 않도록 조정
-    double menuLeft = offset.dx;
-    if (menuLeft + panelWidth > screenW - horizontalMargin) {
-      menuLeft = screenW - panelWidth - horizontalMargin;
+    // 650 패널이 넓은 창 가운데에 있을 때도 버튼 왼쪽과 맞춘다.
+    double menuLeft = anchorInOverlay.dx;
+    if (menuLeft + panelWidth > boundsW) {
+      menuLeft = boundsW - panelWidth;
     }
-    if (menuLeft < horizontalMargin) {
-      menuLeft = horizontalMargin;
-    }
+    if (menuLeft < 0) menuLeft = 0;
 
     var maxPanelH = resolvePanelMaxHeight(
       context: context,
@@ -149,8 +154,8 @@ class DropdownBtn extends StatefulWidget {
     );
 
     final spaceBelow =
-        screenH - safeBottom - (offset.dy + size.height + menuGap);
-    final spaceAbove = offset.dy - safeTop - menuGap;
+        boundsH - safeBottom - (anchorInOverlay.dy + size.height + menuGap);
+    final spaceAbove = anchorInOverlay.dy - safeTop - menuGap;
 
     // 아래 공간이 부족하고 위 공간이 더 많으면 위로 열기
     bool openUpwards = false;
@@ -166,14 +171,12 @@ class DropdownBtn extends StatefulWidget {
     }
 
     final menuTop = openUpwards
-        ? offset.dy - maxPanelH - menuGap
-        : offset.dy + size.height + menuGap;
+        ? anchorInOverlay.dy - maxPanelH - menuGap
+        : anchorInOverlay.dy + size.height + menuGap;
 
     void close() {
       closeMenu();
     }
-
-    final overlay = Overlay.of(context);
 
     _sharedOverlayEntry = OverlayEntry(
       builder: (overlayContext) {
@@ -200,7 +203,56 @@ class DropdownBtn extends StatefulWidget {
                     : const ColoredBox(color: Colors.transparent),
               ),
             ),
-            Positioned(
+            if (layerLink != null)
+              CompositedTransformFollower(
+                link: layerLink,
+                showWhenUnlinked: false,
+                targetAnchor:
+                    openUpwards ? Alignment.topLeft : Alignment.bottomLeft,
+                followerAnchor:
+                    openUpwards ? Alignment.bottomLeft : Alignment.topLeft,
+                child: Material(
+                  color: Colors.white,
+                  elevation: 4,
+                  borderRadius: BorderRadius.circular(menuRadius),
+                  clipBehavior: Clip.antiAlias,
+                  child: SizedBox(
+                    width: panelWidth,
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(maxHeight: maxPanelH),
+                      child: SingleChildScrollView(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            for (int i = 0; i < items.length; i++)
+                              _DropdownHoverItem(
+                                label: items[i],
+                                selected: selectedValue != null &&
+                                    selectedValue.isNotEmpty &&
+                                    items[i] == selectedValue,
+                                showDivider: i != items.length - 1,
+                                dividerWidth: dividerWidth,
+                                itemPadding: resolvedItemPadding,
+                                itemFontSize: itemFontSize,
+                                itemFontFamily: itemFontFamily,
+                                itemFontWeight: itemFontWeight,
+                                itemTextAlign: itemTextAlign,
+                                leading: leadingBuilder?.call(items[i]),
+                                itemLeadingGap: itemLeadingGap,
+                                onTap: () {
+                                  onSelected(items[i]);
+                                  close();
+                                },
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              )
+            else
+              Positioned(
               left: menuLeft,
               top: menuTop,
               width: panelWidth,
