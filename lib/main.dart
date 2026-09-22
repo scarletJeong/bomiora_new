@@ -122,6 +122,9 @@ class _BomioraAppState extends State<BomioraApp> {
         primarySwatch: Colors.blue,
         fontFamily: 'Gmarket Sans TTF',
         visualDensity: VisualDensity.adaptivePlatformDensity,
+        progressIndicatorTheme: const ProgressIndicatorThemeData(
+          color: Color(0xFFFF5A8D),
+        ),
       ),
       // 한국어 로케일 설정
       locale: const Locale('ko', 'KR'),
