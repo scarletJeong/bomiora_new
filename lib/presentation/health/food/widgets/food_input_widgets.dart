@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -56,17 +57,19 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
   bool _isLoading = false;
   bool _isLoadingMore = false;
   bool _hasMore = false;
-  bool _isAdding = false;
   bool _isUploadingPhoto = false;
   String _currentKeyword = '';
   int _currentOffset = 0;
+  int _searchRequestId = 0;
+  Timer? _searchDebounce;
   static const List<String> _photoSourceLabels = [
     '라이브러리에서 선택',
     '사진찍기',
     '파일가져오기',
   ];
 
-  Future<void> _doSearch() async {
+  void _scheduleSearch() {
+    _searchDebounce?.cancel();
     final keyword = _searchController.text.trim();
     if (keyword.isEmpty) {
       setState(() {
@@ -74,39 +77,81 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
         _currentKeyword = '';
         _currentOffset = 0;
         _hasMore = false;
+        _isLoading = false;
       });
       return;
     }
-    setState(() {
-      _isLoading = true;
-      _isLoadingMore = false;
-      _currentKeyword = keyword;
-      _currentOffset = 0;
-      _hasMore = false;
-    });
+    final exact = FoodRepository.peekSearch(keyword, limit: _pageSize);
+    final preview =
+        exact ?? FoodRepository.peekSearchPrefix(keyword, limit: _pageSize);
+    if (preview != null && mounted) {
+      setState(() {
+        _results = preview;
+        _currentKeyword = keyword;
+        _currentOffset = preview.length;
+        _hasMore = exact != null && preview.length == _pageSize;
+        _isLoading = exact == null;
+      });
+      if (exact != null) return;
+    }
+    _searchDebounce = Timer(const Duration(milliseconds: 250), _doSearch);
+  }
+
+  Future<void> _doSearch() async {
+    final keyword = _searchController.text.trim();
+    final requestId = ++_searchRequestId;
+    if (keyword.isEmpty) {
+      setState(() {
+        _results = [];
+        _currentKeyword = '';
+        _currentOffset = 0;
+        _hasMore = false;
+        _isLoading = false;
+      });
+      return;
+    }
+    final exact = FoodRepository.peekSearch(keyword, limit: _pageSize);
+    if (exact != null) {
+      if (!mounted || requestId != _searchRequestId) return;
+      setState(() {
+        _results = exact;
+        _currentKeyword = keyword;
+        _currentOffset = exact.length;
+        _hasMore = exact.length == _pageSize;
+        _isLoading = false;
+      });
+      return;
+    }
+    if (_results.isEmpty || _currentKeyword != keyword) {
+      setState(() {
+        _isLoading = true;
+        _isLoadingMore = false;
+        _currentKeyword = keyword;
+        _currentOffset = 0;
+        _hasMore = false;
+      });
+    }
     try {
       final list = await FoodRepository.searchFood(
         keyword,
         limit: _pageSize,
         offset: 0,
       );
-      if (mounted) {
-        setState(() {
-          _results = list;
-          _currentOffset = list.length;
-          _hasMore = list.length == _pageSize;
-          _isLoading = false;
-        });
-      }
+      if (!mounted || requestId != _searchRequestId) return;
+      setState(() {
+        _results = list;
+        _currentOffset = list.length;
+        _hasMore = list.length == _pageSize;
+        _isLoading = false;
+      });
     } catch (_) {
-      if (mounted) {
-        setState(() {
-          _results = [];
-          _currentOffset = 0;
-          _hasMore = false;
-          _isLoading = false;
-        });
-      }
+      if (!mounted || requestId != _searchRequestId) return;
+      setState(() {
+        _results = [];
+        _currentOffset = 0;
+        _hasMore = false;
+        _isLoading = false;
+      });
     }
   }
 
@@ -143,7 +188,6 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
   }
 
   Future<void> _addToMealRecord(FoodSearchItem item) async {
-    if (_isAdding) return;
     final pendingItem = FoodRecordItemSummary(
       itemId: 'pending-${DateTime.now().microsecondsSinceEpoch}',
       foodName: item.foodName,
@@ -154,9 +198,13 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
       other: item.otherGrams,
     );
     setState(() {
-      _isAdding = true;
       _selectedFoodCode = item.foodCode;
       _localAddedItems = [..._localAddedItems, pendingItem];
+      _results = [];
+      _currentKeyword = '';
+      _currentOffset = 0;
+      _hasMore = false;
+      _searchController.clear();
     });
     try {
       final recordId = await _ensureFoodRecordId();
@@ -172,34 +220,21 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
         return;
       }
 
-      final sw = Stopwatch()..start();
       final ok = await FoodRepository.addItemToRecord(recordId, item);
-      sw.stop();
-      debugPrint(
-          '[FoodInput] addItemToRecord took ${sw.elapsedMilliseconds}ms');
-
-      if (mounted) {
-        if (ok) {
-          widget.onItemAdded?.call();
-          setState(() {
-            _results = [];
-            _searchController.clear();
-          });
-        } else {
-          setState(() {
-            _localAddedItems.removeWhere(
-              (candidate) => candidate.itemId == pendingItem.itemId,
-            );
-          });
-          AppToastOverlay.showAlert(context, '음식을 추가하지 못했습니다.');
-        }
+      if (!mounted) return;
+      if (ok) {
+        widget.onItemAdded?.call();
+      } else {
+        setState(() {
+          _localAddedItems.removeWhere(
+            (candidate) => candidate.itemId == pendingItem.itemId,
+          );
+        });
+        AppToastOverlay.showAlert(context, '음식을 추가하지 못했습니다.');
       }
     } finally {
-      if (mounted) {
-        setState(() {
-          _isAdding = false;
-          _selectedFoodCode = null;
-        });
+      if (mounted && _selectedFoodCode == item.foodCode) {
+        setState(() => _selectedFoodCode = null);
       }
     }
   }
@@ -408,6 +443,7 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
   @override
   void dispose() {
     DropdownBtn.closeMenu();
+    _searchDebounce?.cancel();
     _searchController.dispose();
     _focusNode.dispose();
     _resultsScrollController.dispose();
@@ -578,11 +614,18 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w300,
                   ),
-                  onSubmitted: (_) => _doSearch(),
+                  onChanged: (_) => _scheduleSearch(),
+                  onSubmitted: (_) {
+                    _searchDebounce?.cancel();
+                    _doSearch();
+                  },
                 ),
               ),
               GestureDetector(
-                onTap: _isLoading ? null : _doSearch,
+                onTap: () {
+                  _searchDebounce?.cancel();
+                  _doSearch();
+                },
                 child: SizedBox(
                   width: healthDp(context, 24),
                   height: healthDp(context, 24),
@@ -675,8 +718,8 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
                   name: item.foodName,
                   kcal: item.energy?.toInt() ?? 0,
                   desc: item.desc,
-                  selected: _isAdding && _selectedFoodCode == item.foodCode,
-                  onSelect: _isAdding ? null : () => _addToMealRecord(item),
+                  selected: _selectedFoodCode == item.foodCode,
+                  onSelect: () => _addToMealRecord(item),
                 );
               },
             ),

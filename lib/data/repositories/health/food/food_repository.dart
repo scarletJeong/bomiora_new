@@ -412,10 +412,14 @@ String _imagePathForApi(String imageUrl) {
 class FoodRepository {
   static const int maxMealImages = _maxMealImages;
   static const Duration _recordsCacheTtl = Duration(seconds: 15);
+  static const Duration _searchCacheTtl = Duration(minutes: 5);
   static final Map<String, List<FoodRecordSummary>> _recordsCache = {};
   static final Map<String, DateTime> _recordsCacheAt = {};
   static final Map<String, Future<List<FoodRecordSummary>>> _recordsInFlight =
       {};
+  static final Map<String, List<FoodSearchItem>> _searchCache = {};
+  static final Map<String, DateTime> _searchCacheAt = {};
+  static final Map<String, Future<List<FoodSearchItem>>> _searchInFlight = {};
 
   static void invalidateRecords() {
     _recordsCache.clear();
@@ -482,6 +486,59 @@ class FoodRepository {
   }
 
   /// 식품명으로 검색 (칼로리/탄수화물/단백질/지방 반환)
+  static String _searchCacheKey(String keyword, int limit, int offset) =>
+      '${keyword.trim().toLowerCase()}|$limit|$offset';
+
+  static List<FoodSearchItem>? peekSearch(
+    String keyword, {
+    int limit = 20,
+    int offset = 0,
+  }) {
+    final key = _searchCacheKey(keyword, limit, offset);
+    final cachedAt = _searchCacheAt[key];
+    if (cachedAt == null ||
+        DateTime.now().difference(cachedAt) >= _searchCacheTtl) {
+      return null;
+    }
+    return List<FoodSearchItem>.from(_searchCache[key] ?? const []);
+  }
+
+  /// 이미 받아 둔 더 짧은 검색어 결과에서 현재 검색어를 바로 걸러 보여 준다.
+  static List<FoodSearchItem>? peekSearchPrefix(
+    String keyword, {
+    int limit = 20,
+  }) {
+    final query = keyword.trim().toLowerCase();
+    if (query.length < 2) return null;
+    List<FoodSearchItem>? best;
+    var bestLength = 0;
+    for (final entry in _searchCache.entries) {
+      final parts = entry.key.split('|');
+      if (parts.length != 3) continue;
+      final cachedQuery = parts[0];
+      final cachedLimit = int.tryParse(parts[1]) ?? 0;
+      final cachedOffset = int.tryParse(parts[2]) ?? -1;
+      if (cachedOffset != 0 || cachedLimit < limit) continue;
+      final cachedAt = _searchCacheAt[entry.key];
+      if (cachedAt == null ||
+          DateTime.now().difference(cachedAt) >= _searchCacheTtl ||
+          !query.startsWith(cachedQuery) ||
+          cachedQuery.length <= bestLength) {
+        continue;
+      }
+      final filtered = entry.value
+          .where((item) => '${item.manufacturerName} ${item.foodName}'
+              .toLowerCase()
+              .contains(query))
+          .take(limit)
+          .toList();
+      if (filtered.isEmpty) continue;
+      best = filtered;
+      bestLength = cachedQuery.length;
+    }
+    return best;
+  }
+
   static Future<List<FoodSearchItem>> searchFood(
     String keyword, {
     int limit = 20,
@@ -490,10 +547,36 @@ class FoodRepository {
     try {
       final q = keyword.trim();
       if (q.isEmpty) return [];
+      final key = _searchCacheKey(q, limit, offset);
+      final cached = peekSearch(q, limit: limit, offset: offset);
+      if (cached != null) return cached;
+      final pending = _searchInFlight[key];
+      if (pending != null) return pending;
 
+      final request = _fetchFoodSearch(q, limit: limit, offset: offset);
+      _searchInFlight[key] = request;
+      try {
+        final list = await request;
+        _searchCache[key] = list;
+        _searchCacheAt[key] = DateTime.now();
+        return List<FoodSearchItem>.from(list);
+      } finally {
+        _searchInFlight.remove(key);
+      }
+    } catch (e) {
+      return [];
+    }
+  }
+
+  static Future<List<FoodSearchItem>> _fetchFoodSearch(
+    String keyword, {
+    int limit = 20,
+    int offset = 0,
+  }) async {
+    try {
       final sw = Stopwatch()..start();
-      // API 호출 횟수 최소화: 전체 문장으로 1번만 요청
-      final list = await _fetchFoodSearchRaw(q, limit: limit, offset: offset);
+      final list =
+          await _fetchFoodSearchRaw(keyword, limit: limit, offset: offset);
 
       // 클라이언트 측 정렬 (음식 코드 우선순위 반영)
       list.sort((a, b) {
@@ -504,7 +587,7 @@ class FoodRepository {
       });
       sw.stop();
       debugPrint(
-          '[FoodRepo] searchFood("$q") took ${sw.elapsedMilliseconds}ms');
+          '[FoodRepo] searchFood("$keyword") took ${sw.elapsedMilliseconds}ms');
 
       return list;
     } catch (e) {
@@ -514,12 +597,16 @@ class FoodRepository {
 
   /// 해당 날짜 식사 기록 목록 조회 (날짜별 아침/점심/저녁/간식)
   static Future<List<FoodRecordSummary>> getRecordsForDate(
-      String mbId, DateTime date) async {
+    String mbId,
+    DateTime date, {
+    bool forceRefresh = false,
+  }) async {
     final trimmedMbId = mbId.trim();
     if (trimmedMbId.isEmpty) return [];
     final key = '$trimmedMbId|${_localDateYmd(date)}';
     final cachedAt = _recordsCacheAt[key];
-    if (cachedAt != null &&
+    if (!forceRefresh &&
+        cachedAt != null &&
         DateTime.now().difference(cachedAt) < _recordsCacheTtl) {
       return List<FoodRecordSummary>.from(_recordsCache[key] ?? const []);
     }
