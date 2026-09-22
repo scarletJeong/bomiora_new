@@ -1,7 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -224,8 +222,22 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
 
       if (mounted) {
         if (success) {
+          final days = <DateTime>{
+            DateTime(
+              _selectedDateTime.year,
+              _selectedDateTime.month,
+              _selectedDateTime.day,
+            ),
+          };
+          final previous = widget.record?.measuredAt;
+          if (previous != null) {
+            days.add(DateTime(previous.year, previous.month, previous.day));
+          }
+          for (final day in days) {
+            await WeightRepository.refreshRecordsForDate(user.id, day);
+          }
           HealthDashboardRepository.invalidate(user.id);
-          notifyHealthDataChanged();
+          notifyHealthDataChanged('weight');
           Navigator.pop(context, true); // 성공
         }
       }
@@ -269,7 +281,7 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
       record.mbId,
       record.id!,
     );
-    notifyHealthDataChanged();
+    notifyHealthDataChanged('weight');
     if (mounted) Navigator.pop(context, true);
     unawaited(_persistDelete(record, previous));
   }
@@ -289,7 +301,7 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
       );
     }
     HealthDashboardRepository.invalidate(record.mbId);
-    notifyHealthDataChanged();
+    notifyHealthDataChanged('weight');
   }
 
   @override
@@ -509,11 +521,7 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
         LayoutBuilder(
           builder: (context, constraints) {
             final gap = healthDp(context, 10);
-            final maxSide = healthDp(context, 158);
-            final side = math.min(
-              maxSide,
-              (constraints.maxWidth - gap) / 2,
-            );
+            final side = (constraints.maxWidth - gap) / 2;
             return Row(
               children: [
                 SizedBox(
@@ -562,9 +570,10 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
         ],
         Text(
           title,
-          style: const TextStyle(
-            color: Color(0xFF1A1A1A),
-            fontSize: 16,
+          textScaler: TextScaler.noScaling,
+          style: TextStyle(
+            color: const Color(0xFF1A1A1A),
+            fontSize: healthSp(context, 16),
             height: 1.0,
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w700,
@@ -609,55 +618,69 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
     TextInputAction textInputAction = TextInputAction.done,
     ValueChanged<String>? onFieldSubmitted,
   }) {
+    final valueStyle = const TextStyle(
+      color: Color(0xFF1A1A1A),
+      fontSize: 16,
+      //height: 1.0,
+      fontFamily: 'Gmarket Sans TTF',
+      fontWeight: FontWeight.w300,
+    );
     return HealthFocusOutlineBox(
       focusNode: focusNode,
       builder: (node) {
-        return TextFormField(
-          controller: controller,
-          focusNode: node,
-          textInputAction: textInputAction,
-          onFieldSubmitted: onFieldSubmitted,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          inputFormatters: [
-            FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
+        // 측정일시 Text와 같이, 한 줄만 두고 칸이 위아래 가운데 정렬한다.
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              child: TextFormField(
+                controller: controller,
+                focusNode: node,
+                textInputAction: textInputAction,
+                onFieldSubmitted: onFieldSubmitted,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
+                ],
+                validator: validator,
+                textAlignVertical: TextAlignVertical.center,
+                style: valueStyle,
+                decoration: InputDecoration(
+                  hintText: hintText,
+                  hintStyle: TextStyle(
+                    color: compactHint
+                        ? const Color(0xFFB7B7B7)
+                        : const Color(0xFF1A1A1A),
+                    fontSize: compactHint ? 12 : 16,
+                    height: 1.0,
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: compactHint ? FontWeight.w300 : FontWeight.w500,
+                  ),
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  errorBorder: InputBorder.none,
+                  focusedErrorBorder: InputBorder.none,
+                  isDense: true,
+                  contentPadding: EdgeInsets.zero,
+                  isCollapsed: true,
+                  errorStyle: const TextStyle(fontSize: 0, height: 0),
+                ),
+              ),
+            ),
+            if (suffixText != null)
+              Text(
+                suffixText,
+                style: const TextStyle(
+                  color: Color(0xFF7C7C7C),
+                  fontSize: 14,
+                  height: 1.0,
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
           ],
-          validator: validator,
-          textAlignVertical: const TextAlignVertical(y: 0.45),
-          style: const TextStyle(
-            color: Color(0xFF1A1A1A),
-            fontSize: 16,
-            height: 1.0,
-            fontFamily: 'Gmarket Sans TTF',
-            fontWeight: FontWeight.w300,
-          ),
-          decoration: InputDecoration(
-            hintText: hintText,
-            hintStyle: TextStyle(
-              color: compactHint
-                  ? const Color(0xFFB7B7B7)
-                  : const Color(0xFF1A1A1A),
-              fontSize: compactHint ? 12 : 16,
-              height: 1.0,
-              fontFamily: 'Gmarket Sans TTF',
-              fontWeight: compactHint ? FontWeight.w300 : FontWeight.w500,
-            ),
-            suffixText: suffixText,
-            suffixStyle: const TextStyle(
-              color: Color(0xFF7C7C7C),
-              fontSize: 14,
-              height: 1.0,
-              fontFamily: 'Gmarket Sans TTF',
-              fontWeight: FontWeight.w400,
-            ),
-            border: InputBorder.none,
-            enabledBorder: InputBorder.none,
-            focusedBorder: InputBorder.none,
-            errorBorder: InputBorder.none,
-            focusedErrorBorder: InputBorder.none,
-            isDense: true,
-            contentPadding: EdgeInsets.zero,
-            isCollapsed: true,
-          ),
         );
       },
     );
@@ -835,9 +858,10 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
         SizedBox(height: healthDp(context, 4)),
         Text(
           label,
-          style: const TextStyle(
+          textScaler: TextScaler.noScaling,
+          style: TextStyle(
             color: Colors.white,
-            fontSize: 16,
+            fontSize: healthSp(context, 16),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w500,
           ),

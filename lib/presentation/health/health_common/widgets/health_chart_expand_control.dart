@@ -15,10 +15,9 @@ class HealthChartExpandControl extends StatelessWidget {
   final VoidCallback onTap;
   final double iconSize;
 
-  /// 논리 크기 8 — 상위 [MediaQuery.textScaler]로 확대.
-  static TextStyle labelTextStyle(BuildContext context) => const TextStyle(
-        color: Color(0xFFF17E9D),
-        fontSize: 8,
+  static TextStyle labelTextStyle(BuildContext context) => TextStyle(
+        color: const Color(0xFFF17E9D),
+        fontSize: healthSp(context, 8),
         fontFamily: 'Gmarket Sans TTF',
         fontWeight: FontWeight.w300,
         height: 1.0,
@@ -27,7 +26,7 @@ class HealthChartExpandControl extends StatelessWidget {
   /// [Positioned.top] 보정용: 아이콘만 쓸 때의 `iconSize/2` 대신 블록 중앙 정렬에 사용.
   static double blockHeight(BuildContext context, double iconSize) {
     final gap = healthDp(context, 2);
-    final labelH = MediaQuery.textScalerOf(context).scale(8) * 1.15;
+    final labelH = healthSp(context, 8) * 1.15;
     return iconSize + gap + labelH;
   }
 
@@ -48,6 +47,7 @@ class HealthChartExpandControl extends StatelessWidget {
           SizedBox(height: healthDp(context, 2)),
           Text(
             '확대',
+            textScaler: TextScaler.noScaling,
             style: labelTextStyle(context),
           ),
         ],

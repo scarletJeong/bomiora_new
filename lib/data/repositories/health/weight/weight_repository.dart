@@ -137,6 +137,39 @@ class WeightRepository {
     }
   }
 
+  /// 저장한 날짜의 기록만 다시 받아 목록 캐시에 끼워 넣는다.
+  /// 다른 날짜는 그대로 둔다.
+  static Future<void> refreshRecordsForDate(String mbId, DateTime date) async {
+    final id = mbId.trim();
+    if (id.isEmpty) return;
+    final day = DateTime(date.year, date.month, date.day);
+    final dateStr =
+        '${day.year.toString().padLeft(4, '0')}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}';
+    try {
+      final response = await ApiClient.get(
+        '${ApiEndpoints.weightRecords}/$dateStr?mb_id=${Uri.encodeQueryComponent(id)}',
+      );
+      if (response.statusCode != 200) return;
+      final data = json.decode(response.body);
+      if (data['success'] != true || data['data'] is! List) return;
+      final fetched = (data['data'] as List)
+          .whereType<Map>()
+          .map((json) => WeightRecord.fromJson(Map<String, dynamic>.from(json)))
+          .toList();
+      final records = List<WeightRecord>.from(_cache[id] ?? const []);
+      records.removeWhere((record) {
+        final measured = record.measuredAt.toLocal();
+        return measured.year == day.year &&
+            measured.month == day.month &&
+            measured.day == day.day;
+      });
+      records.addAll(fetched);
+      records.sort((a, b) => b.measuredAt.compareTo(a.measuredAt));
+      _cache[id] = records;
+      _cacheAt[id] = DateTime.now();
+    } catch (_) {}
+  }
+
   // 체중 기록 목록 조회 (최적화: 한 번에 모든 데이터 로드)
   static Future<List<WeightRecord>> getWeightRecords(String mbId) async {
     final id = mbId.trim();

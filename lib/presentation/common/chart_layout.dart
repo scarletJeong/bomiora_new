@@ -131,8 +131,13 @@ class HealthDailyNoDataChartCard extends StatelessWidget {
       padding: healthChartCardPadding(context),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: showBorder ? Border.all(color: Colors.grey[200]!) : null,
+        borderRadius: BorderRadius.circular(healthDp(context, 12)),
+        border: showBorder
+            ? Border.all(
+                color: Colors.grey[200]!,
+                width: healthDp(context, 1),
+              )
+            : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -146,22 +151,24 @@ class HealthDailyNoDataChartCard extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const SizedBox(height: 16),
+                  SizedBox(height: healthDp(context, 16)),
                   Text(
                     title,
+                    textScaler: TextScaler.noScaling,
                     style: TextStyle(
                       fontFamily: 'Gmarket Sans TTF',
-                      fontSize: 16,
+                      fontSize: healthSp(context, 16),
                       color: Colors.grey[600],
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: healthDp(context, 8)),
                   Text(
                     subtitle,
+                    textScaler: TextScaler.noScaling,
                     style: TextStyle(
                       fontFamily: 'Gmarket Sans TTF',
-                      fontSize: 14,
+                      fontSize: healthSp(context, 14),
                       color: Colors.grey[500],
                     ),
                   ),

@@ -12,6 +12,7 @@ class HealthFocusOutlineBox extends StatefulWidget {
     this.padding,
     this.borderRadius,
     this.fillColor,
+    this.hasError = false,
   });
 
   static const Color focusColor = Color(0xFFFF5A8D);
@@ -23,6 +24,7 @@ class HealthFocusOutlineBox extends StatefulWidget {
   final EdgeInsetsGeometry? padding;
   final double? borderRadius;
   final Color? fillColor;
+  final bool hasError;
 
   @override
   State<HealthFocusOutlineBox> createState() => _HealthFocusOutlineBoxState();
@@ -82,7 +84,7 @@ class _HealthFocusOutlineBoxState extends State<HealthFocusOutlineBox> {
         shape: RoundedRectangleBorder(
           side: BorderSide(
             width: healthDp(context, 1),
-            color: _node.hasFocus
+            color: widget.hasError || _node.hasFocus
                 ? HealthFocusOutlineBox.focusColor
                 : HealthFocusOutlineBox.idleColor,
           ),

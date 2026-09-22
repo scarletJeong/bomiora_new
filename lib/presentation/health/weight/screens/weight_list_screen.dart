@@ -23,8 +23,8 @@ import '../../../../core/utils/image_picker_utils.dart';
 import '../../../../core/utils/image_url_helper.dart';
 import '../../../../core/health/health_refresh_bus.dart';
 import '../../../../core/health/health_refresh_listener.dart';
-import '../widgets/weight_chart_section.dart';
 import '../utils/weight_goal_progress.dart';
+import '../widgets/weight_chart_section.dart';
 import '../../health_common/widgets/health_delete_popup.dart';
 import '../../health_common/health_chart_axis_style.dart';
 import '../../health_common/health_chart_metrics.dart';
@@ -647,12 +647,14 @@ class _WeightListScreenState extends State<WeightListScreen>
     final weight = selectedRecord?.weight ?? 0.0;
     final height = selectedRecord?.height ?? 0.0;
     final targetWeight = latestHealthGoal?.targetWeight ?? 0.0;
-    final goalStartWeight = latestHealthGoal?.currentWeight ?? 0.0;
-    final lostWeight =
-        (weight > 0 && goalStartWeight > 0) ? (weight - goalStartWeight) : 0.0;
+    // 목표 설정 때 저장한 현재 체중. 오늘 체중을 입력해도 이 값은 바꾸지 않는다.
+    final goalCurrentWeight = latestHealthGoal?.currentWeight ?? 0.0;
+    final lostWeight = (weight > 0 && goalCurrentWeight > 0)
+        ? (weight - goalCurrentWeight)
+        : 0.0;
     final progressRatio = (weight <= 0 || targetWeight <= 0)
         ? 0.0
-        : weightTowardGoalRatio(weight, targetWeight, goalStartWeight);
+        : weightTowardGoalRatio(weight, targetWeight, goalCurrentWeight);
     // 오늘의 체중 흰 카드 바깥 패딩 없음. 349 안 좌우는 논리 10. 세로: healthDp(18)·원193·10·수정·10·메트릭·10.
     final squareSide = healthDp(context, 349);
     final chartDiameter = healthDp(context, 193);
@@ -713,7 +715,6 @@ class _WeightListScreenState extends State<WeightListScreen>
                                 weight: weight,
                                 heightCm: height,
                                 targetWeight: targetWeight,
-                                goalStartWeight: goalStartWeight,
                                 lostWeight: lostWeight,
                                 chartBandH: chartBandH,
                                 chartTopGap: chartTopGap,
@@ -741,7 +742,6 @@ class _WeightListScreenState extends State<WeightListScreen>
                           weight: weight,
                           heightCm: height,
                           targetWeight: targetWeight,
-                          goalStartWeight: goalStartWeight,
                           lostWeight: lostWeight,
                           chartBandH: chartBandH,
                           chartTopGap: chartTopGap,
@@ -769,7 +769,6 @@ class _WeightListScreenState extends State<WeightListScreen>
     required double weight,
     required double heightCm,
     required double targetWeight,
-    required double goalStartWeight,
     required double lostWeight,
     required double chartBandH,
     required double chartTopGap,
@@ -778,7 +777,9 @@ class _WeightListScreenState extends State<WeightListScreen>
     required double gapBeforeMetricsBand,
     required double metricsBandH,
   }) {
-    final goalRingActive = targetWeight > 0 && goalStartWeight > 0;
+    final goalRingActive = targetWeight > 0 &&
+        (latestHealthGoal?.currentWeight ?? 0) > 0 &&
+        weight > 0;
     final knobEnd = goalRingActive
         ? _weightGoalRingProgressEndOffset(
             boxSize: chartDiameter,
@@ -1687,14 +1688,10 @@ class _WeightListScreenState extends State<WeightListScreen>
     final frontImagePath = selectedRecord?.frontImagePath;
     final sideImagePath = selectedRecord?.sideImagePath;
     final gap = healthDp(context, 10);
-    final maxSide = healthDp(context, 158);
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final side = math.min(
-          maxSide,
-          (constraints.maxWidth - gap) / 2,
-        );
+        final side = (constraints.maxWidth - gap) / 2;
         return Row(
           children: [
             SizedBox(
@@ -1821,8 +1818,9 @@ class _WeightListScreenState extends State<WeightListScreen>
         SizedBox(height: healthDp(context, 8)),
         Text(
           label,
+          textScaler: TextScaler.noScaling,
           style: TextStyle(
-            fontSize: 12,
+            fontSize: healthSp(context, 12),
             color: Colors.grey[600],
             fontWeight: FontWeight.w500,
           ),
@@ -1870,7 +1868,7 @@ class _WeightListScreenState extends State<WeightListScreen>
         );
 
         await WeightRepository.updateWeightRecord(updatedRecord);
-        notifyHealthDataChanged();
+        notifyHealthDataChanged('weight');
         _loadData();
       } else {
         Navigator.push(
@@ -1910,7 +1908,7 @@ class _WeightListScreenState extends State<WeightListScreen>
         );
 
         await WeightRepository.updateWeightRecord(updatedRecord);
-        notifyHealthDataChanged();
+        notifyHealthDataChanged('weight');
         _loadData(); // 데이터 새로고침
       }
     } catch (e) {}
