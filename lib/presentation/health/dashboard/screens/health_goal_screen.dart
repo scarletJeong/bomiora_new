@@ -105,7 +105,11 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
   bool get _isFormComplete {
     final current = _parseWeightField(_currentWeightController.text);
     final target = _parseWeightField(_targetWeightController.text);
-    return current != null && current > 0 && target != null && target > 0;
+    return current != null &&
+        current > 0 &&
+        target != null &&
+        target > 0 &&
+        target < current;
   }
 
   Future<void> _loadLatestGoal() async {
@@ -157,25 +161,26 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
     return double.tryParse(t);
   }
 
+  bool get _isTargetNotLowerThanCurrent {
+    final current = _parseWeightField(_currentWeightController.text);
+    final target = _parseWeightField(_targetWeightController.text);
+    return current != null &&
+        current > 0 &&
+        target != null &&
+        target > 0 &&
+        target >= current;
+  }
+
   Future<void> _onRegister() async {
-    if (!_isFormComplete) {
-      HealthInputComplete.showRequiredToast(context);
-      return;
-    }
+    if (!_isFormComplete) return;
+
+    final current = _parseWeightField(_currentWeightController.text);
+    final target = _parseWeightField(_targetWeightController.text);
+    if (current == null || target == null) return;
 
     final user = await AuthService.getUser();
     final mbId = user?.id;
     if (mbId == null || mbId.isEmpty) {
-      return;
-    }
-
-    final current = _parseWeightField(_currentWeightController.text);
-    final target = _parseWeightField(_targetWeightController.text);
-
-    if (current == null || current <= 0) {
-      return;
-    }
-    if (target == null || target <= 0) {
       return;
     }
 
@@ -269,6 +274,10 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                       ),
+                      hasError: _isTargetNotLowerThanCurrent,
+                      errorText: _isTargetNotLowerThanCurrent
+                          ? '목표 체중은 현재 체중보다 적게 설정해주세요.'
+                          : null,
                     ),
                     SizedBox(height: healthDp(context, 20)),
                     _buildStepsPickerSection(),
@@ -288,7 +297,9 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
                               ? HealthInputComplete.activeColor
                               : HealthInputComplete.inactiveColor),
                       child: InkWell(
-                        onTap: _submitting ? null : _onRegister,
+                        onTap: (_submitting || !_isFormComplete)
+                            ? null
+                            : _onRegister,
                         child: Padding(
                           padding: EdgeInsets.symmetric(
                             horizontal: healthDp(context, 16),
@@ -427,6 +438,8 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
     FocusNode? focusNode,
     TextInputAction? textInputAction,
     ValueChanged<String>? onFieldSubmitted,
+    bool hasError = false,
+    String? errorText,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -449,7 +462,22 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
           focusNode: focusNode,
           textInputAction: textInputAction,
           onFieldSubmitted: onFieldSubmitted,
+          hasError: hasError,
         ),
+        if (errorText != null) ...[
+          SizedBox(height: healthDp(context, 6)),
+          Text(
+            errorText,
+            textScaler: TextScaler.noScaling,
+            style: TextStyle(
+              color: HealthFocusOutlineBox.focusColor,
+              fontSize: healthSp(context, 12),
+              height: 1.2,
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -464,6 +492,7 @@ class _GoalTextField extends StatelessWidget {
     this.focusNode,
     this.textInputAction,
     this.onFieldSubmitted,
+    this.hasError = false,
   });
 
   final TextEditingController controller;
@@ -472,11 +501,13 @@ class _GoalTextField extends StatelessWidget {
   final FocusNode? focusNode;
   final TextInputAction? textInputAction;
   final ValueChanged<String>? onFieldSubmitted;
+  final bool hasError;
 
   @override
   Widget build(BuildContext context) {
     return HealthFocusOutlineBox(
       focusNode: focusNode,
+      hasError: hasError,
       builder: (node) {
         return MediaQuery(
           data: MediaQuery.of(context).copyWith(
