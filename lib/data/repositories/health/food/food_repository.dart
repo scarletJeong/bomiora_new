@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 
-import 'package:http/http.dart' as http;
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_endpoints.dart';
 import '../../../../core/utils/image_url_helper.dart';
@@ -412,8 +411,16 @@ String _imagePathForApi(String imageUrl) {
 
 class FoodRepository {
   static const int maxMealImages = _maxMealImages;
+  static const Duration _recordsCacheTtl = Duration(seconds: 15);
+  static final Map<String, List<FoodRecordSummary>> _recordsCache = {};
+  static final Map<String, DateTime> _recordsCacheAt = {};
+  static final Map<String, Future<List<FoodRecordSummary>>> _recordsInFlight =
+      {};
 
-  static String get _baseUrl => ApiClient.baseUrl;
+  static void invalidateRecords() {
+    _recordsCache.clear();
+    _recordsCacheAt.clear();
+  }
 
   static int _foodCodePriority(String code) {
     if (code.isEmpty) return 99;
@@ -450,12 +457,8 @@ class FoodRepository {
   }) async {
     final q = keyword.trim();
     if (q.isEmpty) return [];
-    final uri = Uri.parse(
-      '$_baseUrl${ApiEndpoints.foodSearch(q, limit: limit, offset: offset)}',
-    );
-    final response = await http.get(
-      uri,
-      headers: {'Content-Type': 'application/json'},
+    final response = await ApiClient.get(
+      ApiEndpoints.foodSearch(q, limit: limit, offset: offset),
     );
 
     if (response.statusCode != 200) return [];
@@ -500,7 +503,8 @@ class FoodRepository {
         return a.foodName.compareTo(b.foodName);
       });
       sw.stop();
-      debugPrint('[FoodRepo] searchFood("$q") took ${sw.elapsedMilliseconds}ms');
+      debugPrint(
+          '[FoodRepo] searchFood("$q") took ${sw.elapsedMilliseconds}ms');
 
       return list;
     } catch (e) {
@@ -511,18 +515,36 @@ class FoodRepository {
   /// 해당 날짜 식사 기록 목록 조회 (날짜별 아침/점심/저녁/간식)
   static Future<List<FoodRecordSummary>> getRecordsForDate(
       String mbId, DateTime date) async {
+    final trimmedMbId = mbId.trim();
+    if (trimmedMbId.isEmpty) return [];
+    final key = '$trimmedMbId|${_localDateYmd(date)}';
+    final cachedAt = _recordsCacheAt[key];
+    if (cachedAt != null &&
+        DateTime.now().difference(cachedAt) < _recordsCacheTtl) {
+      return List<FoodRecordSummary>.from(_recordsCache[key] ?? const []);
+    }
+    final pending = _recordsInFlight[key];
+    if (pending != null) return pending;
+    final request = _fetchRecordsForDate(trimmedMbId, date);
+    _recordsInFlight[key] = request;
     try {
-      final trimmedMbId = mbId.trim();
-      if (trimmedMbId.isEmpty) {
-        return [];
-      }
+      final records = await request;
+      _recordsCache[key] = records;
+      _recordsCacheAt[key] = DateTime.now();
+      return List<FoodRecordSummary>.from(records);
+    } finally {
+      _recordsInFlight.remove(key);
+    }
+  }
+
+  static Future<List<FoodRecordSummary>> _fetchRecordsForDate(
+      String mbId, DateTime date) async {
+    try {
       final dateStr = _localDateYmd(date);
-      final uri = Uri.parse(
-        '$_baseUrl${ApiEndpoints.foodRecords(dateStr)}&mb_id=${Uri.encodeComponent(trimmedMbId)}',
-      );
-      final response = await http.get(
-        uri,
-        headers: {'Content-Type': 'application/json'},
+      final endpoint =
+          '${ApiEndpoints.foodRecords(dateStr)}&mb_id=${Uri.encodeComponent(mbId)}';
+      final response = await ApiClient.get(
+        endpoint,
       );
       if (response.statusCode != 200) {
         return [];
@@ -561,20 +583,19 @@ class FoodRepository {
     try {
       final dateStr = _localDateYmd(date);
       final foodTime = _mealKeyToFoodTime[mealKey] ?? 'snack';
-      final uri = Uri.parse('$_baseUrl${ApiEndpoints.foodRecordCreate}');
-      final response = await http.post(
-        uri,
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
+      final response = await ApiClient.post(
+        ApiEndpoints.foodRecordCreate,
+        {
           'mb_id': mbId,
           'record_date': dateStr,
           'food_time': foodTime,
-        }),
+        },
       );
       if (response.statusCode != 200 && response.statusCode != 201) return null;
       final body = _decodeResponseBody(response.body);
       final data = body is Map ? body['data'] ?? body : body;
       if (data is Map) {
+        invalidateRecords();
         return FoodRecordSummary.fromJson(Map<String, dynamic>.from(data));
       }
       return null;
@@ -587,8 +608,6 @@ class FoodRepository {
   static Future<bool> addItemToRecord(
       String foodRecordId, FoodSearchItem item) async {
     try {
-      final uri =
-          Uri.parse('$_baseUrl${ApiEndpoints.foodRecordItems(foodRecordId)}');
       final body = {
         'food_code': item.foodCode,
         'food_name': item.foodName,
@@ -599,12 +618,13 @@ class FoodRepository {
         'fat': item.fat?.toDouble() ?? 0.0,
         'other': item.otherGrams?.toDouble() ?? 0.0,
       };
-      final response = await http.post(
-        uri,
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode(body),
+      final response = await ApiClient.post(
+        ApiEndpoints.foodRecordItems(foodRecordId),
+        body,
       );
-      return response.statusCode == 200 || response.statusCode == 201;
+      final ok = response.statusCode == 200 || response.statusCode == 201;
+      if (ok) invalidateRecords();
+      return ok;
     } catch (e) {
       return false;
     }
@@ -614,13 +634,12 @@ class FoodRepository {
   static Future<bool> deleteRecordItem(
       String foodRecordId, String itemId) async {
     try {
-      final uri = Uri.parse(
-          '$_baseUrl${ApiEndpoints.foodRecordItemDelete(foodRecordId, itemId)}');
-      final response = await http.delete(
-        uri,
-        headers: {'Content-Type': 'application/json'},
+      final response = await ApiClient.delete(
+        ApiEndpoints.foodRecordItemDelete(foodRecordId, itemId),
       );
-      return response.statusCode == 200 || response.statusCode == 204;
+      final ok = response.statusCode == 200 || response.statusCode == 204;
+      if (ok) invalidateRecords();
+      return ok;
     } catch (e) {
       return false;
     }
@@ -686,19 +705,17 @@ class FoodRepository {
           .map(_imagePathForApi)
           .take(maxMealImages)
           .toList();
-      final uri = Uri.parse(
-        '$_baseUrl${ApiEndpoints.foodRecordUpdate(foodRecordId)}',
-      );
       final body = <String, dynamic>{
         'image_paths': paths,
         'image_path': paths.isEmpty ? '' : paths.first,
       };
-      final response = await http.put(
-        uri,
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode(body),
+      final response = await ApiClient.put(
+        ApiEndpoints.foodRecordUpdate(foodRecordId),
+        body,
       );
-      return response.statusCode == 200 || response.statusCode == 201;
+      final ok = response.statusCode == 200 || response.statusCode == 201;
+      if (ok) invalidateRecords();
+      return ok;
     } catch (e) {
       return false;
     }

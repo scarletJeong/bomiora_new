@@ -44,7 +44,11 @@ class CalorieSearchBlock extends StatefulWidget {
 
 class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
   static const int _pageSize = 20;
+  static const String _localPreviewPrefix = 'local-preview:';
   List<String> _localImagePaths = [];
+  List<FoodRecordItemSummary> _localAddedItems = [];
+  String _resolvedFoodRecordId = '';
+  String? _selectedFoodCode;
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _focusNode = FocusNode();
   final ScrollController _resultsScrollController = ScrollController();
@@ -140,32 +144,33 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
 
   Future<void> _addToMealRecord(FoodSearchItem item) async {
     if (_isAdding) return;
-    setState(() => _isAdding = true);
+    final pendingItem = FoodRecordItemSummary(
+      itemId: 'pending-${DateTime.now().microsecondsSinceEpoch}',
+      foodName: item.foodName,
+      kcal: item.energy,
+      carbohydrate: item.carbohydrates,
+      protein: item.protein,
+      fat: item.fat,
+      other: item.otherGrams,
+    );
+    setState(() {
+      _isAdding = true;
+      _selectedFoodCode = item.foodCode;
+      _localAddedItems = [..._localAddedItems, pendingItem];
+    });
     try {
-      String? recordId = widget.foodRecordId;
-      if (recordId.isEmpty) {
-        final records = await FoodRepository.getRecordsForDate(
-            widget.mbId, widget.selectedDate);
-        final foodTime =
-            FoodRepository.foodTimeFromMealKey(widget.mealKey).toLowerCase();
-        for (final r in records) {
-          if ((r.foodTime ?? '').toLowerCase() == foodTime) {
-            recordId = r.id;
-            break;
-          }
-        }
-      }
-
+      final recordId = await _ensureFoodRecordId();
       if (recordId == null || recordId.isEmpty) {
-        final created = await FoodRepository.createRecord(
-          widget.mbId,
-          widget.selectedDate,
-          widget.mealKey,
-        );
-        recordId = created?.id;
+        if (mounted) {
+          setState(() {
+            _localAddedItems.removeWhere(
+              (candidate) => candidate.itemId == pendingItem.itemId,
+            );
+          });
+          AppToastOverlay.showAlert(context, '음식을 추가하지 못했습니다.');
+        }
+        return;
       }
-
-      if (recordId == null || recordId.isEmpty) return;
 
       final sw = Stopwatch()..start();
       final ok = await FoodRepository.addItemToRecord(recordId, item);
@@ -180,22 +185,48 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
             _results = [];
             _searchController.clear();
           });
+        } else {
+          setState(() {
+            _localAddedItems.removeWhere(
+              (candidate) => candidate.itemId == pendingItem.itemId,
+            );
+          });
+          AppToastOverlay.showAlert(context, '음식을 추가하지 못했습니다.');
         }
       }
     } finally {
-      if (mounted) setState(() => _isAdding = false);
+      if (mounted) {
+        setState(() {
+          _isAdding = false;
+          _selectedFoodCode = null;
+        });
+      }
     }
   }
 
   Future<String?> _ensureFoodRecordId() async {
-    if (widget.foodRecordId.isNotEmpty) return widget.foodRecordId;
+    if (_resolvedFoodRecordId.isNotEmpty) return _resolvedFoodRecordId;
+    if (widget.foodRecordId.isNotEmpty) {
+      _resolvedFoodRecordId = widget.foodRecordId;
+      return _resolvedFoodRecordId;
+    }
     if (widget.mbId.isEmpty) return null;
+    final records = await FoodRepository.getRecordsForDate(
+      widget.mbId,
+      widget.selectedDate,
+    );
+    final existing = FoodRepository.recordForMealKey(records, widget.mealKey);
+    if (existing != null && existing.id.isNotEmpty) {
+      _resolvedFoodRecordId = existing.id;
+      return _resolvedFoodRecordId;
+    }
     final created = await FoodRepository.createRecord(
       widget.mbId,
       widget.selectedDate,
       widget.mealKey,
     );
-    return created?.id;
+    _resolvedFoodRecordId = created?.id ?? '';
+    return _resolvedFoodRecordId.isEmpty ? null : _resolvedFoodRecordId;
   }
 
   void _openPhotoSourceDropdown(BuildContext anchorContext) {
@@ -248,29 +279,35 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
   }
 
   Future<void> _setRepresentativePhoto(int index) async {
-    final paths = List<String>.from(_localImagePaths);
+    if (_isUploadingPhoto) return;
+    final previous = List<String>.from(_localImagePaths);
+    final paths = List<String>.from(previous);
     if (index <= 0 || index >= paths.length) return;
-    final recordId = widget.foodRecordId;
-    if (recordId.isEmpty) return;
     final reordered = [
       paths[index],
       ...paths.sublist(0, index),
       ...paths.sublist(index + 1),
     ];
+    setState(() => _localImagePaths = reordered);
+    final recordId = await _ensureFoodRecordId();
+    if (recordId == null || recordId.isEmpty) {
+      if (mounted) setState(() => _localImagePaths = previous);
+      return;
+    }
     final ok = await FoodRepository.updateRecordImagePaths(recordId, reordered);
     if (!mounted) return;
     if (ok) {
-      setState(() => _localImagePaths = _sanitizeImagePaths(reordered));
       _notifyParentRefresh();
+    } else {
+      setState(() => _localImagePaths = previous);
+      AppToastOverlay.showAlert(context, '대표사진을 변경하지 못했습니다.');
     }
   }
 
   Future<void> _deletePhoto(int index) async {
+    if (_isUploadingPhoto) return;
     final paths = List<String>.from(_localImagePaths);
     if (index < 0 || index >= paths.length) return;
-
-    final recordId = widget.foodRecordId;
-    if (recordId.isEmpty) return;
 
     final confirmed = await showHealthDeletePopup(
       context: context,
@@ -279,12 +316,22 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
     );
     if (confirmed != true) return;
 
-    final targetPath = paths.removeAt(index);
+    final previous = List<String>.from(paths);
+    paths.removeAt(index);
+    setState(() => _localImagePaths = paths);
+
+    final recordId = await _ensureFoodRecordId();
+    if (recordId == null || recordId.isEmpty) {
+      if (mounted) setState(() => _localImagePaths = previous);
+      return;
+    }
     final ok = await FoodRepository.updateRecordImagePaths(recordId, paths);
     if (!mounted) return;
     if (ok) {
-      setState(() => _localImagePaths = _sanitizeImagePaths(paths));
       _notifyParentRefresh();
+    } else {
+      setState(() => _localImagePaths = previous);
+      AppToastOverlay.showAlert(context, '사진을 삭제하지 못했습니다.');
     }
   }
 
@@ -297,52 +344,64 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
 
   Future<void> _uploadPickedMealPhoto(XFile? image) async {
     if (image == null || !mounted) return;
-    setState(() => _isUploadingPhoto = true);
+    if (_localImagePaths.length >= FoodRepository.maxMealImages) return;
+    final previous = List<String>.from(_localImagePaths);
+    final localPreview = '$_localPreviewPrefix${image.path}';
+    setState(() {
+      _isUploadingPhoto = true;
+      _localImagePaths = [..._localImagePaths, localPreview];
+    });
     try {
       final recordId = await _ensureFoodRecordId();
-      if (recordId == null || recordId.isEmpty) return;
+      if (recordId == null || recordId.isEmpty) {
+        throw StateError('식사 기록을 생성하지 못했습니다.');
+      }
 
       final imageUrl = kIsWeb
           ? await FoodRepository.uploadMealImage(image)
           : await FoodRepository.uploadMealImage(File(image.path));
 
-      if (imageUrl == null) return;
+      if (imageUrl == null) throw StateError('사진 업로드에 실패했습니다.');
 
-      final current = List<String>.from(_localImagePaths);
-      if (current.length >= FoodRepository.maxMealImages) {
-        if (mounted) {
-          AppToastOverlay.showAlert(
-            context,
-            '사진은 식사별 최대 3장까지 등록할 수 있습니다.',
-          );
-        }
-        return;
-      }
-
-      final updated = [...current, imageUrl];
+      final updated = _localImagePaths
+          .map((path) => path == localPreview ? imageUrl : path)
+          .toList();
+      if (mounted) setState(() => _localImagePaths = updated);
       final ok = await FoodRepository.updateRecordImagePaths(recordId, updated);
       if (!mounted) return;
       if (ok) {
-        setState(() => _localImagePaths = _sanitizeImagePaths(updated));
         _notifyParentRefresh();
+      } else {
+        throw StateError('사진 정보를 저장하지 못했습니다.');
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _localImagePaths = previous);
+        AppToastOverlay.showAlert(context, '사진을 업로드하지 못했습니다.');
       }
     } finally {
       if (mounted) setState(() => _isUploadingPhoto = false);
     }
   }
 
-  Future<void> _deleteItem(BuildContext context, String foodRecordId,
-      String itemId, String foodName) async {
-    final confirmed = await showHealthDeletePopup(
-      context: context,
-      title: '음식 삭제',
-      message: '이 음식을 식사 기록에서 삭제할까요?\n$foodName',
-    );
-    if (confirmed != true || !mounted) return;
+  Future<void> _deleteItem(
+    String foodRecordId,
+    FoodRecordItemSummary item,
+  ) async {
+    final previous = List<FoodRecordItemSummary>.from(_localAddedItems);
+    setState(() {
+      _localAddedItems.removeWhere(
+        (candidate) => candidate.itemId == item.itemId,
+      );
+    });
+    final itemId = item.itemId;
     final ok = await FoodRepository.deleteRecordItem(foodRecordId, itemId);
     if (!mounted) return;
     if (ok) {
       widget.onItemAdded?.call();
+    } else {
+      setState(() => _localAddedItems = previous);
+      AppToastOverlay.showAlert(context, '음식을 삭제하지 못했습니다.');
     }
   }
 
@@ -359,6 +418,10 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
     final seen = <String>{};
     final out = <String>[];
     for (final raw in paths) {
+      if (raw.startsWith(_localPreviewPrefix)) {
+        if (seen.add(raw)) out.add(raw);
+        continue;
+      }
       if (ImageUrlHelper.isCorruptStoredImagePath(raw)) continue;
       final key = FoodRepository.normalizeMealImagePathForStorage(raw);
       if (key.isEmpty || seen.contains(key)) continue;
@@ -400,6 +463,8 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
   void initState() {
     super.initState();
     _localImagePaths = _sanitizeImagePaths(widget.mealImagePaths);
+    _localAddedItems = List<FoodRecordItemSummary>.from(widget.addedItems);
+    _resolvedFoodRecordId = widget.foodRecordId;
     _resultsScrollController.addListener(_onResultsScroll);
     _focusNode.addListener(() {
       if (mounted) setState(() {});
@@ -410,8 +475,11 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
   void didUpdateWidget(CalorieSearchBlock oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.foodRecordId != widget.foodRecordId) {
+      _resolvedFoodRecordId = widget.foodRecordId;
       _localImagePaths = _sanitizeImagePaths(widget.mealImagePaths);
-      return;
+    }
+    if (!listEquals(oldWidget.addedItems, widget.addedItems)) {
+      _localAddedItems = List<FoodRecordItemSummary>.from(widget.addedItems);
     }
     if (_pathsContentChanged(oldWidget.mealImagePaths, widget.mealImagePaths)) {
       final fromParent = _sanitizeImagePaths(widget.mealImagePaths);
@@ -607,36 +675,36 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
                   name: item.foodName,
                   kcal: item.energy?.toInt() ?? 0,
                   desc: item.desc,
+                  selected: _isAdding && _selectedFoodCode == item.foodCode,
                   onSelect: _isAdding ? null : () => _addToMealRecord(item),
                 );
               },
             ),
           ),
         ],
-        if (widget.addedItems.isNotEmpty) ...[
+        if (_localAddedItems.isNotEmpty) ...[
           SizedBox(height: healthDp(context, 5)),
-          ...List.generate(widget.addedItems.length, (i) {
-            final item = widget.addedItems[i];
+          ...List.generate(_localAddedItems.length, (i) {
+            final item = _localAddedItems[i];
             return Padding(
               padding: EdgeInsets.only(
                 bottom:
-                    i < widget.addedItems.length - 1 ? healthDp(context, 6) : 0,
+                    i < _localAddedItems.length - 1 ? healthDp(context, 6) : 0,
               ),
               child: AddedFoodCard(
                 name: item.foodName,
                 kcal: item.kcal?.toInt() ?? 0,
                 desc: item.desc,
                 itemId: item.itemId,
-                foodRecordId: widget.foodRecordId,
-                onDelete:
-                    widget.foodRecordId.isNotEmpty && item.itemId.isNotEmpty
-                        ? () => _deleteItem(
-                              context,
-                              widget.foodRecordId,
-                              item.itemId,
-                              item.foodName,
-                            )
-                        : null,
+                foodRecordId: _resolvedFoodRecordId,
+                onDelete: _resolvedFoodRecordId.isNotEmpty &&
+                        item.itemId.isNotEmpty &&
+                        !item.itemId.startsWith('pending-')
+                    ? () => _deleteItem(
+                          _resolvedFoodRecordId,
+                          item,
+                        )
+                    : null,
               ),
             );
           }),
@@ -776,6 +844,7 @@ class SearchResultRow extends StatelessWidget {
   final String name;
   final int kcal;
   final String desc;
+  final bool selected;
   final VoidCallback? onSelect;
 
   const SearchResultRow({
@@ -783,6 +852,7 @@ class SearchResultRow extends StatelessWidget {
     required this.name,
     required this.kcal,
     required this.desc,
+    this.selected = false,
     this.onSelect,
   });
 
@@ -792,57 +862,54 @@ class SearchResultRow extends StatelessWidget {
         MediaQuery.of(context).copyWith(textScaler: TextScaler.noScaling);
     return InkWell(
       onTap: onSelect,
-      child: Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: healthDp(context, 12),
-          vertical: healthDp(context, 10),
-        ),
-        child: MediaQuery(
-          data: noScale,
-          child: Row(
-            children: [
-              Expanded(
-                child: Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        '$name ${kcal}kcal',
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontSize: healthSp(context, 12),
-                          fontFamily: 'Gmarket Sans TTF',
-                          fontWeight: FontWeight.w500,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    if (desc.isNotEmpty) ...[
-                      SizedBox(width: healthDp(context, 6)),
+      child: ColoredBox(
+        color: selected ? const Color(0x0DFF5A8D) : Colors.transparent,
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: healthDp(context, 12),
+            vertical: healthDp(context, 10),
+          ),
+          child: MediaQuery(
+            data: noScale,
+            child: Row(
+              children: [
+                Expanded(
+                  child: Row(
+                    children: [
                       Flexible(
                         child: Text(
-                          desc,
+                          '$name ${kcal}kcal',
                           style: TextStyle(
-                            color: const Color(0xFF898383),
-                            fontSize: healthSp(context, 10),
+                            color: Colors.black,
+                            fontSize: healthSp(context, 12),
                             fontFamily: 'Gmarket Sans TTF',
-                            fontWeight: FontWeight.w300,
+                            fontWeight: FontWeight.w500,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
+                      if (desc.isNotEmpty) ...[
+                        SizedBox(width: healthDp(context, 6)),
+                        Flexible(
+                          child: Text(
+                            desc,
+                            style: TextStyle(
+                              color: const Color(0xFF898383),
+                              fontSize: healthSp(context, 10),
+                              fontFamily: 'Gmarket Sans TTF',
+                              fontWeight: FontWeight.w300,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
-              ),
-              SizedBox(width: healthDp(context, 8)),
-              Icon(
-                Icons.add_circle_outline,
-                size: healthDp(context, 20),
-                color: const Color(0xFFFF5A8D),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -1123,6 +1190,33 @@ class _MealPhotoThumbnail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final radius = BorderRadius.circular(healthDp(context, 10));
+    final isLocalPreview = imagePath.startsWith(
+      _CalorieSearchBlockState._localPreviewPrefix,
+    );
+    final previewPath = isLocalPreview
+        ? imagePath.substring(
+            _CalorieSearchBlockState._localPreviewPrefix.length,
+          )
+        : imagePath;
+    final image = isLocalPreview && !kIsWeb
+        ? Image.file(
+            File(previewPath),
+            key: ValueKey(imagePath),
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) =>
+                const ColoredBox(color: Color(0xFF6C6C6C)),
+          )
+        : Image.network(
+            isLocalPreview
+                ? previewPath
+                : ImageUrlHelper.getImageUrl(imagePath),
+            key: ValueKey(imagePath),
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: double.infinity,
+            errorBuilder: (_, __, ___) =>
+                const ColoredBox(color: Color(0xFF6C6C6C)),
+          );
     return GestureDetector(
       onTap: onTap,
       child: SizedBox(
@@ -1133,15 +1227,7 @@ class _MealPhotoThumbnail extends StatelessWidget {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              Image.network(
-                ImageUrlHelper.getImageUrl(imagePath),
-                key: ValueKey(imagePath),
-                fit: BoxFit.cover,
-                width: double.infinity,
-                height: double.infinity,
-                errorBuilder: (_, __, ___) =>
-                    const ColoredBox(color: Color(0xFF6C6C6C)),
-              ),
+              image,
               if (isRepresentative)
                 Align(
                   alignment: Alignment.bottomRight,
