@@ -269,9 +269,20 @@ abstract final class AppAssets {
   /// 아이콘 SVG 여백이 달라 보이는 크기를 맞춘다.
   static double bankIconVisualScale(String bankName) {
     final n = bankName.trim();
-    if (n.contains('신한')) return 0.74;
+    if (n.contains('신한')) return 0.7;
+    if (n.contains('우리')) return 1.56;
+    if (n.contains('제주')) return 1.52;
+    if (n.contains('케이뱅크')) return 1.5;
+    if (n.contains('국민')) return 1.6;
+    if (n.contains('농협')) return 1.6;
+    if (n.contains('하나')) return 1.6;
+    if (n.contains('기업')) return 1.6;
+    if (n.contains('씨티')) return 0.8;
+    if (n.contains('제일')) return 1.3;
     if (n.contains('수협')) return 0.86;
-    if (n.contains('제주')) return 1.22;
+    if (n.contains('우체국')) return 1.15;
+    if (n.contains('토스')) return 1.15;
+    if (n.contains('대구')) return 1.15;
     return 1.0;
   }
 }
