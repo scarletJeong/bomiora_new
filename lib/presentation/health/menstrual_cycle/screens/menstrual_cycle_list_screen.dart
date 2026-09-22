@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -13,6 +14,7 @@ import '../../../../data/models/health/menstrual_cycle/menstrual_cycle_model.dar
 import '../../../../data/models/health/menstrual_cycle/menstrual_cycle_record_selector.dart';
 import '../../../../data/repositories/health/menstrual_cycle/menstrual_cycle_repository.dart';
 import '../../../../data/repositories/health/dashboard/health_dashboard_repository.dart';
+import '../../../../data/repositories/product/product_repository.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../core/health/health_refresh_bus.dart';
 import '../../../../core/health/health_refresh_listener.dart';
@@ -70,6 +72,12 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen>
       if (user == null) {
         throw Exception('로그인이 필요합니다');
       }
+      unawaited(
+        ProductRepository.getProductsByCategory(
+          categoryId: '80',
+          productKind: 'prescription',
+        ),
+      );
 
       final records =
           await MenstrualCycleRepository.getMenstrualCycleRecords(user.id);
@@ -182,9 +190,6 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen>
                                         const MenstrualCycleInputScreen(),
                                   ),
                                 );
-                                if (mounted) {
-                                  await _loadMenstrualCycleData();
-                                }
                               },
                             ),
                           ),
@@ -253,9 +258,6 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen>
                   ),
                 ),
               );
-              if (mounted) {
-                await _loadMenstrualCycleData();
-              }
             },
           ),
         ),
@@ -617,9 +619,6 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen>
                   ),
                 ),
               );
-              if (mounted) {
-                await _loadMenstrualCycleData();
-              }
             },
           ),
         ],
@@ -783,8 +782,6 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen>
           if (success) {
             HealthDashboardRepository.invalidate(user.id);
             notifyHealthDataChanged();
-            // 데이터 새로고침
-            _loadMenstrualCycleData();
           }
         } catch (e) {}
       }
