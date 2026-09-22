@@ -64,7 +64,7 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen>
 
   Future<void> _loadMenstrualCycleData() async {
     setState(() {
-      _isLoading = true;
+      _isLoading = _allRecords.isEmpty;
     });
 
     try {

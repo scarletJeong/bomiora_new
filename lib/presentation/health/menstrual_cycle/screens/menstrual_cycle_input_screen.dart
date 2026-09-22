@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -365,8 +366,7 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
     // 시작일을 새로 고를 때만 가까운 이력으로 편집 대상을 맞춘다.
     // 종료일을 고를 때 바꾸면(예: 1일~24일) 27일 주기 쪽으로 id가 넘어가
     // 그 구간이 사라지고, 덮인 예전 주기(1~5일) 끝점 원이 남는다.
-    final completingRange =
-        _lastPeriodStart != null && _lastPeriodEnd == null;
+    final completingRange = _lastPeriodStart != null && _lastPeriodEnd == null;
     if (widget.existingRecord != null && !completingRange) {
       final nearest = _nearestRecordByDisplayStart(selectedDay);
       if (nearest?.id != null) {
@@ -398,9 +398,8 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
       }
       final rangeStart = DateUtils.dateOnly(_lastPeriodStart!);
       final rangeEnd = DateUtils.dateOnly(_lastPeriodEnd!);
-      _explicitEditRecordId =
-          _bestRecordIdForSelection(rangeStart, rangeEnd) ??
-              _explicitEditRecordId;
+      _explicitEditRecordId = _bestRecordIdForSelection(rangeStart, rangeEnd) ??
+          _explicitEditRecordId;
     });
   }
 
@@ -1205,10 +1204,6 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
     }
     _cycleLength = cycleLength;
 
-    setState(() {
-      _isLoading = true;
-    });
-
     try {
       final user = await AuthService.getUser();
       if (!mounted) return;
@@ -1253,9 +1248,7 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
         return byCalcStart ?? byDisplayStart;
       }
 
-      bool success;
-      MenstrualCycleRecord? _latestByCalcStart(
-          List<MenstrualCycleRecord> list) {
+      MenstrualCycleRecord? latestByCalcStart(List<MenstrualCycleRecord> list) {
         if (list.isEmpty) return null;
         final sorted = [...list]
           ..sort((a, b) => b.lastPeriodStart.compareTo(a.lastPeriodStart));
@@ -1266,6 +1259,7 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
           ? (_recordById(_explicitEditRecordId!) ??
               _matchExistingRecordForEdit(_lastPeriodStart!))
           : _matchExistingRecordForEdit(_lastPeriodStart!);
+      final MenstrualCycleRecord record;
       if (matched != null) {
         final periodLength = DateUtils.dateOnly(_lastPeriodEnd!)
                 .difference(DateUtils.dateOnly(_lastPeriodStart!))
@@ -1277,13 +1271,10 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
               !_historyRecords.any((r) => r.id == widget.existingRecord!.id))
             widget.existingRecord!,
         ];
-        final latest = _latestByCalcStart(allForLatest);
+        final latest = latestByCalcStart(allForLatest);
         final isLatestRecord =
             latest != null && matched.id != null && latest.id == matched.id;
-
-        // 최신 기록 수정은 계산 기준(lastPeriodStart)도 함께 변경해 재계산 반영.
-        // 과거 기록도 선택 기간(periodLength)은 반드시 갱신한다.
-        final record = isLatestRecord
+        record = isLatestRecord
             ? matched.copyWith(
                 mbId: user.id,
                 lastPeriodStart: _lastPeriodStart,
@@ -1298,15 +1289,12 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
                 periodEndDate: _lastPeriodEnd,
                 periodLength: periodLength,
               );
-        success =
-            await MenstrualCycleRepository.updateMenstrualCycleRecord(record);
       } else {
-        // 매칭되는 기존 시작일이 없으면 신규 입력
         final periodLength = DateUtils.dateOnly(_lastPeriodEnd!)
                 .difference(DateUtils.dateOnly(_lastPeriodStart!))
                 .inDays +
             1;
-        final record = MenstrualCycleRecord(
+        record = MenstrualCycleRecord(
           mbId: user.id,
           lastPeriodStart: _lastPeriodStart!,
           periodStartDate: _lastPeriodStart,
@@ -1314,19 +1302,16 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
           cycleLength: _cycleLength,
           periodLength: periodLength,
         );
-        success =
-            await MenstrualCycleRepository.addMenstrualCycleRecord(record);
       }
 
-      if (success) {
-        if (mounted) {
-          HealthDashboardRepository.invalidate(user.id);
-          notifyHealthDataChanged();
-          Navigator.pop(context, true);
-        }
-      } else {
-        throw Exception(matched != null ? '수정에 실패했습니다' : '저장에 실패했습니다');
-      }
+      final previous = MenstrualCycleRepository.optimisticallyUpsert(record);
+      notifyHealthDataChanged();
+      if (mounted) Navigator.pop(context, true);
+      unawaited(_persistMenstrualCycle(
+        record: record,
+        isUpdate: matched != null,
+        previous: previous,
+      ));
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -1334,5 +1319,20 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
         });
       }
     }
+  }
+
+  Future<void> _persistMenstrualCycle({
+    required MenstrualCycleRecord record,
+    required bool isUpdate,
+    required List<MenstrualCycleRecord> previous,
+  }) async {
+    final success = isUpdate
+        ? await MenstrualCycleRepository.updateMenstrualCycleRecord(record)
+        : await MenstrualCycleRepository.addMenstrualCycleRecord(record);
+    if (!success) {
+      MenstrualCycleRepository.restoreRecords(record.mbId, previous);
+    }
+    HealthDashboardRepository.invalidate(record.mbId);
+    notifyHealthDataChanged();
   }
 }

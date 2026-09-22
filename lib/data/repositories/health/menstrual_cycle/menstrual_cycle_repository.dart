@@ -28,6 +28,36 @@ class MenstrualCycleRepository {
     }
   }
 
+  static List<MenstrualCycleRecord> optimisticallyUpsert(
+    MenstrualCycleRecord record,
+  ) {
+    final id = record.mbId.trim();
+    final previous = List<MenstrualCycleRecord>.from(_cache[id] ?? const []);
+    final next = List<MenstrualCycleRecord>.from(previous);
+    final index = record.id == null
+        ? -1
+        : next.indexWhere((candidate) => candidate.id == record.id);
+    if (index >= 0) {
+      next[index] = record;
+    } else {
+      next.insert(0, record);
+    }
+    _cache[id] = next;
+    _cacheAt[id] = DateTime.now();
+    _latestCache[id] = next.isEmpty ? null : next.first;
+    return previous;
+  }
+
+  static void restoreRecords(
+    String mbId,
+    List<MenstrualCycleRecord> records,
+  ) {
+    final id = mbId.trim();
+    _cache[id] = List<MenstrualCycleRecord>.from(records);
+    _cacheAt[id] = DateTime.now();
+    _latestCache[id] = records.isEmpty ? null : records.first;
+  }
+
   // 생리주기 기록 추가
   static Future<bool> addMenstrualCycleRecord(
       MenstrualCycleRecord record) async {
@@ -40,7 +70,15 @@ class MenstrualCycleRepository {
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
         final ok = data['success'] == true;
-        if (ok) invalidate(record.mbId);
+        if (ok && data['data'] is Map) {
+          try {
+            optimisticallyUpsert(
+              MenstrualCycleRecord.fromJson(
+                Map<String, dynamic>.from(data['data'] as Map),
+              ),
+            );
+          } catch (_) {}
+        }
         return ok;
       }
 
@@ -66,7 +104,7 @@ class MenstrualCycleRepository {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final ok = data['success'] == true;
-        if (ok) invalidate(record.mbId);
+        if (ok) optimisticallyUpsert(record);
         return ok;
       }
 
