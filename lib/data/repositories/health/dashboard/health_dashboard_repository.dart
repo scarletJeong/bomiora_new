@@ -133,19 +133,7 @@ class HealthDashboardRepository {
         return _fetchLegacyDashboard(mbId: mbId, date: date);
       }
 
-      final payload = _parseBundle(mbId, data);
-      if (payload.steps != null) return payload;
-      final steps = await StepsRepository.getStepsRecordByMbId(mbId, date);
-      if (steps == null) return payload;
-      return HealthDashboardPayload(
-        weightRecords: payload.weightRecords,
-        bloodPressureRecords: payload.bloodPressureRecords,
-        bloodSugarRecords: payload.bloodSugarRecords,
-        heartRateRecords: payload.heartRateRecords,
-        menstrualCycle: payload.menstrualCycle,
-        steps: steps,
-        healthGoal: payload.healthGoal,
-      );
+      return _parseBundle(mbId, data);
     } catch (_) {
       return _fetchLegacyDashboard(mbId: mbId, date: date);
     }
@@ -168,7 +156,9 @@ class HealthDashboardRepository {
     }
     if (!hasTotal) return null;
     try {
-      return StepsRecord.fromJson(map);
+      final record = StepsRecord.fromJson(map);
+      if (record.totalSteps <= 0) return null;
+      return record;
     } catch (_) {
       return null;
     }
