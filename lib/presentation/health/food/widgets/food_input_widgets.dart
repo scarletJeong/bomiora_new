@@ -198,12 +198,12 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
     return created?.id;
   }
 
-  void _openPhotoSourceDropdown(BuildContext anchorContext) async {
+  void _openPhotoSourceDropdown(BuildContext anchorContext) {
     if (_isUploadingPhoto) return;
     if (_localImagePaths.length >= FoodRepository.maxMealImages) {
       AppToastOverlay.showAlert(
         context,
-        '한 식사 기록에는 사진을 최대 3장까지 등록할 수 있습니다.',
+        '사진은 식사별 최대 3장까지 등록할 수 있습니다.',
       );
       return;
     }
@@ -214,25 +214,11 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
       horizontal: healthDp(context, 12),
     );
 
-    final neededHeight = DropdownBtn.resolvePanelMaxHeight(
-      context: context,
-      itemCount: _photoSourceLabels.length,
-      itemFontSizeBase: 12,
-      itemPadding: itemPadding,
-    );
-
-    await DropdownBtn.ensureSpaceBelowForMenu(
-      context: context,
-      anchorContext: anchorContext,
-      neededHeight: neededHeight + healthDp(context, 20),
-    );
-
-    if (!mounted) return;
-
     DropdownBtn.showMenu(
       context: context,
       anchorContext: anchorContext,
       items: _photoSourceLabels,
+      gap: 0,
       menuWidth: healthDp(context, 150),
       itemFontSizeBase: 12,
       itemFontFamily: 'Gmarket Sans TTF',
@@ -327,7 +313,7 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
         if (mounted) {
           AppToastOverlay.showAlert(
             context,
-            '한 식사 기록에는 사진을 최대 3장까지 등록할 수 있습니다.',
+            '사진은 식사별 최대 3장까지 등록할 수 있습니다.',
           );
         }
         return;
