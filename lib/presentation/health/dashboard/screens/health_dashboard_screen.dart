@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../../../core/constants/app_assets.dart';
+import '../../../../core/health/health_refresh_bus.dart';
 import '../../../../core/health/health_refresh_listener.dart';
 import '../../../../core/utils/image_url_helper.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
@@ -91,19 +92,27 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
 
   @override
   void onHealthDataChanged() {
-    _loadData(showBlockingLoader: false);
+    final domain = HealthRefreshBus.instance.domain;
+    _loadData(
+      showBlockingLoader: false,
+      includeFood: domain == null || domain == 'food',
+    );
   }
 
-  Future<void> _reloadAfterChildRoute(Future<dynamic>? route) async {
+  Future<void> _reloadAfterChildRoute(
+    Future<dynamic>? route, {
+    bool includeFood = true,
+  }) async {
     await route;
     if (mounted) {
-      await _loadData(showBlockingLoader: false);
+      await _loadData(showBlockingLoader: false, includeFood: includeFood);
     }
   }
 
   Future<void> _loadData({
     bool showBlockingLoader = true,
     bool forceRefresh = false,
+    bool includeFood = true,
   }) async {
     if (showBlockingLoader) {
       setState(() => isLoading = true);
@@ -173,11 +182,12 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
           date: selectedDate,
           forceRefresh: forceRefresh,
         ),
-        FoodRepository.getRecordsForDate(
-          userId,
-          selectedDate,
-          forceRefresh: forceRefresh,
-        ),
+        if (includeFood)
+          FoodRepository.getRecordsForDate(
+            userId,
+            selectedDate,
+            forceRefresh: forceRefresh,
+          ),
       ]);
       final dashboard = results[0] as HealthDashboardPayload?;
 
@@ -191,7 +201,9 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
       final stepsRecord = dashboard?.steps;
       final healthGoal = dashboard?.healthGoal;
 
-      final foodRecords = results[1] as List<FoodRecordSummary>;
+      final foodRecords = includeFood
+          ? results[1] as List<FoodRecordSummary>
+          : null;
       unawaited(
         HealthDashboardRepository.fetchDashboard(
           mbId: userId,
@@ -241,26 +253,30 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
         heartRate = heartRateRecord?.heartRate ?? 0;
         steps = stepsRecord?.totalSteps ?? 0;
 
-        consumedCalories =
-            foodRecords.fold<int>(0, (sum, r) => sum + (r.calories ?? 0));
-        totalCarbs = foodRecords.fold<num>(0, (sum, r) => sum + (r.carbs ?? 0));
-        totalProtein =
-            foodRecords.fold<num>(0, (sum, r) => sum + (r.protein ?? 0));
-        totalFat = foodRecords.fold<num>(0, (sum, r) => sum + (r.fat ?? 0));
-        totalOther = foodRecords.fold<num>(0, (sum, r) => sum + (r.other ?? 0));
-        mealImagePaths.updateAll((_, __) => <String>[]);
-        final breakfast = FoodRepository.recordForMealKey(foodRecords, '아침');
-        final lunch = FoodRepository.recordForMealKey(foodRecords, '점심');
-        final dinner = FoodRepository.recordForMealKey(foodRecords, '저녁');
-        final snack = FoodRepository.recordForMealKey(foodRecords, '간식');
-        mealCalories['Breakfast'] = breakfast?.calories ?? 0;
-        mealCalories['Lunch'] = lunch?.calories ?? 0;
-        mealCalories['Dinner'] = dinner?.calories ?? 0;
-        mealCalories['Snack'] = snack?.calories ?? 0;
-        mealImagePaths['Breakfast'] = breakfast?.imagePaths ?? const [];
-        mealImagePaths['Lunch'] = lunch?.imagePaths ?? const [];
-        mealImagePaths['Dinner'] = dinner?.imagePaths ?? const [];
-        mealImagePaths['Snack'] = snack?.imagePaths ?? const [];
+        if (foodRecords != null) {
+          consumedCalories =
+              foodRecords.fold<int>(0, (sum, r) => sum + (r.calories ?? 0));
+          totalCarbs =
+              foodRecords.fold<num>(0, (sum, r) => sum + (r.carbs ?? 0));
+          totalProtein =
+              foodRecords.fold<num>(0, (sum, r) => sum + (r.protein ?? 0));
+          totalFat = foodRecords.fold<num>(0, (sum, r) => sum + (r.fat ?? 0));
+          totalOther =
+              foodRecords.fold<num>(0, (sum, r) => sum + (r.other ?? 0));
+          mealImagePaths.updateAll((_, __) => <String>[]);
+          final breakfast = FoodRepository.recordForMealKey(foodRecords, '아침');
+          final lunch = FoodRepository.recordForMealKey(foodRecords, '점심');
+          final dinner = FoodRepository.recordForMealKey(foodRecords, '저녁');
+          final snack = FoodRepository.recordForMealKey(foodRecords, '간식');
+          mealCalories['Breakfast'] = breakfast?.calories ?? 0;
+          mealCalories['Lunch'] = lunch?.calories ?? 0;
+          mealCalories['Dinner'] = dinner?.calories ?? 0;
+          mealCalories['Snack'] = snack?.calories ?? 0;
+          mealImagePaths['Breakfast'] = breakfast?.imagePaths ?? const [];
+          mealImagePaths['Lunch'] = lunch?.imagePaths ?? const [];
+          mealImagePaths['Dinner'] = dinner?.imagePaths ?? const [];
+          mealImagePaths['Snack'] = snack?.imagePaths ?? const [];
+        }
 
         isLoading = false;
       });
@@ -681,15 +697,15 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
   Widget _buildWeightProgressBar() {
     final double? goalTgt = latestHealthGoal?.targetWeight;
     final double? anchor = latestHealthGoal?.currentWeight;
+    // 왼쪽은 목표에 저장된 현재 체중만. 오늘 입력한 체중으로 바꾸지 않는다.
     final double leftLabelWeight =
-        (goalTgt != null && anchor != null && anchor > 0)
-            ? anchor
-            : currentWeight;
+        (anchor != null && anchor > 0) ? anchor : 0.0;
     final double ratio = goalTgt != null
         ? weightTowardGoalRatio(currentWeight, goalTgt, anchor)
         : 0.0;
-    final int diff =
-        goalTgt != null ? (currentWeight - leftLabelWeight).round() : 0;
+    final int diff = (goalTgt != null && leftLabelWeight > 0 && currentWeight > 0)
+        ? (currentWeight - leftLabelWeight).round()
+        : 0;
     final String rightLabel = goalTgt != null
         ? (goalTgt == goalTgt.roundToDouble()
             ? '${goalTgt.toInt()}kg'
@@ -894,6 +910,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
                     WeightListScreen(initialDate: selectedDate),
               ),
             ),
+            includeFood: false,
           );
         }
       },

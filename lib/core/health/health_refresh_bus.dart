@@ -6,11 +6,15 @@ class HealthRefreshBus extends ChangeNotifier {
 
   static final HealthRefreshBus instance = HealthRefreshBus._();
 
-  void notifyChanged() {
+  /// 마지막으로 바뀐 영역. null이면 전체.
+  String? domain;
+
+  void notifyChanged([String? domain]) {
+    this.domain = domain;
     notifyListeners();
   }
 }
 
-void notifyHealthDataChanged() {
-  HealthRefreshBus.instance.notifyChanged();
+void notifyHealthDataChanged([String? domain]) {
+  HealthRefreshBus.instance.notifyChanged(domain);
 }

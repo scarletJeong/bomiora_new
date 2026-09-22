@@ -202,10 +202,8 @@ class HealthDashboardRepository {
         parseList(data['bloodSugar'], BloodSugarRecord.fromJson);
     final List<HeartRateRecord> heartRateRecords =
         parseList(data['heartRate'], HeartRateRecord.fromJson);
-    WeightRepository.seedRecords(mbId, weightRecords);
-    BloodPressureRepository.seedRecords(mbId, bloodPressureRecords);
-    BloodSugarRepository.seedRecords(mbId, bloodSugarRecords);
-    HeartRateRepository.seedRecords(mbId, heartRateRecords);
+    // 대시보드 응답은 선택일 1건뿐이다. 목록 캐시를 이 조각으로 덮으면
+    // 같은 날의 나머지 기록과 다른 날짜가 사라진다.
     MenstrualCycleRepository.seedLatest(mbId, menstrual);
 
     return HealthDashboardPayload(
