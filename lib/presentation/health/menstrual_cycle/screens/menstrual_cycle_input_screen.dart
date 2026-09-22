@@ -50,7 +50,6 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
   static final DateTime _calendarLastDay = DateTime(2030, 12, 31);
 
   static const Color _kOutsideDayText = Color(0x4C1A1A1A);
-  static const Color _kFutureDayText = Color(0xFFB3B3B3);
   static const Color _kRangeBarFill = Color(0x26FC6795);
   static const Color _kAccentPink = Color(0xFFFF5A8D);
 
@@ -143,6 +142,36 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
     return '${d.year.toString().padLeft(4, '0')}-'
         '${d.month.toString().padLeft(2, '0')}-'
         '${d.day.toString().padLeft(2, '0')}';
+  }
+
+  List<({DateTime start, DateTime end})> _periodRanges() {
+    final ranges = <({DateTime start, DateTime end})>[];
+    for (final r in _historyRecords) {
+      if (r.id != null &&
+          _explicitEditRecordId != null &&
+          r.id == _explicitEditRecordId) {
+        continue;
+      }
+      var start = DateUtils.dateOnly(r.displayPeriodStart);
+      var end = DateUtils.dateOnly(r.displayPeriodEnd);
+      if (end.isBefore(start)) {
+        final swap = start;
+        start = end;
+        end = swap;
+      }
+      ranges.add((start: start, end: end));
+    }
+    if (_lastPeriodStart != null) {
+      var start = DateUtils.dateOnly(_lastPeriodStart!);
+      var end = DateUtils.dateOnly(_lastPeriodEnd ?? _lastPeriodStart!);
+      if (end.isBefore(start)) {
+        final swap = start;
+        start = end;
+        end = swap;
+      }
+      ranges.add((start: start, end: end));
+    }
+    return ranges;
   }
 
   Set<String> _allPeriodDayKeys() {
@@ -306,12 +335,8 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
   void _onDayTapped(DateTime rawDay) {
     if (!mounted) return;
     final selectedDay = DateUtils.dateOnly(rawDay);
-    final today = DateUtils.dateOnly(DateTime.now());
     if (selectedDay.isBefore(DateUtils.dateOnly(_calendarFirstDay)) ||
         selectedDay.isAfter(DateUtils.dateOnly(_calendarLastDay))) {
-      return;
-    }
-    if (selectedDay.isAfter(today)) {
       return;
     }
 
@@ -560,18 +585,28 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
         final w = constraints.maxWidth;
         final cellW = w / 7;
         final showPredicted = widget.existingRecord == null;
-        int? firstIdx;
-        int? lastIdx;
-        int? predFirstIdx;
-        int? predLastIdx;
-        for (var i = 0; i < 7; i++) {
-          if (_inPeriodRange(weekDays[i])) {
-            firstIdx ??= i;
-            lastIdx = i;
-          }
-          if (showPredicted && _inPredictedRange(weekDays[i])) {
-            predFirstIdx ??= i;
-            predLastIdx = i;
+        final predictedSpans = showPredicted
+            ? _contiguousWeekSpans(weekDays, _inPredictedRange)
+            : const <({int first, int last})>[];
+        final periodBars = <Widget>[];
+        for (final range in _periodRanges()) {
+          final spans = _contiguousWeekSpans(weekDays, (day) {
+            final d = DateUtils.dateOnly(day);
+            return !d.isBefore(range.start) && !d.isAfter(range.end);
+          });
+          for (final span in spans) {
+            periodBars.add(
+              _rangeBarForWeekRow(
+                context,
+                weekDays: weekDays,
+                firstIdx: span.first,
+                lastIdx: span.last,
+                cellW: cellW,
+                fillColor: _kRangeBarFill,
+                endpointMatcher: (d) =>
+                    _sameDate(d, range.start) || _sameDate(d, range.end),
+              ),
+            );
           }
         }
         return SizedBox(
@@ -581,31 +616,17 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
             alignment: Alignment.topLeft,
             children: [
               // 예정(연한) 바를 먼저 그림 → 실제 바가 위로 오게
-              if (showPredicted && predFirstIdx != null && predLastIdx != null)
+              for (final span in predictedSpans)
                 _rangeBarForWeekRow(
                   context,
                   weekDays: weekDays,
-                  firstIdx: predFirstIdx,
-                  lastIdx: predLastIdx,
+                  firstIdx: span.first,
+                  lastIdx: span.last,
                   cellW: cellW,
                   fillColor: _kPredictedPeriodFill,
                   endpointMatcher: _isPredictedEndpoint,
                 ),
-              if (firstIdx != null && lastIdx != null)
-                _rangeBarForWeekRow(
-                  context,
-                  weekDays: weekDays,
-                  firstIdx: firstIdx,
-                  lastIdx: lastIdx,
-                  cellW: cellW,
-                  fillColor: _kRangeBarFill,
-                  endpointMatcher: (d) =>
-                      (_lastPeriodStart != null &&
-                          _sameDate(d, _lastPeriodStart!)) ||
-                      (_lastPeriodEnd != null &&
-                          _sameDate(d, _lastPeriodEnd!)) ||
-                      _isHistoricalEndpoint(d),
-                ),
+              ...periodBars,
               Row(
                 children: List.generate(
                   7,
@@ -619,6 +640,27 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
         );
       },
     );
+  }
+
+  /// 한 주 안에서 붙어 있는 날만 막대로 잇는다. 사이가 빈 기간은 서로 붙지 않는다.
+  List<({int first, int last})> _contiguousWeekSpans(
+    List<DateTime> weekDays,
+    bool Function(DateTime day) match,
+  ) {
+    final spans = <({int first, int last})>[];
+    int? runStart;
+    for (var i = 0; i < weekDays.length; i++) {
+      if (match(weekDays[i])) {
+        runStart ??= i;
+      } else if (runStart != null) {
+        spans.add((first: runStart, last: i - 1));
+        runStart = null;
+      }
+    }
+    if (runStart != null) {
+      spans.add((first: runStart, last: weekDays.length - 1));
+    }
+    return spans;
   }
 
   /// 주 단위 연한 핑크 바. 여러 주에 걸친 기간은 행 끝·다음 행 시작까지 이어짐.
@@ -673,8 +715,6 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
     DateTime focusedMonth,
   ) {
     final showPredicted = widget.existingRecord == null;
-    final today = DateUtils.dateOnly(DateTime.now());
-    final isFuture = DateUtils.dateOnly(day).isAfter(today);
     final inMonth = _inFocusedMonth(day, focusedMonth);
     final rangeStart =
         _lastPeriodStart != null && _sameDate(day, _lastPeriodStart!);
@@ -685,12 +725,9 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
     final inRange = _inPeriodRange(day);
     final predictedEndpoint =
         showPredicted && !isPeriodEndpoint && _isPredictedEndpoint(day);
-    final predictedInRange =
-        showPredicted && !inRange && _inPredictedRange(day);
 
-    final plainTextColor = isFuture
-        ? _kFutureDayText
-        : (inMonth ? const Color(0xFF1A1A1A) : _kOutsideDayText);
+    final plainTextColor =
+        inMonth ? const Color(0xFF1A1A1A) : _kOutsideDayText;
     final plainWeight =
         inRange && !isPeriodEndpoint ? FontWeight.w500 : FontWeight.w300;
 
@@ -764,11 +801,7 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
                   : Text(
                       '${day.day}',
                       style: TextStyle(
-                        color: isFuture
-                            ? _kFutureDayText
-                            : (predictedInRange
-                                ? const Color(0xFF1A1A1A)
-                                : plainTextColor),
+                        color: plainTextColor,
                         fontSize: 14,
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: plainWeight,
@@ -818,12 +851,11 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
   }
 
   Future<void> _openMonthFromHealthPicker() async {
-    final now = DateTime.now();
     final picked = await showHealthYearMonthPickerDialog(
       context,
       initialDate: DateTime(_focusedDay.year, _focusedDay.month, 1),
       firstDate: _calendarFirstDay,
-      lastDate: DateTime(now.year, now.month, 1),
+      lastDate: DateTime(_calendarLastDay.year, _calendarLastDay.month, 1),
     );
     if (picked == null || !mounted) return;
     _moveToYearMonth(picked.year, picked.month);
