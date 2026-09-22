@@ -287,6 +287,9 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
     );
     if (!success) {
       WeightRepository.restoreRecords(record.mbId, previous);
+      AppToastOverlay.showAlertFromNavigator(
+        '삭제에 실패해서 이전 기록으로 되돌렸습니다.',
+      );
     }
     HealthDashboardRepository.invalidate(record.mbId);
     notifyHealthDataChanged();
@@ -513,20 +516,20 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
                 SizedBox(
                   width: side,
                   height: side,
-                  child: _buildImageContainer(
-                    '정면사진',
-                    _frontImagePath,
-                    (anchorContext) => _selectImage('front', anchorContext),
+                  child: PhotoSourceAnchor(
+                    canOpen: _canAddBodyPhoto,
+                    onImageSelected: (image) => _applyPickedImage('front', image),
+                    child: _buildImageContainer('정면사진', _frontImagePath),
                   ),
                 ),
                 SizedBox(width: gap),
                 SizedBox(
                   width: side,
                   height: side,
-                  child: _buildImageContainer(
-                    '측면사진',
-                    _sideImagePath,
-                    (anchorContext) => _selectImage('side', anchorContext),
+                  child: PhotoSourceAnchor(
+                    canOpen: _canAddBodyPhoto,
+                    onImageSelected: (image) => _applyPickedImage('side', image),
+                    child: _buildImageContainer('측면사진', _sideImagePath),
                   ),
                 ),
               ],
@@ -731,8 +734,7 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
   }
 
   // 이미지 컨테이너 위젯
-  Widget _buildImageContainer(
-      String label, String? imagePath, void Function(BuildContext) onTap) {
+  Widget _buildImageContainer(String label, String? imagePath) {
     final raw = imagePath?.trim();
     final networkUrl = (raw != null &&
             raw.isNotEmpty &&
@@ -753,10 +755,7 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
         kIsWeb && raw != null && raw.startsWith('blob:') ? raw : null;
     final hasImage = networkUrl != null || localPath != null || blobUrl != null;
 
-    return Builder(
-      builder: (anchorContext) => GestureDetector(
-        onTap: () => onTap(anchorContext),
-        child: Container(
+    return Container(
           width: double.infinity,
           height: double.infinity,
           decoration: BoxDecoration(
@@ -817,8 +816,6 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
                   ],
                 )
               : _buildImagePlaceholder(label),
-        ),
-      ),
     );
   }
 
@@ -846,56 +843,49 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
     );
   }
 
-  // 이미지 선택
-  void _selectImage(String type, BuildContext anchorContext) {
+  bool _canAddBodyPhoto() {
     if (_frontImagePath != null && _sideImagePath != null) {
       AppToastOverlay.showAlert(
         context,
         '하루에 최대 2장까지 등록할 수 있습니다.',
       );
-      return;
+      return false;
     }
+    return true;
+  }
+
+  Future<void> _applyPickedImage(String type, XFile? image) async {
+    if (image == null) return;
     try {
-      ImagePickerUtils.showPhotoSourceDropdown(
-        context: context,
-        anchorContext: anchorContext,
-        onImageSelected: (XFile? image) async {
-          if (image != null) {
-            String? imagePath;
+      String? imagePath;
 
-            if (kIsWeb) {
-              // 웹에서는 XFile을 직접 전달
-              try {
-                imagePath = await WeightRepository.uploadImage(image);
-              } catch (e) {
-                // 업로드 실패 시 blob URL 사용 (임시)
-                imagePath = image.path;
-              }
-            } else {
-              // 모바일에서는 실제 서버 업로드
-              final File imageFile = File(image.path);
-              imagePath = await WeightRepository.uploadImage(imageFile);
-            }
+      if (kIsWeb) {
+        try {
+          imagePath = await WeightRepository.uploadImage(image);
+        } catch (e) {
+          imagePath = image.path;
+        }
+      } else {
+        final File imageFile = File(image.path);
+        imagePath = await WeightRepository.uploadImage(imageFile);
+      }
 
-            if (imagePath != null) {
-              // 기존 이미지가 있으면 삭제
-              if (type == 'front' && _frontImagePath != null) {
-                await ImagePickerUtils.deleteImageFile(_frontImagePath);
-              } else if (type == 'side' && _sideImagePath != null) {
-                await ImagePickerUtils.deleteImageFile(_sideImagePath);
-              }
+      if (imagePath != null) {
+        if (type == 'front' && _frontImagePath != null) {
+          await ImagePickerUtils.deleteImageFile(_frontImagePath);
+        } else if (type == 'side' && _sideImagePath != null) {
+          await ImagePickerUtils.deleteImageFile(_sideImagePath);
+        }
 
-              setState(() {
-                if (type == 'front') {
-                  _frontImagePath = imagePath;
-                } else {
-                  _sideImagePath = imagePath;
-                }
-              });
-            }
+        if (!mounted) return;
+        setState(() {
+          if (type == 'front') {
+            _frontImagePath = imagePath;
+          } else {
+            _sideImagePath = imagePath;
           }
-        },
-      );
+        });
+      }
     } catch (e) {}
   }
 

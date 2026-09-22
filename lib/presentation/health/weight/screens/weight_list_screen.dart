@@ -1700,20 +1700,20 @@ class _WeightListScreenState extends State<WeightListScreen>
             SizedBox(
               width: side,
               height: side,
-              child: _buildImageContainer(
-                '정면사진',
-                frontImagePath,
-                (anchorContext) => _selectImage('front', anchorContext),
+              child: PhotoSourceAnchor(
+                canOpen: _canAddBodyPhoto,
+                onImageSelected: (image) => _applyPickedImage('front', image),
+                child: _buildImageContainer('정면사진', frontImagePath),
               ),
             ),
             SizedBox(width: gap),
             SizedBox(
               width: side,
               height: side,
-              child: _buildImageContainer(
-                '측면사진',
-                sideImagePath,
-                (anchorContext) => _selectImage('side', anchorContext),
+              child: PhotoSourceAnchor(
+                canOpen: _canAddBodyPhoto,
+                onImageSelected: (image) => _applyPickedImage('side', image),
+                child: _buildImageContainer('측면사진', sideImagePath),
               ),
             ),
           ],
@@ -1723,8 +1723,7 @@ class _WeightListScreenState extends State<WeightListScreen>
   }
 
   // 이미지 컨테이너 위젯
-  Widget _buildImageContainer(
-      String label, String? imagePath, void Function(BuildContext) onTap) {
+  Widget _buildImageContainer(String label, String? imagePath) {
     final raw = imagePath?.trim();
     final networkUrl = (raw != null &&
             raw.isNotEmpty &&
@@ -1745,10 +1744,7 @@ class _WeightListScreenState extends State<WeightListScreen>
         kIsWeb && raw != null && raw.startsWith('blob:') ? raw : null;
     final hasImage = networkUrl != null || localPath != null || blobUrl != null;
 
-    return Builder(
-      builder: (anchorContext) => GestureDetector(
-        onTap: () => onTap(anchorContext),
-        child: Container(
+    return Container(
           width: double.infinity,
           height: double.infinity,
           decoration: BoxDecoration(
@@ -1809,8 +1805,6 @@ class _WeightListScreenState extends State<WeightListScreen>
                   ],
                 )
               : _buildImagePlaceholder(label),
-        ),
-      ),
     );
   }
 
@@ -1837,79 +1831,61 @@ class _WeightListScreenState extends State<WeightListScreen>
     );
   }
 
-  // 이미지 선택 및 업로드
-  void _selectImage(String type, BuildContext anchorContext) {
+  bool _canAddBodyPhoto() {
     if (selectedRecord?.frontImagePath != null &&
         selectedRecord?.sideImagePath != null) {
       AppToastOverlay.showAlert(
         context,
         '하루에 최대 2장까지 등록할 수 있습니다.',
       );
-      return;
+      return false;
     }
+    return true;
+  }
+
+  Future<void> _applyPickedImage(String type, XFile? image) async {
+    if (image == null) return;
     try {
-      ImagePickerUtils.showPhotoSourceDropdown(
-        context: context,
-        anchorContext: anchorContext,
-        onImageSelected: (XFile? image) async {
-          if (image != null) {
-            String? imageUrl;
+      String? imageUrl;
 
-            if (kIsWeb) {
-              // 웹에서는 XFile을 직접 전달
-              try {
-                imageUrl = await WeightRepository.uploadImage(image);
-              } catch (e) {
-                // 업로드 실패 시 blob URL 사용 (임시)
-                imageUrl = image.path;
-              }
-            } else {
-              // 모바일에서는 실제 파일 업로드
-              final File imageFile = File(image.path);
-              imageUrl = await WeightRepository.uploadImage(imageFile);
-            }
+      if (kIsWeb) {
+        try {
+          imageUrl = await WeightRepository.uploadImage(image);
+        } catch (e) {
+          imageUrl = image.path;
+        }
+      } else {
+        final File imageFile = File(image.path);
+        imageUrl = await WeightRepository.uploadImage(imageFile);
+      }
 
-            if (imageUrl != null) {
-              // 기존 이미지가 있으면 삭제 (선택사항)
-              if (type == 'front' && selectedRecord?.frontImagePath != null) {
-                // TODO: 기존 이미지 파일 삭제
-              } else if (type == 'side' &&
-                  selectedRecord?.sideImagePath != null) {
-                // TODO: 기존 이미지 파일 삭제
-              }
+      if (imageUrl == null || !mounted) return;
 
-              // 데이터베이스 업데이트
-              if (selectedRecord != null) {
-                final updatedRecord = selectedRecord!.copyWith(
-                  frontImagePath: type == 'front'
-                      ? imageUrl
-                      : selectedRecord!.frontImagePath,
-                  sideImagePath:
-                      type == 'side' ? imageUrl : selectedRecord!.sideImagePath,
-                );
+      if (selectedRecord != null) {
+        final updatedRecord = selectedRecord!.copyWith(
+          frontImagePath:
+              type == 'front' ? imageUrl : selectedRecord!.frontImagePath,
+          sideImagePath:
+              type == 'side' ? imageUrl : selectedRecord!.sideImagePath,
+        );
 
-                await WeightRepository.updateWeightRecord(updatedRecord);
-                notifyHealthDataChanged();
-                _loadData(); // 데이터 새로고침
-              } else {
-                // 새 기록 생성 (체중 입력 화면으로 이동)
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => WeightInputScreen(
-                      recordContextDate: selectedDate,
-                      initialImages: {
-                        'front': type == 'front' ? imageUrl : null,
-                        'side': type == 'side' ? imageUrl : null,
-                      },
-                    ),
-                  ),
-                );
-              }
-            }
-          }
-        },
-      );
+        await WeightRepository.updateWeightRecord(updatedRecord);
+        notifyHealthDataChanged();
+        _loadData();
+      } else {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => WeightInputScreen(
+              recordContextDate: selectedDate,
+              initialImages: {
+                'front': type == 'front' ? imageUrl : null,
+                'side': type == 'side' ? imageUrl : null,
+              },
+            ),
+          ),
+        );
+      }
     } catch (e) {}
   }
 
