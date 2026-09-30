@@ -85,9 +85,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
     final fallback = widget.productKind == 'general'
         ? productGeneralCategoryListFallback
         : productPrescriptionCategoryListFallback;
-    _baseTabOrder = fallback
-        .map((item) => _CategoryTab(id: item.categoryId, label: item.label))
-        .toList();
+    _baseTabOrder = _tabsFrom(fallback);
     _tabKeys = List.generate(_baseTabOrder.length, (_) => GlobalKey());
     _stickyTabKeys = List.generate(_baseTabOrder.length, (_) => GlobalKey());
     _activeCategoryId = _activeCategoryId.trim();
@@ -105,15 +103,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
       return;
     }
 
-    final fromApi = source
-        .map(
-          (item) => _CategoryTab(
-            id: item.categoryId.trim(),
-            label: item.label,
-          ),
-        )
-        .where((tab) => tab.id.isNotEmpty)
-        .toList();
+    final fromApi = _tabsFrom(source);
     if (fromApi.isNotEmpty) {
       _baseTabOrder = fromApi;
       _tabKeys = List.generate(_baseTabOrder.length, (_) => GlobalKey());
@@ -398,7 +388,27 @@ class _ProductListScreenState extends State<ProductListScreen> {
     );
   }
 
+  List<_CategoryTab> _tabsFrom(List<ProductCategoryItem> items) {
+    final tabs = items
+        .map(
+          (item) => _CategoryTab(
+            id: item.categoryId.trim(),
+            label: item.label,
+            sortOrder: item.sortOrder,
+          ),
+        )
+        .where((tab) => tab.id.isNotEmpty)
+        .toList();
+    tabs.sort((a, b) {
+      final byOrder = a.sortOrder.compareTo(b.sortOrder);
+      if (byOrder != 0) return byOrder;
+      return a.id.compareTo(b.id);
+    });
+    return tabs;
+  }
+
   String _tabDisplayLabel(String label) {
+    if (widget.productKind == 'general') return label.trim();
     return label
         .replaceAll(' 제품', '')
         .replaceAll(' / ', '')
@@ -542,9 +552,11 @@ class _ProductListScreenState extends State<ProductListScreen> {
 class _CategoryTab {
   final String id;
   final String label;
+  final int sortOrder;
 
   const _CategoryTab({
     required this.id,
     required this.label,
+    this.sortOrder = 0,
   });
 }
