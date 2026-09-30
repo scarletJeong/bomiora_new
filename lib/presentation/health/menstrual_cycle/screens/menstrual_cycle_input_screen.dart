@@ -967,43 +967,56 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
                 ),
               ],
             ),
-            child: TextField(
-                controller: _cycleLengthController,
-                focusNode: _cycleLengthFocus,
-                textAlign: TextAlign.center,
-                textAlignVertical: TextAlignVertical.center,
-                keyboardType: TextInputType.number,
-                textInputAction: TextInputAction.done,
-                onSubmitted: (_) => _cycleLengthFocus.unfocus(),
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                  LengthLimitingTextInputFormatter(3),
-                ],
-                style: TextStyle(
-                  color: Colors.black,
-                  fontSize: fontSize,
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w500,
-                  height: 1.2,
-                ),
-                decoration: InputDecoration(
-                  isCollapsed: true,
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: healthDp(context, 4),
+            child: Align(
+              alignment: Alignment.center,
+              child: Transform.translate(
+                offset: Offset(0, -healthDp(context, 2)),
+                child: MediaQuery(
+                  data: MediaQuery.of(context).copyWith(
+                    textScaler: TextScaler.noScaling,
+                  ),
+                  child: TextField(
+                    controller: _cycleLengthController,
+                    focusNode: _cycleLengthFocus,
+                    textAlign: TextAlign.center,
+                    textAlignVertical: TextAlignVertical.center,
+                    keyboardType: TextInputType.number,
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) => _cycleLengthFocus.unfocus(),
+                    cursorHeight: fontSize,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(3),
+                    ],
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: fontSize,
+                      height: 1.0,
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w500,
+                    ),
+                    decoration: const InputDecoration(
+                      isCollapsed: true,
+                      isDense: true,
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                    onChanged: (value) {
+                      setState(() {
+                        final parsed = int.tryParse(value);
+                        if (parsed != null && parsed > 0) {
+                          _cycleLength = parsed;
+                        }
+                      });
+                    },
                   ),
                 ),
-                onChanged: (value) {
-                  setState(() {
-                    final parsed = int.tryParse(value);
-                    if (parsed != null && parsed > 0) {
-                      _cycleLength = parsed;
-                    }
-                  });
-                },
               ),
             ),
           ),
+        ),
         SizedBox(width: healthDp(context, 5)),
         Text(
           '일',
@@ -1311,6 +1324,7 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
                 mbId: user.id,
                 periodStartDate: _lastPeriodStart,
                 periodEndDate: _lastPeriodEnd,
+                cycleLength: _cycleLength,
                 periodLength: periodLength,
               );
       } else {
