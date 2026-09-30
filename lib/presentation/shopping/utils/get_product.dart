@@ -6,10 +6,14 @@ class ProductCategoryItem {
   /// API `it_kind` 등 (`prescription`, `general`).
   final String productKind;
 
+  /// 쇼핑몰 카테고리 `ca_order`. 작을수록 앞.
+  final int sortOrder;
+
   const ProductCategoryItem({
     required this.label,
     required this.categoryId,
     this.productKind = 'prescription',
+    this.sortOrder = 0,
   });
 }
 
@@ -106,10 +110,7 @@ String productGeneralCategoryIconAsset(String categoryId) {
   }
 }
 
-/// 칩·탭용 짧은 라벨
+/// 일반 카테고리 표시명. 서버 `ca_name`을 줄이지 않는다.
 String productGeneralCategoryChipLabel(String categoryName) {
-  return categoryName
-      .replaceAll(' 제품', '')
-      .replaceAll(' / ', '/')
-      .trim();
+  return categoryName.trim();
 }

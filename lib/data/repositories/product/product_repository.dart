@@ -318,15 +318,25 @@ class ProductRepository {
             (map['categoryName'] ?? map['ca_name'])?.toString().trim() ?? '';
         final kind =
             (map['productKind'] ?? map['it_kind'] ?? productKind).toString();
+        final sortOrder = int.tryParse(
+              '${map['sortOrder'] ?? map['ca_order'] ?? ''}',
+            ) ??
+            0;
         if (id.isEmpty || name.isEmpty) continue;
         out.add(
           ProductCategoryItem(
             label: name,
             categoryId: id,
             productKind: kind,
+            sortOrder: sortOrder,
           ),
         );
       }
+      out.sort((a, b) {
+        final byOrder = a.sortOrder.compareTo(b.sortOrder);
+        if (byOrder != 0) return byOrder;
+        return a.categoryId.compareTo(b.categoryId);
+      });
       return out;
     } catch (e) {
       return [];

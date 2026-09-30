@@ -152,7 +152,7 @@ class _ProductMainCategoryTapState extends State<ProductMainCategoryTap> {
                 SizedBox(height: healthDp(context, widget.compact ? 2 : 4)),
                 Text(
                   isGeneral
-                      ? productGeneralCategoryChipLabel(label)
+                      ? label
                       : productPrescriptionCategoryMenuLabel(label),
                   textAlign: TextAlign.center,
                   maxLines: 2,
