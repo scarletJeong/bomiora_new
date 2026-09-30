@@ -306,7 +306,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
                     healthDp(context, 27),
                     healthDp(context, 10),
                     healthDp(context, 27),
-                    healthDp(context, 20),
+                    _articleScrollBottomPadding(context),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -520,6 +520,24 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
         letterSpacing: healthSp(context, -1.44),
       ),
     );
+  }
+
+  bool get _hasPreviousArticle =>
+      _prevId != null && (_prevTitle?.trim().isNotEmpty ?? false);
+
+  bool get _hasNextArticle =>
+      _nextId != null && (_nextTitle?.trim().isNotEmpty ?? false);
+
+  /// 이전글/다음글이 본문 위에 겹치므로, 그 높이만큼 더 스크롤되게 한다.
+  double _articleScrollBottomPadding(BuildContext context) {
+    var rows = 0;
+    if (_hasPreviousArticle) rows++;
+    if (_hasNextArticle) rows++;
+    final base = healthDp(context, 20);
+    if (rows == 0) return base;
+    final rowH = healthDp(context, 12) * 2 + healthDp(context, 22);
+    final borders = healthDp(context, 1) * (rows + 1);
+    return base + rowH * rows + borders;
   }
 
   void _openContent(int targetId) {
