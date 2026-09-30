@@ -64,6 +64,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   int _currentImageIndex = 0;
   late TabController _tabController;
   final ScrollController _detailScrollController = ScrollController();
+  final ValueNotifier<bool> _detailExpanded = ValueNotifier(false);
   PageController? _pageController;
 
   // 리뷰 관련 상태
@@ -125,6 +126,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   void dispose() {
     _tabController.dispose();
     _detailScrollController.dispose();
+    _detailExpanded.dispose();
     _pageController?.dispose();
     super.dispose();
   }
@@ -500,13 +502,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                 height: _productTabBarHeight(context),
               ),
             ),
-            SliverToBoxAdapter(
-              child: switch (_tabController.index) {
-                0 => _buildProductInfoTabContent(),
-                1 => _buildSupportReviewTabContent(),
-                _ => _buildNormalReviewTabContent(),
-              },
-            ),
+            if (_tabController.index == 0)
+              _buildProductInfoSliver()
+            else
+              SliverToBoxAdapter(
+                child: _tabController.index == 1
+                    ? _buildSupportReviewTabContent()
+                    : _buildNormalReviewTabContent(),
+              ),
           ],
         );
       },
@@ -766,8 +769,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     );
   }
 
-  /// 상품정보 탭 본문
-  Widget _buildProductInfoTabContent() {
+  /// 상세 이미지가 모두 끝난 뒤 이어지는 상품 안내 영역.
+  Widget _buildProductInfoTail() {
     final precautionsText = _formatPrecautionsForDisplay(
       _product?.additionalInfo?['it_precautions']?.toString(),
     );
@@ -775,7 +778,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        _buildDetailPreviewSection(),
         ProductTailInfoSection(
           warningText: precautionsText,
           deliveryText:
@@ -1419,17 +1421,55 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     return processProductDetailHtml(itExplain);
   }
 
-  Widget _buildDetailPreviewSection() {
+  Widget _buildProductInfoSliver() {
     final processedHtml = _getProcessedDetailHtml();
-    if (processedHtml.isEmpty) return const SizedBox.shrink();
-    return ProductDetailExpandablePreview(
-      key: ValueKey(processedHtml.hashCode),
-      html: processedHtml,
-      fontFamily: _kGmarketSans,
-      horizontalPadding: healthDp(context, 16),
-      margin: EdgeInsets.only(
-        top: healthDp(context, 24),
-        bottom: healthDp(context, 24),
+    return ValueListenableBuilder<bool>(
+      valueListenable: _detailExpanded,
+      builder: (context, expanded, _) {
+        return SliverMainAxisGroup(
+          slivers: [
+            if (processedHtml.isNotEmpty)
+              if (expanded)
+                _buildExpandedDetailSliver(processedHtml)
+              else
+                SliverToBoxAdapter(
+                  child: ProductDetailCollapsedPreview(
+                    html: processedHtml,
+                    fontFamily: _kGmarketSans,
+                    horizontalPadding: healthDp(context, 16),
+                    margin: EdgeInsets.only(
+                      top: healthDp(context, 24),
+                      bottom: healthDp(context, 24),
+                    ),
+                    onExpand: () => _detailExpanded.value = true,
+                  ),
+                ),
+            SliverToBoxAdapter(child: _buildProductInfoTail()),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildExpandedDetailSliver(String html) {
+    final blocks = splitProductDetailBlocks(html);
+    return SliverPadding(
+      padding: EdgeInsets.fromLTRB(
+        healthDp(context, 16),
+        healthDp(context, 24),
+        healthDp(context, 16),
+        healthDp(context, 24),
+      ),
+      sliver: SliverList(
+        delegate: SliverChildBuilderDelegate(
+          (context, index) => buildProductDetailBlock(
+            context: context,
+            block: blocks[index],
+            fontFamily: _kGmarketSans,
+          ),
+          childCount: blocks.length,
+          addAutomaticKeepAlives: false,
+        ),
       ),
     );
   }

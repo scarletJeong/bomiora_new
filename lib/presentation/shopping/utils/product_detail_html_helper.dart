@@ -232,58 +232,101 @@ Widget buildProductDetailHtml({
   );
 }
 
-/// 상품 상세 미리보기와 내부 스크롤을 독립적으로 관리한다.
-///
-/// 펼칠 때 부모 상품 화면 전체를 다시 빌드하지 않아 모바일 Safari에서
-/// 이미지 플랫폼 뷰가 한꺼번에 재생성되는 문제를 막는다.
-class ProductDetailExpandablePreview extends StatefulWidget {
-  const ProductDetailExpandablePreview({
+class ProductDetailBlock {
+  const ProductDetailBlock.image(this.imageUrl) : html = null;
+  const ProductDetailBlock.html(this.html) : imageUrl = null;
+
+  final String? imageUrl;
+  final String? html;
+
+  bool get isImage => imageUrl != null && imageUrl!.isNotEmpty;
+}
+
+/// 긴 상품 상세를 이미지/텍스트 단위로 분리하여 SliverList가 지연 생성할 수 있게 한다.
+List<ProductDetailBlock> splitProductDetailBlocks(String html) {
+  if (html.trim().isEmpty) return const [];
+  final blocks = <ProductDetailBlock>[];
+  final imageTag = RegExp(r'<img\b[^>]*>', caseSensitive: false);
+  var start = 0;
+
+  for (final match in imageTag.allMatches(html)) {
+    _addDetailTextBlock(blocks, html.substring(start, match.start));
+    final src = _detailImageSrc(match.group(0) ?? '');
+    if (src != null) blocks.add(ProductDetailBlock.image(src));
+    start = match.end;
+  }
+  _addDetailTextBlock(blocks, html.substring(start));
+  return blocks;
+}
+
+void _addDetailTextBlock(List<ProductDetailBlock> blocks, String raw) {
+  final chunk = raw.trim();
+  final visible = chunk
+      .replaceAll(RegExp(r'<[^>]+>'), '')
+      .replaceAll('&nbsp;', '')
+      .replaceAll(RegExp(r'\s+'), '');
+  if (visible.isNotEmpty) blocks.add(ProductDetailBlock.html(chunk));
+}
+
+String? _detailImageSrc(String tag) {
+  final match = RegExp(
+    '''src\\s*=\\s*(['"])(.*?)\\1''',
+    caseSensitive: false,
+  ).firstMatch(tag);
+  final raw = match?.group(2)?.trim().replaceAll('&amp;', '&');
+  if (raw == null || raw.isEmpty) return null;
+  return ImageUrlHelper.toWebSafeImageUrl(raw);
+}
+
+Widget buildProductDetailBlock({
+  required BuildContext context,
+  required ProductDetailBlock block,
+  String fontFamily = 'Gmarket Sans TTF',
+}) {
+  if (!block.isImage) {
+    return buildProductDetailHtml(
+      context: context,
+      html: block.html ?? '',
+      fontFamily: fontFamily,
+    );
+  }
+  return Center(
+    child: AppNetworkImage(
+      url: block.imageUrl!,
+      width: double.infinity,
+      fit: BoxFit.fitWidth,
+      alignment: Alignment.topCenter,
+      decodeWidthLogical: MediaQuery.sizeOf(context).width,
+      preferHtmlElementOnWeb: false,
+      errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+    ),
+  );
+}
+
+/// 펼치기 전 기존 모양을 유지하는 미리보기.
+class ProductDetailCollapsedPreview extends StatelessWidget {
+  const ProductDetailCollapsedPreview({
     super.key,
     required this.html,
     required this.horizontalPadding,
+    required this.onExpand,
     this.margin,
     this.fontFamily = 'Gmarket Sans TTF',
   });
 
   final String html;
   final double horizontalPadding;
+  final VoidCallback onExpand;
   final EdgeInsetsGeometry? margin;
   final String fontFamily;
 
   @override
-  State<ProductDetailExpandablePreview> createState() =>
-      _ProductDetailExpandablePreviewState();
-}
-
-class _ProductDetailExpandablePreviewState
-    extends State<ProductDetailExpandablePreview> {
-  bool _expanded = false;
-  Widget? _cachedHtml;
-
-  @override
-  void didUpdateWidget(covariant ProductDetailExpandablePreview oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.html != widget.html ||
-        oldWidget.fontFamily != widget.fontFamily) {
-      _cachedHtml = null;
-      _expanded = false;
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
     final previewHeight = healthDp(context, 320);
-    final htmlChild = _cachedHtml ??= RepaintBoundary(
-      child: buildProductDetailHtml(
-        context: context,
-        html: widget.html,
-        fontFamily: widget.fontFamily,
-      ),
-    );
 
     return Container(
-      margin: widget.margin,
-      padding: EdgeInsets.symmetric(horizontal: widget.horizontalPadding),
+      margin: margin,
+      padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
       child: Column(
         children: [
           Stack(
@@ -292,70 +335,65 @@ class _ProductDetailExpandablePreviewState
                 child: SizedBox(
                   height: previewHeight,
                   width: double.infinity,
-                  child: SingleChildScrollView(
-                    primary: false,
-                    physics: _expanded
-                        ? const ClampingScrollPhysics()
-                        : const NeverScrollableScrollPhysics(),
-                    child: IgnorePointer(
-                      ignoring: !_expanded,
-                      child: htmlChild,
+                  child: IgnorePointer(
+                    child: buildProductDetailHtml(
+                      context: context,
+                      html: html,
+                      fontFamily: fontFamily,
                     ),
                   ),
                 ),
               ),
-              if (!_expanded)
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  child: IgnorePointer(
-                    child: Container(
-                      height: healthDp(context, 50),
-                      decoration: const BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Color(0x0DFFFFFF),
-                            Color(0xC7FFFFFF),
-                          ],
-                        ),
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: IgnorePointer(
+                  child: Container(
+                    height: healthDp(context, 50),
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Color(0x0DFFFFFF),
+                          Color(0xC7FFFFFF),
+                        ],
                       ),
                     ),
                   ),
                 ),
+              ),
             ],
           ),
-          if (!_expanded)
-            SizedBox(
-              height: healthDp(context, 24),
-              child: OutlinedButton(
-                onPressed: () => setState(() => _expanded = true),
-                style: OutlinedButton.styleFrom(
-                  side: BorderSide(
-                    color: const Color(0xFFFF4081),
-                    width: healthDp(context, 1),
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(healthDp(context, 14)),
-                  ),
-                  padding: EdgeInsets.symmetric(
-                    horizontal: healthDp(context, 40),
-                    vertical: healthDp(context, 5),
-                  ),
-                  foregroundColor: const Color(0xFFFF4081),
+          SizedBox(
+            height: healthDp(context, 24),
+            child: OutlinedButton(
+              onPressed: onExpand,
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(
+                  color: const Color(0xFFFF4081),
+                  width: healthDp(context, 1),
                 ),
-                child: Text(
-                  '+ 자세히 보기',
-                  style: TextStyle(
-                    fontSize: healthSp(context, 12),
-                    fontWeight: FontWeight.w500,
-                    fontFamily: widget.fontFamily,
-                  ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(healthDp(context, 14)),
+                ),
+                padding: EdgeInsets.symmetric(
+                  horizontal: healthDp(context, 40),
+                  vertical: healthDp(context, 5),
+                ),
+                foregroundColor: const Color(0xFFFF4081),
+              ),
+              child: Text(
+                '+ 자세히 보기',
+                style: TextStyle(
+                  fontSize: healthSp(context, 12),
+                  fontWeight: FontWeight.w500,
+                  fontFamily: fontFamily,
                 ),
               ),
             ),
+          ),
         ],
       ),
     );
