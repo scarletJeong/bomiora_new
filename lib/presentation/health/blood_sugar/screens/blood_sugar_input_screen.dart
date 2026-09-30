@@ -42,6 +42,8 @@ class _BloodSugarInputScreenState extends State<BloodSugarInputScreen> {
   String _selectedMeasurementType = '공복';
   bool _isSaving = false;
   int? _editingRecordId;
+  bool _showFieldError = false;
+  String? _bloodSugarError;
 
   final List<String> _measurementTypes = ['공복', '식전', '식후', '취침전', '평상시'];
 
@@ -71,7 +73,22 @@ class _BloodSugarInputScreenState extends State<BloodSugarInputScreen> {
   }
 
   void _onFieldsChanged() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    setState(() {
+      if (_showFieldError) {
+        _bloodSugarError = _bloodSugarMessage(_bloodSugarController.text);
+      }
+    });
+  }
+
+  String? _bloodSugarMessage(String raw) {
+    final value = raw.trim();
+    if (value.isEmpty) return '혈당 수치를 입력해주세요';
+    final bloodSugar = int.tryParse(value);
+    if (bloodSugar == null || bloodSugar < 20 || bloodSugar > 600) {
+      return '올바른 혈당 수치를 입력해주세요 (20~600mg/dL)';
+    }
+    return null;
   }
 
   bool get _isFormComplete =>
@@ -126,7 +143,12 @@ class _BloodSugarInputScreenState extends State<BloodSugarInputScreen> {
       HealthInputComplete.showRequiredToast(context);
       return;
     }
-    if (!_formKey.currentState!.validate()) return;
+    _showFieldError = true;
+    final rangeOk = _bloodSugarMessage(_bloodSugarController.text) == null;
+    setState(() {
+      _bloodSugarError = _bloodSugarMessage(_bloodSugarController.text);
+    });
+    if (!rangeOk) return;
 
     final now = DateTime.now();
     if (_selectedDateTime.isAfter(now)) {
@@ -460,48 +482,60 @@ class _BloodSugarInputScreenState extends State<BloodSugarInputScreen> {
         HealthFocusOutlineBox(
           focusNode: _bloodSugarFocus,
           builder: (node) {
-            return TextFormField(
+            return TextField(
               controller: _bloodSugarController,
               focusNode: node,
               textInputAction: TextInputAction.done,
-              onFieldSubmitted: (_) => _bloodSugarFocus.unfocus(),
+              onSubmitted: (_) => _bloodSugarFocus.unfocus(),
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return '혈당 수치를 입력해주세요';
-                }
-                final bloodSugar = int.tryParse(value);
-                if (bloodSugar == null || bloodSugar < 20 || bloodSugar > 600) {
-                  return '올바른 혈당 수치를 입력해주세요 (20~600mg/dL)';
-                }
-                return null;
-              },
-              textAlignVertical: const TextAlignVertical(y: 0.45),
-              style: TextStyle(
-                color: const Color(0xFF1A1A1A),
+              textAlignVertical: TextAlignVertical.center,
+              style: const TextStyle(
+                color: Color(0xFF1A1A1A),
                 fontSize: 16,
+                height: 1.0,
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: FontWeight.w300,
               ),
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 hintText: '수치를 입력하세요',
                 hintStyle: TextStyle(
-                  color: const Color(0xFF1A1A1A),
+                  color: Color(0xFF1A1A1A),
                   fontSize: 16,
+                  height: 1.0,
                   fontFamily: 'Gmarket Sans TTF',
                   fontWeight: FontWeight.w300,
                 ),
-                border: InputBorder.none,
+                isCollapsed: true,
                 isDense: true,
-                contentPadding: EdgeInsets.only(
-                  top: healthDp(context, 8),
-                  bottom: healthDp(context, 1),
-                ),
+                contentPadding: EdgeInsets.zero,
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                disabledBorder: InputBorder.none,
+                errorBorder: InputBorder.none,
+                focusedErrorBorder: InputBorder.none,
+                errorStyle: TextStyle(fontSize: 0, height: 0),
+                counterText: '',
               ),
             );
           },
         ),
+        if (_bloodSugarError != null)
+          Padding(
+            padding: EdgeInsets.only(top: healthDp(context, 4)),
+            child: Text(
+              _bloodSugarError!,
+              textScaler: TextScaler.noScaling,
+              style: TextStyle(
+                color: const Color(0xFFB00020),
+                fontSize: healthSp(context, 10),
+                height: 1.2,
+                fontFamily: 'Gmarket Sans TTF',
+                fontWeight: FontWeight.w300,
+              ),
+            ),
+          ),
       ],
     );
   }

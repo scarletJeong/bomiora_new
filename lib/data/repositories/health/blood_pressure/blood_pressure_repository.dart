@@ -9,6 +9,15 @@ class BloodPressureRepository {
   static final Map<String, DateTime> _cacheAt = {};
   static final Map<String, Future<List<BloodPressureRecord>>> _inFlight = {};
 
+  static DateTime? cacheUpdatedAt(String userId) => _cacheAt[userId.trim()];
+
+  static List<BloodPressureRecord>? peekRecords(String userId) {
+    final id = userId.trim();
+    final list = _cache[id];
+    if (list == null) return null;
+    return List<BloodPressureRecord>.from(list);
+  }
+
   static void seedRecords(String userId, List<BloodPressureRecord> records) {
     final id = userId.trim();
     if (id.isEmpty) return;

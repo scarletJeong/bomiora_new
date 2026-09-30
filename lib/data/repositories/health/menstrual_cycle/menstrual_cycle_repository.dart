@@ -9,6 +9,7 @@ class MenstrualCycleRepository {
   static final Map<String, DateTime> _cacheAt = {};
   static final Map<String, Future<List<MenstrualCycleRecord>>> _inFlight = {};
   static final Map<String, MenstrualCycleRecord?> _latestCache = {};
+  static final Map<String, int> _generation = {};
 
   static void seedLatest(String mbId, MenstrualCycleRecord? record) {
     final id = mbId.trim();
@@ -21,11 +22,28 @@ class MenstrualCycleRepository {
       _cache.clear();
       _cacheAt.clear();
       _latestCache.clear();
+      _generation.clear();
     } else {
       _cache.remove(id);
       _cacheAt.remove(id);
       _latestCache.remove(id);
+      _generation[id] = (_generation[id] ?? 0) + 1;
     }
+  }
+
+  static bool hasRecordsCache(String mbId) => _cache.containsKey(mbId.trim());
+
+  static DateTime? cacheUpdatedAt(String mbId) => _cacheAt[mbId.trim()];
+
+  /// 대시보드 카드용. 시작일이 가장 최근인 주기.
+  static MenstrualCycleRecord? peekNewestByPeriodStart(String mbId) {
+    final id = mbId.trim();
+    final list = _cache[id];
+    if (list == null) return null;
+    if (list.isEmpty) return null;
+    final sorted = [...list]
+      ..sort((a, b) => b.lastPeriodStart.compareTo(a.lastPeriodStart));
+    return sorted.first;
   }
 
   static List<MenstrualCycleRecord> optimisticallyUpsert(
@@ -44,6 +62,7 @@ class MenstrualCycleRepository {
     }
     _cache[id] = next;
     _cacheAt[id] = DateTime.now();
+    _generation[id] = (_generation[id] ?? 0) + 1;
     _latestCache[id] = next.isEmpty ? null : next.first;
     return previous;
   }
@@ -55,6 +74,7 @@ class MenstrualCycleRepository {
     final id = mbId.trim();
     _cache[id] = List<MenstrualCycleRecord>.from(records);
     _cacheAt[id] = DateTime.now();
+    _generation[id] = (_generation[id] ?? 0) + 1;
     _latestCache[id] = records.isEmpty ? null : records.first;
   }
 
@@ -124,10 +144,14 @@ class MenstrualCycleRepository {
     }
     final pending = _inFlight[id];
     if (pending != null) return pending;
+    final generation = _generation[id] ?? 0;
     final request = _fetchMenstrualCycleRecords(id);
     _inFlight[id] = request;
     try {
       final records = await request;
+      if ((_generation[id] ?? 0) != generation) {
+        return List<MenstrualCycleRecord>.from(_cache[id] ?? records);
+      }
       _cache[id] = records;
       _cacheAt[id] = DateTime.now();
       if (records.isNotEmpty) _latestCache[id] = records.first;

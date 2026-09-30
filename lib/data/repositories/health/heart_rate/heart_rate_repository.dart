@@ -10,6 +10,15 @@ class HeartRateRepository {
   static final Map<String, DateTime> _cacheAt = {};
   static final Map<String, Future<List<HeartRateRecord>>> _inFlight = {};
 
+  static DateTime? cacheUpdatedAt(String userId) => _cacheAt[userId.trim()];
+
+  static List<HeartRateRecord>? peekRecords(String userId) {
+    final id = userId.trim();
+    final list = _cache[id];
+    if (list == null) return null;
+    return List<HeartRateRecord>.from(list);
+  }
+
   static void seedRecords(String userId, List<HeartRateRecord> records) {
     final id = userId.trim();
     if (id.isEmpty) return;

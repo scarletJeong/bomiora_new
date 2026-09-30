@@ -9,6 +9,15 @@ class WeightRepository {
   static final Map<String, DateTime> _cacheAt = {};
   static final Map<String, Future<List<WeightRecord>>> _inFlight = {};
 
+  static DateTime? cacheUpdatedAt(String mbId) => _cacheAt[mbId.trim()];
+
+  static List<WeightRecord>? peekRecords(String mbId) {
+    final id = mbId.trim();
+    final list = _cache[id];
+    if (list == null) return null;
+    return List<WeightRecord>.from(list);
+  }
+
   static void seedRecords(String mbId, List<WeightRecord> records) {
     final id = mbId.trim();
     if (id.isEmpty) return;

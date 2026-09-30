@@ -30,6 +30,16 @@ class HealthGoalRepository {
     _cacheAt.remove(id);
   }
 
+  static bool hasCache(String mbId) => _cache.containsKey(mbId.trim());
+
+  static DateTime? cacheUpdatedAt(String mbId) => _cacheAt[mbId.trim()];
+
+  static HealthGoalRecordModel? peekCached(String mbId) {
+    final id = mbId.trim();
+    if (!_cache.containsKey(id)) return null;
+    return _cache[id];
+  }
+
   static HealthGoalRecordModel? peekLatest(String mbId) {
     final id = mbId.trim();
     final cachedAt = _cacheAt[id];

@@ -69,7 +69,78 @@ class HealthDashboardRepository {
     if (cachedAt == null || DateTime.now().difference(cachedAt) >= _cacheTtl) {
       return null;
     }
+    applyDomainCaches();
     return _cache[key];
+  }
+
+  /// 각 건강 기록 캐시에 있는 값을 대시보드 캐시의 해당 영역에 덮어쓴다.
+  static void applyDomainCaches() {
+    for (final key in _cache.keys.toList()) {
+      final separator = key.lastIndexOf('|');
+      if (separator <= 0) continue;
+      final mbId = key.substring(0, separator);
+      final dateStr = key.substring(separator + 1);
+      final parts = dateStr.split('-');
+      if (parts.length != 3) continue;
+      final year = int.tryParse(parts[0]);
+      final month = int.tryParse(parts[1]);
+      final day = int.tryParse(parts[2]);
+      if (year == null || month == null || day == null) continue;
+      _overlayKey(key, mbId, DateTime(year, month, day));
+    }
+  }
+
+  static void _overlayKey(String key, String mbId, DateTime day) {
+    final current = _cache[key];
+    final dashboardAt = _cacheAt[key];
+    if (current == null || dashboardAt == null) return;
+
+    bool sameDay(DateTime value) =>
+        value.year == day.year &&
+        value.month == day.month &&
+        value.day == day.day;
+
+    bool newer(DateTime? domainAt) =>
+        domainAt != null && domainAt.isAfter(dashboardAt);
+
+    final weights = newer(WeightRepository.cacheUpdatedAt(mbId))
+        ? WeightRepository.peekRecords(mbId)
+        : null;
+    final pressures = newer(BloodPressureRepository.cacheUpdatedAt(mbId))
+        ? BloodPressureRepository.peekRecords(mbId)
+        : null;
+    final sugars = newer(BloodSugarRepository.cacheUpdatedAt(mbId))
+        ? BloodSugarRepository.peekRecords(mbId)
+        : null;
+    final heartRates = newer(HeartRateRepository.cacheUpdatedAt(mbId))
+        ? HeartRateRepository.peekRecords(mbId)
+        : null;
+    final useMenstrual = MenstrualCycleRepository.hasRecordsCache(mbId);
+    final goalAt = HealthGoalRepository.cacheUpdatedAt(mbId);
+    final useGoal = HealthGoalRepository.hasCache(mbId) &&
+        goalAt != null &&
+        goalAt.isAfter(dashboardAt);
+
+    _cache[key] = HealthDashboardPayload(
+      weightRecords: weights == null
+          ? current.weightRecords
+          : weights.where((record) => sameDay(record.measuredAt)).toList(),
+      bloodPressureRecords: pressures == null
+          ? current.bloodPressureRecords
+          : pressures.where((record) => sameDay(record.measuredAt)).toList(),
+      bloodSugarRecords: sugars == null
+          ? current.bloodSugarRecords
+          : sugars.where((record) => sameDay(record.measuredAt)).toList(),
+      heartRateRecords: heartRates == null
+          ? current.heartRateRecords
+          : heartRates.where((record) => sameDay(record.measuredAt)).toList(),
+      menstrualCycle: useMenstrual
+          ? MenstrualCycleRepository.peekNewestByPeriodStart(mbId)
+          : current.menstrualCycle,
+      steps: current.steps,
+      healthGoal:
+          useGoal ? HealthGoalRepository.peekCached(mbId) : current.healthGoal,
+    );
   }
 
   static Future<HealthDashboardPayload?> fetchDashboard({
@@ -83,6 +154,7 @@ class HealthDashboardRepository {
     if (!forceRefresh &&
         cachedAt != null &&
         DateTime.now().difference(cachedAt) < _cacheTtl) {
+      applyDomainCaches();
       return _cache[key];
     }
 
@@ -98,10 +170,13 @@ class HealthDashboardRepository {
     try {
       final result = await request;
       if (result != null) {
+        final previousAt = _cacheAt[key];
         _cache[key] = result;
+        _cacheAt[key] = previousAt ?? DateTime.now();
+        applyDomainCaches();
         _cacheAt[key] = DateTime.now();
       }
-      return result;
+      return _cache[key] ?? result;
     } finally {
       _inFlight.remove(key);
     }

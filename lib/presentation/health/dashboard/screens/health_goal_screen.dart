@@ -471,10 +471,10 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
             textScaler: TextScaler.noScaling,
             style: TextStyle(
               color: HealthFocusOutlineBox.focusColor,
-              fontSize: healthSp(context, 12),
+              fontSize: healthSp(context, 10),
               height: 1.2,
               fontFamily: 'Gmarket Sans TTF',
-              fontWeight: FontWeight.w400,
+              fontWeight: FontWeight.w300,
             ),
           ),
         ],

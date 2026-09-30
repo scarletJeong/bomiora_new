@@ -42,6 +42,10 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
 
   DateTime _selectedDateTime = DateTime.now();
   bool _isSaving = false;
+  bool _showFieldErrors = false;
+  String? _systolicError;
+  String? _diastolicError;
+  String? _pulseError;
 
   @override
   void initState() {
@@ -63,7 +67,49 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
   }
 
   void _onFieldsChanged() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    setState(() {
+      if (_showFieldErrors) _assignFieldErrors();
+    });
+  }
+
+  String? _systolicMessage(String raw) {
+    final value = raw.trim();
+    if (value.isEmpty) return '수축기 혈압을 입력해주세요';
+    final systolic = int.tryParse(value);
+    if (systolic == null || systolic < 50 || systolic > 250) {
+      return '올바른 수축기 혈압을 입력해주세요 (50~250mmHg)';
+    }
+    return null;
+  }
+
+  String? _diastolicMessage(String raw) {
+    final value = raw.trim();
+    if (value.isEmpty) return '이완기 혈압을 입력해주세요';
+    final diastolic = int.tryParse(value);
+    if (diastolic == null || diastolic < 30 || diastolic > 150) {
+      return '올바른 이완기 혈압을 입력해주세요 (30~150mmHg)';
+    }
+    return null;
+  }
+
+  String? _pulseMessage(String raw) {
+    final value = raw.trim();
+    if (value.isEmpty) return '심박수를 입력해주세요';
+    final pulse = int.tryParse(value);
+    if (pulse == null || pulse < 30 || pulse > 200) {
+      return '올바른 심박수를 입력해주세요 (30~200bpm)';
+    }
+    return null;
+  }
+
+  bool _assignFieldErrors() {
+    _systolicError = _systolicMessage(_systolicController.text);
+    _diastolicError = _diastolicMessage(_diastolicController.text);
+    _pulseError = _pulseMessage(_pulseController.text);
+    return _systolicError == null &&
+        _diastolicError == null &&
+        _pulseError == null;
   }
 
   bool get _isFormComplete {
@@ -121,7 +167,10 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
       HealthInputComplete.showRequiredToast(context);
       return;
     }
-    if (!_formKey.currentState!.validate()) return;
+    _showFieldErrors = true;
+    final rangesOk = _assignFieldErrors();
+    setState(() {});
+    if (!rangesOk) return;
 
     final now = DateTime.now();
     if (_selectedDateTime.isAfter(now)) {
@@ -399,19 +448,10 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
       label: '수축기(mmHg)',
       controller: _systolicController,
       hintText: '수치를 입력하세요',
+      errorText: _systolicError,
       focusNode: _systolicFocus,
       textInputAction: TextInputAction.next,
       onFieldSubmitted: (_) => _diastolicFocus.requestFocus(),
-      validator: (value) {
-        if (value == null || value.isEmpty) {
-          return '수축기 혈압을 입력해주세요';
-        }
-        final systolic = int.tryParse(value);
-        if (systolic == null || systolic < 50 || systolic > 250) {
-          return '올바른 수축기 혈압을 입력해주세요 (50~250mmHg)';
-        }
-        return null;
-      },
     );
   }
 
@@ -419,79 +459,80 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
     required String label,
     required TextEditingController controller,
     required String hintText,
-    required String? Function(String?) validator,
+    required String? errorText,
     FocusNode? focusNode,
     TextInputAction textInputAction = TextInputAction.done,
     ValueChanged<String>? onFieldSubmitted,
   }) {
-    return FormField<String>(
-      validator: (_) => validator(controller.text),
-      builder: (field) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
+    final fieldStyle = TextStyle(
+      color: const Color(0xFF1A1A1A),
+      fontSize: 16,
+      height: 1.0,
+      fontFamily: 'Gmarket Sans TTF',
+      fontWeight: FontWeight.w300,
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.black,
+            fontSize: 16,
+            fontFamily: 'Gmarket Sans TTF',
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        SizedBox(height: healthDp(context, 5)),
+        HealthFocusOutlineBox(
+          focusNode: focusNode,
+          builder: (node) {
+            return TextField(
+              controller: controller,
+              focusNode: node,
+              textInputAction: textInputAction,
+              onSubmitted: onFieldSubmitted,
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              textAlignVertical: TextAlignVertical.center,
+              style: fieldStyle,
+              decoration: InputDecoration(
+                hintText: hintText,
+                hintStyle: fieldStyle,
+                isCollapsed: true,
+                isDense: true,
+                contentPadding: EdgeInsets.zero,
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                disabledBorder: InputBorder.none,
+                errorBorder: InputBorder.none,
+                focusedErrorBorder: InputBorder.none,
+                errorText: null,
+                errorStyle: const TextStyle(fontSize: 0, height: 0),
+                helperText: null,
+                helperStyle: const TextStyle(fontSize: 0, height: 0),
+                counterText: '',
+              ),
+            );
+          },
+        ),
+        if (errorText != null)
+          Padding(
+            padding: EdgeInsets.only(top: healthDp(context, 4)),
+            child: Text(
+              errorText,
+              textScaler: TextScaler.noScaling,
               style: TextStyle(
-                color: Colors.black,
-                fontSize: 16,
+                color: const Color(0xFFB00020),
+                fontSize: healthSp(context, 10),
+                height: 1.2,
                 fontFamily: 'Gmarket Sans TTF',
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w300,
               ),
             ),
-            SizedBox(height: healthDp(context, 5)),
-            HealthFocusOutlineBox(
-              focusNode: focusNode,
-              builder: (node) {
-                return TextField(
-                  controller: controller,
-                  focusNode: node,
-                  textInputAction: textInputAction,
-                  onSubmitted: onFieldSubmitted,
-                  onChanged: field.didChange,
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  textAlignVertical: const TextAlignVertical(y: 0.45),
-                  style: TextStyle(
-                    color: const Color(0xFF1A1A1A),
-                    fontSize: 16,
-                    fontFamily: 'Gmarket Sans TTF',
-                    fontWeight: FontWeight.w300,
-                  ),
-                  decoration: InputDecoration(
-                    hintText: hintText,
-                    hintStyle: TextStyle(
-                      color: const Color(0xFF1A1A1A),
-                      fontSize: 16,
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w300,
-                    ),
-                    border: InputBorder.none,
-                    isDense: true,
-                    contentPadding: EdgeInsets.only(
-                      top: healthDp(context, 8),
-                      bottom: healthDp(context, 1),
-                    ),
-                  ),
-                );
-              },
-            ),
-            if (field.errorText != null) ...[
-              SizedBox(height: healthDp(context, 4)),
-              Text(
-                field.errorText!,
-                style: TextStyle(
-                  color: const Color(0xFFB00020),
-                  fontSize: healthSp(context, 12),
-                  height: 1.2,
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w400,
-                ),
-              ),
-            ],
-          ],
-        );
-      },
+          ),
+      ],
     );
   }
 
@@ -500,19 +541,10 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
       label: '이완기(mmHg)',
       controller: _diastolicController,
       hintText: '수치를 입력하세요',
+      errorText: _diastolicError,
       focusNode: _diastolicFocus,
       textInputAction: TextInputAction.next,
       onFieldSubmitted: (_) => _pulseFocus.requestFocus(),
-      validator: (value) {
-        if (value == null || value.isEmpty) {
-          return '이완기 혈압을 입력해주세요';
-        }
-        final diastolic = int.tryParse(value);
-        if (diastolic == null || diastolic < 30 || diastolic > 150) {
-          return '올바른 이완기 혈압을 입력해주세요 (30~150mmHg)';
-        }
-        return null;
-      },
     );
   }
 
@@ -521,19 +553,10 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
       label: '심박수(bpm)',
       controller: _pulseController,
       hintText: '수치를 입력하세요',
+      errorText: _pulseError,
       focusNode: _pulseFocus,
       textInputAction: TextInputAction.done,
       onFieldSubmitted: (_) => _pulseFocus.unfocus(),
-      validator: (value) {
-        if (value == null || value.isEmpty) {
-          return '심박수를 입력해주세요';
-        }
-        final pulse = int.tryParse(value);
-        if (pulse == null || pulse < 30 || pulse > 200) {
-          return '올바른 심박수수을 입력해주세요 (30~200bpm)';
-        }
-        return null;
-      },
     );
   }
 
