@@ -424,56 +424,74 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
     TextInputAction textInputAction = TextInputAction.done,
     ValueChanged<String>? onFieldSubmitted,
   }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: 16,
-            fontFamily: 'Gmarket Sans TTF',
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        SizedBox(height: healthDp(context, 5)),
-        HealthFocusOutlineBox(
-          focusNode: focusNode,
-          builder: (node) {
-            return TextFormField(
-              controller: controller,
-              focusNode: node,
-              textInputAction: textInputAction,
-              onFieldSubmitted: onFieldSubmitted,
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              validator: validator,
-              textAlignVertical: const TextAlignVertical(y: 0.45),
+    return FormField<String>(
+      validator: (_) => validator(controller.text),
+      builder: (field) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
               style: TextStyle(
-                color: const Color(0xFF1A1A1A),
+                color: Colors.black,
                 fontSize: 16,
                 fontFamily: 'Gmarket Sans TTF',
-                fontWeight: FontWeight.w300,
+                fontWeight: FontWeight.w700,
               ),
-              decoration: InputDecoration(
-                hintText: hintText,
-                hintStyle: TextStyle(
-                  color: const Color(0xFF1A1A1A),
-                  fontSize: 16,
+            ),
+            SizedBox(height: healthDp(context, 5)),
+            HealthFocusOutlineBox(
+              focusNode: focusNode,
+              builder: (node) {
+                return TextField(
+                  controller: controller,
+                  focusNode: node,
+                  textInputAction: textInputAction,
+                  onSubmitted: onFieldSubmitted,
+                  onChanged: field.didChange,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  textAlignVertical: const TextAlignVertical(y: 0.45),
+                  style: TextStyle(
+                    color: const Color(0xFF1A1A1A),
+                    fontSize: 16,
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w300,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: hintText,
+                    hintStyle: TextStyle(
+                      color: const Color(0xFF1A1A1A),
+                      fontSize: 16,
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w300,
+                    ),
+                    border: InputBorder.none,
+                    isDense: true,
+                    contentPadding: EdgeInsets.only(
+                      top: healthDp(context, 8),
+                      bottom: healthDp(context, 1),
+                    ),
+                  ),
+                );
+              },
+            ),
+            if (field.errorText != null) ...[
+              SizedBox(height: healthDp(context, 4)),
+              Text(
+                field.errorText!,
+                style: TextStyle(
+                  color: const Color(0xFFB00020),
+                  fontSize: healthSp(context, 12),
+                  height: 1.2,
                   fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w300,
-                ),
-                border: InputBorder.none,
-                isDense: true,
-                contentPadding: EdgeInsets.only(
-                  top: healthDp(context, 8),
-                  bottom: healthDp(context, 1),
+                  fontWeight: FontWeight.w400,
                 ),
               ),
-            );
-          },
-        ),
-      ],
+            ],
+          ],
+        );
+      },
     );
   }
 
