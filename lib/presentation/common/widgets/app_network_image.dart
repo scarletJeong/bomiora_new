@@ -22,6 +22,10 @@ class AppNetworkImage extends StatefulWidget {
   /// 로드 완료(또는 실패) 시 1회 호출. 스플래시 대기 등에 사용.
   final VoidCallback? onSettled;
 
+  /// 웹에서 DOM `<img>` 플랫폼 뷰를 우선할지 여부.
+  /// 클리핑·내부 스크롤이 있는 상세 HTML에서는 false로 사용한다.
+  final bool preferHtmlElementOnWeb;
+
   const AppNetworkImage({
     super.key,
     required this.url,
@@ -34,6 +38,7 @@ class AppNetworkImage extends StatefulWidget {
     this.decodeWidthLogical,
     this.decodeHeightLogical,
     this.onSettled,
+    this.preferHtmlElementOnWeb = true,
   });
 
   static bool _isFinitePositive(double? v) => v != null && v.isFinite && v > 0;
@@ -141,8 +146,9 @@ class _AppNetworkImageState extends State<AppNetworkImage> {
       alignment: widget.alignment,
       cacheWidth: kIsWeb ? null : cacheW,
       cacheHeight: kIsWeb ? null : cacheH,
-      webHtmlElementStrategy:
-          kIsWeb ? WebHtmlElementStrategy.prefer : WebHtmlElementStrategy.never,
+      webHtmlElementStrategy: kIsWeb && widget.preferHtmlElementOnWeb
+          ? WebHtmlElementStrategy.prefer
+          : WebHtmlElementStrategy.never,
       filterQuality: FilterQuality.low,
       errorBuilder: (context, error, stackTrace) {
         debugPrint('[AppNetworkImage] decode fail: ${widget.url} → $error');

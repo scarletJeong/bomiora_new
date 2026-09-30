@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_svg/flutter_svg.dart';
@@ -70,7 +69,6 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
   bool _isLoadingReviews = false;
   int? _userPoint; // 현재 사용자 보유 포인트
   bool? _usePointConfig; // cf_use_point 설정값
-  bool? _isDetailExpanded = false;
   int _visibleSupporterReviewCount = 4;
   int _visibleNormalReviewCount = 4;
   UserModel? _loggedInUser;
@@ -198,8 +196,9 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
 
   Future<void> _openRecommendProduct(Product product) async {
     final kind = (product.productKind ?? '').toLowerCase();
-    final basePath =
-        kind == 'general' ? '/product-general/${product.id}' : '/product/${product.id}';
+    final basePath = kind == 'general'
+        ? '/product-general/${product.id}'
+        : '/product/${product.id}';
     final inf = InfCodeTracker.current;
     final route = (inf != null && inf.isNotEmpty)
         ? '$basePath?infcode=${Uri.encodeComponent(inf)}'
@@ -360,7 +359,6 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       _safeSetState(() {
         _isFavorite = !_isFavorite;
       });
-
     }
   }
 
@@ -550,7 +548,8 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
     );
   }
 
-  double _productTabBarPaddingTop(BuildContext context) => healthDp(context, 20);
+  double _productTabBarPaddingTop(BuildContext context) =>
+      healthDp(context, 20);
 
   double _productTabBarPaddingBottom(BuildContext context) =>
       healthDp(context, 10);
@@ -1354,118 +1353,15 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
     return processProductDetailHtml(itExplain);
   }
 
-  Widget _buildDetailHtml({required String html}) {
-    return buildProductDetailHtml(
-      context: context,
-      html: html,
-      fontFamily: _kGmarketSans,
-    );
-  }
-
-  void _expandProductDetail() {
-    final keptOffset = _detailScrollController.hasClients
-        ? _detailScrollController.offset
-        : null;
-    _safeSetState(() {
-      _isDetailExpanded = true;
-    });
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !_detailScrollController.hasClients || keptOffset == null) {
-        return;
-      }
-      final position = _detailScrollController.position;
-      final target = (keptOffset + healthDp(context, 160))
-          .clamp(0.0, position.maxScrollExtent);
-      _detailScrollController.animateTo(
-        target,
-        duration: const Duration(milliseconds: 280),
-        curve: Curves.easeOut,
-      );
-    });
-  }
-
   Widget _buildDetailPreviewSection() {
     final processedHtml = _getProcessedDetailHtml();
     if (processedHtml.isEmpty) return const SizedBox.shrink();
-    final collapsedPreviewHeight = healthDp(context, 320);
-    final isExpanded = _isDetailExpanded == true;
-    final hPad = healthDp(context, 27);
-
-    return Container(
+    return ProductDetailExpandablePreview(
+      key: ValueKey(processedHtml.hashCode),
+      html: processedHtml,
+      fontFamily: _kGmarketSans,
+      horizontalPadding: healthDp(context, 27),
       margin: EdgeInsets.only(top: healthDp(context, 24)),
-      padding: EdgeInsets.symmetric(horizontal: hPad),
-      child: Column(
-        children: [
-          Stack(
-            children: [
-              ClipRect(
-                child: ConstrainedBox(
-                  constraints: isExpanded
-                      ? const BoxConstraints()
-                      : BoxConstraints(maxHeight: collapsedPreviewHeight),
-                  child: IgnorePointer(
-                    ignoring: !isExpanded,
-                    child: _buildDetailHtml(html: processedHtml),
-                  ),
-                ),
-              ),
-              if (!isExpanded)
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  child: ClipRect(
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 3, sigmaY: 3),
-                      child: Container(
-                        height: healthDp(context, 50),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Colors.white.withOpacity(0.05),
-                              Colors.white.withOpacity(0.78),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          if (!isExpanded)
-            SizedBox(
-              height: healthDp(context, 24),
-              child: OutlinedButton(
-                onPressed: _expandProductDetail,
-                style: OutlinedButton.styleFrom(
-                  side: BorderSide(
-                    color: const Color(0xFFFF4081),
-                    width: healthDp(context, 1),
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(healthDp(context, 14)),
-                  ),
-                  padding: EdgeInsets.symmetric(
-                    horizontal: healthDp(context, 40),
-                    vertical: healthDp(context, 5),
-                  ),
-                  foregroundColor: const Color(0xFFFF4081),
-                ),
-                child: Text(
-                  '+ 자세히 보기',
-                  style: TextStyle(
-                    fontSize: healthSp(context, 12),
-                    fontWeight: FontWeight.w500,
-                    fontFamily: _kGmarketSans,
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
     );
   }
 
@@ -1515,7 +1411,8 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFFF4081),
                   foregroundColor: Colors.white,
-                  padding: EdgeInsets.symmetric(vertical: healthDp(context, 10)),
+                  padding:
+                      EdgeInsets.symmetric(vertical: healthDp(context, 10)),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(healthDp(context, 10)),
                   ),
@@ -1713,8 +1610,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
     if (quantity != null && quantity > 0) {
       final noOptionItems = all
           .where(
-            (item) =>
-                item.itId == _product!.id && item.ctOption.trim().isEmpty,
+            (item) => item.itId == _product!.id && item.ctOption.trim().isEmpty,
           )
           .toList();
       if (noOptionItems.isEmpty) return [];
@@ -1770,8 +1666,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
   }) async {
     if (_product == null) return;
 
-    final hasOptions =
-        selectedOptions != null && selectedOptions.isNotEmpty;
+    final hasOptions = selectedOptions != null && selectedOptions.isNotEmpty;
     if (!hasOptions && (quantity == null || quantity <= 0)) return;
 
     final Map<String, dynamic> result;

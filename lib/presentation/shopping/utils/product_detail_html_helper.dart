@@ -175,6 +175,7 @@ Widget buildProductDetailHtml({
                     fit: BoxFit.fitWidth,
                     alignment: Alignment.topCenter,
                     decodeWidthLogical: contentWidth,
+                    preferHtmlElementOnWeb: false,
                     errorBuilder: (_, __, ___) => const SizedBox.shrink(),
                   ),
                 );
@@ -231,13 +232,144 @@ Widget buildProductDetailHtml({
   );
 }
 
+/// 상품 상세 미리보기와 내부 스크롤을 독립적으로 관리한다.
+///
+/// 펼칠 때 부모 상품 화면 전체를 다시 빌드하지 않아 모바일 Safari에서
+/// 이미지 플랫폼 뷰가 한꺼번에 재생성되는 문제를 막는다.
+class ProductDetailExpandablePreview extends StatefulWidget {
+  const ProductDetailExpandablePreview({
+    super.key,
+    required this.html,
+    required this.horizontalPadding,
+    this.margin,
+    this.fontFamily = 'Gmarket Sans TTF',
+  });
+
+  final String html;
+  final double horizontalPadding;
+  final EdgeInsetsGeometry? margin;
+  final String fontFamily;
+
+  @override
+  State<ProductDetailExpandablePreview> createState() =>
+      _ProductDetailExpandablePreviewState();
+}
+
+class _ProductDetailExpandablePreviewState
+    extends State<ProductDetailExpandablePreview> {
+  bool _expanded = false;
+  Widget? _cachedHtml;
+
+  @override
+  void didUpdateWidget(covariant ProductDetailExpandablePreview oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.html != widget.html ||
+        oldWidget.fontFamily != widget.fontFamily) {
+      _cachedHtml = null;
+      _expanded = false;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final previewHeight = healthDp(context, 320);
+    final htmlChild = _cachedHtml ??= RepaintBoundary(
+      child: buildProductDetailHtml(
+        context: context,
+        html: widget.html,
+        fontFamily: widget.fontFamily,
+      ),
+    );
+
+    return Container(
+      margin: widget.margin,
+      padding: EdgeInsets.symmetric(horizontal: widget.horizontalPadding),
+      child: Column(
+        children: [
+          Stack(
+            children: [
+              ClipRect(
+                child: SizedBox(
+                  height: previewHeight,
+                  width: double.infinity,
+                  child: SingleChildScrollView(
+                    primary: false,
+                    physics: _expanded
+                        ? const ClampingScrollPhysics()
+                        : const NeverScrollableScrollPhysics(),
+                    child: IgnorePointer(
+                      ignoring: !_expanded,
+                      child: htmlChild,
+                    ),
+                  ),
+                ),
+              ),
+              if (!_expanded)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: IgnorePointer(
+                    child: Container(
+                      height: healthDp(context, 50),
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Color(0x0DFFFFFF),
+                            Color(0xC7FFFFFF),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          if (!_expanded)
+            SizedBox(
+              height: healthDp(context, 24),
+              child: OutlinedButton(
+                onPressed: () => setState(() => _expanded = true),
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(
+                    color: const Color(0xFFFF4081),
+                    width: healthDp(context, 1),
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(healthDp(context, 14)),
+                  ),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: healthDp(context, 40),
+                    vertical: healthDp(context, 5),
+                  ),
+                  foregroundColor: const Color(0xFFFF4081),
+                ),
+                child: Text(
+                  '+ 자세히 보기',
+                  style: TextStyle(
+                    fontSize: healthSp(context, 12),
+                    fontWeight: FontWeight.w500,
+                    fontFamily: widget.fontFamily,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 /// 상단 캐러셀 — 화면 가로에 맞춰 전체 이미지 노출
 Widget buildProductCarouselImage({
   required String imageUrl,
   required double width,
   required double height,
   required Widget Function(BuildContext, Object, StackTrace?) errorBuilder,
-  required Widget Function(BuildContext, Widget, ImageChunkEvent?) loadingBuilder,
+  required Widget Function(BuildContext, Widget, ImageChunkEvent?)
+      loadingBuilder,
 }) {
   return SizedBox(
     width: width,
