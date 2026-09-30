@@ -100,7 +100,19 @@ class ContentService {
 
   static String prepareContentHtmlForRender(String raw) {
     if (raw.trim().isEmpty) return '';
-    return raw.replaceAllMapped(
+    final withoutInlineFontSize = raw
+        .replaceAll(
+          RegExp(r'font-size\s*:\s*[^;}"\x27]+;?', caseSensitive: false),
+          '',
+        )
+        .replaceAll(
+          RegExp(
+            '''\\ssize\\s*=\\s*["\\x27]?\\d+["\\x27]?''',
+            caseSensitive: false,
+          ),
+          '',
+        );
+    return withoutInlineFontSize.replaceAllMapped(
       RegExp(
         r'''(<img[^>]*\bsrc\s*=\s*["'])([^"']+)(["'][^>]*>)''',
         caseSensitive: false,

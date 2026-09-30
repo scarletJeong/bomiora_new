@@ -564,7 +564,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
         textAlign: TextAlign.center,
         style: TextStyle(
           color: _textDark,
-          fontSize: healthSp(context, 12),
+          fontSize: healthSp(context, 14),
           fontFamily: 'Gmarket Sans TTF',
           fontWeight: FontWeight.w500,
           height: 2.08,
@@ -579,7 +579,15 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
         final maxWidth = constraints.maxWidth.isFinite
             ? constraints.maxWidth
             : MediaQuery.of(context).size.width - hPad * 2;
-        final bodyFontSize = healthSp(context, 12);
+        final bodyFontSize = healthSp(context, 14);
+        final bodyText = Style(
+          fontFamily: 'Gmarket Sans TTF',
+          fontSize: FontSize(bodyFontSize),
+          fontWeight: FontWeight.w500,
+          lineHeight: const LineHeight(1.8),
+          textAlign: TextAlign.center,
+          color: _textDark,
+        );
 
         return SizedBox(
           width: maxWidth,
@@ -609,29 +617,44 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
               ),
             ],
             style: {
-              'html': Style(margin: Margins.zero, padding: HtmlPaddings.zero),
-              'body': Style(
+              'html': Style(
                 margin: Margins.zero,
                 padding: HtmlPaddings.zero,
-                fontFamily: 'Gmarket Sans TTF',
                 fontSize: FontSize(bodyFontSize),
-                fontWeight: FontWeight.w500,
-                lineHeight: const LineHeight(1.8),
-                textAlign: TextAlign.center,
-                color: _textDark,
               ),
-              'p': Style(
+              'body': bodyText.copyWith(
+                margin: Margins.zero,
+                padding: HtmlPaddings.zero,
+              ),
+              'p': bodyText.copyWith(
                 margin: Margins.only(bottom: healthDp(context, 10)),
                 padding: HtmlPaddings.zero,
-                textAlign: TextAlign.center,
               ),
+              'div': bodyText.copyWith(
+                margin: Margins.zero,
+                padding: HtmlPaddings.zero,
+              ),
+              'span': bodyText,
+              'li': bodyText,
+              'font': bodyText,
+              'strong': bodyText,
+              'b': bodyText,
+              'em': bodyText,
+              'i': bodyText,
+              'u': bodyText,
+              'a': bodyText,
+              'blockquote': bodyText,
+              'h1': bodyText,
+              'h2': bodyText,
+              'h3': bodyText,
+              'h4': bodyText,
+              'h5': bodyText,
+              'h6': bodyText,
               'img': Style(
                 width: Width(maxWidth),
                 display: Display.block,
                 margin: Margins.symmetric(vertical: healthDp(context, 8)),
               ),
-              'div': Style(margin: Margins.zero, padding: HtmlPaddings.zero),
-              'span': Style(fontFamily: 'Gmarket Sans TTF'),
             },
           ),
         );
