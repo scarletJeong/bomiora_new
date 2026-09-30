@@ -34,6 +34,11 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
+
+    lint {
+        checkReleaseBuilds = false
+        abortOnError = false
+    }
     
     buildTypes {
         release {

@@ -24,3 +24,11 @@
 -keep class com.navercorp.nid.** { *; }
 -keep class com.nhn.android.naverlogin.** { *; }
 
+# OkHttp optional TLS platforms (not bundled; R8 should ignore them)
+-dontwarn org.conscrypt.Conscrypt$Version
+-dontwarn org.conscrypt.Conscrypt
+-dontwarn org.conscrypt.ConscryptHostnameVerifier
+-dontwarn org.openjsse.javax.net.ssl.SSLParameters
+-dontwarn org.openjsse.javax.net.ssl.SSLSocket
+-dontwarn org.openjsse.net.ssl.OpenJSSE
+
