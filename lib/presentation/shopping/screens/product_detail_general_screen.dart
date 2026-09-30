@@ -61,6 +61,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
   bool _isFavorite = false;
   int _currentImageIndex = 0;
   late TabController _tabController;
+  final ScrollController _detailScrollController = ScrollController();
   PageController? _pageController;
 
   // 리뷰 관련 상태
@@ -121,6 +122,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
   @override
   void dispose() {
     _tabController.dispose();
+    _detailScrollController.dispose();
     _pageController?.dispose();
     super.dispose();
   }
@@ -518,6 +520,8 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       animation: _tabController,
       builder: (context, _) {
         return CustomScrollView(
+          controller: _detailScrollController,
+          primary: false,
           slivers: [
             SliverToBoxAdapter(
               child: _buildProductInfoSection(),
@@ -1358,6 +1362,28 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
     );
   }
 
+  void _expandProductDetail() {
+    final keptOffset = _detailScrollController.hasClients
+        ? _detailScrollController.offset
+        : null;
+    _safeSetState(() {
+      _isDetailExpanded = true;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_detailScrollController.hasClients || keptOffset == null) {
+        return;
+      }
+      final position = _detailScrollController.position;
+      final target = (keptOffset + healthDp(context, 160))
+          .clamp(0.0, position.maxScrollExtent);
+      _detailScrollController.animateTo(
+        target,
+        duration: const Duration(milliseconds: 280),
+        curve: Curves.easeOut,
+      );
+    });
+  }
+
   Widget _buildDetailPreviewSection() {
     final processedHtml = _getProcessedDetailHtml();
     if (processedHtml.isEmpty) return const SizedBox.shrink();
@@ -1370,54 +1396,50 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       padding: EdgeInsets.symmetric(horizontal: hPad),
       child: Column(
         children: [
-          if (isExpanded) ...[
-            _buildDetailHtml(html: processedHtml),
-          ] else ...[
-            ClipRect(
-              child: SizedBox(
-                height: collapsedPreviewHeight,
-                child: Stack(
-                  children: [
-                    Positioned.fill(
-                      child: IgnorePointer(
-                        child: _buildDetailHtml(html: processedHtml),
-                      ),
-                    ),
-                    Positioned(
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      child: ClipRect(
-                        child: BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 3, sigmaY: 3),
-                          child: Container(
-                            height: healthDp(context, 50),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: [
-                                  Colors.white.withOpacity(0.05),
-                                  Colors.white.withOpacity(0.78),
-                                ],
-                              ),
-                            ),
+          Stack(
+            children: [
+              ClipRect(
+                child: ConstrainedBox(
+                  constraints: isExpanded
+                      ? const BoxConstraints()
+                      : BoxConstraints(maxHeight: collapsedPreviewHeight),
+                  child: IgnorePointer(
+                    ignoring: !isExpanded,
+                    child: _buildDetailHtml(html: processedHtml),
+                  ),
+                ),
+              ),
+              if (!isExpanded)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: ClipRect(
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 3, sigmaY: 3),
+                      child: Container(
+                        height: healthDp(context, 50),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.white.withOpacity(0.05),
+                              Colors.white.withOpacity(0.78),
+                            ],
                           ),
                         ),
                       ),
                     ),
-                  ],
+                  ),
                 ),
-              ),
-            ),
+            ],
+          ),
+          if (!isExpanded)
             SizedBox(
               height: healthDp(context, 24),
               child: OutlinedButton(
-                onPressed: () {
-                  _safeSetState(() {
-                    _isDetailExpanded = true;
-                  });
-                },
+                onPressed: _expandProductDetail,
                 style: OutlinedButton.styleFrom(
                   side: BorderSide(
                     color: const Color(0xFFFF4081),
@@ -1442,7 +1464,6 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
                 ),
               ),
             ),
-          ],
         ],
       ),
     );
