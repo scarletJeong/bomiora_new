@@ -176,6 +176,7 @@ Widget buildProductDetailHtml({
                     alignment: Alignment.topCenter,
                     decodeWidthLogical: contentWidth,
                     preferHtmlElementOnWeb: false,
+                    evictOnDispose: true,
                     errorBuilder: (_, __, ___) => const SizedBox.shrink(),
                   ),
                 );
@@ -298,6 +299,7 @@ Widget buildProductDetailBlock({
       alignment: Alignment.topCenter,
       decodeWidthLogical: MediaQuery.sizeOf(context).width,
       preferHtmlElementOnWeb: false,
+      evictOnDispose: true,
       errorBuilder: (_, __, ___) => const SizedBox.shrink(),
     ),
   );

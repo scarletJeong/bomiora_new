@@ -26,6 +26,10 @@ class AppNetworkImage extends StatefulWidget {
   /// 클리핑·내부 스크롤이 있는 상세 HTML에서는 false로 사용한다.
   final bool preferHtmlElementOnWeb;
 
+  /// 위젯이 화면에서 제거될 때 웹 이미지 캐시도 해제한다.
+  /// 긴 상품 상세의 지연 목록에서 모바일 브라우저 메모리 누적을 막는 용도다.
+  final bool evictOnDispose;
+
   const AppNetworkImage({
     super.key,
     required this.url,
@@ -39,6 +43,7 @@ class AppNetworkImage extends StatefulWidget {
     this.decodeHeightLogical,
     this.onSettled,
     this.preferHtmlElementOnWeb = true,
+    this.evictOnDispose = false,
   });
 
   static bool _isFinitePositive(double? v) => v != null && v.isFinite && v > 0;
@@ -120,6 +125,14 @@ class _AppNetworkImageState extends State<AppNetworkImage> {
     if (_settled) return;
     _settled = true;
     widget.onSettled?.call();
+  }
+
+  @override
+  void dispose() {
+    if (widget.evictOnDispose && kIsWeb) {
+      unawaited(NetworkImage(widget.url).evict());
+    }
+    super.dispose();
   }
 
   @override
