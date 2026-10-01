@@ -11,6 +11,7 @@ import '../../../common/widgets/centered_empty_state.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/navi_bar.dart';
 import '../../../common/widgets/app_footer.dart';
+import '../../../common/widgets/scroll_reveal_top_overlay.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 
 /// 콘텐츠 목록 (카테고리 칩, 검색, 리스트, 글쓰기 FAB)
@@ -23,6 +24,7 @@ class ContentListScreen extends StatefulWidget {
 
 class _ContentListScreenState extends State<ContentListScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  final ScrollController _scrollController = ScrollController();
 
   static const Color _textDark = Color(0xFF1A1A1A);
   static const Color _textMuted = Color(0xFF898686);
@@ -72,6 +74,7 @@ class _ContentListScreenState extends State<ContentListScreen> {
 
   @override
   void dispose() {
+    _scrollController.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -96,9 +99,10 @@ class _ContentListScreenState extends State<ContentListScreen> {
       setState(() => _isLoadingMore = true);
     }
 
-    final selectedCategory = (_tabIndex > 0 && _tabIndex - 1 < _categories.length)
-        ? _categories[_tabIndex - 1]
-        : null;
+    final selectedCategory =
+        (_tabIndex > 0 && _tabIndex - 1 < _categories.length)
+            ? _categories[_tabIndex - 1]
+            : null;
     final nextPage = reset ? 1 : _page + 1;
     final result = await ContentService.getContentList(
       page: nextPage,
@@ -107,9 +111,11 @@ class _ContentListScreenState extends State<ContentListScreen> {
       query: _searchController.text,
     );
     if (!mounted) return;
-    final data = (result['data'] as List?)?.whereType<Map<String, dynamic>>().toList() ??
-        const <Map<String, dynamic>>[];
-    final pagination = result['pagination'] as Map<String, dynamic>? ?? const {};
+    final data =
+        (result['data'] as List?)?.whereType<Map<String, dynamic>>().toList() ??
+            const <Map<String, dynamic>>[];
+    final pagination =
+        result['pagination'] as Map<String, dynamic>? ?? const {};
     final total = pagination['total'] is num
         ? (pagination['total'] as num).toInt()
         : data.length;
@@ -146,8 +152,7 @@ class _ContentListScreenState extends State<ContentListScreen> {
       primaryTextTheme:
           baseTheme.primaryTextTheme.apply(fontFamily: 'Gmarket Sans TTF'),
     );
-    final textScale =
-        healthTextScaleByWidth(MediaQuery.sizeOf(context).width);
+    final textScale = healthTextScaleByWidth(MediaQuery.sizeOf(context).width);
 
     return Theme(
       data: gmarketTheme,
@@ -170,77 +175,11 @@ class _ContentListScreenState extends State<ContentListScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Padding(
-                      padding: EdgeInsets.fromLTRB(
-                        healthDp(context, 27),
-                        healthDp(context, 10),
-                        healthDp(context, 27),
-                        healthDp(context, 10),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          _buildCategoryChips(_categories),
-                          SizedBox(height: healthDp(context, 10)),
-                          _buildSearchBox(),
-                          SizedBox(height: healthDp(context, 10)),
-                          _buildCountRow(),
-                        ],
-                      ),
-                    ),
-                    if (_isLoading)
-                      const Expanded(
-                        child: Center(
-                          child: SizedBox(
-                            width: 36,
-                            height: 36,
-                            child: CircularProgressIndicator(
-                              color: Color(0xFFFF5B8C),
-                            ),
-                          ),
-                        ),
-                      )
-                    else if (_posts.isEmpty)
-                      Expanded(
-                        child: _hasActiveSearch
-                            ? _buildEmptySearchResult(context)
-                            : _buildEmptyPostsState(context),
-                      )
-                    else
-                      Expanded(
-                        child: SingleChildScrollView(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Padding(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: healthDp(context, 27),
-                                ),
-                                child: Column(
-                                  children: [
-                                    ..._posts.map((e) => Padding(
-                                          padding: EdgeInsets.only(
-                                              bottom: healthDp(context, 20)),
-                                          child: _buildListCard(context, e),
-                                        )),
-                                    if (_showLoadMore) ...[
-                                      SizedBox(height: healthDp(context, 4)),
-                                      _buildLoadMoreButton(),
-                                    ],
-                                    SizedBox(height: healthDp(context, 24)),
-                                    SizedBox(height: healthDp(context, 100)),
-                                  ],
-                                ),
-                              ),
-                              const AppFooter(),
-                            ],
-                          ),
-                        ),
-                      ),
-                  ],
+                child: ScrollRevealTopOverlay(
+                  controller: _scrollController,
+                  revealAfterOffset: healthDp(context, 80),
+                  topBar: _buildTopControls(),
+                  scrollChild: _buildContentScroll(),
                 ),
               ),
               const FooterBar(),
@@ -248,6 +187,84 @@ class _ContentListScreenState extends State<ContentListScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildTopControls() {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        healthDp(context, 27),
+        healthDp(context, 10),
+        healthDp(context, 27),
+        healthDp(context, 10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildCategoryChips(_categories),
+          SizedBox(height: healthDp(context, 10)),
+          _buildSearchBox(),
+          SizedBox(height: healthDp(context, 10)),
+          _buildCountRow(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContentScroll() {
+    return CustomScrollView(
+      controller: _scrollController,
+      slivers: [
+        SliverToBoxAdapter(child: _buildTopControls()),
+        if (_isLoading)
+          const SliverFillRemaining(
+            hasScrollBody: false,
+            child: Center(
+              child: SizedBox(
+                width: 36,
+                height: 36,
+                child: CircularProgressIndicator(
+                  color: Color(0xFFFF5B8C),
+                ),
+              ),
+            ),
+          )
+        else if (_posts.isEmpty)
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: _hasActiveSearch
+                ? _buildEmptySearchResult(context)
+                : _buildEmptyPostsState(context),
+          )
+        else ...[
+          SliverPadding(
+            padding: EdgeInsets.symmetric(
+              horizontal: healthDp(context, 27),
+            ),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) => Padding(
+                  padding: EdgeInsets.only(bottom: healthDp(context, 20)),
+                  child: _buildListCard(context, _posts[index]),
+                ),
+                childCount: _posts.length,
+              ),
+            ),
+          ),
+          if (_showLoadMore)
+            SliverPadding(
+              padding: EdgeInsets.fromLTRB(
+                healthDp(context, 27),
+                healthDp(context, 4),
+                healthDp(context, 27),
+                0,
+              ),
+              sliver: SliverToBoxAdapter(child: _buildLoadMoreButton()),
+            ),
+          SliverToBoxAdapter(child: SizedBox(height: healthDp(context, 124))),
+          const SliverToBoxAdapter(child: AppFooter()),
+        ],
+      ],
     );
   }
 
@@ -264,8 +281,7 @@ class _ContentListScreenState extends State<ContentListScreen> {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               for (var i = 0; i < tabs.length; i++) ...[
-                if (i > 0)
-                  SizedBox(width: healthDp(context, i == 1 ? 10 : 14)),
+                if (i > 0) SizedBox(width: healthDp(context, i == 1 ? 10 : 14)),
                 _buildTabChip(
                   label: tabs[i],
                   selected: i == _tabIndex,
