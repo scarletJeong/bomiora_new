@@ -21,11 +21,13 @@ class ArticleAdjacentNav extends StatelessWidget {
 
   final ArticleAdjacentItem? previous;
   final ArticleAdjacentItem? next;
+  final bool showBottomBorder;
 
   const ArticleAdjacentNav({
     super.key,
     this.previous,
     this.next,
+    this.showBottomBorder = true,
   });
 
   bool get hasItems => previous != null || next != null;
@@ -57,7 +59,8 @@ class ArticleAdjacentNav extends StatelessWidget {
               isPrev: false,
             ),
           ],
-          Container(height: healthDp(context, 1), color: _kBorder),
+          if (showBottomBorder)
+            Container(height: healthDp(context, 1), color: _kBorder),
         ],
       ),
     );
@@ -210,7 +213,7 @@ class _ArticleAdjacentNavOverlayState extends State<ArticleAdjacentNavOverlay> {
             opacity: _visible ? 1 : 0,
             child: Material(
               color: Colors.white,
-              elevation: _visible ? 2 : 0,
+              elevation: 0,
               child: ArticleAdjacentNav(
                 previous: widget.previous,
                 next: widget.next,

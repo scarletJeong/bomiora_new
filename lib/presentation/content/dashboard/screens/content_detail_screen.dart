@@ -361,10 +361,6 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Container(
-                  height: healthDp(context, 1),
-                  color: const Color(0x33E0BEC4),
-                ),
                 Padding(
                   padding:
                       EdgeInsets.symmetric(horizontal: healthDp(context, 27)),
