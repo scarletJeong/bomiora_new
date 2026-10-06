@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/app_assets.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../data/models/review/main_home_review_model.dart';
+import '../../../data/services/auth_service.dart';
 import '../../../data/services/review_service.dart';
+import '../../common/widgets/app_blur_backdrop.dart';
 import '../../common/widgets/app_star_rating.dart';
 import '../../common/widgets/centered_empty_state.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
@@ -40,12 +42,28 @@ class _ReviewBestScreenState extends State<ReviewBestScreen> {
   MainReviewStats _stats = const MainReviewStats();
   int? _expandedMrNo;
   bool _didScrollToInitial = false;
+  bool? _loggedIn;
 
   @override
   void initState() {
     super.initState();
     _expandedMrNo = widget.initialMrNo;
+    _loadAuth();
     _load(page: 0, focusMrNo: widget.initialMrNo);
+  }
+
+  Future<void> _loadAuth() async {
+    final user = await AuthService.getUser();
+    if (!mounted) return;
+    setState(() {
+      _loggedIn = user != null && user.id.trim().isNotEmpty;
+    });
+  }
+
+  Future<void> _onGuestLoginTap() async {
+    await Navigator.pushNamed(context, '/login');
+    if (!mounted) return;
+    await _loadAuth();
   }
 
   @override
@@ -54,8 +72,7 @@ class _ReviewBestScreenState extends State<ReviewBestScreen> {
     super.dispose();
   }
 
-  GlobalKey _keyFor(int mrNo) =>
-      _itemKeys.putIfAbsent(mrNo, () => GlobalKey());
+  GlobalKey _keyFor(int mrNo) => _itemKeys.putIfAbsent(mrNo, () => GlobalKey());
 
   Future<void> _load({required int page, int? focusMrNo}) async {
     setState(() {
@@ -168,74 +185,167 @@ class _ReviewBestScreenState extends State<ReviewBestScreen> {
   @override
   Widget build(BuildContext context) {
     final padH = healthDp(context, 27);
+    final page = _loggedIn == null
+        ? const Center(child: CircularProgressIndicator(color: _pink))
+        : _buildReviewPage(context, padH);
 
     return MobileAppLayoutWrapper(
       appBar: const HealthAppBar(
         title: '베스트 리뷰',
       ),
-      child: _loading && _reviews.isEmpty
-          ? const Center(child: CircularProgressIndicator(color: _pink))
-          : RefreshIndicator(
-              color: _pink,
-              onRefresh: () => _load(page: _page),
-              child: CustomScrollView(
-                controller: _scrollController,
-                cacheExtent: 5000,
-                physics: const AlwaysScrollableScrollPhysics(),
-                slivers: [
-                  SliverPadding(
-                    padding: EdgeInsets.fromLTRB(padH, 0, padH, 0),
-                    sliver: SliverToBoxAdapter(
-                      child: Column(
-                        children: [
-                          _buildCountRow(context),
-                          SizedBox(height: healthDp(context, 10)),
-                          _buildStatsCard(context),
-                          SizedBox(height: healthDp(context, 20)),
-                        ],
-                      ),
-                    ),
+      child: _loggedIn == false
+          ? Stack(
+              fit: StackFit.expand,
+              children: [
+                IgnorePointer(child: page),
+                Positioned.fill(
+                  child: AppBlurBackdrop(
+                    color: const Color(0xB3D9D9D9),
+                    child: _buildGuestLockMessage(context),
                   ),
-                  if (_loading)
-                    const SliverFillRemaining(
-                      hasScrollBody: false,
-                      child: Center(
-                        child: CircularProgressIndicator(color: _pink),
-                      ),
-                    )
-                  else if (_reviews.isEmpty)
-                    SliverFillRemaining(
-                      hasScrollBody: false,
-                      child: CenteredEmptyState(
-                        iconWidget: CenteredEmptyState.assetIcon(
-                          context,
-                          AppAssets.emptyProductReviewIcon,
-                        ),
-                        message: '등록된 베스트 리뷰가 없습니다.',
-                      ),
-                    )
-                  else
-                    SliverPadding(
-                      padding: EdgeInsets.fromLTRB(
-                        padH,
-                        0,
-                        padH,
-                        healthDp(context, 40),
-                      ),
-                      sliver: SliverList(
-                        delegate: SliverChildListDelegate([
-                          ..._buildReviewItems(context),
-                          if (_totalPages > 1) ...[
-                            SizedBox(height: healthDp(context, 24)),
-                            _buildPagination(context),
-                          ],
-                        ]),
-                      ),
-                    ),
-                ],
+                ),
+              ],
+            )
+          : page,
+    );
+  }
+
+  Widget _buildGuestLockMessage(BuildContext context) {
+    return Align(
+      alignment: Alignment.topCenter,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          healthDp(context, 20),
+          healthDp(context, 120),
+          healthDp(context, 20),
+          healthDp(context, 20),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '의료법에 의거하여 의약품 후기는',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: healthSp(context, 15),
+                height: 1.45,
+                color: Colors.grey[800],
+                fontFamily: _font,
+                fontWeight: FontWeight.w500,
               ),
             ),
+            SizedBox(height: healthDp(context, 8)),
+            Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: healthDp(context, 8),
+                vertical: healthDp(context, 4),
+              ),
+              color: _pink,
+              child: Text(
+                '로그인 후 확인이 가능합니다',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: healthSp(context, 15),
+                  color: Colors.white,
+                  fontFamily: _font,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            SizedBox(height: healthDp(context, 24)),
+            SizedBox(
+              width: healthDp(context, 200),
+              child: ElevatedButton(
+                onPressed: _onGuestLoginTap,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _pink,
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.symmetric(
+                    vertical: healthDp(context, 12),
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(healthDp(context, 8)),
+                  ),
+                ),
+                child: Text(
+                  '로그인 하기',
+                  style: TextStyle(
+                    fontSize: healthSp(context, 16),
+                    fontWeight: FontWeight.w500,
+                    fontFamily: _font,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
+  }
+
+  Widget _buildReviewPage(BuildContext context, double padH) {
+    return _loading && _reviews.isEmpty
+        ? const Center(child: CircularProgressIndicator(color: _pink))
+        : RefreshIndicator(
+            color: _pink,
+            onRefresh: () => _load(page: _page),
+            child: CustomScrollView(
+              controller: _scrollController,
+              cacheExtent: 5000,
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                SliverPadding(
+                  padding: EdgeInsets.fromLTRB(padH, 0, padH, 0),
+                  sliver: SliverToBoxAdapter(
+                    child: Column(
+                      children: [
+                        _buildCountRow(context),
+                        SizedBox(height: healthDp(context, 10)),
+                        _buildStatsCard(context),
+                        SizedBox(height: healthDp(context, 20)),
+                      ],
+                    ),
+                  ),
+                ),
+                if (_loading)
+                  const SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: Center(
+                      child: CircularProgressIndicator(color: _pink),
+                    ),
+                  )
+                else if (_reviews.isEmpty)
+                  SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: CenteredEmptyState(
+                      iconWidget: CenteredEmptyState.assetIcon(
+                        context,
+                        AppAssets.emptyProductReviewIcon,
+                      ),
+                      message: '등록된 베스트 리뷰가 없습니다.',
+                    ),
+                  )
+                else
+                  SliverPadding(
+                    padding: EdgeInsets.fromLTRB(
+                      padH,
+                      0,
+                      padH,
+                      healthDp(context, 40),
+                    ),
+                    sliver: SliverList(
+                      delegate: SliverChildListDelegate([
+                        ..._buildReviewItems(context),
+                        if (_totalPages > 1) ...[
+                          SizedBox(height: healthDp(context, 24)),
+                          _buildPagination(context),
+                        ],
+                      ]),
+                    ),
+                  ),
+              ],
+            ),
+          );
   }
 
   Widget _buildCountRow(BuildContext context) {
@@ -420,8 +530,8 @@ class _ReviewBestScreenState extends State<ReviewBestScreen> {
 
   Widget _buildPagination(BuildContext context) {
     const maxShow = 5;
-    var start =
-        (_page - (maxShow ~/ 2)).clamp(0, (_totalPages - maxShow).clamp(0, _totalPages));
+    var start = (_page - (maxShow ~/ 2))
+        .clamp(0, (_totalPages - maxShow).clamp(0, _totalPages));
     var end = (start + maxShow).clamp(0, _totalPages);
     if (end - start < maxShow && _totalPages >= maxShow) {
       start = (end - maxShow).clamp(0, _totalPages);
@@ -562,9 +672,8 @@ class _BestReviewCardState extends State<_BestReviewCard> {
   @override
   Widget build(BuildContext context) {
     final images = _imageUrls;
-    final summaryOrContent = widget.expanded
-        ? widget.review.fullBodyText
-        : widget.review.bodyText;
+    final summaryOrContent =
+        widget.expanded ? widget.review.fullBodyText : widget.review.bodyText;
     final title = widget.review.mrTitle?.trim() ?? '';
     final imageSize = healthDp(context, 320);
 
@@ -598,7 +707,8 @@ class _BestReviewCardState extends State<_BestReviewCard> {
                                   images[i],
                                   fit: BoxFit.cover,
                                   errorBuilder: (_, __, ___) =>
-                                      const ColoredBox(color: Color(0xFFE0E0E0)),
+                                      const ColoredBox(
+                                          color: Color(0xFFE0E0E0)),
                                   loadingBuilder: (context, child, progress) {
                                     if (progress == null) return child;
                                     return const ColoredBox(
