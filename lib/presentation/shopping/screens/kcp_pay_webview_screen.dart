@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart'
     show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 import '../../../core/network/api_client.dart';
@@ -478,17 +479,31 @@ class _KcpPayWebViewScreenState extends State<KcpPayWebViewScreen> {
           )
         : webView;
 
+    final topInset = MediaQuery.paddingOf(context).top;
     final scaffold = Scaffold(
-      backgroundColor: const Color(0xFF6B6B6B),
-      body: body,
+      backgroundColor: Colors.white,
+      body: Padding(
+        padding: EdgeInsets.only(top: topInset),
+        child: ColoredBox(
+          color: const Color(0xFF6B6B6B),
+          child: body,
+        ),
+      ),
     );
 
-    return WillPopScope(
-      onWillPop: () async {
-        _returnUserCancelled();
-        return false;
-      },
-      child: scaffold,
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.white,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+      ),
+      child: WillPopScope(
+        onWillPop: () async {
+          _returnUserCancelled();
+          return false;
+        },
+        child: scaffold,
+      ),
     );
   }
 }
