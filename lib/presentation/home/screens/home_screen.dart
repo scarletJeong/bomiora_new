@@ -6,8 +6,10 @@ import '../../../data/models/home/banner_model.dart';
 import '../../../data/models/product/product_model.dart';
 import '../../../data/repositories/product/product_category_catalog.dart';
 import '../../../data/repositories/product/product_repository.dart';
+import '../../../data/services/auth_service.dart';
 import '../../../data/services/community_prefetch.dart';
 import '../../../data/services/banner_service.dart';
+import '../../../data/services/coupon_service.dart';
 import '../../common/widgets/app_clickable.dart';
 import '../../common/widgets/app_footer.dart';
 import '../../common/widgets/appbar_menutap.dart';
@@ -106,11 +108,9 @@ class _HomeScreenState extends State<HomeScreen> {
   void _ensureHomeLoads() {
     if (_homeLoadStarted) return;
     _homeLoadStarted = true;
-    _bannersFuture =
-        widget.bannersFuture ?? BannerService.fetchMobileBanners();
-    _newProductsFuture =
-        widget.newProductsFuture ??
-            ProductRepository.getNewProducts(limit: _kNewLimit);
+    _bannersFuture = widget.bannersFuture ?? BannerService.fetchMobileBanners();
+    _newProductsFuture = widget.newProductsFuture ??
+        ProductRepository.getNewProducts(limit: _kNewLimit);
     _loadNewProducts();
     _scheduleBelowFoldLoad();
   }
@@ -121,9 +121,8 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final products = await future;
       if (!mounted) return;
-      final withImage = products
-          .where((p) => p.displayImageUrl.trim().isNotEmpty)
-          .toList();
+      final withImage =
+          products.where((p) => p.displayImageUrl.trim().isNotEmpty).toList();
       setState(() {
         _newProducts = products;
         _newLoading = false;
@@ -196,6 +195,14 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() => _loadBelowFold = true);
     _loadMdPick();
     _refreshCategoryTabs();
+    _prefetchCoupons();
+  }
+
+  Future<void> _prefetchCoupons() async {
+    final user = await AuthService.getUser();
+    final mbId = user?.id.trim() ?? '';
+    if (mbId.isEmpty) return;
+    await CouponService.getCouponTabs(mbId);
   }
 
   Future<void> _loadMdPick() async {
@@ -250,6 +257,7 @@ class _HomeScreenState extends State<HomeScreen> {
       });
 
       if (tabs.isNotEmpty) {
+        _prefetchCategoryProducts(tabs);
         _loadProductsForCurrentTab();
       }
     } catch (_) {
@@ -332,6 +340,36 @@ class _HomeScreenState extends State<HomeScreen> {
   String _cacheKeyForTab(ProductCategoryItem tab) =>
       '${tab.productKind}:${tab.categoryId}';
 
+  void _prefetchCategoryProducts(List<ProductCategoryItem> tabs) {
+    for (final tab in tabs) {
+      final id = tab.categoryId.trim();
+      if (id.isEmpty) continue;
+      final key = _cacheKeyForTab(tab);
+      ProductRepository.getProductsByCategory(
+        categoryId: id,
+        productKind: tab.productKind,
+        page: 1,
+        pageSize: _kCategoryMaxDisplay,
+      ).then((products) {
+        if (!mounted) return;
+        setState(() {
+          _productsByCategory[key] = products;
+          if (_tabs.isNotEmpty &&
+              _cacheKeyForTab(_tabs[_selectedTabIndex]) == key) {
+            _categoryLoading = false;
+            _categoryError = null;
+          }
+        });
+      }, onError: (_, __) {});
+      ProductRepository.getProductsByCategory(
+        categoryId: id,
+        productKind: tab.productKind,
+        page: 1,
+        pageSize: 20,
+      );
+    }
+  }
+
   void _selectTab(int index) {
     if (index < 0 || index >= _tabs.length || index == _selectedTabIndex) {
       return;
@@ -374,9 +412,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _openProduct(Product product, {String? fallbackKind}) {
-    final kind = (product.productKind ?? fallbackKind ?? 'general')
-        .trim()
-        .toLowerCase();
+    final kind =
+        (product.productKind ?? fallbackKind ?? 'general').trim().toLowerCase();
     final route = kind == 'prescription'
         ? '/product/${product.id}'
         : '/product-general/${product.id}';
@@ -520,8 +557,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final hPad = healthDp(context, 20);
     final cardW = ProductCardWithSubscription.preferredCardWidth(context);
-    final cardH =
-        ProductCardWithSubscription.preferredMainAxisExtent(context);
+    final cardH = ProductCardWithSubscription.preferredMainAxisExtent(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -572,8 +608,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final displayProducts = products.take(_kCategoryMaxDisplay).toList();
     final showMoreOnLast = products.length >= _kCategoryMaxDisplay;
     final cardW = ProductCardWithSubscription.preferredCardWidth(context);
-    final cardH =
-        ProductCardWithSubscription.preferredMainAxisExtent(context);
+    final cardH = ProductCardWithSubscription.preferredMainAxisExtent(context);
     final tabFs = healthSp(context, 12);
 
     return Column(
@@ -694,8 +729,7 @@ class _HomeScreenState extends State<HomeScreen> {
       itemCount: displayProducts.length,
       itemBuilder: (_, index) {
         final product = displayProducts[index];
-        final showMore =
-            index == displayProducts.length - 1 && showMoreOnLast;
+        final showMore = index == displayProducts.length - 1 && showMoreOnLast;
         return SizedBox(
           width: cardW,
           height: cardH,
@@ -742,9 +776,8 @@ class _HomeScreenState extends State<HomeScreen> {
       child: WebDragScrollConfiguration(
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
-          padding: padded
-              ? EdgeInsets.symmetric(horizontal: hPad)
-              : EdgeInsets.zero,
+          padding:
+              padded ? EdgeInsets.symmetric(horizontal: hPad) : EdgeInsets.zero,
           itemCount: itemCount,
           separatorBuilder: (_, __) => SizedBox(width: gap),
           itemBuilder: itemBuilder,
@@ -786,9 +819,7 @@ class _CategoryTabChip extends StatelessWidget {
         child: Text(
           label,
           style: TextStyle(
-            color: selected
-                ? const Color(0xFFFF5A8D)
-                : const Color(0xFF383838),
+            color: selected ? const Color(0xFFFF5A8D) : const Color(0xFF383838),
             fontSize: fontSize,
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w500,

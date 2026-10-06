@@ -170,13 +170,14 @@ Widget buildProductDetailHtml({
                 return Padding(
                   padding: EdgeInsets.only(bottom: verticalGap),
                   child: AppNetworkImage(
+                    key: ValueKey(url),
                     url: url,
                     width: contentWidth,
                     fit: BoxFit.fitWidth,
                     alignment: Alignment.topCenter,
                     decodeWidthLogical: contentWidth,
                     preferHtmlElementOnWeb: false,
-                    evictOnDispose: true,
+                    evictOnDispose: false,
                     errorBuilder: (_, __, ___) => const SizedBox.shrink(),
                   ),
                 );
@@ -291,17 +292,20 @@ Widget buildProductDetailBlock({
       fontFamily: fontFamily,
     );
   }
-  return Center(
-    child: AppNetworkImage(
-      url: block.imageUrl!,
-      width: double.infinity,
-      fit: BoxFit.fitWidth,
-      alignment: Alignment.topCenter,
-      decodeWidthLogical: MediaQuery.sizeOf(context).width,
-      preferHtmlElementOnWeb: false,
-      evictOnDispose: true,
-      errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-    ),
+  return LayoutBuilder(
+    builder: (context, constraints) {
+      final width = constraints.maxWidth;
+      return AppNetworkImage(
+        url: block.imageUrl!,
+        width: width,
+        fit: BoxFit.fitWidth,
+        alignment: Alignment.topCenter,
+        decodeWidthLogical: width,
+        preferHtmlElementOnWeb: false,
+        evictOnDispose: true,
+        errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+      );
+    },
   );
 }
 
@@ -312,6 +316,7 @@ class ProductDetailCollapsedPreview extends StatelessWidget {
     required this.html,
     required this.horizontalPadding,
     required this.onExpand,
+    this.expanded = false,
     this.margin,
     this.fontFamily = 'Gmarket Sans TTF',
   });
@@ -319,6 +324,7 @@ class ProductDetailCollapsedPreview extends StatelessWidget {
   final String html;
   final double horizontalPadding;
   final VoidCallback onExpand;
+  final bool expanded;
   final EdgeInsetsGeometry? margin;
   final String fontFamily;
 
@@ -335,9 +341,10 @@ class ProductDetailCollapsedPreview extends StatelessWidget {
             children: [
               ClipRect(
                 child: SizedBox(
-                  height: previewHeight,
+                  height: expanded ? null : previewHeight,
                   width: double.infinity,
                   child: IgnorePointer(
+                    ignoring: !expanded,
                     child: buildProductDetailHtml(
                       context: context,
                       html: html,
@@ -346,56 +353,58 @@ class ProductDetailCollapsedPreview extends StatelessWidget {
                   ),
                 ),
               ),
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: IgnorePointer(
-                  child: Container(
-                    height: healthDp(context, 50),
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Color(0x0DFFFFFF),
-                          Color(0xC7FFFFFF),
-                        ],
+              if (!expanded)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: IgnorePointer(
+                    child: Container(
+                      height: healthDp(context, 50),
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Color(0x0DFFFFFF),
+                            Color(0xC7FFFFFF),
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
             ],
           ),
-          SizedBox(
-            height: healthDp(context, 24),
-            child: OutlinedButton(
-              onPressed: onExpand,
-              style: OutlinedButton.styleFrom(
-                side: BorderSide(
-                  color: const Color(0xFFFF4081),
-                  width: healthDp(context, 1),
+          if (!expanded)
+            SizedBox(
+              height: healthDp(context, 24),
+              child: OutlinedButton(
+                onPressed: onExpand,
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(
+                    color: const Color(0xFFFF4081),
+                    width: healthDp(context, 1),
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(healthDp(context, 14)),
+                  ),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: healthDp(context, 40),
+                    vertical: healthDp(context, 5),
+                  ),
+                  foregroundColor: const Color(0xFFFF4081),
                 ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(healthDp(context, 14)),
-                ),
-                padding: EdgeInsets.symmetric(
-                  horizontal: healthDp(context, 40),
-                  vertical: healthDp(context, 5),
-                ),
-                foregroundColor: const Color(0xFFFF4081),
-              ),
-              child: Text(
-                '+ 자세히 보기',
-                style: TextStyle(
-                  fontSize: healthSp(context, 12),
-                  fontWeight: FontWeight.w500,
-                  fontFamily: fontFamily,
+                child: Text(
+                  '+ 자세히 보기',
+                  style: TextStyle(
+                    fontSize: healthSp(context, 12),
+                    fontWeight: FontWeight.w500,
+                    fontFamily: fontFamily,
+                  ),
                 ),
               ),
             ),
-          ),
         ],
       ),
     );
