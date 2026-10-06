@@ -70,6 +70,7 @@ class _SplashScreenState extends State<SplashScreen> {
     if (_homeChild == null) {
       setState(() {
         _homeChild = MobileAppLayoutWrapper(
+          resizeToAvoidBottomInset: false,
           child: HomeScreen(initialIndex: widget.homeTabIndex),
         );
       });
@@ -105,6 +106,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
     setState(() {
       _homeChild = MobileAppLayoutWrapper(
+        resizeToAvoidBottomInset: false,
         child: HomeScreen(
           initialIndex: widget.homeTabIndex,
           bannersFuture: bannersFuture,

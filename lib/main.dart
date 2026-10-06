@@ -431,6 +431,7 @@ class MobileLayoutWrapper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MobileAppLayoutWrapper(
+      resizeToAvoidBottomInset: false,
       child: HomeScreen(initialIndex: initialIndex),
     );
   }

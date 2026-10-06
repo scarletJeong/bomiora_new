@@ -161,6 +161,7 @@ class _ContentListScreenState extends State<ContentListScreen> {
           textScaler: TextScaler.linear(textScale),
         ),
         child: MobileAppLayoutWrapper(
+          resizeToAvoidBottomInset: false,
           scaffoldKey: _scaffoldKey,
           appBar: HealthAppBar.logo(
             onMenuPressed: () => _scaffoldKey.currentState?.openDrawer(),

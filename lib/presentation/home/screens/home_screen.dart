@@ -446,6 +446,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: Colors.white,
+      resizeToAvoidBottomInset: false,
       extendBodyBehindAppBar: false,
       appBar: HealthAppBar.logo(
         onMenuPressed: () => _scaffoldKey.currentState?.openDrawer(),
