@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../settings/policy/legal_document_view.dart';
+import '../../settings/policy/legal_documents.dart';
 import 'agreement_popup_dialog.dart';
 
 class LocationServicePopup extends StatelessWidget {
@@ -9,8 +11,10 @@ class LocationServicePopup extends StatelessWidget {
   Widget build(BuildContext context) {
     return const AgreementPopupDialog(
       title: '위치기반서비스 이용약관',
-      subtitle: '위치기반서비스 이용약관',
-      body: '위치기반서비스 이용약관 내용은 추후 제공 예정입니다.',
+      bodyChild: LegalDocumentView(
+        assetPath: LegalDocuments.location,
+        padding: EdgeInsets.zero,
+      ),
     );
   }
 }

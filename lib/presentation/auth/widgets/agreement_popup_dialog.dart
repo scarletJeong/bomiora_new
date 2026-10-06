@@ -6,6 +6,7 @@ class AgreementPopupDialog extends StatelessWidget {
   final String title;
   final String subtitle;
   final String body;
+  final Widget? bodyChild;
 
   /// 375 기준 팝업 높이 (기존 607 → 520).
   static const double _heightBase = 520;
@@ -14,8 +15,9 @@ class AgreementPopupDialog extends StatelessWidget {
   const AgreementPopupDialog({
     super.key,
     required this.title,
-    required this.subtitle,
-    required this.body,
+    this.subtitle = '',
+    this.body = '',
+    this.bodyChild,
   });
 
   @override
@@ -74,33 +76,36 @@ class AgreementPopupDialog extends StatelessWidget {
             ),
             SizedBox(height: healthDp(context, 16)),
             Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      subtitle,
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: healthSp(context, 16),
-                        fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w500,
-                      ),
+              child: bodyChild ??
+                  SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (subtitle.isNotEmpty) ...[
+                          Text(
+                            subtitle,
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontSize: healthSp(context, 16),
+                              fontFamily: 'Gmarket Sans TTF',
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          SizedBox(height: healthDp(context, 12)),
+                        ],
+                        Text(
+                          body,
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontSize: healthSp(context, 14),
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontWeight: FontWeight.w300,
+                            height: 1.6,
+                          ),
+                        ),
+                      ],
                     ),
-                    SizedBox(height: healthDp(context, 12)),
-                    Text(
-                      body,
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: healthSp(context, 14),
-                        fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w300,
-                        height: 1.6,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+                  ),
             ),
           ],
         ),
@@ -199,7 +204,8 @@ class AgreementStyleConfirmDialog extends StatelessWidget {
                         vertical: healthDp(context, 12),
                       ),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(healthDp(context, 8)),
+                        borderRadius:
+                            BorderRadius.circular(healthDp(context, 8)),
                       ),
                     ),
                     child: Text(
@@ -223,7 +229,8 @@ class AgreementStyleConfirmDialog extends StatelessWidget {
                         vertical: healthDp(context, 12),
                       ),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(healthDp(context, 8)),
+                        borderRadius:
+                            BorderRadius.circular(healthDp(context, 8)),
                       ),
                     ),
                     child: Text(
