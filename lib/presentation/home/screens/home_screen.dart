@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
@@ -622,38 +623,47 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         SizedBox(height: healthDp(context, 20)),
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: hPad),
-          child: WebDragScrollConfiguration(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  for (var i = 0; i < _tabs.length; i++) ...[
-                    if (i > 0) ...[
-                      SizedBox(width: healthDp(context, 4)),
-                      Text(
-                        '|',
-                        style: TextStyle(
-                          color: const Color(0xFFC9C9C9),
-                          fontSize: tabFs * 0.62,
-                          height: 1.0,
-                          fontFamily: 'Gmarket Sans TTF',
-                          fontWeight: FontWeight.w400,
-                        ),
+        SizedBox(
+          height: tabFs * 1.6,
+          child: WebHorizontalScrollHost(
+            builder: (context, controller) {
+              final endExtra = kIsWeb ? healthDp(context, 48) : 0.0;
+              return ListView.separated(
+                controller: controller,
+                scrollDirection: Axis.horizontal,
+                padding: EdgeInsets.only(
+                  left: hPad,
+                  right: hPad + endExtra,
+                ),
+                itemCount: _tabs.length,
+                separatorBuilder: (_, __) => Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(width: healthDp(context, 4)),
+                    Text(
+                      '|',
+                      style: TextStyle(
+                        color: const Color(0xFFC9C9C9),
+                        fontSize: tabFs * 0.62,
+                        height: 1.0,
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w400,
                       ),
-                      SizedBox(width: healthDp(context, 4)),
-                    ],
-                    _CategoryTabChip(
-                      label: _tabs[i].label,
-                      selected: _selectedTabIndex == i,
-                      fontSize: tabFs,
-                      onTap: () => _selectTab(i),
                     ),
+                    SizedBox(width: healthDp(context, 4)),
                   ],
-                ],
-              ),
-            ),
+                ),
+                itemBuilder: (_, i) => Align(
+                  alignment: Alignment.centerLeft,
+                  child: _CategoryTabChip(
+                    label: _tabs[i].label,
+                    selected: _selectedTabIndex == i,
+                    fontSize: tabFs,
+                    onTap: () => _selectTab(i),
+                  ),
+                ),
+              );
+            },
           ),
         ),
         SizedBox(height: healthDp(context, 20)),
@@ -771,13 +781,16 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
+    final endExtra = kIsWeb ? healthDp(context, 48) : 0.0;
     return SizedBox(
       height: height,
-      child: WebDragScrollConfiguration(
-        child: ListView.separated(
+      child: WebHorizontalScrollHost(
+        builder: (context, controller) => ListView.separated(
+          controller: controller,
           scrollDirection: Axis.horizontal,
-          padding:
-              padded ? EdgeInsets.symmetric(horizontal: hPad) : EdgeInsets.zero,
+          padding: padded
+              ? EdgeInsets.only(left: hPad, right: hPad + endExtra)
+              : EdgeInsets.only(right: endExtra),
           itemCount: itemCount,
           separatorBuilder: (_, __) => SizedBox(width: gap),
           itemBuilder: itemBuilder,
