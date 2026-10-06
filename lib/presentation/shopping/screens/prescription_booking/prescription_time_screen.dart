@@ -404,8 +404,10 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
             widget.formData['eatingHabits']),
         'answer9': HealthProfilePayload.formatListToString(
             widget.formData['foodPreference']),
-        'answer10': HealthProfilePayload.composeAnswer10(
+        'answer10': HealthProfilePayload.composeAnswer10FrequencyOnly(
           widget.formData['exerciseFrequency']?.toString(),
+        ),
+        'answer102': HealthProfilePayload.composeAnswer10TypesOnly(
           widget.formData['exerciseTypes'],
         ),
         'answer11': HealthProfilePayload.formatListToString(
