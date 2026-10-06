@@ -1363,45 +1363,20 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
         return SliverMainAxisGroup(
           slivers: [
             if (processedHtml.isNotEmpty)
-              if (expanded)
-                _buildExpandedDetailSliver(processedHtml)
-              else
-                SliverToBoxAdapter(
-                  child: ProductDetailCollapsedPreview(
-                    html: processedHtml,
-                    fontFamily: _kGmarketSans,
-                    horizontalPadding: healthDp(context, 27),
-                    margin: EdgeInsets.only(top: healthDp(context, 24)),
-                    onExpand: () => _detailExpanded.value = true,
-                  ),
+              SliverToBoxAdapter(
+                child: ProductDetailCollapsedPreview(
+                  html: processedHtml,
+                  expanded: expanded,
+                  fontFamily: _kGmarketSans,
+                  horizontalPadding: healthDp(context, 27),
+                  margin: EdgeInsets.only(top: healthDp(context, 24)),
+                  onExpand: () => _detailExpanded.value = true,
                 ),
+              ),
             SliverToBoxAdapter(child: _buildProductInfoTail()),
           ],
         );
       },
-    );
-  }
-
-  Widget _buildExpandedDetailSliver(String html) {
-    final blocks = splitProductDetailBlocks(html);
-    return SliverPadding(
-      padding: EdgeInsets.fromLTRB(
-        healthDp(context, 27),
-        healthDp(context, 24),
-        healthDp(context, 27),
-        0,
-      ),
-      sliver: SliverList(
-        delegate: SliverChildBuilderDelegate(
-          (context, index) => buildProductDetailBlock(
-            context: context,
-            block: blocks[index],
-            fontFamily: _kGmarketSans,
-          ),
-          childCount: blocks.length,
-          addAutomaticKeepAlives: false,
-        ),
-      ),
     );
   }
 
