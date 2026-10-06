@@ -11,6 +11,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_web_plugins:
+    sdk: flutter
   
   # UI 관련
   # carousel_slider: ^4.2.1  # Flutter와 충돌로 주석 처리
@@ -62,6 +64,7 @@ dependencies:
   fl_chart: ^0.68.0
   kakao_flutter_sdk: ^1.10.0
   flutter_naver_login: ^2.1.1
+  sign_in_with_apple: ^6.1.4
   
   # SVG 이미지 지원
   flutter_svg: ^2.0.9
@@ -86,6 +89,10 @@ flutter:
   uses-material-design: true
 
   assets:
+    - legal/이용약관.md
+    - legal/개인정보처리방침.md
+    - legal/위치정보이용약관.md
+    - legal/마케팅정보수신동의.md
     - assets/img/
     - assets/img/bank/
     # 웹 빌드 AssetManifest 누락 방지(폴더 등록만으로 생략되는 경우 대비)
