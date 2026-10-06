@@ -52,10 +52,12 @@ class NotificationInboxService {
 
   /// 동일 푸시 중복 저장 방지용 안정 ID
   static String _stableInboxId(Map<String, dynamic> data, String? type) {
-    final explicit = (data['notification_id'] ?? data['noti_id'])?.toString().trim();
+    final explicit =
+        (data['notification_id'] ?? data['noti_id'])?.toString().trim();
     if (explicit != null && explicit.isNotEmpty) return explicit;
 
-    final odId = (data['od_id'] ?? data['order_number'])?.toString().trim() ?? '';
+    final odId =
+        (data['od_id'] ?? data['order_number'])?.toString().trim() ?? '';
     final wrId = data['wr_id']?.toString().trim() ?? '';
     final cpId = data['cp_id']?.toString().trim() ?? '';
     final t = (type ?? '').toLowerCase();
@@ -68,6 +70,14 @@ class NotificationInboxService {
       return 'contact_$wrId';
     }
     if (t == 'coupon' && cpId.isNotEmpty) return 'coupon_$cpId';
+    if (t == 'point') {
+      final day = (data['ymd'] ?? data['date'])?.toString().trim();
+      final stamp = (day != null && day.isNotEmpty)
+          ? day
+          : DateTime.now().toIso8601String().substring(0, 10);
+      final amount = (data['point'] ?? data['id'] ?? '').toString().trim();
+      return 'point_${stamp}_$amount';
+    }
 
     final fallbackId = data['id']?.toString().trim() ?? '';
     if (fallbackId.isNotEmpty && t.isNotEmpty) return '${t}_$fallbackId';
@@ -89,10 +99,8 @@ class NotificationInboxService {
     final type = data['type']?.toString();
     final id = _stableInboxId(data, type);
 
-    final resolvedTitle =
-        (title ?? data['title']?.toString() ?? '알림').trim();
-    var resolvedBody =
-        (body ?? data['body']?.toString())?.trim() ?? '';
+    final resolvedTitle = (title ?? data['title']?.toString() ?? '알림').trim();
+    var resolvedBody = (body ?? data['body']?.toString())?.trim() ?? '';
     // 제목과 본문이 같으면 회색 보조문구로 중복 표시되지 않게 제거
     if (resolvedBody.isEmpty || resolvedBody == resolvedTitle) {
       resolvedBody = '';
@@ -133,11 +141,12 @@ class NotificationInboxService {
     final server = allowServer && !_serverListMissing
         ? await _fetchFromServer(mbId, limit)
         : null;
+    final local = await _loadLocal(mbId);
     if (server != null) {
-      await _saveLocalList(mbId, server);
-      items = server;
+      items = _mergeInbox(local, server);
+      await _saveLocalList(mbId, items);
     } else {
-      items = await _loadLocal(mbId);
+      items = local;
     }
 
     items.sort((a, b) => b.createdAt.compareTo(a.createdAt));
@@ -243,6 +252,24 @@ class NotificationInboxService {
     } catch (_) {
       return null;
     }
+  }
+
+  static List<AppNotificationItem> _mergeInbox(
+    List<AppNotificationItem> local,
+    List<AppNotificationItem> server,
+  ) {
+    final byId = <String, AppNotificationItem>{
+      for (final item in local) item.id: item,
+    };
+    for (final item in server) {
+      final prev = byId[item.id];
+      if (prev == null) {
+        byId[item.id] = item;
+        continue;
+      }
+      byId[item.id] = prev.copyWith(isRead: prev.isRead && item.isRead);
+    }
+    return byId.values.toList();
   }
 
   static Future<List<AppNotificationItem>> _loadLocal(String mbId) async {
