@@ -5,7 +5,6 @@ import '../../../core/utils/image_url_helper.dart';
 import '../../../data/models/review/main_home_review_model.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/review_service.dart';
-import '../../common/widgets/app_blur_backdrop.dart';
 import '../../common/widgets/app_star_rating.dart';
 import '../../common/widgets/centered_empty_state.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
@@ -185,9 +184,9 @@ class _ReviewBestScreenState extends State<ReviewBestScreen> {
   @override
   Widget build(BuildContext context) {
     final padH = healthDp(context, 27);
-    final page = _loggedIn == null
-        ? const Center(child: CircularProgressIndicator(color: _pink))
-        : _buildReviewPage(context, padH);
+    final page = _loggedIn == true
+        ? _buildReviewPage(context, padH)
+        : const Center(child: CircularProgressIndicator(color: _pink));
 
     return MobileAppLayoutWrapper(
       appBar: const HealthAppBar(
@@ -197,13 +196,8 @@ class _ReviewBestScreenState extends State<ReviewBestScreen> {
           ? Stack(
               fit: StackFit.expand,
               children: [
-                IgnorePointer(child: page),
-                Positioned.fill(
-                  child: AppBlurBackdrop(
-                    color: const Color(0xB3D9D9D9),
-                    child: _buildGuestLockMessage(context),
-                  ),
-                ),
+                const ColoredBox(color: Colors.white),
+                Center(child: _buildGuestLockMessage(context)),
               ],
             )
           : page,
@@ -211,74 +205,66 @@ class _ReviewBestScreenState extends State<ReviewBestScreen> {
   }
 
   Widget _buildGuestLockMessage(BuildContext context) {
-    return Align(
-      alignment: Alignment.topCenter,
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(
-          healthDp(context, 20),
-          healthDp(context, 120),
-          healthDp(context, 20),
-          healthDp(context, 20),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              '의료법에 의거하여 의약품 후기는',
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: healthDp(context, 20)),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '의료법에 의거하여 의약품 후기는',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: healthSp(context, 15),
+              height: 1.45,
+              color: Colors.grey[800],
+              fontFamily: _font,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          SizedBox(height: healthDp(context, 8)),
+          Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: healthDp(context, 8),
+              vertical: healthDp(context, 4),
+            ),
+            color: _pink,
+            child: Text(
+              '로그인 후 확인이 가능합니다',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: healthSp(context, 15),
-                height: 1.45,
-                color: Colors.grey[800],
+                color: Colors.white,
                 fontFamily: _font,
                 fontWeight: FontWeight.w500,
               ),
             ),
-            SizedBox(height: healthDp(context, 8)),
-            Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: healthDp(context, 8),
-                vertical: healthDp(context, 4),
+          ),
+          SizedBox(height: healthDp(context, 24)),
+          SizedBox(
+            width: healthDp(context, 200),
+            child: ElevatedButton(
+              onPressed: _onGuestLoginTap,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _pink,
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(
+                  vertical: healthDp(context, 12),
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(healthDp(context, 8)),
+                ),
               ),
-              color: _pink,
               child: Text(
-                '로그인 후 확인이 가능합니다',
-                textAlign: TextAlign.center,
+                '로그인 하기',
                 style: TextStyle(
-                  fontSize: healthSp(context, 15),
-                  color: Colors.white,
-                  fontFamily: _font,
+                  fontSize: healthSp(context, 16),
                   fontWeight: FontWeight.w500,
+                  fontFamily: _font,
                 ),
               ),
             ),
-            SizedBox(height: healthDp(context, 24)),
-            SizedBox(
-              width: healthDp(context, 200),
-              child: ElevatedButton(
-                onPressed: _onGuestLoginTap,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _pink,
-                  foregroundColor: Colors.white,
-                  padding: EdgeInsets.symmetric(
-                    vertical: healthDp(context, 12),
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(healthDp(context, 8)),
-                  ),
-                ),
-                child: Text(
-                  '로그인 하기',
-                  style: TextStyle(
-                    fontSize: healthSp(context, 16),
-                    fontWeight: FontWeight.w500,
-                    fontFamily: _font,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

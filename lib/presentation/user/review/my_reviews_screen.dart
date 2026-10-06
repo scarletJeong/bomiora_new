@@ -298,16 +298,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
     if (_isLoading && !refresh) return;
     if (!refresh && !_hasMore) return;
 
-    setState(() {
-      _isLoading = true;
-      if (refresh) {
-        _currentPage = 0;
-        _reviews.clear();
-        _hasMore = true;
-        _historyHeadId = null;
-        _historyVisibleCount = _historyPageSize;
-      }
-    });
+    setState(() => _isLoading = true);
 
     try {
       final user = await AuthService.getUser();
@@ -322,8 +313,9 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
 
       final result = await ReviewService.getMemberReviews(
         mbId: user.id,
-        page: _currentPage,
+        page: refresh ? 0 : _currentPage,
         size: 20,
+        forceRefresh: refresh,
       );
 
       if (result['success'] == true) {
@@ -333,10 +325,13 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
           _requiresLogin = false;
           if (refresh) {
             _reviews = newReviews;
+            _currentPage = 1;
+            _historyHeadId = null;
+            _historyVisibleCount = _historyPageSize;
           } else {
             _reviews.addAll(newReviews);
+            _currentPage++;
           }
-          _currentPage++;
           _hasMore = result['hasNext'] ?? false;
           final vis = _visibleReviews();
           _ensureActiveInVisible(vis);
@@ -701,7 +696,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
   }
 
   Widget _expandedGeneralCard(ReviewModel r) {
-    final starScore = (r.averageScore ?? 0).clamp(0.0, 5.0);
+    final starScore = (r.totalIsScore ?? r.averageScore ?? 0).clamp(0.0, 5.0);
     final body = _reviewBodyPlain(r.isPositiveReviewText) ?? '';
 
     return Container(
@@ -990,12 +985,16 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
       mbId: user.id,
       page: 0,
       size: 20,
+      forceRefresh: true,
     );
     if (!mounted || latest['success'] != true) return;
     setState(() {
-      _currentPage = 0;
+      _currentPage = 1;
       _reviews = List<ReviewModel>.from(latest['reviews'] as List<ReviewModel>);
       _hasMore = latest['hasNext'] == true;
+      _requiresLogin = false;
+      final vis = _visibleReviews();
+      _ensureActiveInVisible(vis);
     });
   }
 

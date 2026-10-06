@@ -16,7 +16,8 @@ class ReviewService {
   static const Duration _memberListCacheTtl = Duration(minutes: 2);
   static final Map<String, Map<String, dynamic>> _memberListCache = {};
   static final Map<String, DateTime> _memberListCacheAt = {};
-  static final Map<String, Future<Map<String, dynamic>>> _memberListInFlight = {};
+  static final Map<String, Future<Map<String, dynamic>>> _memberListInFlight =
+      {};
 
   static void _invalidateMemberListCache([String? mbId]) {
     final id = mbId?.trim();
@@ -26,27 +27,11 @@ class ReviewService {
       return;
     }
     final prefix = '$id:';
-    final keys = _memberListCache.keys.where((k) => k.startsWith(prefix)).toList();
+    final keys =
+        _memberListCache.keys.where((k) => k.startsWith(prefix)).toList();
     for (final key in keys) {
       _memberListCache.remove(key);
       _memberListCacheAt.remove(key);
-    }
-  }
-
-  static void _patchMemberListCache(ReviewModel updated) {
-    final prefix = '${updated.mbId.trim()}:';
-    for (final key in _memberListCache.keys.toList()) {
-      if (!key.startsWith(prefix)) continue;
-      final cached = _memberListCache[key];
-      if (cached == null) continue;
-      final reviews = List<ReviewModel>.from(
-        (cached['reviews'] as List?) ?? const <ReviewModel>[],
-      );
-      final i = reviews.indexWhere((r) => r.isId == updated.isId);
-      if (i < 0) continue;
-      reviews[i] = updated;
-      cached['reviews'] = reviews;
-      _memberListCacheAt[key] = DateTime.now();
     }
   }
 
@@ -66,18 +51,17 @@ class ReviewService {
       final relativeUrl = data['url'].toString().trim();
       if (relativeUrl.isEmpty) return null;
       if (relativeUrl.startsWith('http')) return relativeUrl;
-      return relativeUrl.startsWith('/')
-          ? relativeUrl
-          : '/$relativeUrl';
+      return relativeUrl.startsWith('/') ? relativeUrl : '/$relativeUrl';
     } catch (e) {
       return null;
     }
   }
 
   /// 리뷰 작성
-  /// 
+  ///
   /// [reviewData] 리뷰 데이터
-  static Future<Map<String, dynamic>> createReview(ReviewModel reviewData) async {
+  static Future<Map<String, dynamic>> createReview(
+      ReviewModel reviewData) async {
     try {
       final response = await ApiClient.post(
         '/api/user/reviews',
@@ -117,7 +101,7 @@ class ReviewService {
       };
     }
   }
-  
+
   /// 메인 홈 베스트 리뷰 (`bomiora_main_review`, 승인만)
   static Future<Map<String, dynamic>> getMainHomeReviews({int size = 8}) async {
     try {
@@ -138,7 +122,8 @@ class ReviewService {
         if (raw is List) {
           for (final e in raw) {
             if (e is Map) {
-              list.add(MainHomeReviewModel.fromJson(Map<String, dynamic>.from(e)));
+              list.add(
+                  MainHomeReviewModel.fromJson(Map<String, dynamic>.from(e)));
             }
           }
         }
@@ -211,8 +196,7 @@ class ReviewService {
         if (data['success'] != true) {
           return {
             'success': false,
-            'message':
-                data['message']?.toString() ?? '베스트 리뷰를 불러올 수 없습니다.',
+            'message': data['message']?.toString() ?? '베스트 리뷰를 불러올 수 없습니다.',
             'reviews': <MainHomeReviewModel>[],
             'currentPage': 0,
             'totalPages': 0,
@@ -339,7 +323,7 @@ class ReviewService {
   }
 
   /// 특정 상품의 리뷰 목록 조회
-  /// 
+  ///
   /// [itId] 상품 ID
   /// [rvkind] 리뷰 종류 ('general', 'supporter', null=전체)
   /// [page] 페이지 번호 (0부터 시작)
@@ -364,14 +348,14 @@ class ReviewService {
       final String withRvkind = (rvkind != null && rvkind.isNotEmpty)
           ? '$queryString&rvkind=$rvkind'
           : queryString;
-      
+
       final response = await ApiClient.get(
         '/api/user/reviews/product/$itId?$withRvkind',
       );
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        
+
         // 리뷰 목록 파싱
         List<ReviewModel> reviews = [];
         if (data['reviews'] != null) {
@@ -379,7 +363,7 @@ class ReviewService {
               .map((review) => ReviewModel.fromJson(review))
               .toList();
         }
-        
+
         return {
           'success': true,
           'reviews': reviews,
@@ -404,9 +388,9 @@ class ReviewService {
       };
     }
   }
-  
+
   /// 특정 회원의 리뷰 목록 조회
-  /// 
+  ///
   /// [mbId] 회원 ID
   /// [page] 페이지 번호 (0부터 시작)
   /// [size] 페이지 크기
@@ -414,15 +398,19 @@ class ReviewService {
     required String mbId,
     int page = 0,
     int size = 20,
+    bool forceRefresh = false,
   }) async {
     final cacheKey = '${mbId.trim()}:$page:$size';
     final cachedAt = _memberListCacheAt[cacheKey];
-    if (cachedAt != null &&
+    if (!forceRefresh &&
+        cachedAt != null &&
         DateTime.now().difference(cachedAt) < _memberListCacheTtl) {
       return Map<String, dynamic>.from(_memberListCache[cacheKey]!);
     }
-    final pending = _memberListInFlight[cacheKey];
-    if (pending != null) return pending;
+    if (!forceRefresh) {
+      final pending = _memberListInFlight[cacheKey];
+      if (pending != null) return pending;
+    }
 
     final request = _fetchMemberReviews(mbId: mbId, page: page, size: size);
     _memberListInFlight[cacheKey] = request;
@@ -434,7 +422,9 @@ class ReviewService {
       }
       return result;
     } finally {
-      _memberListInFlight.remove(cacheKey);
+      if (identical(_memberListInFlight[cacheKey], request)) {
+        _memberListInFlight.remove(cacheKey);
+      }
     }
   }
 
@@ -452,6 +442,15 @@ class ReviewService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+        if (data is! Map || data['success'] == false) {
+          return {
+            'success': false,
+            'message': data is Map
+                ? (data['message'] ?? '리뷰 목록을 불러올 수 없습니다.')
+                : '리뷰 목록을 불러올 수 없습니다.',
+            'reviews': <ReviewModel>[],
+          };
+        }
 
         List<ReviewModel> reviews = [];
         if (data['reviews'] != null) {
@@ -484,9 +483,9 @@ class ReviewService {
       };
     }
   }
-  
+
   /// 상품 리뷰 통계 조회
-  /// 
+  ///
   /// [itId] 상품 ID
   static Future<Map<String, dynamic>> getProductReviewStats({
     required String itId,
@@ -498,11 +497,11 @@ class ReviewService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        
+
         return {
           'success': true,
-          'stats': data['stats'] != null 
-              ? ReviewStatsModel.fromJson(data['stats']) 
+          'stats': data['stats'] != null
+              ? ReviewStatsModel.fromJson(data['stats'])
               : null,
         };
       } else {
@@ -519,9 +518,9 @@ class ReviewService {
       };
     }
   }
-  
+
   /// 리뷰 상세 조회
-  /// 
+  ///
   /// [isId] 리뷰 ID
   static Future<Map<String, dynamic>> getReviewById(int isId) async {
     try {
@@ -531,11 +530,11 @@ class ReviewService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        
+
         return {
           'success': true,
-          'review': data['review'] != null 
-              ? ReviewModel.fromJson(data['review']) 
+          'review': data['review'] != null
+              ? ReviewModel.fromJson(data['review'])
               : null,
         };
       } else {
@@ -552,12 +551,13 @@ class ReviewService {
       };
     }
   }
-  
+
   /// 리뷰 수정
-  /// 
+  ///
   /// [isId] 리뷰 ID
   /// [reviewData] 수정할 리뷰 데이터
-  static Future<Map<String, dynamic>> updateReview(int isId, ReviewModel reviewData) async {
+  static Future<Map<String, dynamic>> updateReview(
+      int isId, ReviewModel reviewData) async {
     try {
       final response = await ApiClient.put(
         '/api/user/reviews/$isId',
@@ -570,7 +570,7 @@ class ReviewService {
         if (data['review'] != null) {
           saved = ReviewModel.fromJson(data['review']);
         }
-        _patchMemberListCache(saved ?? reviewData);
+        _invalidateMemberListCache(reviewData.mbId);
 
         return {
           'success': data['success'] ?? true,
@@ -591,9 +591,9 @@ class ReviewService {
       };
     }
   }
-  
+
   /// 리뷰 삭제
-  /// 
+  ///
   /// [isId] 리뷰 ID
   /// [mbId] 회원 ID (권한 확인용)
   static Future<Map<String, dynamic>> deleteReview(
@@ -631,10 +631,9 @@ class ReviewService {
       };
     }
   }
-  
-  
+
   /// 주문에 대한 리뷰 작성 여부 확인 (+ 작성 완료 itId 목록)
-  /// 
+  ///
   /// [mbId] 회원 ID
   /// [odId] 주문 ID (String - 큰 숫자 정밀도 손실 방지)
   static Future<Map<String, dynamic>> checkReviewExists({
@@ -643,7 +642,7 @@ class ReviewService {
   }) async {
     try {
       final queryString = 'mbId=$mbId&odId=$odId';
-      
+
       final response = await ApiClient.get(
         '/api/user/reviews/check?$queryString',
       );
@@ -658,7 +657,7 @@ class ReviewService {
             if (s.isNotEmpty) reviewedItIds.add(s);
           }
         }
-        
+
         return {
           'success': true,
           'exists': data['exists'] ?? reviewedItIds.isNotEmpty,
@@ -688,16 +687,14 @@ class ReviewService {
     required String mbId,
     required List<String> odIds,
   }) async {
-    final unique = odIds
-        .map((e) => e.trim())
-        .where((e) => e.isNotEmpty)
-        .toSet()
-        .toList();
+    final unique =
+        odIds.map((e) => e.trim()).where((e) => e.isNotEmpty).toSet().toList();
     if (unique.isEmpty) return {};
     try {
       final qs =
           'mbId=${Uri.encodeQueryComponent(mbId)}&odIds=${Uri.encodeQueryComponent(unique.join(','))}';
-      final response = await ApiClient.get('/api/user/reviews/reviewed-by-orders?$qs');
+      final response =
+          await ApiClient.get('/api/user/reviews/reviewed-by-orders?$qs');
       if (response.statusCode != 200) return {};
       final data = json.decode(response.body) as Map<String, dynamic>;
       if (data['success'] != true) return {};
@@ -721,4 +718,3 @@ class ReviewService {
     }
   }
 }
-
