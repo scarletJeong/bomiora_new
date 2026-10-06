@@ -20,20 +20,12 @@ class EventSection extends StatelessWidget {
         .replaceAll('.', '-');
   }
 
-  DateTime _eventSortKey(EventModel item) {
-    final created = DateDisplayFormatter.tryParseYmdFlexible(item.wrDatetime);
-    if (created != null) return created;
-    return DateTime.fromMillisecondsSinceEpoch(item.wrId);
-  }
-
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<List<EventModel>>(
       future: EventService.getActiveEvents(),
       builder: (context, snapshot) {
-        final items = List<EventModel>.from(
-          snapshot.data ?? const <EventModel>[],
-        )..sort((a, b) => _eventSortKey(b).compareTo(_eventSortKey(a)));
+        final items = snapshot.data ?? const <EventModel>[];
         final topItems = items.take(3).toList();
 
         return Container(

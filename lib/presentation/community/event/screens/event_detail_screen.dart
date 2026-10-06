@@ -57,8 +57,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       final event = result[0] as EventModel?;
       final active = (result[1] as List<EventModel>)
           .where((e) => !e.isEnded)
-          .toList()
-        ..sort((a, b) => b.wrId.compareTo(a.wrId));
+          .toList();
 
       if (!mounted) return;
 

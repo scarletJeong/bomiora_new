@@ -14,6 +14,7 @@ class EventModel {
   final String? wr1;
   final String? wr2;
   final bool isActive;
+  final int sortOrder;
 
   EventModel({
     required this.wrId,
@@ -28,6 +29,7 @@ class EventModel {
     this.wr1,
     this.wr2,
     required this.isActive,
+    this.sortOrder = 0,
   });
 
   factory EventModel.fromJson(Map<dynamic, dynamic> json) {
@@ -47,6 +49,7 @@ class EventModel {
       wr1: NodeValueParser.asString(normalized['wr_1']),
       wr2: NodeValueParser.asString(normalized['wr_2']),
       isActive: _parseBool(normalized['is_active']),
+      sortOrder: NodeValueParser.asInt(normalized['sort_order']) ?? 0,
     );
   }
 
@@ -71,6 +74,7 @@ class EventModel {
       'wr_1': wr1,
       'wr_2': wr2,
       'is_active': isActive,
+      'sort_order': sortOrder,
     };
   }
 

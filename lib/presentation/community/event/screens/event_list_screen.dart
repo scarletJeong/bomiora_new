@@ -68,7 +68,12 @@ class _EventListScreenState extends State<EventListScreen> {
     for (final e in _endedEvents) {
       byId.putIfAbsent(e.wrId, () => e);
     }
-    final list = byId.values.toList()..sort((a, b) => b.wrId.compareTo(a.wrId));
+    final list = byId.values.toList()
+      ..sort((a, b) {
+        final byOrder = a.sortOrder.compareTo(b.sortOrder);
+        if (byOrder != 0) return byOrder;
+        return a.wrId.compareTo(b.wrId);
+      });
     return list;
   }
 
