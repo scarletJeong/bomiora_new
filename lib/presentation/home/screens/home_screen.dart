@@ -209,7 +209,6 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final products = await ProductRepository.getMdPickProducts(
         limit: _kMdPickLimit,
-        productKind: 'general',
       );
       if (!mounted) return;
       setState(() {

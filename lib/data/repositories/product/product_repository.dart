@@ -205,7 +205,7 @@ class ProductRepository {
     }
   }
 
-  /// 신상품 — API 정렬(`it_order, it_id desc`) 그대로, [limit]개
+  /// 신상품 — API가 display section=new 순서를 그대로 준다. [limit]개
   static Future<List<Product>> getNewProducts({int limit = 4}) async {
     final cacheKey = 'new|$limit';
     final hit = _listCache[cacheKey];
@@ -246,48 +246,28 @@ class ProductRepository {
     return future;
   }
 
-  /// MD pick — API(`/md-pick`)가 it_type5 + 정렬.
-  /// 클라이언트: it_kind=general + ca_id ≠ a0, 최대 [limit]개
+  /// MD pick — API(`/md-pick`)가 display section=md_pick 순서를 그대로 준다.
   static Future<List<Product>> getMdPickProducts({
     int limit = 4,
-    String? productKind = 'general',
   }) async {
     try {
-      // ca_id≠a0 필터 후 limit를 맞추기 위해 여유분 요청
-      final fetchLimit = limit <= 0 ? 20 : (limit * 5).clamp(limit, 50);
-      var endpoint = '${ApiEndpoints.mdPickProducts}?limit=$fetchLimit';
-      if (productKind != null && productKind.isNotEmpty) {
-        endpoint += '&it_kind=${Uri.encodeComponent(productKind)}';
-      }
-
-      final response = await ApiClient.get(endpoint);
+      final response = await ApiClient.get(
+        '${ApiEndpoints.mdPickProducts}?limit=$limit',
+      );
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        final list = _parseProductList(data);
-        final filtered = list.where(_isHomeMdPickEligible).toList();
-        if (limit > 0 && filtered.length > limit) {
-          return filtered.take(limit).toList();
+        var list = _parseProductList(data);
+        if (limit > 0 && list.length > limit) {
+          list = list.take(limit).toList();
         }
-        return filtered;
+        return list;
       }
 
       return [];
     } catch (e) {
       return [];
     }
-  }
-
-  /// it_kind=general(또는 비어 있음) + ca_id가 a0이 아님.
-  /// it_type5는 `/md-pick` API에서 이미 선별되므로 응답 필드로 재검증하지 않음.
-  static bool _isHomeMdPickEligible(Product product) {
-    final kind = (product.productKind ?? '').trim().toLowerCase();
-    if (kind.isNotEmpty && kind != 'general') return false;
-
-    final caId = product.categoryId.trim().toLowerCase();
-    if (caId.isEmpty || caId == 'a0') return false;
-
-    return true;
   }
 
   /// 웹 get_categories_with_products — 판매 중 상품이 있는 1단계 카테고리
