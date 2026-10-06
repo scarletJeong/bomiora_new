@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../../core/constants/app_assets.dart';
+import '../../../../core/constants/refund_bank_names.dart';
 import '../../../../data/services/refund_account_service.dart';
 import '../../../common/widgets/dropdown_btn.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
@@ -25,28 +26,6 @@ class RefundAccountPopup extends StatefulWidget {
   final String mbId;
 
   const RefundAccountPopup({super.key, required this.mbId});
-
-  static const List<String> bankNames = [
-    'KB 국민은행',
-    'SH 신한은행',
-    'WOORI 우리은행',
-    'HANA 하나은행',
-    'NH 농협은행',
-    'IBK 기업은행',
-    'KAKAO 카카오뱅크',
-    'K 케이뱅크',
-    'TOSS 토스뱅크',
-    'BS 부산은행',
-    'DG 대구은행',
-    'G 광주은행',
-    'GN 경남은행',
-    'JB 전북은행',
-    'JJ 제주은행',
-    'SH 수협은행',
-    'U 우체국',
-    'SC제일은행',
-    'CITI 씨티은행',
-  ];
 
   static Future<RefundAccountInput?> show(
     BuildContext context, {
@@ -75,13 +54,7 @@ class _RefundAccountPopupState extends State<RefundAccountPopup> {
   String _selectedBank = '';
   bool _loading = true;
 
-  List<String> get _bankItems {
-    final b = _selectedBank.trim();
-    if (b.isNotEmpty && !RefundAccountPopup.bankNames.contains(b)) {
-      return [b, ...RefundAccountPopup.bankNames];
-    }
-    return RefundAccountPopup.bankNames;
-  }
+  List<String> get _bankItems => RefundBankNames.withCurrent(_selectedBank);
 
   @override
   void initState() {
@@ -101,9 +74,13 @@ class _RefundAccountPopupState extends State<RefundAccountPopup> {
       final data = await RefundAccountService.fetch(widget.mbId);
       if (!mounted) return;
       if (data['success'] == true) {
-        final bank = '${data['refundBank'] ?? data['mb_refund_bank'] ?? ''}'.trim();
-        final acc = '${data['refundAccount'] ?? data['mb_refund_account'] ?? ''}'.trim();
-        final holder = '${data['refundHolder'] ?? data['mb_refund_holder'] ?? ''}'.trim();
+        final bank =
+            '${data['refundBank'] ?? data['mb_refund_bank'] ?? ''}'.trim();
+        final acc =
+            '${data['refundAccount'] ?? data['mb_refund_account'] ?? ''}'
+                .trim();
+        final holder =
+            '${data['refundHolder'] ?? data['mb_refund_holder'] ?? ''}'.trim();
         setState(() => _selectedBank = bank);
         _accountController.text = acc;
         _holderController.text = holder;
@@ -205,7 +182,8 @@ class _RefundAccountPopupState extends State<RefundAccountPopup> {
                                   bankName: name,
                                   size: healthDp(context, 22),
                                 ),
-                                onChanged: (v) => setState(() => _selectedBank = v),
+                                onChanged: (v) =>
+                                    setState(() => _selectedBank = v),
                               ),
                             ),
                             SizedBox(height: healthDp(context, 20)),
@@ -329,7 +307,6 @@ class _RefundAccountPopupState extends State<RefundAccountPopup> {
       ],
     );
   }
-
 }
 
 class _RefundTextFieldBox extends StatefulWidget {

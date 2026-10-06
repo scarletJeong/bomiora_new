@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../../../core/constants/app_assets.dart';
+import '../../../../core/constants/refund_bank_names.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/services/refund_account_service.dart';
 import '../../../common/widgets/dropdown_btn.dart';
@@ -25,29 +26,6 @@ class _RefundAccountScreenState extends State<RefundAccountScreen> {
 
   static const String _bankEmptyHint = '은행을 선택하세요';
 
-  /// 드롭다운 노출 순서 (고정)
-  static const List<String> _bankNames = [
-    'KB 국민은행',
-    'SH 신한은행',
-    'WOORI 우리은행',
-    'HANA 하나은행',
-    'NH 농협은행',
-    'IBK 기업은행',
-    'KAKAO 카카오뱅크',
-    'K 케이뱅크',
-    'TOSS 토스뱅크',
-    'BS 부산은행',
-    'DG 대구은행',
-    'G 광주은행',
-    'GN 경남은행',
-    'JB 전북은행',
-    'JJ 제주은행',
-    'SH 수협은행',
-    'U 우체국',
-    'SC제일은행',
-    'CITI 씨티은행',
-  ];
-
   String _selectedBank = '';
   bool _isLoggedIn = false;
   bool _loadingRefund = true;
@@ -57,13 +35,8 @@ class _RefundAccountScreenState extends State<RefundAccountScreen> {
       _accountController.text.trim().isNotEmpty &&
       _ownerController.text.trim().isNotEmpty;
 
-  List<String> get _bankItemsForDropdown {
-    final b = _selectedBank.trim();
-    if (b.isNotEmpty && !_bankNames.contains(b)) {
-      return [b, ..._bankNames];
-    }
-    return _bankNames;
-  }
+  List<String> get _bankItemsForDropdown =>
+      RefundBankNames.withCurrent(_selectedBank);
 
   @override
   void initState() {
