@@ -19,7 +19,8 @@ class LayoutScaffoldMessenger extends ScaffoldMessenger {
 
 class _LayoutScaffoldMessengerState extends ScaffoldMessengerState {
   double get _maxWidth {
-    final messenger = context.findAncestorWidgetOfExactType<LayoutScaffoldMessenger>();
+    final messenger =
+        context.findAncestorWidgetOfExactType<LayoutScaffoldMessenger>();
     return messenger?.maxWidth ?? 650;
   }
 
@@ -170,9 +171,8 @@ class MobileLayoutWrapper extends StatelessWidget {
       resizeToAvoidBottomInset: false,
       body: LayoutBuilder(
         builder: (context, constraints) {
-          final contentWidth = constraints.maxWidth > maxWidth
-              ? maxWidth
-              : constraints.maxWidth;
+          final contentWidth =
+              constraints.maxWidth > maxWidth ? maxWidth : constraints.maxWidth;
 
           if (_shouldShowSideNav(constraints, context)) {
             return _wideLayout(
@@ -247,7 +247,10 @@ class MobileAppLayoutWrapper extends StatelessWidget {
       drawer: drawer,
       endDrawer: endDrawer,
       bottomNavigationBar: hideBottomNav ? null : bottomNavigationBar,
-      resizeToAvoidBottomInset: resizeToAvoidBottomInset,
+      // 하단 네비가 있으면 키보드가 열려도 바를 위로 밀지 않는다.
+      resizeToAvoidBottomInset: hideBottomNav
+          ? resizeToAvoidBottomInset
+          : bottomNavigationBar == null && resizeToAvoidBottomInset,
       body: child,
     );
   }
@@ -387,9 +390,8 @@ class MobileAppLayoutWrapper extends StatelessWidget {
       resizeToAvoidBottomInset: false,
       body: LayoutBuilder(
         builder: (context, constraints) {
-          final contentWidth = constraints.maxWidth > maxWidth
-              ? maxWidth
-              : constraints.maxWidth;
+          final contentWidth =
+              constraints.maxWidth > maxWidth ? maxWidth : constraints.maxWidth;
 
           if (_shouldShowSideNav(constraints, context)) {
             return _wideLayout(

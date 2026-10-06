@@ -91,238 +91,244 @@ class _SearchPopupDialogState extends State<_SearchPopupDialog> {
   Widget build(BuildContext context) {
     final w = healthDp(context, 321);
     final radius = healthDp(context, 20);
+    final keyboard = MediaQuery.viewInsetsOf(context).bottom;
 
-    return Center(
-      child: Material(
-        color: Colors.transparent,
-        child: Container(
-          width: w,
-          padding: EdgeInsets.fromLTRB(
-            healthDp(context, 20),
-            healthDp(context, 12),
-            healthDp(context, 16),
-            healthDp(context, 20),
-          ),
-          decoration: ShapeDecoration(
-            color: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(radius),
+    return AnimatedPadding(
+      duration: const Duration(milliseconds: 150),
+      curve: Curves.easeOut,
+      padding: EdgeInsets.only(bottom: keyboard),
+      child: Center(
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            width: w,
+            padding: EdgeInsets.fromLTRB(
+              healthDp(context, 20),
+              healthDp(context, 12),
+              healthDp(context, 16),
+              healthDp(context, 20),
             ),
-            shadows: const [
-              BoxShadow(
-                color: Color(0x19000000),
-                blurRadius: 8.14,
-                offset: Offset(0, 0),
-                spreadRadius: 0,
+            decoration: ShapeDecoration(
+              color: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(radius),
               ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Align(
-                alignment: Alignment.centerRight,
-                child: GestureDetector(
-                  onTap: () => Navigator.of(context).pop(),
-                  behavior: HitTestBehavior.opaque,
-                  child: Padding(
-                    padding: EdgeInsets.only(
-                      left: healthDp(context, 8),
-                    ),
-                    child: SvgPicture.asset(
-                      AppAssets.popupCloseIcon,
-                      width: healthDp(context, 20),
-                      height: healthDp(context, 20),
-                      fit: BoxFit.contain,
+              shadows: const [
+                BoxShadow(
+                  color: Color(0x19000000),
+                  blurRadius: 8.14,
+                  offset: Offset(0, 0),
+                  spreadRadius: 0,
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: GestureDetector(
+                    onTap: () => Navigator.of(context).pop(),
+                    behavior: HitTestBehavior.opaque,
+                    child: Padding(
+                      padding: EdgeInsets.only(
+                        left: healthDp(context, 8),
+                      ),
+                      child: SvgPicture.asset(
+                        AppAssets.popupCloseIcon,
+                        width: healthDp(context, 20),
+                        height: healthDp(context, 20),
+                        fit: BoxFit.contain,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              SizedBox(height: healthDp(context, 4)),
-              HealthFocusOutlineBox(
-                height: healthDp(context, 36),
-                padding:
-                    EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
-                borderRadius: healthDp(context, 10),
-                fillColor: Colors.white,
-                builder: (focusNode) => Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _controller,
-                        focusNode: focusNode,
-                        autofocus: true,
-                        onSubmitted: (_) => _submit(),
-                        style: TextStyle(
-                          color: const Color(0xFF1A1A1A),
-                          fontSize: healthSp(context, 14),
-                          fontFamily: 'Gmarket Sans TTF',
-                          fontWeight: FontWeight.w400,
-                        ),
-                        decoration: InputDecoration(
-                          isCollapsed: true,
-                          border: InputBorder.none,
-                          hintText: '검색어를 입력하세요',
-                          hintStyle: TextStyle(
-                            color: const Color(0xFF898686),
+                SizedBox(height: healthDp(context, 4)),
+                HealthFocusOutlineBox(
+                  height: healthDp(context, 36),
+                  padding:
+                      EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
+                  borderRadius: healthDp(context, 10),
+                  fillColor: Colors.white,
+                  builder: (focusNode) => Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _controller,
+                          focusNode: focusNode,
+                          autofocus: true,
+                          onSubmitted: (_) => _submit(),
+                          style: TextStyle(
+                            color: const Color(0xFF1A1A1A),
                             fontSize: healthSp(context, 14),
                             fontFamily: 'Gmarket Sans TTF',
-                            fontWeight: FontWeight.w300,
+                            fontWeight: FontWeight.w400,
+                          ),
+                          decoration: InputDecoration(
+                            isCollapsed: true,
+                            border: InputBorder.none,
+                            hintText: '검색어를 입력하세요',
+                            hintStyle: TextStyle(
+                              color: const Color(0xFF898686),
+                              fontSize: healthSp(context, 14),
+                              fontFamily: 'Gmarket Sans TTF',
+                              fontWeight: FontWeight.w300,
+                            ),
+                          ),
+                          textInputAction: TextInputAction.search,
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: _submit,
+                        behavior: HitTestBehavior.opaque,
+                        child: Padding(
+                          padding: EdgeInsets.only(right: healthDp(context, 0)),
+                          child: SvgPicture.asset(
+                            AppAssets.searchIcon,
+                            width: healthDp(context, 24),
+                            height: healthDp(context, 24),
+                            fit: BoxFit.contain,
                           ),
                         ),
-                        textInputAction: TextInputAction.search,
                       ),
-                    ),
-                    GestureDetector(
-                      onTap: _submit,
-                      behavior: HitTestBehavior.opaque,
-                      child: Padding(
-                        padding: EdgeInsets.only(right: healthDp(context, 0)),
-                        child: SvgPicture.asset(
-                          AppAssets.searchIcon,
-                          width: healthDp(context, 24),
-                          height: healthDp(context, 24),
-                          fit: BoxFit.contain,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(height: healthDp(context, 10)),
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      '최근 검색어',
-                      textAlign: TextAlign.start,
-                      style: TextStyle(
-                        color: const Color(0xFF898686),
-                        fontSize: healthSp(context, 14),
-                        fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
+                    ],
                   ),
-                  if (!_loadingRecent && _recent.isNotEmpty)
-                    GestureDetector(
-                      onTap: _clearAllRecent,
-                      behavior: HitTestBehavior.opaque,
+                ),
+                SizedBox(height: healthDp(context, 10)),
+                Row(
+                  children: [
+                    Expanded(
                       child: Text(
-                        '전체 삭제',
+                        '최근 검색어',
+                        textAlign: TextAlign.start,
                         style: TextStyle(
                           color: const Color(0xFF898686),
-                          fontSize: healthSp(context, 10),
+                          fontSize: healthSp(context, 14),
                           fontFamily: 'Gmarket Sans TTF',
                           fontWeight: FontWeight.w500,
-                          decoration: TextDecoration.underline,
-                          decorationColor: const Color(0xFF898686),
                         ),
                       ),
                     ),
-                ],
-              ),
-              if (_loadingRecent)
-                Padding(
-                  padding: EdgeInsets.only(top: healthDp(context, 10)),
-                  child: const Center(
-                    child: SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                    if (!_loadingRecent && _recent.isNotEmpty)
+                      GestureDetector(
+                        onTap: _clearAllRecent,
+                        behavior: HitTestBehavior.opaque,
+                        child: Text(
+                          '전체 삭제',
+                          style: TextStyle(
+                            color: const Color(0xFF898686),
+                            fontSize: healthSp(context, 10),
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontWeight: FontWeight.w500,
+                            decoration: TextDecoration.underline,
+                            decorationColor: const Color(0xFF898686),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                if (_loadingRecent)
+                  Padding(
+                    padding: EdgeInsets.only(top: healthDp(context, 10)),
+                    child: const Center(
+                      child: SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
                     ),
-                  ),
-                )
-              else if (_recent.isEmpty) ...[
-                SizedBox(height: healthDp(context, 10)),
-                SizedBox(
-                  width: double.infinity,
-                  height: healthDp(context, 68),
-                  child: Center(
-                    child: Text(
-                      '최근 검색어가 없습니다.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: const Color(0xFF898686),
-                        fontSize: healthSp(context, 14),
-                        fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w300,
-                        height: 1.86,
+                  )
+                else if (_recent.isEmpty) ...[
+                  SizedBox(height: healthDp(context, 10)),
+                  SizedBox(
+                    width: double.infinity,
+                    height: healthDp(context, 68),
+                    child: Center(
+                      child: Text(
+                        '최근 검색어가 없습니다.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: const Color(0xFF898686),
+                          fontSize: healthSp(context, 14),
+                          fontFamily: 'Gmarket Sans TTF',
+                          fontWeight: FontWeight.w300,
+                          height: 1.86,
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ] else ...[
-                SizedBox(height: healthDp(context, 10)),
-                ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxHeight: healthDp(context, 44) * 5.5,
-                  ),
-                  child: ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: _recent.length,
-                    itemBuilder: (context, i) {
-                      final item = _recent[i];
-                      return Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: () => _onTapRecent(item),
-                          child: Container(
-                            width: double.infinity,
-                            height: healthDp(context, 44),
-                            padding: EdgeInsets.all(healthDp(context, 10)),
-                            decoration: const BoxDecoration(
-                              border: Border(
-                                bottom: BorderSide(
-                                  width: 1,
-                                  color: Color(0xFFD2D2D2),
-                                ),
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    item,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      color: const Color(0xFF1A1A1E),
-                                      fontSize: healthSp(context, 14),
-                                      fontFamily: 'Gmarket Sans TTF',
-                                      fontWeight: FontWeight.w500,
-                                    ),
+                ] else ...[
+                  SizedBox(height: healthDp(context, 10)),
+                  ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxHeight: healthDp(context, 44) * 5.5,
+                    ),
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: _recent.length,
+                      itemBuilder: (context, i) {
+                        final item = _recent[i];
+                        return Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () => _onTapRecent(item),
+                            child: Container(
+                              width: double.infinity,
+                              height: healthDp(context, 44),
+                              padding: EdgeInsets.all(healthDp(context, 10)),
+                              decoration: const BoxDecoration(
+                                border: Border(
+                                  bottom: BorderSide(
+                                    width: 1,
+                                    color: Color(0xFFD2D2D2),
                                   ),
                                 ),
-                                GestureDetector(
-                                  onTap: () => _removeRecent(item),
-                                  behavior: HitTestBehavior.opaque,
-                                  child: SizedBox(
-                                    width: healthDp(context, 20),
-                                    height: healthDp(context, 20),
-                                    child: SvgPicture.asset(
-                                      AppAssets.popupCloseIcon,
-                                      width: healthDp(context, 16),
-                                      height: healthDp(context, 16),
-                                      fit: BoxFit.contain,
-                                      colorFilter: const ColorFilter.mode(
-                                        Color(0xFFD2D2D2),
-                                        BlendMode.srcIn,
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      item,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color: const Color(0xFF1A1A1E),
+                                        fontSize: healthSp(context, 14),
+                                        fontFamily: 'Gmarket Sans TTF',
+                                        fontWeight: FontWeight.w500,
                                       ),
                                     ),
                                   ),
-                                ),
-                              ],
+                                  GestureDetector(
+                                    onTap: () => _removeRecent(item),
+                                    behavior: HitTestBehavior.opaque,
+                                    child: SizedBox(
+                                      width: healthDp(context, 20),
+                                      height: healthDp(context, 20),
+                                      child: SvgPicture.asset(
+                                        AppAssets.popupCloseIcon,
+                                        width: healthDp(context, 16),
+                                        height: healthDp(context, 16),
+                                        fit: BoxFit.contain,
+                                        colorFilter: const ColorFilter.mode(
+                                          Color(0xFFD2D2D2),
+                                          BlendMode.srcIn,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                        ),
-                      );
-                    },
+                        );
+                      },
+                    ),
                   ),
-                ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),
