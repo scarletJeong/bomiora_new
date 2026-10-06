@@ -64,6 +64,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
     setState(() => _lastLoginVia = via);
   }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -108,8 +109,7 @@ class _LoginScreenState extends State<LoginScreen> {
       primaryTextTheme:
           baseTheme.primaryTextTheme.apply(fontFamily: 'Gmarket Sans TTF'),
     );
-    final textScale =
-        healthTextScaleByWidth(MediaQuery.sizeOf(context).width);
+    final textScale = healthTextScaleByWidth(MediaQuery.sizeOf(context).width);
 
     return Theme(
       data: gmarketTheme,
@@ -133,8 +133,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   final centerGap = healthDp(context, 10);
                   final minH = (constraints.maxHeight - padV * 2)
                       .clamp(0.0, double.infinity);
-                  final half = ((minH - centerGap) / 2)
-                      .clamp(0.0, double.infinity);
+                  final half =
+                      ((minH - centerGap) / 2).clamp(0.0, double.infinity);
 
                   return SingleChildScrollView(
                     padding: EdgeInsets.symmetric(
@@ -212,8 +212,7 @@ class _LoginScreenState extends State<LoginScreen> {
             controller: _emailController,
             hintText: '이메일',
             keyboardType: TextInputType.emailAddress,
-            highlightRecent:
-                _lastLoginVia == LastLoginViaService.email,
+            highlightRecent: _lastLoginVia == LastLoginViaService.email,
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
                 return '이메일을 입력해주세요';
@@ -248,9 +247,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   width: healthDp(context, 20),
                   height: healthDp(context, 20),
                   decoration: ShapeDecoration(
-                    color: _autoLogin
-                        ? const Color(0xFFFF5A8D)
-                        : Colors.white,
+                    color: _autoLogin ? const Color(0xFFFF5A8D) : Colors.white,
                     shape: RoundedRectangleBorder(
                       side: BorderSide(
                         width: healthDp(context, 0.5),
@@ -258,8 +255,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ? const Color(0xFFFF5A8D)
                             : const Color(0xFF898383),
                       ),
-                      borderRadius:
-                          BorderRadius.circular(healthDp(context, 4)),
+                      borderRadius: BorderRadius.circular(healthDp(context, 4)),
                     ),
                   ),
                   child: _autoLogin
@@ -356,9 +352,7 @@ class _LoginScreenState extends State<LoginScreen> {
               : Map<String, dynamic>.from(userData),
         );
 
-        
-        final userId =
-            NodeValueParser.asString(userJson['mb_id']) ??
+        final userId = NodeValueParser.asString(userJson['mb_id']) ??
             NodeValueParser.asString(userJson['id']) ??
             '';
         userJson['id'] = userId;
@@ -367,7 +361,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
         final user = UserModel.fromJson(userJson);
 
-        final token = NodeValueParser.asString(userData['token']); // token이 없으면 null이 됨
+        final token =
+            NodeValueParser.asString(userData['token']); // token이 없으면 null이 됨
 
         await AuthService.saveLoginData(
           user: user,
@@ -377,7 +372,7 @@ class _LoginScreenState extends State<LoginScreen> {
         await LastLoginViaService.save(LastLoginViaService.email);
 
         if (!mounted) return;
-        
+
         // 다음 마이크로태스크에서 네비게이션 실행 (더 안전함)
         Future.microtask(() {
           if (!mounted) return;
@@ -581,7 +576,9 @@ class _LoginScreenState extends State<LoginScreen> {
           errorStyle: const TextStyle(height: 0, fontSize: 0),
           suffixIcon: IconButton(
             icon: Icon(
-              _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+              _obscurePassword
+                  ? Icons.visibility_off_outlined
+                  : Icons.visibility_outlined,
               color: const Color(0xFF898383),
               size: healthDp(context, 22),
             ),
@@ -604,7 +601,8 @@ class _LoginScreenState extends State<LoginScreen> {
         onPressed: _isLoading ? null : _handleLogin,
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFFFF5A8D),
-          disabledBackgroundColor: const Color(0xFFFF5A8D).withValues(alpha: 0.7),
+          disabledBackgroundColor:
+              const Color(0xFFFF5A8D).withValues(alpha: 0.7),
           elevation: 0,
           shadowColor: const Color(0x3F000000),
           shape: RoundedRectangleBorder(
@@ -613,11 +611,11 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         child: _isLoading
             ? SizedBox(
-                height: healthDp(context, 10),
-                width: healthDp(context, 20),
+                height: healthDp(context, 22),
+                width: healthDp(context, 22),
                 child: CircularProgressIndicator(
                   strokeWidth: healthDp(context, 2),
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
                 ),
               )
             : Text(
@@ -781,8 +779,7 @@ class _LoginScreenState extends State<LoginScreen> {
           : Map<String, dynamic>.from(userData),
     );
 
-    final userId =
-        NodeValueParser.asString(userJson['mb_id']) ??
+    final userId = NodeValueParser.asString(userJson['mb_id']) ??
         NodeValueParser.asString(userJson['id']) ??
         '';
     userJson['id'] = userId;
@@ -828,8 +825,7 @@ class _LoginScreenState extends State<LoginScreen> {
         'name': name ?? p?['name']?.toString(),
         'gender': gender ?? p?['gender']?.toString(),
         'birthday': birthday ?? p?['birthday']?.toString(),
-        'profileImageUrl':
-            profileImageUrl ?? p?['profileImageUrl']?.toString(),
+        'profileImageUrl': profileImageUrl ?? p?['profileImageUrl']?.toString(),
         'identityToken': identityToken,
         'authorizationCode': authorizationCode,
       },
@@ -970,7 +966,8 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  Future<void> _completeKakaoLoginFromData(Map<String, dynamic> kakaoData) async {
+  Future<void> _completeKakaoLoginFromData(
+      Map<String, dynamic> kakaoData) async {
     final kakaoId = kakaoData['kakaoId']?.toString() ?? '';
     final email = kakaoData['email']?.toString();
     final nickname = kakaoData['nickname']?.toString();
@@ -1044,7 +1041,8 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  Future<void> _completeNaverLoginFromData(Map<String, dynamic> naverData) async {
+  Future<void> _completeNaverLoginFromData(
+      Map<String, dynamic> naverData) async {
     final naverId = naverData['naverId']?.toString() ?? '';
     final email = naverData['email']?.toString();
     final nickname = naverData['nickname']?.toString();
