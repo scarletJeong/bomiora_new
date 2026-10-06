@@ -31,11 +31,29 @@ class ProductCardWithSubscription extends StatelessWidget {
   static double preferredCardWidth(BuildContext context) =>
       healthDp(context, 150);
 
-  /// 이미지 170 + 간격 10 + 텍스트 102
+  static const double _lineHeight = 1.2;
+
+  static double _lineH(BuildContext context, double baseFont) {
+    return (healthSp(context, baseFont) * _lineHeight).ceilToDouble() + 1;
+  }
+
+  /// 카테고리 1줄 + 제목 2줄 + 설명 2줄 + 가격. 글자 하단이 잘리지 않게 여백을 더한다.
+  static double textBlockHeight(BuildContext context) {
+    return _lineH(context, 10) +
+        healthDp(context, 4) +
+        _lineH(context, 14) * 2 +
+        healthDp(context, 4) +
+        _lineH(context, 10) * 2 +
+        healthDp(context, 10) +
+        _lineH(context, 14) +
+        healthDp(context, 6);
+  }
+
+  /// 이미지 170 + 간격 10 + 텍스트 블록
   static double preferredMainAxisExtent(BuildContext context) {
     return healthDp(context, 170) +
         healthDp(context, 10) +
-        healthDp(context, 102);
+        textBlockHeight(context);
   }
 
   static const String _bomioraHospitalLabel = '보미오라 한의원';
@@ -78,7 +96,9 @@ class ProductCardWithSubscription extends StatelessWidget {
     final imageH = healthDp(context, 170);
     final imageRadius = healthDp(context, 10);
     final blockGap = healthDp(context, 10);
-    final textH = healthDp(context, 102);
+    final textH = textBlockHeight(context);
+    final titleH = _lineH(context, 14) * 2;
+    final descH = _lineH(context, 10) * 2;
     final innerGap = healthDp(context, 4);
     final priceGap = healthDp(context, 4);
 
@@ -125,37 +145,40 @@ class ProductCardWithSubscription extends StatelessWidget {
                   ),
                 ),
                 SizedBox(height: innerGap),
-                Text(
-                  title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: _textDark,
-                    fontSize: fsTitle,
-                    fontFamily: _gmarket,
-                    fontWeight: FontWeight.w500,
-                    height: 1.2,
-                  ),
-                ),
-                if (desc.isNotEmpty) ...[
-                  SizedBox(height: innerGap),
-                  Expanded(
-                    child: Text(
-                      desc,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: _descColor,
-                        fontSize: fsDesc,
-                        fontFamily: _gmarket,
-                        fontWeight: FontWeight.w300,
-                        letterSpacing: descLetterSpacing,
-                        height: 1.2,
-                      ),
+                SizedBox(
+                  height: titleH,
+                  child: Text(
+                    title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: _textDark,
+                      fontSize: fsTitle,
+                      fontFamily: _gmarket,
+                      fontWeight: FontWeight.w500,
+                      height: _lineHeight,
                     ),
                   ),
-                ] else
-                  const Spacer(),
+                ),
+                SizedBox(height: innerGap),
+                SizedBox(
+                  height: descH,
+                  child: desc.isEmpty
+                      ? const SizedBox.shrink()
+                      : Text(
+                          desc,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: _descColor,
+                            fontSize: fsDesc,
+                            fontFamily: _gmarket,
+                            fontWeight: FontWeight.w300,
+                            letterSpacing: descLetterSpacing,
+                            height: _lineHeight,
+                          ),
+                        ),
+                ),
                 SizedBox(height: blockGap),
                 Row(
                   children: [

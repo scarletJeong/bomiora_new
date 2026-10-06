@@ -28,11 +28,27 @@ class ProductMainCard extends StatelessWidget {
   static double preferredCardWidth(BuildContext context) =>
       healthDp(context, 150);
 
-  /// 이미지 170 + 간격 10 + 텍스트 74
+  static const double _lineHeight = 1.2;
+
+  static double _lineH(BuildContext context, double baseFont) {
+    return (healthSp(context, baseFont) * _lineHeight).ceilToDouble() + 1;
+  }
+
+  /// 카테고리 1줄 + 제목 2줄 + 가격. 폰트 하단이 잘리지 않게 여백을 더한다.
+  static double textBlockHeight(BuildContext context) {
+    return _lineH(context, 10) +
+        healthDp(context, 4) +
+        _lineH(context, 14) * 2 +
+        healthDp(context, 10) +
+        _lineH(context, 14) +
+        healthDp(context, 6);
+  }
+
+  /// 이미지 170 + 간격 10 + 텍스트 블록
   static double preferredMainAxisExtent(BuildContext context) {
     return healthDp(context, 170) +
         healthDp(context, 10) +
-        healthDp(context, 74);
+        textBlockHeight(context);
   }
 
   bool get _isPrescriptionProduct =>
@@ -66,7 +82,8 @@ class ProductMainCard extends StatelessWidget {
     final imageH = healthDp(context, 170);
     final imageRadius = healthDp(context, 11.54);
     final blockGap = healthDp(context, 10);
-    final textH = healthDp(context, 74);
+    final textH = textBlockHeight(context);
+    final titleH = _lineH(context, 14) * 2;
     final innerGap = healthDp(context, 4);
     final priceGap = healthDp(context, 4);
 
@@ -125,7 +142,8 @@ class ProductMainCard extends StatelessWidget {
                     ),
                   ),
                   SizedBox(height: innerGap),
-                  Expanded(
+                  SizedBox(
+                    height: titleH,
                     child: Text(
                       title,
                       maxLines: 2,
@@ -135,7 +153,7 @@ class ProductMainCard extends StatelessWidget {
                         fontSize: fsTitle,
                         fontFamily: _gmarket,
                         fontWeight: FontWeight.w500,
-                        height: 1.2,
+                        height: _lineHeight,
                       ),
                     ),
                   ),
