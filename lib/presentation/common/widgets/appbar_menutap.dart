@@ -386,8 +386,9 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                             ),
                           ],
                         ),
-                        AnimatedCrossFade(
-                          firstChild: Padding(
+                        _CollapsibleSubmenu(
+                          expanded: _isTelemedicineExpanded,
+                          child: Padding(
                             padding:
                                 EdgeInsets.only(bottom: healthDp(context, 8)),
                             child: _ExpansionSubmenuWithRail(
@@ -415,11 +416,6 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                               ),
                             ),
                           ),
-                          secondChild: const SizedBox.shrink(),
-                          crossFadeState: _isTelemedicineExpanded
-                              ? CrossFadeState.showFirst
-                              : CrossFadeState.showSecond,
-                          duration: const Duration(milliseconds: 180),
                         ),
                       ],
                     ),
@@ -460,8 +456,9 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                             ),
                           ],
                         ),
-                        AnimatedCrossFade(
-                          firstChild: Padding(
+                        _CollapsibleSubmenu(
+                          expanded: _isHealthcareStoreExpanded,
+                          child: Padding(
                             padding:
                                 EdgeInsets.only(bottom: healthDp(context, 8)),
                             child: _ExpansionSubmenuWithRail(
@@ -486,11 +483,6 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                               ),
                             ),
                           ),
-                          secondChild: const SizedBox.shrink(),
-                          crossFadeState: _isHealthcareStoreExpanded
-                              ? CrossFadeState.showFirst
-                              : CrossFadeState.showSecond,
-                          duration: const Duration(milliseconds: 180),
                         ),
                       ],
                     ),
@@ -735,6 +727,33 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
           ),
         ],
       ],
+    );
+  }
+}
+
+/// 하위 메뉴를 위쪽부터 바로 접는다. 페이드로 높이를 붙잡지 않는다.
+class _CollapsibleSubmenu extends StatelessWidget {
+  final bool expanded;
+  final Widget child;
+
+  const _CollapsibleSubmenu({
+    required this.expanded,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      ignoring: !expanded,
+      child: ClipRect(
+        child: AnimatedAlign(
+          alignment: Alignment.topCenter,
+          heightFactor: expanded ? 1 : 0,
+          duration: const Duration(milliseconds: 140),
+          curve: Curves.easeOutCubic,
+          child: child,
+        ),
+      ),
     );
   }
 }
