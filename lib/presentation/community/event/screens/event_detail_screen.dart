@@ -147,16 +147,25 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     final prevEvent = _getPrevEvent();
     final nextEvent = _getNextEvent();
 
-    return Stack(
-      fit: StackFit.expand,
+    final navHeight = ArticleAdjacentNav.reservedHeight(
+      context,
+      hasPrevious: prevEvent != null,
+      hasNext: nextEvent != null,
+    );
+
+    return Column(
       children: [
+        Expanded(
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
         SingleChildScrollView(
           controller: _scrollController,
           padding: EdgeInsets.fromLTRB(
             healthDp(context, 27),
             healthDp(context, 20),
             healthDp(context, 27),
-            healthDp(context, 20),
+            healthDp(context, 20) + navHeight,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -231,35 +240,6 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   ),
                 ),
               ),
-              SizedBox(height: healthDp(context, 20)),
-              Align(
-                alignment: Alignment.centerRight,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(healthDp(context, 4)),
-                  onTap: () => popToBoardList(context, '/event'),
-                  child: Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: healthDp(context, 15),
-                      vertical: healthDp(context, 6),
-                    ),
-                    decoration: ShapeDecoration(
-                      color: _kPink,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(healthDp(context, 4)),
-                      ),
-                    ),
-                    child: Text(
-                      '목록',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: healthSp(context, 14),
-                        fontFamily: _font,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
             ],
           ),
         ),
@@ -277,6 +257,45 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   title: nextEvent.wrSubject,
                   onTap: () => _openEvent(nextEvent.wrId),
                 ),
+        ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: EdgeInsets.fromLTRB(
+            healthDp(context, 27),
+            healthDp(context, 8),
+            healthDp(context, 27),
+            healthDp(context, 16),
+          ),
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(healthDp(context, 4)),
+              onTap: () => popToBoardList(context, '/event'),
+              child: Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: healthDp(context, 15),
+                  vertical: healthDp(context, 6),
+                ),
+                decoration: ShapeDecoration(
+                  color: _kPink,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(healthDp(context, 4)),
+                  ),
+                ),
+                child: Text(
+                  '목록',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: healthSp(context, 14),
+                    fontFamily: _font,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
+          ),
         ),
       ],
     );

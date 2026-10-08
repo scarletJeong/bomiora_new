@@ -134,16 +134,25 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
     final prevTitle = (_prev?['title'] ?? '').toString().trim();
     final nextTitle = (_next?['title'] ?? '').toString().trim();
 
-    return Stack(
-      fit: StackFit.expand,
+    final navHeight = ArticleAdjacentNav.reservedHeight(
+      context,
+      hasPrevious: prevId != null && prevTitle.isNotEmpty,
+      hasNext: nextId != null && nextTitle.isNotEmpty,
+    );
+
+    return Column(
       children: [
+        Expanded(
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
         ListView(
           controller: _scrollController,
           padding: EdgeInsets.fromLTRB(
             healthDp(context, 27),
             healthDp(context, 20),
             healthDp(context, 27),
-            healthDp(context, 20),
+            healthDp(context, 20) + navHeight,
           ),
           children: [
             Text(
@@ -181,32 +190,6 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
               SizedBox(height: healthDp(context, 20)),
             ],
             _buildAnnouncementBody(context, item.content),
-            SizedBox(height: healthDp(context, 30)),
-            Align(
-              alignment: Alignment.centerRight,
-              child: FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: _kPink,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(healthDp(context, 4)),
-                  ),
-                  padding: EdgeInsets.symmetric(
-                    horizontal: healthDp(context, 15),
-                    vertical: healthDp(context, 8),
-                  ),
-                ),
-                onPressed: () => popToBoardList(context, '/announcement'),
-                child: Text(
-                  '목록',
-                  style: TextStyle(
-                    fontSize: healthSp(context, 14),
-                    fontFamily: 'Gmarket Sans TTF',
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ),
           ],
         ),
         ArticleAdjacentNavOverlay(
@@ -223,6 +206,42 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
                   onTap: () => _moveToAdjacent(nextId),
                 )
               : null,
+        ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: EdgeInsets.fromLTRB(
+            healthDp(context, 27),
+            healthDp(context, 8),
+            healthDp(context, 27),
+            healthDp(context, 16),
+          ),
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: _kPink,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(healthDp(context, 4)),
+                ),
+                padding: EdgeInsets.symmetric(
+                  horizontal: healthDp(context, 15),
+                  vertical: healthDp(context, 8),
+                ),
+              ),
+              onPressed: () => popToBoardList(context, '/announcement'),
+              child: Text(
+                '목록',
+                style: TextStyle(
+                  fontSize: healthSp(context, 14),
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ),
         ),
       ],
     );
