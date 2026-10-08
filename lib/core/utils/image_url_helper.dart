@@ -325,7 +325,7 @@ class ImageUrlHelper {
       '/data/notice/',
     );
   }
-
+ 
   /// bomiora.kr / mycafe24 → Cafe24 canonical 직링크
   static String _cafe24CanonicalUrl(String path) {
     final rewritten = _rewriteNoticeImagePath(path);
