@@ -32,6 +32,21 @@ class ArticleAdjacentNav extends StatelessWidget {
 
   bool get hasItems => previous != null || next != null;
 
+  /// 하단 오버레이가 본문·목록 버튼을 가리지 않도록 비워 둘 높이.
+  static double reservedHeight(
+    BuildContext context, {
+    required bool hasPrevious,
+    required bool hasNext,
+  }) {
+    var rows = 0;
+    if (hasPrevious) rows++;
+    if (hasNext) rows++;
+    if (rows == 0) return 0;
+    final rowH = healthDp(context, 12) * 2 + healthDp(context, 22);
+    final borders = healthDp(context, 1) * (rows + 1);
+    return rowH * rows + borders;
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!hasItems) return const SizedBox.shrink();

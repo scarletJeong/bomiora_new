@@ -41,6 +41,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
   String _categoryLabel = '';
   String _title = '';
   String _bodyHtml = '';
+  String _thumbnailUrl = '';
   String? _prevTitle;
   int? _prevId;
   String? _nextTitle;
@@ -90,6 +91,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
     _categoryLabel = data['category']?.toString().trim() ?? '';
     _title = data['title']?.toString().trim() ?? '';
     _bodyHtml = data['content_html']?.toString() ?? '';
+    _thumbnailUrl = data['thumbnail_url']?.toString().trim() ?? '';
     _currentContentId = _toInt(data['id']) ?? id;
     _prevTitle = prev?['title']?.toString();
     _prevId = _toInt(prev?['id']);
@@ -320,6 +322,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
                       SizedBox(height: healthDp(context, 20)),
                       if (!_isLoading) ...[
                         SizedBox(height: healthDp(context, 16)),
+                        _buildThumbnail(context),
                         _buildBodyContent(context),
                       ],
                     ],
@@ -547,6 +550,35 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
     );
   }
 
+  Widget _buildThumbnail(BuildContext context) {
+    final raw = _thumbnailUrl.trim();
+    if (raw.isEmpty) return const SizedBox.shrink();
+    final url = ContentService.resolveThumbnailUrl(raw, fallback: '');
+    if (url.isEmpty) return const SizedBox.shrink();
+    if (_bodyHtml.contains(raw)) return const SizedBox.shrink();
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: healthDp(context, 16)),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth;
+          return ClipRRect(
+            borderRadius: BorderRadius.circular(healthDp(context, 10)),
+            child: AppNetworkImage(
+              url: url,
+              width: width,
+              fit: BoxFit.fitWidth,
+              alignment: Alignment.topCenter,
+              decodeWidthLogical: width,
+              preferHtmlElementOnWeb: false,
+              errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   Widget _buildBodyContent(BuildContext context) {
     if (_isLoading) return const SizedBox.shrink();
     final processedHtml = ContentService.prepareContentHtmlForRender(_bodyHtml);
@@ -651,6 +683,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
               'img': Style(
                 width: Width(maxWidth),
                 display: Display.block,
+                whiteSpace: WhiteSpace.normal,
                 margin: Margins.symmetric(vertical: healthDp(context, 8)),
               ),
             },
