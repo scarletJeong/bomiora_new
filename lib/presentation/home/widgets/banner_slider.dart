@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -27,9 +29,11 @@ class BannerSlider extends StatefulWidget {
 
 class _BannerSliderState extends State<BannerSlider> {
   static const Color _fallbackColor = Color(0xFFFF5A8D);
-  static const int _maxBanners = 2;
+  static const Duration _autoSlideInterval = Duration(seconds: 4);
 
   int _currentIndex = 0;
+  int _pageCount = 1;
+  Timer? _autoSlideTimer;
   late PageController _pageController;
   late Future<List<BannerModel>> _bannersFuture;
   bool _primarySettledNotified = false;
@@ -67,15 +71,33 @@ class _BannerSliderState extends State<BannerSlider> {
 
   @override
   void dispose() {
+    _autoSlideTimer?.cancel();
     _pageController.dispose();
     super.dispose();
   }
 
+  void _syncAutoSlide(int pageCount) {
+    if (_pageCount == pageCount &&
+        (_autoSlideTimer != null) == (pageCount > 1)) {
+      return;
+    }
+    _pageCount = pageCount;
+    _autoSlideTimer?.cancel();
+    _autoSlideTimer = null;
+    if (pageCount <= 1) return;
+    _autoSlideTimer = Timer.periodic(_autoSlideInterval, (_) {
+      if (!mounted || !_pageController.hasClients || _pageCount <= 1) return;
+      final next = (_currentIndex + 1) % _pageCount;
+      _pageController.animateToPage(
+        next,
+        duration: const Duration(milliseconds: 450),
+        curve: Curves.easeInOut,
+      );
+    });
+  }
+
   List<BannerModel> _visibleBanners(List<BannerModel> apiBanners) {
-    return apiBanners
-        .where((b) => b.imageUrl.trim().isNotEmpty)
-        .take(_maxBanners)
-        .toList();
+    return apiBanners.where((b) => b.imageUrl.trim().isNotEmpty).toList();
   }
 
   Future<void> _onTapBanner(BannerModel banner) async {
@@ -145,6 +167,7 @@ class _BannerSliderState extends State<BannerSlider> {
           snapshot.data ?? const <BannerModel>[],
         );
         final pageCount = banners.isEmpty ? 1 : banners.length;
+        _syncAutoSlide(pageCount);
 
         WidgetsBinding.instance.addPostFrameCallback((_) {
           _notifyPrimarySettled();

@@ -317,9 +317,19 @@ class ImageUrlHelper {
     return convertToLocalUrl(result);
   }
 
+  /// 공지 이미지는 `/data/notice/` 에 있다.
+  /// `notice/...` 를 상품처럼 `/data/item/notice/` 로 붙이면 파일이 없어 HTML이 오고 프록시가 415를 낸다.
+  static String _rewriteNoticeImagePath(String path) {
+    return path.replaceFirst(
+      RegExp(r'/data/item/notice/', caseSensitive: false),
+      '/data/notice/',
+    );
+  }
+
   /// bomiora.kr / mycafe24 → Cafe24 canonical 직링크
   static String _cafe24CanonicalUrl(String path) {
-    final p = path.startsWith('/') ? path : '/$path';
+    final rewritten = _rewriteNoticeImagePath(path);
+    final p = rewritten.startsWith('/') ? rewritten : '/$rewritten';
     return '$_cafe24CanonicalHost$p';
   }
 
