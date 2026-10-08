@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
@@ -628,10 +627,7 @@ class _HomeScreenState extends State<HomeScreen> {
           child: WebDragScrollConfiguration(
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
-              padding: EdgeInsets.only(
-                left: hPad,
-                right: hPad + (kIsWeb ? healthDp(context, 48) : 0),
-              ),
+              padding: EdgeInsets.symmetric(horizontal: hPad),
               itemCount: _tabs.length,
               separatorBuilder: (_, __) => Row(
                 mainAxisSize: MainAxisSize.min,
@@ -777,15 +773,14 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    final endExtra = kIsWeb ? healthDp(context, 48) : 0.0;
     return SizedBox(
       height: height,
       child: WebDragScrollConfiguration(
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
           padding: padded
-              ? EdgeInsets.only(left: hPad, right: hPad + endExtra)
-              : EdgeInsets.only(right: endExtra),
+              ? EdgeInsets.symmetric(horizontal: hPad)
+              : EdgeInsets.zero,
           itemCount: itemCount,
           separatorBuilder: (_, __) => SizedBox(width: gap),
           itemBuilder: itemBuilder,
