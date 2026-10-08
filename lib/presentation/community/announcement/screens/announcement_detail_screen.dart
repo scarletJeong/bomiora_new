@@ -275,7 +275,11 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
             ),
           ],
           style: {
-            'html': Style(margin: Margins.zero, padding: HtmlPaddings.zero),
+            'html': Style(
+              margin: Margins.zero,
+              padding: HtmlPaddings.zero,
+              whiteSpace: WhiteSpace.pre,
+            ),
             'body': Style(
               margin: Margins.zero,
               padding: HtmlPaddings.zero,
@@ -285,18 +289,27 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
               lineHeight: const LineHeight(1.7),
               textAlign: TextAlign.start,
               color: _kText,
+              whiteSpace: WhiteSpace.pre,
             ),
             'p': Style(
               margin: Margins.only(bottom: healthDp(context, 8)),
               padding: HtmlPaddings.zero,
+              whiteSpace: WhiteSpace.pre,
             ),
             'img': Style(
               width: Width(maxWidth),
               display: Display.block,
               margin: Margins.symmetric(vertical: healthDp(context, 8)),
             ),
-            'div': Style(margin: Margins.zero, padding: HtmlPaddings.zero),
-            'span': Style(fontFamily: 'Gmarket Sans TTF'),
+            'div': Style(
+              margin: Margins.zero,
+              padding: HtmlPaddings.zero,
+              whiteSpace: WhiteSpace.pre,
+            ),
+            'span': Style(
+              fontFamily: 'Gmarket Sans TTF',
+              whiteSpace: WhiteSpace.pre,
+            ),
           },
         );
       },

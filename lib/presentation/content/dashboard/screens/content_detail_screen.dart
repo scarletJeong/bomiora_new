@@ -583,6 +583,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
           lineHeight: const LineHeight(1.8),
           textAlign: TextAlign.center,
           color: _textDark,
+          whiteSpace: WhiteSpace.pre,
         );
 
         return SizedBox(
@@ -617,6 +618,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
                 margin: Margins.zero,
                 padding: HtmlPaddings.zero,
                 fontSize: FontSize(bodyFontSize),
+                whiteSpace: WhiteSpace.pre,
               ),
               'body': bodyText.copyWith(
                 margin: Margins.zero,

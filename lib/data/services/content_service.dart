@@ -79,28 +79,13 @@ class ContentService {
     text = text.replaceAll('&quot;', '"');
     text = text.replaceAll('&#39;', "'");
     text = text.replaceAll(RegExp(r'<[^>]+>'), '');
-    final lines = text
-        .split('\n')
-        .map((line) => line.replaceAll(RegExp(r'\s+'), ' ').trim())
-        .toList();
-
-    final compact = <String>[];
-    var blankStreak = 0;
-    for (final line in lines) {
-      if (line.isEmpty) {
-        blankStreak += 1;
-        if (blankStreak <= 1) compact.add('');
-      } else {
-        blankStreak = 0;
-        compact.add(line);
-      }
-    }
-    return compact.join('\n').trim();
+    return text.replaceAll('\r\n', '\n').trim();
   }
 
   static String prepareContentHtmlForRender(String raw) {
     if (raw.trim().isEmpty) return '';
-    final withoutInlineFontSize = raw
+    final withBreaks = raw.replaceAll('\r\n', '\n').replaceAll(r'\n', '\n');
+    final withoutInlineFontSize = withBreaks
         .replaceAll(
           RegExp(r'font-size\s*:\s*[^;}"\x27]+;?', caseSensitive: false),
           '',
