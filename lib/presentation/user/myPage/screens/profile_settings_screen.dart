@@ -180,7 +180,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   bool get _nicknameChanged =>
       _nicknameController.text.trim() != _originalNickname.trim();
 
-  bool get _phoneChanged => _enteredPhoneDigits != _originalPhoneDigits;
+  bool get _phoneChanged =>
+      _digitsOnly(_enteredPhoneDigits) != _originalPhoneDigits;
 
   bool get _passwordChanged =>
       _newPasswordController.text.isNotEmpty ||
@@ -222,10 +223,10 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     );
   }
 
-  bool get _confirmOtpActive =>
-      !_contactPhoneVerified &&
-      _contactOtpToken != null &&
-      _contactOtpToken!.isNotEmpty;
+  bool get _confirmOtpActive {
+    final digits = _digitsOnly(_enteredPhoneDigits);
+    return _phoneChanged && digits.length >= 10 && digits.length <= 11;
+  }
 
   ButtonStyle _confirmOtpButtonStyle() {
     final pink = _confirmOtpActive || _contactOtpVerifying;
@@ -278,23 +279,26 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
       '${_phone1Controller.text.trim()}${_phone2Controller.text.trim()}${_phone3Controller.text.trim()}';
 
   void _onPhoneDigitsChanged() {
-    final entered = _enteredPhoneDigits;
-    if (entered != _originalPhoneDigits) {
-      if (_contactPhoneVerified || _contactOtpVerifiedSuccess) {
-        setState(() {
-          _contactPhoneVerified = false;
+    final entered = _digitsOnly(_enteredPhoneDigits);
+    setState(() {
+      if (entered != _originalPhoneDigits) {
+        _contactPhoneVerified = false;
+        if (_contactOtpVerifiedSuccess || _contactOtpToken != null) {
           _contactOtpToken = null;
-          _contactOtpErrorText = null;
           _contactOtpVerifiedSuccess = false;
-        });
-      }
-    } else {
-      setState(() {
+          _secondsLeft = 0;
+          _verifyTimer?.cancel();
+        }
+        _contactOtpErrorText = null;
+      } else {
         _contactPhoneVerified = true;
+        _contactOtpToken = null;
         _contactOtpErrorText = null;
         _contactOtpVerifiedSuccess = false;
-      });
-    }
+        _secondsLeft = 0;
+        _verifyTimer?.cancel();
+      }
+    });
   }
 
   Future<void> _requestContactChangeOtp() async {
@@ -360,13 +364,19 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
 
   Future<void> _confirmContactChangeOtp() async {
     final token = _contactOtpToken;
+    final code = _verificationController.text.trim();
     if (token == null || token.isEmpty) {
       if (!mounted) return;
+      setState(() {
+        _contactOtpErrorText = '변경하기를 눌러 인증번호를 받아 주세요.';
+      });
       return;
     }
-    final code = _verificationController.text.trim();
-    if (code.length < 4) {
+    if (code.length < 6) {
       if (!mounted) return;
+      setState(() {
+        _contactOtpErrorText = '인증번호 6자리를 입력해 주세요.';
+      });
       return;
     }
 
@@ -845,9 +855,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                   inputFormatters: _digitsOnlyFormatters,
                   cursorColor: const Color(0xFF1A1A1A),
                   onChanged: (_) {
-                    if (_contactOtpErrorText != null) {
-                      setState(() => _contactOtpErrorText = null);
-                    }
+                    setState(() => _contactOtpErrorText = null);
                   },
                   decoration: InputDecoration(
                     border: InputBorder.none,
