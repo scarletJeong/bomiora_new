@@ -100,18 +100,56 @@ class _BannerSliderState extends State<BannerSlider> {
     return apiBanners.where((b) => b.imageUrl.trim().isNotEmpty).toList();
   }
 
+  bool _isInAppHost(String host) {
+    final h = host.toLowerCase();
+    if (h.isEmpty) return true;
+    const hosts = {
+      'bomiora.net',
+      'www.bomiora.net',
+      'bomiora.kr',
+      'www.bomiora.kr',
+      'bomiora0.mycafe24.com',
+      'localhost',
+      '127.0.0.1',
+    };
+    if (hosts.contains(h)) return true;
+    final current = Uri.base.host.toLowerCase();
+    return current.isNotEmpty && h == current;
+  }
+
+  String _inAppRoute(Uri uri) {
+    var path = uri.path.trim();
+    if (path.isEmpty) return '/';
+    if (!path.startsWith('/')) path = '/$path';
+    if (uri.hasQuery) path = '$path?${uri.query}';
+    return path;
+  }
+
   Future<void> _onTapBanner(BannerModel banner) async {
     final raw = banner.linkUrl.trim();
     if (raw.isEmpty) return;
 
-    if (raw.startsWith('/')) {
-      Navigator.pushNamed(context, raw);
-      return;
-    }
-
     final uri = Uri.tryParse(raw);
     if (uri == null) return;
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
+
+    if (raw.startsWith('/') || _isInAppHost(uri.host)) {
+      final route = raw.startsWith('/') ? raw : _inAppRoute(uri);
+      if (route == '/' || route.isEmpty) return;
+      if (!context.mounted) return;
+      try {
+        await Navigator.pushNamed(context, route);
+        return;
+      } catch (_) {}
+    }
+
+    final target = uri.hasScheme
+        ? uri
+        : Uri.parse('https://bomiora.net${raw.startsWith('/') ? raw : '/$raw'}');
+    await launchUrl(
+      target,
+      mode: LaunchMode.platformDefault,
+      webOnlyWindowName: '_self',
+    );
   }
 
   Widget _buildFallbackPage(double bannerH) {
