@@ -302,6 +302,33 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
     return !dd.isBefore(pr.start) && !dd.isAfter(pr.end);
   }
 
+  /// 이전 기록의 다음 생리 예정과 같은 시작일로 저장된 행.
+  bool _isSavedPredictedPeriod(MenstrualCycleRecord record) {
+    final start = DateUtils.dateOnly(record.lastPeriodStart);
+    final displayStart = DateUtils.dateOnly(record.displayPeriodStart);
+    for (final earlier in _historyRecords) {
+      if (earlier.id != null && earlier.id == record.id) continue;
+      final predictedStart = DateUtils.dateOnly(earlier.nextPeriodStart);
+      final predictedEnd = DateUtils.dateOnly(earlier.nextPeriodEnd);
+      if (DateUtils.isSameDay(start, predictedStart) ||
+          DateUtils.isSameDay(displayStart, predictedStart)) {
+        return true;
+      }
+      if (!displayStart.isBefore(predictedStart) &&
+          !displayStart.isAfter(predictedEnd)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /// 신규 입력에서도 시작일을 다시 고를 수 있는 막대.
+  /// 달력의 예정 표시, 또는 그 예정일로 이미 저장된 기간만 연다.
+  bool _canAdjustMarkedDay(DateTime day, MenstrualCycleRecord? hit) {
+    if (_inPredictedRange(day)) return true;
+    return hit != null && _isSavedPredictedPeriod(hit);
+  }
+
   bool _isPredictedEndpoint(DateTime d) {
     final pr = _predictedRange();
     if (pr == null) return false;
@@ -354,8 +381,11 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
             ? hits.first
             : _nearestRecordByDisplayStart(selectedDay));
 
-    // 입력(신규) 화면에서는 과거 이력 수정/선택을 막는다.
-    if (widget.existingRecord == null && hit != null) {
+    // 입력(신규) 화면에서는 이미 끝난 과거 생리 막대는 선택하지 않는다.
+    // 예정으로 잡힌 구간(예: 10/6~10/9)은 시작일을 7일로 고칠 수 있게 연다.
+    if (widget.existingRecord == null &&
+        hit != null &&
+        !_canAdjustMarkedDay(selectedDay, hit)) {
       return;
     }
 
