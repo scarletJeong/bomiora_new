@@ -636,7 +636,7 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen>
             title: '생리기간',
             date:
                 '${DateFormat('M월 d일').format(_currentRecord!.nextPeriodStart)} - ${DateFormat('M월 d일').format(_currentRecord!.nextPeriodEnd)}',
-            color: const Color(0xFFFF5A8D),
+            color: const Color(0xFF9A9A9A),
           ),
           SizedBox(height: healthDp(context, 10)),
           _buildDateRangeCard(

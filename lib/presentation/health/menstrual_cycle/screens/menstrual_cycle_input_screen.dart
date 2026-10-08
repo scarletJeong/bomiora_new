@@ -53,8 +53,8 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
   static const Color _kRangeBarFill = Color(0x26FC6795);
   static const Color _kAccentPink = Color(0xFFFF5A8D);
 
-  /// 예정 생리 기간(연한 표시) — 바·끝 원 동일 색 (입력 화면에서만 사용)
-  static const Color _kPredictedPeriodFill = Color(0x14FC6795);
+  /// 예정 생리 기간 — 실제 기록(핑크)과 구분되는 회색
+  static const Color _kPredictedPeriodFill = Color(0xFFD5D5D5);
 
   /// 시작·끝 동그라미 지름(바는 이 원 바깥으로 나가지 않게 계산)
   static const double _kPeriodEndpointDiameter = 25.0;
