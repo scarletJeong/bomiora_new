@@ -8,9 +8,9 @@ class ProductOption {
   final String productId; // it_id
   /// io_id를 chr(30)으로 나눈 축 값들. 예: ["초코", "1주 플랜"]
   final List<String> optionParts;
-  final String step; // 상위 옵션 (parts[0] 또는 N개월 앞)
-  final int? months; // 개월수 (`N개월`이 있을 때만)
-  final String subOption; // 하위 옵션 (parts[1..] 또는 N개월부터)
+  final String step; // 상위 옵션 (parts[0])
+  final int? months; // API가 별도 숫자 필드로 제공하는 경우에만 사용
+  final String subOption; // 하위 옵션 (parts[1..])
   final int price;
   final int stock;
   final String? type;
@@ -62,7 +62,7 @@ class ProductOption {
           '',
       optionParts: parsed.parts,
       step: parsed.step,
-      months: parsed.months,
+      months: _parseNullableInt(normalized['months'] ?? normalized['days']),
       subOption: parsed.subOption,
       price: _parseInt(
         normalized['price'] ??
@@ -77,8 +77,6 @@ class ProductOption {
       ioType: parsedIoType.clamp(0, 3),
     );
   }
-
-  static final RegExp _monthsBoundary = RegExp(r'(\d+)개월');
 
   /// PHP `explode(chr(30), $opt_id)` 와 동일
   static List<String> splitOptionValues(String ioId) {
@@ -98,58 +96,18 @@ class ProductOption {
     List<String> parts,
     String step,
     String subOption,
-    int? months,
   }) _parseIoId(String ioId) {
     if (ioId.isEmpty) {
-      return (parts: const [], step: '', subOption: '', months: null);
+      return (parts: const [], step: '', subOption: '');
     }
 
-    // 1) chr(30) 축 분리 (일반·비대면 공통 다축 옵션)
-    if (ioId.contains(axisDelimiter)) {
-      final parts = splitOptionValues(ioId);
-      final step = parts.isNotEmpty ? parts.first : '';
-      final subOption = parts.length > 1 ? parts.skip(1).join(' > ') : '';
-      int? months;
-      for (final p in parts) {
-        final m = _monthsBoundary.firstMatch(p);
-        if (m != null) {
-          months = int.tryParse(m.group(1)!);
-          break;
-        }
-      }
-      return (
-        parts: parts,
-        step: step,
-        subOption: subOption,
-        months: months,
-      );
-    }
-
-    // 2) 비대면 레거시: `N개월` 경계
-    final monthsMatch = _monthsBoundary.firstMatch(ioId);
-    if (monthsMatch != null) {
-      final step = _sanitizePart(ioId.substring(0, monthsMatch.start));
-      final subOption = _sanitizePart(ioId.substring(monthsMatch.start));
-      final months = int.tryParse(monthsMatch.group(1)!);
-      final parts = <String>[
-        if (step.isNotEmpty) step,
-        if (subOption.isNotEmpty) subOption,
-      ];
-      return (
-        parts: parts,
-        step: step,
-        subOption: subOption,
-        months: months,
-      );
-    }
-
-    // 3) 단일 옵션
-    final step = _sanitizePart(ioId);
+    final parts = splitOptionValues(ioId);
+    final step = parts.isNotEmpty ? parts.first : '';
+    final subOption = parts.length > 1 ? parts.skip(1).join(' > ') : '';
     return (
-      parts: step.isEmpty ? const <String>[] : [step],
+      parts: parts,
       step: step,
-      subOption: '',
-      months: null,
+      subOption: subOption,
     );
   }
 
@@ -171,7 +129,14 @@ class ProductOption {
     return 0;
   }
 
-  /// 화면 표시: `단계 / 개월`
+  static int? _parseNullableInt(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value.toString().trim());
+  }
+
+  /// 화면 표시: `상위 옵션 / 하위 옵션`
   String get displayText {
     if (optionParts.length >= 2) {
       return optionParts.join(' / ');
@@ -184,21 +149,14 @@ class ProductOption {
     return _sanitizePart(id.replaceAll(axisDelimiter, ' / '));
   }
 
-  /// `io_id`와 `ct_option` 중 선택한 개월 수가 보이는 쪽을 고른다.
-  /// `io_id`의 chr(30) 뒤에서 잘리면 `ct_option`의 `N개월`이 사라지므로 그쪽을 남긴다.
+  /// `io_id`를 표시용으로 변환한다. `io_id`가 없을 때만 `ct_option`을 사용한다.
   static String visibleLabel({
     String? ioId,
     String? ctOption,
     String? itId,
   }) {
     String normalizeSeparators(String value) {
-      return value
-          .replaceAll(axisDelimiter, ' / ')
-          .replaceAll('ㅣ', ' / ')
-          .replaceAll(RegExp(r'\s*\|\s*'), ' / ')
-          .replaceAll(RegExp(r'(?:\s*/\s*)+'), ' / ')
-          .replaceAll(RegExp(r'\s+'), ' ')
-          .trim();
+      return value.replaceAll(RegExp(r'\s+'), ' ').trim();
     }
 
     String fromRaw(String raw) {
@@ -212,16 +170,7 @@ class ProductOption {
     }
 
     final fromIo = fromRaw(ioId ?? '');
-    final fromCt = fromRaw(ctOption ?? '');
-    final ioMonth = fromIo.contains('개월');
-    final ctMonth = fromCt.contains('개월');
-    if (ctMonth && !ioMonth) return fromCt;
-    if (ioMonth && !ctMonth) return fromIo;
-    if (fromCt.contains('개월') && fromCt.length > fromIo.length) {
-      return fromCt;
-    }
-    if (fromIo.isNotEmpty) return fromIo;
-    return fromCt;
+    return fromIo.isNotEmpty ? fromIo : fromRaw(ctOption ?? '');
   }
 
   /// 2번째 축 값 (드롭다운 하위 항목)
