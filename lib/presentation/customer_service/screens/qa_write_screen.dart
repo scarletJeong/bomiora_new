@@ -92,7 +92,7 @@ class _QaWriteScreenState extends State<QaWriteScreen> {
     final draft = _selectedProduct;
     final odId = (draft?.odId ?? '').trim();
     if (draft?.selectedByOrderNumber == true && odId.isNotEmpty) {
-      return '주문번호 $odId';
+      return odId;
     }
     final name = (draft?.productName ?? '').trim();
     if (name.isNotEmpty) return name;
