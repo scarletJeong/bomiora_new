@@ -21,8 +21,8 @@ class QaInquiryTypeBadge extends StatelessWidget {
   );
 
   static const Map<String, _Style> _styles = {
-    '상품문의': _Style(
-      label: '상품문의',
+    '상품 문의': _Style(
+      label: '상품 문의',
       background: Color(0xFFFFF6D9),
       foreground: Color(0xFFA67D00),
     ),
@@ -61,7 +61,7 @@ class QaInquiryTypeBadge extends StatelessWidget {
       case '상품':
       case '상품문의':
       case '상품 문의':
-        return '상품문의';
+        return '상품 문의';
       case '배송':
       case '배송문의':
       case '배송 문의':

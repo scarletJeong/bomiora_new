@@ -226,13 +226,13 @@ class QaListScreenState extends State<QaListScreen> {
   String _listInquiryTypeLabel(QaInquiry item) {
     final key = item.inquiryTypeBadgeKey.trim();
     const labels = <String, String>{
-      '상품문의': '상품문의',
-      '상품 문의': '상품문의',
-      '상품': '상품문의',
+      '상품문의': '상품 문의',
+      '상품 문의': '상품 문의',
+      '상품': '상품 문의',
       '예약/결제': '예약/결제 문의',
-      '배송': '배송문의',
-      '배송 문의': '배송문의',
-      '배송문의': '배송문의',
+      '배송': '배송 문의',
+      '배송 문의': '배송 문의',
+      '배송문의': '배송 문의',
       '교환/반품': '교환/반품',
       '취소/환불': '취소/환불',
       '이벤트/쿠폰/회원': '이벤트/쿠폰/회원',

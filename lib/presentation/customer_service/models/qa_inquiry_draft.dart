@@ -6,6 +6,7 @@ import '../../../data/models/delivery/delivery_model.dart';
 class QaInquiryCardItem {
   final String name;
   final String? vendor;
+  final String? maker;
   final String? imageUrl;
   final int? price;
   final int qty;
@@ -17,6 +18,7 @@ class QaInquiryCardItem {
   const QaInquiryCardItem({
     required this.name,
     this.vendor,
+    this.maker,
     this.imageUrl,
     this.price,
     this.qty = 1,
@@ -29,6 +31,7 @@ class QaInquiryCardItem {
   Map<String, dynamic> toJson() => {
         'n': name,
         if ((vendor ?? '').trim().isNotEmpty) 'v': vendor,
+        if ((maker ?? '').trim().isNotEmpty) 'mk': maker,
         if ((imageUrl ?? '').trim().isNotEmpty) 'i': imageUrl,
         if (price != null) 'p': price,
         'q': qty,
@@ -43,6 +46,7 @@ class QaInquiryCardItem {
     return QaInquiryCardItem(
       name: (json['n'] ?? '').toString(),
       vendor: json['v']?.toString(),
+      maker: json['mk']?.toString(),
       imageUrl: json['i']?.toString(),
       price: json['p'] is int ? json['p'] as int : int.tryParse('${json['p']}'),
       qty: json['q'] is int
@@ -238,9 +242,9 @@ class QaInquiryDraft {
 
   /// 문의 유형 (랜딩 화면 드롭다운)
   static const List<String> inquiryTypes = [
-    '상품문의',
+    '상품 문의',
     '예약/결제',
-    '배송',
+    '배송 문의',
     '교환/반품',
     '취소/환불',
     '이벤트/쿠폰/회원',
@@ -248,7 +252,7 @@ class QaInquiryDraft {
   ];
 
   static const Map<String, List<String>> _detailOptions = {
-    '상품문의': [
+    '상품 문의': [
       '단계추천',
       '복용방법',
       '입고 일정',
@@ -265,7 +269,7 @@ class QaInquiryDraft {
       '현금영수증',
       '기타',
     ],
-    '배송': [
+    '배송 문의': [
       '배송 일정 문의',
       '배송비 문의',
       '해외 배송 문의',
@@ -296,8 +300,23 @@ class QaInquiryDraft {
     '기타': '안녕하세요. 보미오라 한의원입니다.\n 궁금하신 사항을 입력해주세요.',
   };
 
+  static String canonicalInquiryType(String raw) {
+    switch (raw.trim()) {
+      case '상품':
+      case '상품문의':
+      case '상품 문의':
+        return '상품 문의';
+      case '배송':
+      case '배송문의':
+      case '배송 문의':
+        return '배송 문의';
+      default:
+        return raw.trim();
+    }
+  }
+
   static List<String> _detailOptionsFor(String inquiryType) =>
-      _detailOptions[inquiryType.trim()] ?? const [];
+      _detailOptions[canonicalInquiryType(inquiryType)] ?? const [];
 
   /// 문의 작성 랜딩 — 상세 내용 드롭다운
   static List<String> detailOptionsForInquiryType(String inquiryType) =>
@@ -328,6 +347,22 @@ class QaInquiryDraft {
     if (subject.isNotEmpty) return subject;
     final brand = (brandName ?? '').trim();
     if (brand.isNotEmpty) return brand;
+    return null;
+  }
+
+  static String? makerLabel(
+    String? maker,
+    String? brand, {
+    String? itSubject,
+    String? productName,
+  }) {
+    final made = (maker ?? '').trim();
+    if (made.isNotEmpty) return made;
+    final named = (brand ?? '').trim();
+    if (named.isNotEmpty) return named;
+    final subject = (itSubject ?? '').trim();
+    final name = (productName ?? '').trim();
+    if (subject.isNotEmpty && subject != name) return subject;
     return null;
   }
 
@@ -416,6 +451,12 @@ class QaInquiryDraft {
       name: name,
       vendor: vendorLabel(
         itSubject: item.itSubject,
+      ),
+      maker: makerLabel(
+        item.itMaker,
+        item.itBrand,
+        itSubject: item.itSubject,
+        productName: name,
       ),
       imageUrl: item.imageUrl,
       price: item.totalPrice > 0 ? item.totalPrice : item.ctPrice,
