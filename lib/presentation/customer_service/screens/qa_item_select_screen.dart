@@ -475,6 +475,12 @@ class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
     final selected = _selectedParents();
     if (selected.isEmpty) return;
     final item = selected.first;
+    final odId = (item.odId ?? '').trim();
+    final selectedByOrderNumber = _isOrderTab &&
+        odId.isNotEmpty &&
+        _orderGroups.any(
+          (group) => group.odId == odId && _isGroupFullySelected(group),
+        );
     Navigator.pop(
       context,
       QaInquiryDraft(
@@ -491,6 +497,7 @@ class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
         optionText: item.optionText,
         itSubject: item.itSubject,
         selectTabLabel: _tabLabels[_tabIndex],
+        selectedByOrderNumber: selectedByOrderNumber,
         cardItems: selected.map(_toCardItem).toList(),
       ),
     );
@@ -504,6 +511,19 @@ class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
       ];
 
   String get _emptyText => '선택 가능한 상품이 없습니다.';
+
+  String get _emptyIcon {
+    switch (_currentTab) {
+      case QaItemSelectTab.order:
+        return AppAssets.emptyOrderDeliveryIcon;
+      case QaItemSelectTab.cancel:
+        return AppAssets.emptyReturnIcon;
+      case QaItemSelectTab.cart:
+        return AppAssets.qaSelectCartIcon;
+      case QaItemSelectTab.wish:
+        return AppAssets.qaSelectWishlistIcon;
+    }
+  }
 
   String get _headerSub {
     switch (_currentTab) {
@@ -700,7 +720,7 @@ class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   SvgPicture.asset(
-                    AppAssets.emptyQAIcon,
+                    _emptyIcon,
                     width: healthDp(context, 80),
                     height: healthDp(context, 80),
                     fit: BoxFit.contain,

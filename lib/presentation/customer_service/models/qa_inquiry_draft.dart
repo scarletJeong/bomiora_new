@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 
 import '../../../data/models/delivery/delivery_model.dart';
 
@@ -88,6 +88,9 @@ class QaInquiryDraft {
   /// 상품선택 탭명 (장바구니/찜한 상품, 주문/배송/취소)
   final String? selectTabLabel;
 
+  /// 주문번호 행을 선택해 들어온 경우. 작성 화면에는 주문번호를 보여 준다.
+  final bool selectedByOrderNumber;
+
   /// 상세 카드에 표시할 선택 상품들
   final List<QaInquiryCardItem> cardItems;
 
@@ -105,6 +108,7 @@ class QaInquiryDraft {
     this.optionText,
     this.itSubject,
     this.selectTabLabel,
+    this.selectedByOrderNumber = false,
     this.cardItems = const [],
   });
 

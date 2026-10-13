@@ -193,6 +193,15 @@ abstract final class AppAssets {
   static const String heartIconFilled = '${_img}content_heart_icon_filled.svg';
 
 
+  /* 8. 1:1 문의 */
+  static const String emptyOrderDeliveryIcon = '${_img}empty_select_order_delivery_icon.svg'; // 주문/배송 상품 없음
+  static const String emptyReturnIcon = '${_img}empty_select_return_icon.svg'; // 반품 상품 없음
+  static const String qaSelectCartIcon = '${_img}empty_select_cart_icon.svg'; // 장바구니 상품 없음
+  static const String qaSelectWishlistIcon = '${_img}empty_select_wishlist_icon.svg'; // 찜한상품 상품 없음
+
+
+
+
   /* 8. 빈 화면 */
   // 빈 화면 아이콘 — '로그인 후 이용 가능합니다' / '~가 없습니다' 문구 위
   static const String emptyWishlistIcon = '${_img}empty_wishlist_icon.svg'; // 찜목록

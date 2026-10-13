@@ -89,7 +89,12 @@ class _QaWriteScreenState extends State<QaWriteScreen> {
       (!_isPhotoRequired || _requiredPhotos.any((e) => e != null));
 
   String get _productFieldLabel {
-    final name = (_selectedProduct?.productName ?? '').trim();
+    final draft = _selectedProduct;
+    final odId = (draft?.odId ?? '').trim();
+    if (draft?.selectedByOrderNumber == true && odId.isNotEmpty) {
+      return '주문번호 $odId';
+    }
+    final name = (draft?.productName ?? '').trim();
     if (name.isNotEmpty) return name;
     return '상품을 선택해주세요';
   }
@@ -225,17 +230,13 @@ class _QaWriteScreenState extends State<QaWriteScreen> {
     }
   }
 
-  void _openPhotoSourceDropdown(BuildContext anchorContext, {int? slotIndex}) {
-    if (!_isPhotoRequired && _images.length >= _maxImages) {
+  bool _canAddPhoto() {
+    if (_isPhotoRequired) return true;
+    if (_images.length >= _maxImages) {
       AppToastOverlay.showAlert(context, '사진은 최대 3장까지 업로드할 수 있습니다.');
-      return;
+      return false;
     }
-    ImagePickerUtils.showPhotoSourceDropdown(
-      context: context,
-      anchorContext: anchorContext,
-      onImageSelected: (image) =>
-          _applyPickedImage(image, slotIndex: slotIndex),
-    );
+    return true;
   }
 
   Future<void> _applyPickedImage(XFile? image, {int? slotIndex}) async {
@@ -558,7 +559,8 @@ class _QaWriteScreenState extends State<QaWriteScreen> {
                     border: InputBorder.none,
                     counterText: '',
                     contentPadding: EdgeInsets.zero,
-                    hintText: '문의하실 내용을 구체적으로 적어주시면\n정확하고 빠른 답변이 가능합니다.',
+                    hintText:
+                        '문의 하실 내용을 구체적으로 적어주시면 정확하고 빠른 답변이 가능합니다.',
                     hintStyle: TextStyle(
                       color: const Color(0xFF898686),
                       fontSize: healthSp(context, 12),
@@ -626,27 +628,21 @@ class _QaWriteScreenState extends State<QaWriteScreen> {
                     onRemove: () => setState(() => _requiredPhotos[i] = null),
                   )
                 else
-                  Builder(
-                    builder: (anchorContext) {
-                      return _PhotoAddSlot(
-                        size: slot,
-                        label: _requiredPhotoLabels[i],
-                        onTap: () => _openPhotoSourceDropdown(
-                          anchorContext,
-                          slotIndex: i,
-                        ),
-                      );
-                    },
+                  PhotoSourceAnchor(
+                    canOpen: _canAddPhoto,
+                    onImageSelected: (image) =>
+                        _applyPickedImage(image, slotIndex: i),
+                    child: _PhotoAddSlot(
+                      size: slot,
+                      label: _requiredPhotoLabels[i],
+                    ),
                   ),
               ]
             else ...[
-              Builder(
-                builder: (anchorContext) {
-                  return _PhotoAddSlot(
-                    size: slot,
-                    onTap: () => _openPhotoSourceDropdown(anchorContext),
-                  );
-                },
+              PhotoSourceAnchor(
+                canOpen: _canAddPhoto,
+                onImageSelected: (image) => _applyPickedImage(image),
+                child: _PhotoAddSlot(size: slot),
               ),
               for (var i = 0; i < _images.length; i++) ...[
                 SizedBox(width: healthDp(context, 8)),
@@ -736,59 +732,98 @@ class _SectionTitle extends StatelessWidget {
 class _PhotoAddSlot extends StatelessWidget {
   const _PhotoAddSlot({
     required this.size,
-    required this.onTap,
     this.label = '사진추가하기',
   });
 
   final double size;
-  final VoidCallback onTap;
   final String label;
 
   static const String _font = 'Gmarket Sans TTF';
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(healthDp(context, 8)),
-      child: Container(
+    final radius = healthDp(context, 8);
+    return CustomPaint(
+      painter: _DashedRRectPainter(
+        color: const Color(0xFFD2D2D2),
+        radius: radius,
+        strokeWidth: healthDp(context, 1),
+      ),
+      child: SizedBox(
         width: size,
         height: size,
-        padding: EdgeInsets.symmetric(horizontal: healthDp(context, 4)),
-        decoration: ShapeDecoration(
-          shape: RoundedRectangleBorder(
-            side: BorderSide(
-              width: healthDp(context, 1),
-              color: const Color(0xFFD2D2D2),
-            ),
-            borderRadius: BorderRadius.circular(healthDp(context, 8)),
-          ),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            SvgPicture.asset(
-              AppAssets.addPhotoIcon,
-              width: healthDp(context, 28),
-              height: healthDp(context, 28),
-            ),
-            SizedBox(height: healthDp(context, 4)),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: const Color(0xFF898986),
-                fontSize: healthSp(context, 10),
-                fontFamily: _font,
-                fontWeight: FontWeight.w500,
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: healthDp(context, 4)),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SvgPicture.asset(
+                AppAssets.addPhotoIcon,
+                width: healthDp(context, 28),
+                height: healthDp(context, 28),
               ),
-            ),
-          ],
+              SizedBox(height: healthDp(context, 4)),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: const Color(0xFF898986),
+                  fontSize: healthSp(context, 10),
+                  fontFamily: _font,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
+  }
+}
+
+class _DashedRRectPainter extends CustomPainter {
+  const _DashedRRectPainter({
+    required this.color,
+    required this.radius,
+    required this.strokeWidth,
+  });
+
+  final Color color;
+  final double radius;
+  final double strokeWidth;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final path = Path()
+      ..addRRect(
+        RRect.fromRectAndRadius(
+          Offset.zero & size,
+          Radius.circular(radius),
+        ),
+      );
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth;
+    const dash = 4.0;
+    const gap = 3.0;
+    for (final metric in path.computeMetrics()) {
+      var distance = 0.0;
+      while (distance < metric.length) {
+        final next = (distance + dash).clamp(0.0, metric.length);
+        canvas.drawPath(metric.extractPath(distance, next), paint);
+        distance += dash + gap;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DashedRRectPainter oldDelegate) {
+    return oldDelegate.color != color ||
+        oldDelegate.radius != radius ||
+        oldDelegate.strokeWidth != strokeWidth;
   }
 }
 
