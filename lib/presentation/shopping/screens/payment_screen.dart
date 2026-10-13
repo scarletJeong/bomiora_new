@@ -12,6 +12,7 @@ import '../../common/widgets/dropdown_btn.dart';
 import '../../common/widgets/delivery_memo_dropdown.dart';
 import '../../common/widgets/app_toast_overlay.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
+import '../../../core/utils/kcp_pay_session_store.dart';
 import '../../../core/utils/web_kcp_popup.dart';
 import '../../common/widgets/daum_postcode_search_dialog.dart';
 import '../../../core/constants/app_assets.dart';
@@ -216,6 +217,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       // 기본 배송지 없으면 회원 성함/연락처 프리필
       if (_defaultAddress == null) {
         setState(() {
+          _saveAsDefault = true;
           if (_receiverController.text.trim().isEmpty) {
             _receiverController.text = user.name;
           }
@@ -258,6 +260,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
     });
     if (_defaultAddress == null) {
       setState(() {
+        _saveAsDefault = true;
         if (_receiverController.text.trim().isEmpty) {
           _receiverController.text = user.name;
         }
@@ -661,7 +664,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   Future<void> _maybeSaveDefaultAddress(String mbId) async {
-    if (_hasSavedAddress || !_saveAsDefault) return;
+    if (_hasSavedAddress && !_saveAsDefault) return;
+    if (!_hasSavedAddress) {
+      _saveAsDefault = true;
+    }
     final zipParts = _splitZipForApi(_zipController.text.trim());
     final subject = _addressNameController.text.trim().isNotEmpty
         ? _addressNameController.text.trim()
@@ -711,7 +717,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
     try {
       final useMobilePay = _useMobileKcpPay(context);
       Future<KcpPaySession> bootstrap() async {
-        unawaited(_maybeSaveDefaultAddress(user.id));
+        await _maybeSaveDefaultAddress(user.id);
         final response = await ApiClient.post(
           ApiEndpoints.kcpPayRequest,
           {
@@ -817,6 +823,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       final token = (resultMap['token'] ?? '').toString().trim();
 
       if (success) {
+        clearKcpPayToken();
         // 가상계좌 등에서 order_id 누락 시 결과 API로 한 번 더 보정
         if (orderId.isEmpty && token.isNotEmpty) {
           try {
@@ -869,6 +876,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
           AppToastOverlay.show(context, '결제가 완료되지 않았습니다.');
           return;
         }
+        clearKcpPayToken();
 
         AppToastOverlay.show(
           context,
@@ -1478,7 +1486,16 @@ class _PaymentScreenState extends State<PaymentScreen> {
           ),
           SizedBox(height: healthDp(context, 10)),
           InkWell(
-            onTap: () => setState(() => _saveAsDefault = !_saveAsDefault),
+            onTap: () {
+              if (_saveAsDefault && !_hasSavedAddress) {
+                AppToastOverlay.show(
+                  context,
+                  '기본 배송지는 한 개 이상 있어야 합니다.',
+                );
+                return;
+              }
+              setState(() => _saveAsDefault = !_saveAsDefault);
+            },
             child: Row(
               children: [
                 Container(

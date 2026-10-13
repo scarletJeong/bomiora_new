@@ -10,6 +10,7 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_endpoints.dart';
+import '../../../core/utils/kcp_pay_session_store.dart';
 import '../../../core/utils/web_kcp_popup.dart';
 import '../widgets/kcp_launch_frame.dart';
 
@@ -215,6 +216,7 @@ class _KcpPayWebViewScreenState extends State<KcpPayWebViewScreen> {
     super.initState();
     _html = widget.html.trim();
     _token = widget.token.trim();
+    if (_token.isNotEmpty) rememberKcpPayToken(_token);
     if (kIsWeb) {
       _cancelWebListener = listenKcpPayCallback(_onBridgePayload);
     }
@@ -236,7 +238,10 @@ class _KcpPayWebViewScreenState extends State<KcpPayWebViewScreen> {
         _token = session.token.trim();
         _bootstrapping = false;
       });
-      if (_token.isNotEmpty) _startPolling();
+      if (_token.isNotEmpty) {
+        rememberKcpPayToken(_token);
+        _startPolling();
+      }
     } catch (e) {
       if (!mounted || _completed) return;
       _completed = true;
@@ -283,6 +288,7 @@ class _KcpPayWebViewScreenState extends State<KcpPayWebViewScreen> {
     if (_completed || !mounted) return;
     _completed = true;
     _pollingTimer?.cancel();
+    if (!success) clearKcpPayToken();
     Navigator.pop(context, {
       'success': success,
       'error_code': errorCode,
