@@ -153,6 +153,12 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
     return _stripHtml(q.wrReply);
   }
 
+  String _answerDateFor(QaInquiry q) {
+    final list = _repliesByWrId[q.wrId] ?? const <QaInquiry>[];
+    if (list.isNotEmpty) return _formatInquiryDateTime(list.first.wrDatetime);
+    return '';
+  }
+
   String _stripHtml(String raw) {
     final t = raw.trim();
     if (t.isEmpty) return '';
@@ -245,7 +251,8 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
     return MobileAppLayoutWrapper(
       backgroundColor: Colors.white,
       appBar: HealthAppBar(
-        title: '문의내역',
+        title: '1:1 문의',
+        leadingIconSize: healthDp(context, 16),
       ),
       child: _buildBody(context),
     );
@@ -280,34 +287,34 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
     final photos = _inquiryPhotoUrls(root);
     final dateTime = _formatInquiryDateTime(root.wrDatetime);
 
+    final headline = root.inquiryDetailLabel.trim();
+
     return ListView(
-      padding: EdgeInsets.fromLTRB(
-        healthDp(context, 20),
-        healthDp(context, 16),
-        healthDp(context, 20),
-        healthDp(context, 32),
-      ),
+      padding: EdgeInsets.all(healthDp(context, 20)),
       children: [
         QaDetailProductCard(
           inquiry: root,
           fallbackImageUrl: _resolvedImageUrl,
         ),
-        SizedBox(height: healthDp(context, 12)),
+        SizedBox(height: healthDp(context, 24)),
         _buildTextSection(
           context,
-          title: '문의내용',
+          title: '문의 내용',
+          headline: headline,
           body: root.displayQuestionText,
           trailing: dateTime,
           photos: photos,
         ),
-        if (answered) ...[
-          SizedBox(height: healthDp(context, 20)),
+        SizedBox(height: healthDp(context, 24)),
+        if (answered)
           _buildTextSection(
             context,
-            title: '답변내용',
+            title: '답변 내용',
             body: _answerTextFor(root),
-          ),
-        ],
+            trailing: _answerDateFor(root),
+          )
+        else
+          _buildPendingAnswer(context),
       ],
     );
   }
@@ -318,93 +325,181 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
     return formatted;
   }
 
+  Widget _sectionTitle(
+    BuildContext context, {
+    required String title,
+    String? trailing,
+  }) {
+    return Row(
+      children: [
+        Container(
+          width: healthDp(context, 2),
+          height: healthDp(context, 14),
+          decoration: ShapeDecoration(
+            color: _pink,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(healthDp(context, 10)),
+            ),
+          ),
+        ),
+        SizedBox(width: healthDp(context, 6)),
+        Text(
+          title,
+          style: TextStyle(
+            color: Colors.black,
+            fontSize: healthSp(context, 14),
+            fontFamily: _font,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        if ((trailing ?? '').isNotEmpty) ...[
+          SizedBox(width: healthDp(context, 4)),
+          Text(
+            trailing!,
+            style: TextStyle(
+              color: const Color(0xFF898686),
+              fontSize: healthSp(context, 10),
+              fontFamily: _font,
+              fontWeight: FontWeight.w300,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  ShapeDecoration _boxDecoration(BuildContext context) {
+    return ShapeDecoration(
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        side: BorderSide(
+          width: healthDp(context, 1),
+          color: const Color(0x7FD2D2D2),
+        ),
+        borderRadius: BorderRadius.circular(healthDp(context, 7)),
+      ),
+    );
+  }
+
+  TextStyle _bodyStyle(BuildContext context) {
+    return TextStyle(
+      color: const Color(0xFF1A1A1E),
+      fontSize: healthSp(context, 12),
+      fontFamily: _font,
+      fontWeight: FontWeight.w500,
+      height: 1.67,
+      letterSpacing: healthSp(context, -0.60),
+    );
+  }
+
   Widget _buildTextSection(
     BuildContext context, {
     required String title,
     required String body,
+    String? headline,
     String? trailing,
     List<String> photos = const [],
   }) {
+    final line = (headline ?? '').trim();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Container(
-              width: healthDp(context, 3),
-              height: healthDp(context, 14),
-              decoration: ShapeDecoration(
-                color: _pink,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(healthDp(context, 99)),
-                ),
-              ),
+        _sectionTitle(context, title: title, trailing: trailing),
+        SizedBox(height: healthDp(context, 8)),
+        if (line.isNotEmpty) ...[
+          Container(
+            width: double.infinity,
+            height: healthDp(context, 40),
+            padding: EdgeInsets.symmetric(
+              horizontal: healthDp(context, 14),
+              vertical: healthDp(context, 10),
             ),
-            SizedBox(width: healthDp(context, 8)),
-            Text(
-              title,
-              style: TextStyle(
-                color: const Color(0xFF1B1B1B),
-                fontSize: healthSp(context, 15),
-                fontFamily: _font,
-                fontWeight: FontWeight.w300,
-                height: 1.5,
-              ),
-            ),
-            if ((trailing ?? '').isNotEmpty) ...[
-              SizedBox(width: healthDp(context, 8)),
-              Text(
-                trailing!,
+            alignment: Alignment.centerLeft,
+            decoration: _boxDecoration(context),
+            child: Opacity(
+              opacity: 0.86,
+              child: Text(
+                line,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: const Color(0xFF9C9C9C),
-                  fontSize: healthSp(context, 10),
+                  color: const Color(0xFF1A1A1E),
+                  fontSize: healthSp(context, 12),
                   fontFamily: _font,
-                  fontWeight: FontWeight.w300,
-                  height: 1.5,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: healthSp(context, -1.08),
                 ),
               ),
-            ],
-          ],
-        ),
-        SizedBox(height: healthDp(context, 10)),
-        Container(
-          width: double.infinity,
-          constraints: BoxConstraints(minHeight: healthDp(context, 120)),
-          padding: EdgeInsets.all(healthDp(context, 14)),
-          decoration: ShapeDecoration(
-            shape: RoundedRectangleBorder(
-              side: BorderSide(
-                width: healthDp(context, 1),
-                color: const Color(0xFFE0E0E0),
-              ),
-              borderRadius: BorderRadius.circular(healthDp(context, 8)),
             ),
           ),
+          SizedBox(height: healthDp(context, 8)),
+        ],
+        Container(
+          width: double.infinity,
+          padding: EdgeInsets.symmetric(
+            horizontal: healthDp(context, 14),
+            vertical: healthDp(context, 10),
+          ),
+          decoration: _boxDecoration(context),
           child: Text(
             body.isEmpty ? '' : body,
-            style: TextStyle(
-              color: const Color(0xFF1B1B1B),
-              fontSize: healthSp(context, 13),
-              fontFamily: _font,
-              fontWeight: FontWeight.w300,
-              height: 1.62,
-            ),
+            style: _bodyStyle(context),
           ),
         ),
         if (photos.isNotEmpty) ...[
-          SizedBox(height: healthDp(context, 12)),
+          SizedBox(height: healthDp(context, 8)),
           Wrap(
             spacing: healthDp(context, 8),
             runSpacing: healthDp(context, 8),
             children: [
               for (final url in photos)
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(healthDp(context, 8)),
+                  borderRadius: BorderRadius.circular(healthDp(context, 10)),
                   child: _qaPhotoThumb(context, url),
                 ),
             ],
           ),
         ],
+      ],
+    );
+  }
+
+  Widget _buildPendingAnswer(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionTitle(context, title: '답변 내용'),
+        SizedBox(height: healthDp(context, 8)),
+        Container(
+          width: double.infinity,
+          padding: EdgeInsets.symmetric(
+            horizontal: healthDp(context, 14),
+            vertical: healthDp(context, 10),
+          ),
+          decoration: _boxDecoration(context),
+          child: Column(
+            children: [
+              Icon(
+                Icons.access_time,
+                size: healthDp(context, 20),
+                color: const Color(0xFF898986),
+              ),
+              SizedBox(height: healthDp(context, 8)),
+              Text(
+                '답변 준비 중입니다.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: const Color(0xFF898986),
+                  fontSize: healthSp(context, 12),
+                  fontFamily: _font,
+                  fontWeight: FontWeight.w500,
+                  height: 1.67,
+                  letterSpacing: healthSp(context, -0.60),
+                ),
+              ),
+            ],
+          ),
+        ),
       ],
     );
   }

@@ -290,7 +290,7 @@ class _QaWriteScreenState extends State<QaWriteScreen> {
             resizeToAvoidBottomInset: true,
             appBar: HealthAppBar(
               title: '1:1 문의',
-              leadingIconSize: healthDp(context, 24),
+              leadingIconSize: healthDp(context, 16),
             ),
             child: ColoredBox(
               color: Colors.white,
@@ -326,34 +326,27 @@ class _QaWriteScreenState extends State<QaWriteScreen> {
                     ),
                   Expanded(
                     child: SingleChildScrollView(
-                      padding: EdgeInsets.fromLTRB(
-                        healthDp(context, 20),
-                        healthDp(context, 10),
-                        healthDp(context, 20),
-                        healthDp(context, 20),
-                      ),
+                      padding: EdgeInsets.all(healthDp(context, 20)),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            '안녕하세요. \n보미오라 고객센터입니다.',
+                            '안녕하세요. 보미오라 고객센터입니다.',
                             style: TextStyle(
-                              color: _ink,
-                              fontSize: healthSp(context, 20),
+                              color: const Color(0xFF0F172A),
+                              fontSize: healthSp(context, 18),
                               fontFamily: _font,
                               fontWeight: FontWeight.w500,
-                              height: 1.2,
                             ),
                           ),
-                          SizedBox(height: healthDp(context, 5)),
+                          SizedBox(height: healthDp(context, 8)),
                           Text(
                             '무엇을 도와드릴까요?',
                             style: TextStyle(
-                              color: const Color(0xFF888888),
-                              fontSize: healthSp(context, 13),
+                              color: const Color(0xFF898686),
+                              fontSize: healthSp(context, 14),
                               fontFamily: _font,
                               fontWeight: FontWeight.w300,
-                              height: 1.5,
                             ),
                           ),
                           SizedBox(height: healthDp(context, 20)),
@@ -395,22 +388,20 @@ class _QaWriteScreenState extends State<QaWriteScreen> {
                             ],
                           ),
                           if (!_isEtcInquiry) ...[
-                            SizedBox(height: healthDp(context, 10)),
+                            SizedBox(height: healthDp(context, 8)),
                             Row(
                               children: [
                                 Expanded(
                                   child: Container(
                                     height: healthDp(context, 45),
                                     alignment: Alignment.centerLeft,
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: healthDp(context, 16),
-                                    ),
+                                    padding: EdgeInsets.all(healthDp(context, 10)),
                                     decoration: ShapeDecoration(
-                                      color: const Color(0xFFFAFAFA),
+                                      color: const Color(0xFFF7F7F7),
                                       shape: RoundedRectangleBorder(
                                         side: BorderSide(
                                           width: healthDp(context, 1),
-                                          color: const Color(0xFFE0E0E0),
+                                          color: const Color(0xFFD2D2D2),
                                         ),
                                         borderRadius: BorderRadius.circular(
                                           healthDp(context, 10),
@@ -419,41 +410,39 @@ class _QaWriteScreenState extends State<QaWriteScreen> {
                                     ),
                                     child: Text(
                                       _productFieldLabel,
-                                      maxLines: 2,
+                                      maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: TextStyle(
-                                        color: _hasSelectedProduct
-                                            ? _ink
-                                            : const Color(0xFF808080),
-                                        fontSize: healthSp(context, 14),
+                                        color: const Color(0xFF898383),
+                                        fontSize: healthSp(context, 12),
                                         fontFamily: _font,
                                         fontWeight: FontWeight.w300,
-                                        height: 1.5,
                                       ),
                                     ),
                                   ),
                                 ),
-                                SizedBox(width: healthDp(context, 8)),
+                                SizedBox(width: healthDp(context, 10)),
                                 InkWell(
                                   onTap: _canOpenItemSelect
                                       ? _openProductSelect
                                       : null,
                                   borderRadius: BorderRadius.circular(
-                                    healthDp(context, 6),
+                                    healthDp(context, 10),
                                   ),
                                   child: Container(
                                     height: healthDp(context, 45),
                                     padding: EdgeInsets.symmetric(
-                                      horizontal: healthDp(context, 18),
+                                      horizontal: healthDp(context, 10),
+                                      vertical: healthDp(context, 5),
                                     ),
                                     alignment: Alignment.center,
                                     decoration: ShapeDecoration(
                                       color: _canOpenItemSelect
                                           ? _pink
-                                          : const Color(0xFFF1F1F1),
+                                          : const Color(0xFFD2D2D2),
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(
-                                          healthDp(context, 6),
+                                          healthDp(context, 10),
                                         ),
                                       ),
                                     ),
@@ -461,13 +450,10 @@ class _QaWriteScreenState extends State<QaWriteScreen> {
                                       '상품선택',
                                       textAlign: TextAlign.center,
                                       style: TextStyle(
-                                        color: _canOpenItemSelect
-                                            ? Colors.white
-                                            : const Color(0xFFC0C0C0),
-                                        fontSize: healthSp(context, 13),
+                                        color: Colors.white,
+                                        fontSize: healthSp(context, 12),
                                         fontFamily: _font,
                                         fontWeight: FontWeight.w500,
-                                        height: 1.5,
                                       ),
                                     ),
                                   ),
@@ -476,9 +462,9 @@ class _QaWriteScreenState extends State<QaWriteScreen> {
                             ),
                           ],
                           if (_showCompose) ...[
-                            SizedBox(height: healthDp(context, 20)),
+                            SizedBox(height: healthDp(context, 24)),
                             _buildContentSection(context),
-                            SizedBox(height: healthDp(context, 10)),
+                            SizedBox(height: healthDp(context, 24)),
                             _buildPhotoSection(context),
                           ],
                         ],
@@ -490,28 +476,27 @@ class _QaWriteScreenState extends State<QaWriteScreen> {
                     child: Padding(
                       padding: EdgeInsets.fromLTRB(
                         healthDp(context, 20),
-                        healthDp(context, 10),
+                        0,
                         healthDp(context, 20),
-                        healthDp(context, 10),
+                        healthDp(context, 20),
                       ),
                       child: SizedBox(
                         width: double.infinity,
-                        height: healthDp(context, 45),
+                        height: healthDp(context, 40),
                         child: Row(
                           children: [
-                            Expanded(
-                              flex: 2,
+                            SizedBox(
+                              width: healthDp(context, 130),
                               child: _BottomButton(
                                 label: '취소',
                                 bg: Colors.white,
-                                fg: const Color(0xFF555555),
-                                borderColor: const Color(0xFFDCDCDC),
+                                fg: const Color(0xFF898686),
+                                borderColor: const Color(0xFFD2D2D2),
                                 onTap: () => Navigator.pop(context),
                               ),
                             ),
-                            SizedBox(width: healthDp(context, 10)),
+                            SizedBox(width: healthDp(context, 8)),
                             Expanded(
-                              flex: 3,
                               child: _BottomButton(
                                 label: '문의하기',
                                 bg: _canSubmit
@@ -540,25 +525,26 @@ class _QaWriteScreenState extends State<QaWriteScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _SectionTitle(label: '문의내용', fontSize: 15),
-        SizedBox(height: healthDp(context, 5)),
+        const _SectionTitle(label: '문의 내용', fontSize: 14),
+        SizedBox(height: healthDp(context, 8)),
         Container(
           width: double.infinity,
+          height: healthDp(context, 207),
           padding: EdgeInsets.all(healthDp(context, 14)),
           decoration: ShapeDecoration(
+            color: Colors.white,
             shape: RoundedRectangleBorder(
               side: BorderSide(
                 width: healthDp(context, 1),
-                color: const Color(0xFFE0E0E0),
+                color: const Color(0x7FD2D2D2),
               ),
-              borderRadius: BorderRadius.circular(healthDp(context, 8)),
+              borderRadius: BorderRadius.circular(healthDp(context, 7)),
             ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SizedBox(
-                height: healthDp(context, 120),
+              Expanded(
                 child: TextField(
                   controller: _contentController,
                   enabled: !_sending,
@@ -571,21 +557,24 @@ class _QaWriteScreenState extends State<QaWriteScreen> {
                     isDense: true,
                     border: InputBorder.none,
                     counterText: '',
+                    contentPadding: EdgeInsets.zero,
                     hintText: '문의하실 내용을 구체적으로 적어주시면\n정확하고 빠른 답변이 가능합니다.',
                     hintStyle: TextStyle(
-                      color: const Color(0x7F1B1B1B),
-                      fontSize: healthSp(context, 14),
+                      color: const Color(0xFF898686),
+                      fontSize: healthSp(context, 12),
                       fontFamily: _font,
                       fontWeight: FontWeight.w300,
-                      height: 1.6,
+                      height: 1.67,
+                      letterSpacing: healthSp(context, -0.60),
                     ),
                   ),
                   style: TextStyle(
-                    color: const Color(0xFF1B1B1B),
-                    fontSize: healthSp(context, 14),
+                    color: const Color(0xFF1A1A1E),
+                    fontSize: healthSp(context, 12),
                     fontFamily: _font,
-                    fontWeight: FontWeight.w300,
-                    height: 1.6,
+                    fontWeight: FontWeight.w500,
+                    height: 1.67,
+                    letterSpacing: healthSp(context, -0.60),
                   ),
                 ),
               ),
@@ -595,11 +584,11 @@ class _QaWriteScreenState extends State<QaWriteScreen> {
                   '$count / $_maxContentLength',
                   textAlign: TextAlign.right,
                   style: TextStyle(
-                    color: const Color(0xFFAAAAAA),
-                    fontSize: healthSp(context, 12),
+                    color: const Color(0xFF898686),
+                    fontSize: healthSp(context, 10),
                     fontFamily: _font,
                     fontWeight: FontWeight.w300,
-                    height: 1.5,
+                    letterSpacing: healthSp(context, -0.50),
                   ),
                 ),
               ),
@@ -618,12 +607,13 @@ class _QaWriteScreenState extends State<QaWriteScreen> {
         _SectionTitle(
           label: '사진 업로드',
           fontSize: 14,
+          barColor: const Color(0xFFD2D2D2),
           trailing: _isPhotoRequired ? '(필수)' : '(선택)',
           trailingColor: _isPhotoRequired
               ? const Color(0xFFFF5A8D)
               : const Color(0xFF898686),
         ),
-        SizedBox(height: healthDp(context, 5)),
+        SizedBox(height: healthDp(context, 10)),
         Row(
           children: [
             if (_isPhotoRequired)
@@ -669,7 +659,7 @@ class _QaWriteScreenState extends State<QaWriteScreen> {
             ],
           ],
         ),
-        SizedBox(height: healthDp(context, 10)),
+        SizedBox(height: healthDp(context, 12)),
         Text(
           '최대 3장 / 파일당 5MB이하(GIF,JPG,PNG)',
           style: TextStyle(
@@ -690,12 +680,14 @@ class _SectionTitle extends StatelessWidget {
     required this.fontSize,
     this.trailing,
     this.trailingColor,
+    this.barColor = const Color(0xFFFF5A8D),
   });
 
   final String label;
   final double fontSize;
   final String? trailing;
   final Color? trailingColor;
+  final Color barColor;
 
   static const String _font = 'Gmarket Sans TTF';
 
@@ -705,24 +697,23 @@ class _SectionTitle extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Container(
-          width: healthDp(context, 3),
+          width: healthDp(context, 2),
           height: healthDp(context, 14),
           decoration: ShapeDecoration(
-            color: const Color(0xFFFF5A8D),
+            color: barColor,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(healthDp(context, 99)),
+              borderRadius: BorderRadius.circular(healthDp(context, 10)),
             ),
           ),
         ),
-        SizedBox(width: healthDp(context, 8)),
+        SizedBox(width: healthDp(context, 6)),
         Text(
           label,
           style: TextStyle(
-            color: const Color(0xFF1B1B1B),
+            color: Colors.black,
             fontSize: healthSp(context, fontSize),
             fontFamily: _font,
-            fontWeight: FontWeight.w300,
-            height: 1.5,
+            fontWeight: FontWeight.w500,
           ),
         ),
         if (trailing != null) ...[
@@ -731,10 +722,9 @@ class _SectionTitle extends StatelessWidget {
             trailing!,
             style: TextStyle(
               color: trailingColor ?? const Color(0xFF898686),
-              fontSize: healthSp(context, 11),
+              fontSize: healthSp(context, 10),
               fontFamily: _font,
               fontWeight: FontWeight.w300,
-              height: 1.5,
             ),
           ),
         ],
@@ -760,15 +750,18 @@ class _PhotoAddSlot extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(healthDp(context, 10)),
+      borderRadius: BorderRadius.circular(healthDp(context, 8)),
       child: Container(
         width: size,
         height: size,
         padding: EdgeInsets.symmetric(horizontal: healthDp(context, 4)),
         decoration: ShapeDecoration(
-          color: const Color(0x99D2D2D2),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(healthDp(context, 10)),
+            side: BorderSide(
+              width: healthDp(context, 1),
+              color: const Color(0xFFD2D2D2),
+            ),
+            borderRadius: BorderRadius.circular(healthDp(context, 8)),
           ),
         ),
         child: Column(
@@ -777,20 +770,19 @@ class _PhotoAddSlot extends StatelessWidget {
             SvgPicture.asset(
               AppAssets.addPhotoIcon,
               width: healthDp(context, 28),
-              height: healthDp(context, 26),
+              height: healthDp(context, 28),
             ),
-            SizedBox(height: healthDp(context, 2)),
+            SizedBox(height: healthDp(context, 4)),
             Text(
               label,
               textAlign: TextAlign.center,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                color: Colors.white,
-                fontSize: healthSp(context, 9),
+                color: const Color(0xFF898986),
+                fontSize: healthSp(context, 10),
                 fontFamily: _font,
                 fontWeight: FontWeight.w500,
-                height: 1.2,
               ),
             ),
           ],
@@ -886,11 +878,16 @@ class _LandingDropdown extends StatelessWidget {
       emptyText: hint,
       enabled: enabled,
       buttonHeight: healthDp(context, 45),
-      itemFontSizeBase: 14,
+      itemFontSizeBase: 12,
       itemTextAlign: TextAlign.left,
-      borderColor: const Color(0xFFE0E0E0),
-      emptyTextColor: const Color(0xFF999999),
-      valueTextColor: const Color(0xFF1A1A1A),
+      borderColor: const Color(0xFFD2D2D2),
+      backgroundColor:
+          enabled ? Colors.white : const Color(0xFFF7F7F7),
+      emptyTextColor: const Color(0xFF898686),
+      valueTextColor: const Color(0xFF1A1A1E),
+      emptyFontWeight: FontWeight.w300,
+      valueFontWeight: FontWeight.w500,
+      dimWhenDisabled: false,
       onChanged: (item) => onChanged(item),
     );
   }
@@ -922,9 +919,9 @@ class _BottomButton extends StatelessWidget {
           color: bg,
           shape: RoundedRectangleBorder(
             side: borderColor != null
-                ? BorderSide(width: healthDp(context, 1), color: borderColor!)
+                ? BorderSide(width: healthDp(context, 0.5), color: borderColor!)
                 : BorderSide.none,
-            borderRadius: BorderRadius.circular(healthDp(context, 8)),
+            borderRadius: BorderRadius.circular(healthDp(context, 10)),
           ),
         ),
         child: Center(
@@ -933,7 +930,7 @@ class _BottomButton extends StatelessWidget {
             textAlign: TextAlign.center,
             style: TextStyle(
               color: fg,
-              fontSize: healthSp(context, 14),
+              fontSize: healthSp(context, 16),
               fontFamily: _font,
               fontWeight: FontWeight.w500,
             ),

@@ -25,7 +25,7 @@ class QaDetailProductCard extends StatefulWidget {
 class _QaDetailProductCardState extends State<QaDetailProductCard> {
   final Set<String> _expanded = {};
 
-  static const String _noto = 'Noto Sans KR';
+  static const String _font = 'Gmarket Sans TTF';
 
   List<QaInquiryCardItem> _itemsOf(QaInquiry root) {
     final subjectIt = (root.subjectItSubject ?? '').trim();
@@ -80,20 +80,24 @@ class _QaDetailProductCardState extends State<QaDetailProductCard> {
     return (card?['od']?.toString() ?? '').trim();
   }
 
-  String _optionLine(QaInquiryCardItem item) {
-    if (!item.showOptions) return '';
-    final parts = <String>['수량 ${item.qty}'];
+  List<String> _optionParts(QaInquiryCardItem item) {
+    if (!item.showOptions) return const [];
     final raw = (item.optionText ?? '').trim();
-    if (raw.isNotEmpty) {
-      parts.addAll(
-        raw
-            .split(RegExp(r'\s*[|ㅣ/]\s*'))
+    final tokens = raw.isEmpty
+        ? <String>[]
+        : raw
+            .split(RegExp(r'\s*[|ㅣ/]\s*|\u001E'))
             .map((e) => e.trim())
-            .where((e) => e.isNotEmpty && !e.startsWith('수량')),
-      );
-    }
-    return parts.join(' · ');
+            .where((e) => e.isNotEmpty)
+            .toList();
+    final hasQty = tokens.any((e) => e.startsWith('수량'));
+    return [
+      if (!hasQty && item.qty > 0) '수량: ${item.qty}',
+      ...tokens,
+    ];
   }
+
+  String _optionLine(QaInquiryCardItem item) => _optionParts(item).join(' ');
 
   List<_VendorGroup> _groups(List<QaInquiryCardItem> items) {
     final map = <String, List<QaInquiryCardItem>>{};
@@ -141,81 +145,66 @@ class _QaDetailProductCardState extends State<QaDetailProductCard> {
 
     return Container(
       width: double.infinity,
+      padding: EdgeInsets.symmetric(vertical: healthDp(context, 14)),
       decoration: ShapeDecoration(
         color: Colors.white,
         shape: RoundedRectangleBorder(
-          side: const BorderSide(width: 1, color: Color(0xFFE5E5E5)),
+          side: BorderSide(
+            width: healthDp(context, 1),
+            color: const Color(0x7FD2D2D2),
+          ),
           borderRadius: BorderRadius.circular(healthDp(context, 16)),
         ),
-        shadows: const [
-          BoxShadow(
-            color: Color(0x07000000),
-            blurRadius: 3,
-            offset: Offset(0, 1),
-          ),
-        ],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(healthDp(context, 16)),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: double.infinity,
-              padding: EdgeInsets.symmetric(
-                horizontal: healthDp(context, 12),
-                vertical: healthDp(context, 10),
-              ),
-              decoration: const BoxDecoration(
-                color: Color(0xFFFAFAFA),
-                border: Border(
-                  bottom: BorderSide(color: Color(0xFFF5F5F5)),
-                ),
-              ),
-              child: Row(
-                children: [
-                  if (badge.isNotEmpty) QaInquiryTypeBadge(type: badge),
-                  if (showOrder && orderId.isNotEmpty) ...[
-                    SizedBox(width: healthDp(context, 8)),
-                    Expanded(
-                      child: Text(
-                        '주문번호 $orderId',
-                        style: TextStyle(
-                          color: const Color(0xFF737373),
-                          fontSize: healthSp(context, 11),
-                          fontFamily: _noto,
-                          fontWeight: FontWeight.w400,
-                          height: 1.45,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ] else
-                    const Spacer(),
-                  if (count > 0)
-                    Text(
-                      '총 $count개 상품',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
+            child: Row(
+              children: [
+                if (badge.isNotEmpty) QaInquiryTypeBadge(type: badge),
+                if (showOrder && orderId.isNotEmpty) ...[
+                  SizedBox(width: healthDp(context, 4)),
+                  Expanded(
+                    child: Text(
+                      '주문번호 $orderId',
                       style: TextStyle(
-                        color: const Color(0xFFA1A1A1),
+                        color: const Color(0xFF898986),
                         fontSize: healthSp(context, 10),
-                        fontFamily: _noto,
-                        fontWeight: FontWeight.w400,
-                        height: 1.6,
+                        fontFamily: _font,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: healthSp(context, -0.90),
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                ],
-              ),
+                  ),
+                ] else
+                  const Spacer(),
+                if (count > 0)
+                  Text(
+                    '총 $count개 상품',
+                    style: TextStyle(
+                      color: const Color(0xFF898986),
+                      fontSize: healthSp(context, 10),
+                      fontFamily: _font,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+              ],
             ),
-            for (var gi = 0; gi < groups.length; gi++)
-              _buildVendorGroup(
-                context,
-                groups[gi],
-                showVendorBar: showVendorBar,
-                showBottomBorder: gi < groups.length - 1,
-              ),
+          ),
+          if (groups.isNotEmpty) SizedBox(height: healthDp(context, 14)),
+          for (var gi = 0; gi < groups.length; gi++) ...[
+            if (gi > 0) SizedBox(height: healthDp(context, 14)),
+            _buildVendorGroup(
+              context,
+              groups[gi],
+              showVendorBar: showVendorBar,
+            ),
           ],
-        ),
+        ],
       ),
     );
   }
@@ -224,86 +213,62 @@ class _QaDetailProductCardState extends State<QaDetailProductCard> {
     BuildContext context,
     _VendorGroup group, {
     required bool showVendorBar,
-    required bool showBottomBorder,
   }) {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        border: showBottomBorder
-            ? const Border(bottom: BorderSide(color: Color(0xFFF5F5F5)))
-            : null,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (showVendorBar && group.vendor.isNotEmpty)
-            Container(
-              width: double.infinity,
-              padding: EdgeInsets.symmetric(
-                horizontal: healthDp(context, 12),
-                vertical: healthDp(context, 6),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (showVendorBar && group.vendor.isNotEmpty)
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.all(healthDp(context, 10)),
+            decoration: ShapeDecoration(
+              color: const Color(0xFFFCFCFB),
+              shape: RoundedRectangleBorder(
+                side: BorderSide(
+                  width: healthDp(context, 1),
+                  color: const Color(0x7FD2D2D2),
+                ),
               ),
-              decoration: const BoxDecoration(
-                color: Color(0xFFFAFAFA),
-              ),
-              child: Row(
-                children: [
-                  Flexible(
-                    child: Text(
-                      group.vendor,
-                      style: TextStyle(
-                        color: const Color(0xFF737373),
-                        fontSize: healthSp(context, 10),
-                        fontFamily: _noto,
-                        fontWeight: FontWeight.w400,
-                        height: 1.6,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+            ),
+            child: Row(
+              children: [
+                Flexible(
+                  child: Text(
+                    group.vendor,
+                    style: TextStyle(
+                      color: const Color(0xFF898986),
+                      fontSize: healthSp(context, 12),
+                      fontFamily: _font,
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: healthSp(context, -0.48),
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  if (group.items.any((e) => e.isHerbal)) ...[
-                    SizedBox(width: healthDp(context, 6)),
-                    const _HerbalBadge(),
-                  ],
+                ),
+                if (group.items.any((e) => e.isHerbal)) ...[
+                  SizedBox(width: healthDp(context, 4)),
+                  const _HerbalBadge(),
                 ],
-              ),
+              ],
             ),
-          for (var i = 0; i < group.items.length; i++)
-            _buildProductBlock(
-              context,
-              group.items[i],
-              showDivider: i < group.items.length - 1,
-            ),
+          ),
+        for (var i = 0; i < group.items.length; i++) ...[
+          SizedBox(height: healthDp(context, 10)),
+          _buildProductBlock(context, group.items[i]),
         ],
-      ),
+      ],
     );
   }
 
-  Widget _buildProductBlock(
-    BuildContext context,
-    QaInquiryCardItem item, {
-    required bool showDivider,
-  }) {
+  Widget _buildProductBlock(BuildContext context, QaInquiryCardItem item) {
     final key = '${item.name}|${item.imageUrl}|${item.price}';
     final expanded = _expanded.contains(key);
-    final title = item.extras.isNotEmpty
-        ? '${item.name} 외 ${item.extras.length}건'
-        : item.name;
-    final option = _optionLine(item);
+    final parts = _optionParts(item);
     final imageUrl = (item.imageUrl ?? '').trim();
 
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.symmetric(
-        horizontal: healthDp(context, 12),
-        vertical: healthDp(context, 10),
-      ),
-      decoration: BoxDecoration(
-        border: showDivider
-            ? const Border(bottom: BorderSide(color: Color(0xFFF5F5F5)))
-            : null,
-      ),
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -311,10 +276,10 @@ class _QaDetailProductCardState extends State<QaDetailProductCard> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               ClipRRect(
-                borderRadius: BorderRadius.circular(healthDp(context, 6)),
+                borderRadius: BorderRadius.circular(healthDp(context, 8)),
                 child: Container(
-                  width: healthDp(context, 48),
-                  height: healthDp(context, 48),
+                  width: healthDp(context, 56),
+                  height: healthDp(context, 56),
                   color: const Color(0xFFF5F5F5),
                   child: imageUrl.isNotEmpty
                       ? Image.network(
@@ -337,52 +302,41 @@ class _QaDetailProductCardState extends State<QaDetailProductCard> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      title,
+                      item.name,
                       style: TextStyle(
-                        color: const Color(0xFF171717),
-                        fontSize: healthSp(context, 12),
-                        fontFamily: _noto,
-                        fontWeight: FontWeight.w400,
-                        height: 1.33,
+                        color: const Color(0xFF1A1A1E),
+                        fontSize: healthSp(context, 14),
+                        fontFamily: _font,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: healthSp(context, -0.56),
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    if (option.isNotEmpty) ...[
-                      SizedBox(height: healthDp(context, 2)),
-                      Text(
-                        option,
-                        style: TextStyle(
-                          color: const Color(0xFF737373),
-                          fontSize: healthSp(context, 10),
-                          fontFamily: _noto,
-                          fontWeight: FontWeight.w400,
-                          height: 1.4,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                    if (item.price != null) ...[
+                    if (parts.isNotEmpty) ...[
                       SizedBox(height: healthDp(context, 4)),
-                      Text(
-                        '${PriceFormatter.format(item.price)}원',
-                        style: TextStyle(
-                          color: const Color(0xFF171717),
-                          fontSize: healthSp(context, 12),
-                          fontFamily: _noto,
-                          fontWeight: FontWeight.w400,
-                          height: 1.17,
+                      _OptionLine(parts: parts),
+                    ],
+                    if (item.price != null)
+                      Padding(
+                        padding: EdgeInsets.only(top: healthDp(context, 8)),
+                        child: Text(
+                          '${PriceFormatter.format(item.price)}원',
+                          style: TextStyle(
+                            color: const Color(0xFF1A1A1E),
+                            fontSize: healthSp(context, 14),
+                            fontFamily: _font,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
-                    ],
                   ],
                 ),
               ),
             ],
           ),
           if (item.extras.isNotEmpty) ...[
-            SizedBox(height: healthDp(context, 8)),
+            SizedBox(height: healthDp(context, 14)),
             SupplyAddExpandBlock(
               count: item.extras.length,
               expanded: expanded,
@@ -397,16 +351,52 @@ class _QaDetailProductCardState extends State<QaDetailProductCard> {
                 for (var i = 0; i < item.extras.length; i++)
                   SupplyAddReadOnlyRow(
                     name: item.extras[i].name,
+                    vendorLabel: item.extras[i].vendor,
                     optionLine: _optionLine(item.extras[i]),
                     price: item.extras[i].price,
                     imageUrl: item.extras[i].imageUrl,
                     showDivider: i < item.extras.length - 1,
+                    thumbBase: 48,
+                    nameFontBase: 12,
+                    optionFontBase: 10,
+                    priceFontBase: 12,
+                    nameLetterSpacingBase: -0.48,
+                    optionLetterSpacingBase: -0.60,
                   ),
               ],
             ),
           ],
         ],
       ),
+    );
+  }
+}
+
+class _OptionLine extends StatelessWidget {
+  const _OptionLine({required this.parts});
+
+  final List<String> parts;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: healthDp(context, 4),
+      runSpacing: healthDp(context, 4),
+      children: [
+        for (var i = 0; i < parts.length; i++)
+          Text(
+            parts[i],
+            style: TextStyle(
+              color: i == parts.length - 1 && parts.length > 1
+                  ? const Color(0xFF898686)
+                  : const Color(0xFF898383),
+              fontSize: healthSp(context, 10),
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w500,
+              letterSpacing: healthSp(context, -0.90),
+            ),
+          ),
+      ],
     );
   }
 }
@@ -423,24 +413,24 @@ class _HerbalBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: healthDp(context, 6)),
+      padding: EdgeInsets.all(healthDp(context, 4)),
       decoration: ShapeDecoration(
         shape: RoundedRectangleBorder(
           side: BorderSide(
-            width: healthDp(context, 0.5),
+            width: healthDp(context, 0.8),
             color: const Color(0xFFFF5A8D),
           ),
-          borderRadius: BorderRadius.circular(healthDp(context, 4)),
+          borderRadius: BorderRadius.circular(healthDp(context, 50)),
         ),
       ),
       child: Text(
         '한의약품',
         style: TextStyle(
           color: const Color(0xFFFF5A8D),
-          fontSize: healthSp(context, 8),
-          fontFamily: 'Noto Sans KR',
-          fontWeight: FontWeight.w400,
-          height: 1.25,
+          fontSize: healthSp(context, 10),
+          fontFamily: 'Gmarket Sans TTF',
+          fontWeight: FontWeight.w500,
+          letterSpacing: healthSp(context, -0.40),
         ),
       ),
     );

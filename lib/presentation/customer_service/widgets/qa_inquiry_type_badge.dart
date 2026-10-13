@@ -48,8 +48,8 @@ class QaInquiryTypeBadge extends StatelessWidget {
     ),
     '이벤트/쿠폰/회원': _Style(
       label: '이벤트/쿠폰/회원',
-      background: Color(0xFFEFE5FF),
-      foreground: Color(0xFFA52BF2),
+      background: Color(0xFFF1EBFC),
+      foreground: Color(0xFF7C5CC4),
     ),
     '기타': _fallback,
   };
@@ -85,10 +85,7 @@ class QaInquiryTypeBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final style = _style;
     return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: healthDp(context, 6),
-        vertical: healthDp(context, 2),
-      ),
+      padding: EdgeInsets.all(healthDp(context, 4)),
       decoration: ShapeDecoration(
         color: style.background,
         shape: RoundedRectangleBorder(
@@ -99,10 +96,9 @@ class QaInquiryTypeBadge extends StatelessWidget {
         style.label,
         style: TextStyle(
           color: style.foreground,
-          fontSize: healthSp(context, 11),
+          fontSize: healthSp(context, 12),
           fontFamily: _font,
-          fontWeight: FontWeight.w300,
-          height: 1.5,
+          fontWeight: FontWeight.w500,
         ),
       ),
     );

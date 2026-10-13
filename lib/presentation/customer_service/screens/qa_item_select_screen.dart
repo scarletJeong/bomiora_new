@@ -1,5 +1,7 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
+import '../../../core/constants/app_assets.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../core/utils/node_value_parser.dart';
@@ -37,7 +39,6 @@ class QaItemSelectScreen extends StatefulWidget {
 
 class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
   static const Color _pink = Color(0xFFFF5A8D);
-  static const Color _ink = Color(0xFF1A1A1A);
   static const Color _muted = Color(0xFF898686);
   static const String _font = 'Gmarket Sans TTF';
 
@@ -502,17 +503,7 @@ class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
         '찜한상품',
       ];
 
-  String get _emptyText {
-    switch (_currentTab) {
-      case QaItemSelectTab.cart:
-      case QaItemSelectTab.wish:
-        return '선택 가능한 상품이 없습니다.';
-      case QaItemSelectTab.cancel:
-        return '최근 1개월 내 취소·교환·반품 내역이 없습니다.';
-      case QaItemSelectTab.order:
-        return '최근 1개월 내 주문·배송 내역이 없습니다.';
-    }
-  }
+  String get _emptyText => '선택 가능한 상품이 없습니다.';
 
   String get _headerSub {
     switch (_currentTab) {
@@ -531,7 +522,10 @@ class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
   Widget build(BuildContext context) {
     return MobileAppLayoutWrapper(
       backgroundColor: Colors.white,
-      appBar: const HealthAppBar(title: '상품선택'),
+      appBar: HealthAppBar(
+        title: '1:1 문의',
+        leadingIconSize: healthDp(context, 16),
+      ),
       child: Column(
         children: [
           _buildTabs(context),
@@ -543,29 +537,29 @@ class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
                 healthDp(context, 20),
                 healthDp(context, 8),
                 healthDp(context, 20),
-                healthDp(context, 5),
+                healthDp(context, 20),
               ),
               child: GestureDetector(
                 onTap: _selectedKeys.isEmpty ? null : _onNext,
                 child: Container(
                   width: double.infinity,
-                  height: healthDp(context, 45),
+                  height: healthDp(context, 40),
                   alignment: Alignment.center,
                   decoration: ShapeDecoration(
                     color: _selectedKeys.isEmpty
-                        ? _pink.withValues(alpha: 0.4)
+                        ? const Color(0xFFD2D2D2)
                         : _pink,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(healthDp(context, 8)),
+                      borderRadius: BorderRadius.circular(healthDp(context, 10)),
                     ),
                   ),
                   child: Text(
                     '다음',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: healthSp(context, 15),
+                      fontSize: healthSp(context, 16),
                       fontFamily: _font,
-                      fontWeight: FontWeight.w300,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),
@@ -579,60 +573,70 @@ class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
 
   Widget _buildTabs(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(top: healthDp(context, 14)),
-      child: DecoratedBox(
-        decoration: const BoxDecoration(
-          border: Border(bottom: BorderSide(color: Color(0xFFE8E8E8))),
+      padding: EdgeInsets.fromLTRB(
+        healthDp(context, 20),
+        healthDp(context, 20),
+        healthDp(context, 20),
+        0,
+      ),
+      child: Row(
+        children: [
+          for (var i = 0; i < _tabLabels.length; i++)
+            _tabCell(
+              context,
+              index: i,
+              expand: i != 1,
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _tabCell(
+    BuildContext context, {
+    required int index,
+    required bool expand,
+  }) {
+    final selected = _tabIndex == index;
+    final child = GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () {
+        if (_tabIndex == index) return;
+        setState(() => _tabIndex = index);
+        _load();
+      },
+      child: Container(
+        padding: EdgeInsets.only(
+          left: expand ? 0 : healthDp(context, 10),
+          right: expand ? 0 : healthDp(context, 10),
+          bottom: healthDp(context, 10),
         ),
-        child: Row(
-          children: [
-            for (var i = 0; i < _tabLabels.length; i++)
-              Expanded(
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () {
-                    if (_tabIndex == i) return;
-                    setState(() => _tabIndex = i);
-                    _load();
-                  },
-                  child: Container(
-                    padding: EdgeInsets.only(
-                      top: healthDp(context, 6),
-                      bottom: healthDp(context, 6),
-                    ),
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      border: Border(
-                        bottom: BorderSide(
-                          width: healthDp(context, 2),
-                          color: _tabIndex == i
-                              ? const Color(0xFFFF5A8D)
-                              : Colors.transparent,
-                        ),
-                      ),
-                    ),
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        _tabLabels[i],
-                        style: TextStyle(
-                          color: _tabIndex == i
-                              ? const Color(0xFFFF5A8D)
-                              : const Color(0xFF999999),
-                          fontSize: healthSp(context, 13),
-                          fontFamily: _font,
-                          fontWeight: FontWeight.w300,
-                          height: 1.2,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-          ],
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              width: healthDp(context, 1),
+              color: selected
+                  ? const Color(0xFFFF5A8D)
+                  : const Color(0xFFD2D2D2),
+            ),
+          ),
+        ),
+        child: Text(
+          _tabLabels[index],
+          style: TextStyle(
+            color: selected
+                ? const Color(0xFFFF5A8D)
+                : const Color(0xFF898686),
+            fontSize: healthSp(context, 12),
+            fontFamily: _font,
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+          ),
         ),
       ),
     );
+    if (!expand) return child;
+    return Expanded(child: child);
   }
 
   Widget _buildBody(BuildContext context) {
@@ -654,59 +658,87 @@ class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
 
     final hasItems = _isOrderTab ? _orderGroups.isNotEmpty : _items.isNotEmpty;
 
-    return ListView(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
           padding: EdgeInsets.fromLTRB(
             healthDp(context, 20),
-            healthDp(context, 10),
             healthDp(context, 20),
-            healthDp(context, 10),
+            healthDp(context, 20),
+            0,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '문의하실 상품을 선택해 주세요.',
+                '문의하실 상품을 선택해주세요.',
                 style: TextStyle(
-                  color: _ink,
-                  fontSize: healthSp(context, 20),
+                  color: const Color(0xFF0F172A),
+                  fontSize: healthSp(context, 18),
                   fontFamily: _font,
-                  fontWeight: FontWeight.w300,
-                  height: 1.4,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
-              SizedBox(height: healthDp(context, 6)),
+              SizedBox(height: healthDp(context, 8)),
               Text(
                 _headerSub,
                 style: TextStyle(
-                  color: const Color(0xFFB5B3B3),
-                  fontSize: healthSp(context, 12),
+                  color: const Color(0xFF898686),
+                  fontSize: healthSp(context, 14),
                   fontFamily: _font,
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w300,
                 ),
               ),
             ],
           ),
         ),
         if (!hasItems)
-          Padding(
-            padding: EdgeInsets.symmetric(vertical: healthDp(context, 48)),
+          Expanded(
             child: Center(
-              child: Text(
-                _emptyText,
-                style: TextStyle(
-                  color: _muted,
-                  fontSize: healthSp(context, 14),
-                  fontFamily: _font,
-                ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SvgPicture.asset(
+                    AppAssets.emptyQAIcon,
+                    width: healthDp(context, 80),
+                    height: healthDp(context, 80),
+                    fit: BoxFit.contain,
+                  ),
+                  SizedBox(height: healthDp(context, 10)),
+                  Text(
+                    _emptyText,
+                    style: TextStyle(
+                      color: const Color(0xFFC0C0C0),
+                      fontSize: healthSp(context, 14),
+                      fontFamily: _font,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
               ),
             ),
           )
-        else if (_isOrderTab)
-          for (final group in _orderGroups) _buildOrderGroup(group)
         else
-          for (final item in _items) _buildProductRow(item),
+          Expanded(
+            child: ListView(
+              padding: EdgeInsets.only(top: healthDp(context, 20)),
+              children: [
+                if (_isOrderTab)
+                  for (final group in _orderGroups) _buildOrderGroup(group)
+                else
+                  for (var i = 0; i < _items.length; i++) ...[
+                    if (i > 0)
+                      Container(
+                        width: double.infinity,
+                        height: healthDp(context, 1),
+                        color: const Color(0x7FD2D2D2),
+                      ),
+                    _buildProductRow(_items[i]),
+                  ],
+              ],
+            ),
+          ),
       ],
     );
   }
@@ -719,24 +751,29 @@ class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
           selected: _isGroupFullySelected(group),
           onTap: () => _toggleOrderGroup(group),
         ),
-        for (final product in group.products) _buildProductRow(product),
+        for (var i = 0; i < group.products.length; i++) ...[
+          if (i > 0)
+            Container(
+              width: double.infinity,
+              height: healthDp(context, 1),
+              color: const Color(0x7FD2D2D2),
+            ),
+          _buildProductRow(group.products[i]),
+        ],
       ],
     );
   }
 
   Widget _buildProductRow(_SelectableItem item) {
     final expanded = _expandedExtraKeys.contains(item.key);
-    final extraInset = healthDp(context, 34);
+    final extraInset = healthDp(context, 24);
     return Container(
       width: double.infinity,
       padding: EdgeInsets.fromLTRB(
         healthDp(context, 20),
-        healthDp(context, 16),
+        healthDp(context, 10),
         healthDp(context, 20),
-        healthDp(context, 16),
-      ),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: Color(0xFFF5F5F5))),
+        healthDp(context, 10),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -897,32 +934,25 @@ class _OrderHeaderRow extends StatelessWidget {
       onTap: onTap,
       child: Container(
         width: double.infinity,
-        padding: EdgeInsets.fromLTRB(
-          healthDp(context, 20),
-          healthDp(context, 14),
-          healthDp(context, 20),
-          healthDp(context, 10),
+        padding: EdgeInsets.symmetric(
+          horizontal: healthDp(context, 20),
+          vertical: healthDp(context, 10),
         ),
-        decoration: const BoxDecoration(
-          border: Border(
-            bottom: BorderSide(color: Color(0xFFF5F5F5)),
-          ),
-        ),
+        color: const Color(0xFFFCFCFB),
         child: Row(
           children: [
             _CheckBox(selected: selected),
-            SizedBox(width: healthDp(context, 10)),
+            SizedBox(width: healthDp(context, 4)),
             Text(
               '주문번호',
               style: TextStyle(
-                color: const Color(0xFF999999),
-                fontSize: healthSp(context, 12),
+                color: const Color(0xFF898686),
+                fontSize: healthSp(context, 14),
                 fontFamily: _font,
                 fontWeight: FontWeight.w300,
-                height: 1.5,
               ),
             ),
-            SizedBox(width: healthDp(context, 10)),
+            SizedBox(width: healthDp(context, 4)),
             Expanded(
               child: Text(
                 odId,
@@ -965,8 +995,7 @@ class _ProductSelectRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final imageUrl = (item.imageUrl ?? '').trim();
-    final thumbW = healthDp(context, compact ? 72 : 78);
-    final thumbH = healthDp(context, 72);
+    final thumb = healthDp(context, 72);
     final parts = showOptions
         ? (item.optionParts.isNotEmpty ? item.optionParts : ['수량: ${item.qty}'])
         : const <String>[];
@@ -976,28 +1005,21 @@ class _ProductSelectRow extends StatelessWidget {
       child: Container(
         width: double.infinity,
         padding: embedded
-            ? EdgeInsets.symmetric(vertical: healthDp(context, compact ? 8 : 0))
+            ? EdgeInsets.zero
             : EdgeInsets.symmetric(
                 horizontal: healthDp(context, compact ? 0 : 20),
-                vertical: healthDp(context, 16),
-              ),
-        decoration: embedded
-            ? null
-            : const BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(color: Color(0xFFF5F5F5)),
-                ),
+                vertical: healthDp(context, 10),
               ),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _CheckBox(selected: selected),
-            SizedBox(width: healthDp(context, 14)),
+            SizedBox(width: healthDp(context, 4)),
             ClipRRect(
-              borderRadius: BorderRadius.circular(healthDp(context, 10)),
+              borderRadius: BorderRadius.circular(healthDp(context, 8)),
               child: Container(
-                width: thumbW,
-                height: thumbH,
+                width: thumb,
+                height: thumb,
                 color: const Color(0xFFE8E8E8),
                 child: imageUrl.isNotEmpty
                     ? Image.network(
@@ -1016,7 +1038,7 @@ class _ProductSelectRow extends StatelessWidget {
                       ),
               ),
             ),
-            SizedBox(width: healthDp(context, 14)),
+            SizedBox(width: healthDp(context, 10)),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1028,22 +1050,25 @@ class _ProductSelectRow extends StatelessWidget {
                       fontSize: healthSp(context, 14),
                       fontFamily: _font,
                       fontWeight: FontWeight.w500,
+                      letterSpacing: healthSp(context, -0.56),
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                   if (parts.isNotEmpty) ...[
-                    SizedBox(height: healthDp(context, 10)),
+                    SizedBox(height: healthDp(context, 4)),
                     _OptionMetaRow(parts: parts),
                   ],
-                  SizedBox(height: healthDp(context, 10)),
-                  Text(
-                    '${PriceFormatter.format(item.price)}원',
-                    style: TextStyle(
-                      color: _ink,
-                      fontSize: healthSp(context, 14),
-                      fontFamily: _font,
-                      fontWeight: FontWeight.w500,
+                  Padding(
+                    padding: EdgeInsets.only(top: healthDp(context, 8)),
+                    child: Text(
+                      '${PriceFormatter.format(item.price)}원',
+                      style: TextStyle(
+                        color: _ink,
+                        fontSize: healthSp(context, 14),
+                        fontFamily: _font,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                 ],
@@ -1067,27 +1092,22 @@ class _OptionMetaRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Wrap(
       crossAxisAlignment: WrapCrossAlignment.center,
-      spacing: healthDp(context, 5),
+      spacing: healthDp(context, 4),
       runSpacing: healthDp(context, 4),
       children: [
-        for (var i = 0; i < parts.length; i++) ...[
-          if (i > 0)
-            Container(
-              width: healthDp(context, 0.5),
-              height: healthDp(context, 10),
-              color: const Color(0xFF898686),
-            ),
+        for (var i = 0; i < parts.length; i++)
           Text(
             parts[i],
             style: TextStyle(
-              color: i == 1 ? const Color(0xFF898383) : const Color(0xFF898686),
+              color: i == parts.length - 1 && parts.length > 1
+                  ? const Color(0xFF898686)
+                  : const Color(0xFF898383),
               fontSize: healthSp(context, 10),
               fontFamily: _font,
               fontWeight: FontWeight.w500,
-              letterSpacing: i == 1 ? -0.9 : 0,
+              letterSpacing: healthSp(context, -0.90),
             ),
           ),
-        ],
       ],
     );
   }
@@ -1124,6 +1144,12 @@ class _ExtraDropdown extends StatelessWidget {
             price: extras[i].price,
             imageUrl: extras[i].imageUrl,
             showDivider: i < extras.length - 1,
+            thumbBase: 48,
+            nameFontBase: 12,
+            optionFontBase: 10,
+            priceFontBase: 12,
+            nameLetterSpacingBase: -0.48,
+            optionLetterSpacingBase: -0.60,
           ),
       ],
     );

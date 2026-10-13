@@ -25,8 +25,10 @@ class QaListScreenState extends State<QaListScreen> {
   bool _isLoading = true;
   String? _errorMessage;
   bool _requiresLogin = false;
+
   /// 0: 진행중인 문의, 1: 종료된 문의
   int _selectedStatusTab = 0;
+
   /// 목록에 표시할 최대 개수(더보기/5개 단위 확장).
   static const int _pageSize = 5;
   int _visibleCount = _pageSize;
@@ -39,7 +41,7 @@ class QaListScreenState extends State<QaListScreen> {
   static const Color _textInk = Color(0xFF1A1A1E);
   static const Color _loadMoreBorder = Color(0xFFD2D2D2);
 
-  double _pagePadH(BuildContext context) => healthDp(context, 27);
+  double _pagePadH(BuildContext context) => healthDp(context, 20);
 
   TextStyle _qaText(
     BuildContext context, {
@@ -141,9 +143,7 @@ class QaListScreenState extends State<QaListScreen> {
 
   String get _emptyTabMessage {
     if (_inquiries.isEmpty) return '문의내역이 없습니다.';
-    return _selectedStatusTab == 0
-        ? '진행 중인 문의가 없습니다.'
-        : '종료된 문의가 없습니다.';
+    return _selectedStatusTab == 0 ? '진행 중인 문의가 없습니다.' : '종료된 문의가 없습니다.';
   }
 
   /// 탭 전환 등에 의해 외부에서 다시 불러올 때 호출합니다.
@@ -174,8 +174,9 @@ class QaListScreenState extends State<QaListScreen> {
   void _loadMore() {
     setState(() {
       final total = _filteredContacts.length;
-      _visibleCount =
-          (_visibleCount + _pageSize > total) ? total : _visibleCount + _pageSize;
+      _visibleCount = (_visibleCount + _pageSize > total)
+          ? total
+          : _visibleCount + _pageSize;
     });
   }
 
@@ -187,55 +188,17 @@ class QaListScreenState extends State<QaListScreen> {
 
   String _firstQuestionTitle(QaInquiry item) {
     final body = item.displayQuestionText.trim().replaceAll('\n', ' ');
-    if (body.isNotEmpty && !body.startsWith('[QA_CARD]')) {
-      return body.length > 15 ? '${body.substring(0, 15)}…' : body;
-    }
+    if (body.isNotEmpty && !body.startsWith('[QA_CARD]')) return body;
     final fallback = item.listCardTitle.trim();
-    if (fallback.isNotEmpty && fallback != '(내용 없음)') {
-      return fallback.length > 15 ? '${fallback.substring(0, 15)}…' : fallback;
-    }
+    if (fallback.isNotEmpty && fallback != '(내용 없음)') return fallback;
     return '(내용 없음)';
   }
 
-  Widget _buildCountRow() {
-    final count = _filteredContacts.length;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: double.infinity,
-          height: healthDp(context, 1),
-          color: _border,
-        ),
-        SizedBox(height: healthDp(context, 5)),
-        Text.rich(
-          TextSpan(
-            children: [
-              TextSpan(
-                text: '총 문의수 ',
-                style: _qaText(context, size: 12, color: _muted),
-              ),
-              TextSpan(
-                text: '$count',
-                style: _qaText(
-                  context,
-                  size: 12,
-                  color: _pink,
-                  weight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-        ),
-        SizedBox(height: healthDp(context, 5)),
-        Container(
-          width: double.infinity,
-          height: healthDp(context, 1),
-          color: _border,
-        ),
-      ],
-    );
-  }
+  bool get _showPageEmptyState =>
+      !_isLoading &&
+      !_requiresLogin &&
+      _errorMessage == null &&
+      (_inquiries.isEmpty || _filteredContacts.isEmpty);
 
   Future<void> _deleteInquiry(QaInquiry item) async {
     try {
@@ -260,31 +223,29 @@ class QaListScreenState extends State<QaListScreen> {
     }
   }
 
-  /// 목록 카드용 — 기존 회색 배지 스타일, 문구만 문의 유형
-  String _listInquiryTypeBadgeText(QaInquiry item) {
+  String _listInquiryTypeLabel(QaInquiry item) {
     final key = item.inquiryTypeBadgeKey.trim();
     const labels = <String, String>{
       '상품문의': '상품문의',
       '상품 문의': '상품문의',
       '상품': '상품문의',
-      '예약/결제': '예약/결제',
+      '예약/결제': '예약/결제 문의',
       '배송': '배송문의',
       '배송 문의': '배송문의',
+      '배송문의': '배송문의',
       '교환/반품': '교환/반품',
       '취소/환불': '취소/환불',
       '이벤트/쿠폰/회원': '이벤트/쿠폰/회원',
       '기타': '기타',
       '주문': '주문문의',
     };
-    final label = labels[key] ?? (key.isNotEmpty ? key : '기타');
-    return '[$label]';
+    return labels[key] ?? (key.isNotEmpty ? key : '기타');
   }
 
   // 문의 카드
   Widget _buildContactItem(BuildContext context, QaInquiry item) {
-    final typeBadge = _listInquiryTypeBadgeText(item);
+    final typeLabel = _listInquiryTypeLabel(item);
     final content = _firstQuestionTitle(item);
-    final closed = item.isClosed;
     final status = _statusLabel(item);
     final latestDateRaw =
         item.wrLast.trim().isNotEmpty ? item.wrLast : item.wrDatetime;
@@ -306,141 +267,93 @@ class QaListScreenState extends State<QaListScreen> {
         });
       },
       child: Container(
-          width: double.infinity,
-          height: healthDp(context, 88),
-          padding: EdgeInsets.fromLTRB(
-            healthDp(context, 16),
-            healthDp(context, 12),
-            healthDp(context, 12),
-            healthDp(context, 12),
-          ),
-          decoration: BoxDecoration(
-            color: Colors.white,
+        width: double.infinity,
+        padding: EdgeInsets.all(healthDp(context, 16)),
+        decoration: ShapeDecoration(
+          color: Colors.white,
+          shape: RoundedRectangleBorder(
+            side: BorderSide(width: healthDp(context, 1), color: _border),
             borderRadius: BorderRadius.circular(r),
-            border: Border.all(color: _border, width: healthDp(context, 1)),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0x14000000),
-                blurRadius: healthDp(context, 6),
-                offset: Offset(0, healthDp(context, 2)),
-              ),
-            ],
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: healthDp(context, 3),
-                          vertical: healthDp(context, 1.5),
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF5F5F5),
-                          borderRadius: BorderRadius.circular(
-                            healthDp(context, 3.5),
-                          ),
-                        ),
-                        child: Text(
-                          typeBadge,
-                          style: TextStyle(
-                            color: const Color(0xFF888888),
-                            fontSize: healthSp(context, 10),
-                            fontFamily: 'Gmarket Sans TTF',
-                            fontWeight: FontWeight.w500,
-                            height: 1.5,
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: healthDp(context, 6)),
-                    Text(
-                      content.isNotEmpty ? content : '(내용 없음)',
-                      style: _qaText(
-                        context,
-                        size: 14,
-                        color: _textInk,
-                        letterSpacing: healthSp(context, -1.26),
-                        height: 1.3,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    SizedBox(height: healthDp(context, 6)),
-                    Text(
-                      DateDisplayFormatter.formatYmdFromString(latestDateRaw),
-                      style: _qaText(
-                        context,
-                        size: 10,
-                        color: _muted,
-                        height: 1,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(width: healthDp(context, 8)),
-              _buildStatusBadge(
-                context,
-                label: status,
-                closed: closed,
-              ),
-              SizedBox(width: healthDp(context, 2)),
-              Icon(
-                Icons.chevron_right_rounded,
-                color: _muted,
-                size: healthDp(context, 20),
-              ),
-            ],
           ),
         ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    typeLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: _qaText(context, size: 12, color: _muted),
+                  ),
+                ),
+                SizedBox(width: healthDp(context, 4)),
+                _buildStatusBadge(context, label: status),
+                SizedBox(width: healthDp(context, 4)),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: _muted,
+                  size: healthDp(context, 16),
+                ),
+              ],
+            ),
+            SizedBox(height: healthDp(context, 6)),
+            Padding(
+              padding: EdgeInsets.only(right: healthDp(context, 20)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    content.isNotEmpty ? content : '(내용 없음)',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: _qaText(
+                      context,
+                      size: 14,
+                      color: _textInk,
+                      letterSpacing: healthSp(context, -0.28),
+                    ),
+                  ),
+                  SizedBox(height: healthDp(context, 8)),
+                  Text(
+                    DateDisplayFormatter.formatYmdFromString(latestDateRaw),
+                    style: _qaText(context, size: 10, color: _muted),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
-  Widget _buildStatusBadge(
-    BuildContext context, {
-    required String label,
-    required bool closed,
-  }) {
-    final answered = label == '답변완료';
-    final bg = closed
-        ? const Color(0xFFE7E8E9)
-        : answered
-            ? Colors.white
-            : const Color(0xFFFF5A8D);
-    final fg = closed
-        ? _muted
-        : answered
-            ? _pink
-            : Colors.white;
-    final border = answered
-        ? Border.all(color: _pink, width: healthDp(context, 1))
-        : null;
+  Widget _buildStatusBadge(BuildContext context, {required String label}) {
+    final Color background;
+    final Color foreground;
+    if (label == '문의종료') {
+      background = const Color(0xFFF9F9F9);
+      foreground = const Color(0xFF999999);
+    } else if (label == '답변완료') {
+      background = const Color(0xFFE8F7EF);
+      foreground = const Color(0xFF2E9E6B);
+    } else {
+      background = const Color(0xFFFFEAF1);
+      foreground = _pink;
+    }
     return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: healthDp(context, 7),
-        vertical: healthDp(context, 3),
-      ),
-      decoration: BoxDecoration(
-        color: bg,
-        border: border,
-        borderRadius: BorderRadius.circular(healthDp(context, 9999)),
+      padding: EdgeInsets.all(healthDp(context, 4)),
+      decoration: ShapeDecoration(
+        color: background,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(healthDp(context, 4)),
+        ),
       ),
       child: Text(
         label,
-        style: _qaText(
-          context,
-          size: 10,
-          color: fg,
-          weight: FontWeight.w500,
-          height: 1.2,
-        ),
+        style: _qaText(context, size: 12, color: foreground),
       ),
     );
   }
@@ -471,59 +384,66 @@ class QaListScreenState extends State<QaListScreen> {
   }
 
   Widget _buildStatusTabs() {
-    Widget tab(String text, int index) {
+    final openCount = _inquiries.where((item) => !item.isClosed).length;
+    final closedCount = _inquiries.where((item) => item.isClosed).length;
+
+    Widget tab(String text, int count, int index) {
       final selected = _selectedStatusTab == index;
+      final color = selected ? _pink : _muted;
       return InkWell(
         onTap: () => _onStatusTabChanged(index),
         child: Container(
+          width: double.infinity,
+          padding: EdgeInsets.only(bottom: healthDp(context, 10)),
           decoration: BoxDecoration(
             border: Border(
               bottom: BorderSide(
                 width: healthDp(context, 1),
-                color: selected ? _pink : Colors.transparent,
+                color: selected ? _pink : _loadMoreBorder,
               ),
             ),
           ),
-          child: Text(
-            text,
-            style: _qaText(
-              context,
-              size: 14,
-              color: selected ? _pink : const Color(0xFF898383),
-              weight: selected ? FontWeight.w700 : FontWeight.w500,
-            ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                text,
+                style: _qaText(
+                  context,
+                  size: 14,
+                  color: color,
+                  weight: selected ? FontWeight.w700 : FontWeight.w500,
+                ),
+              ),
+              if (selected) ...[
+                SizedBox(width: healthDp(context, 4)),
+                Text(
+                  '$count',
+                  style: _qaText(
+                    context,
+                    size: 12,
+                    color: color,
+                    weight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ],
           ),
         ),
       );
     }
 
-    Widget divider() => Container(
-          width: healthDp(context, 0.5),
-          height: healthDp(context, 11),
-          color: const Color(0xFFD2D2D2),
-        );
-
     return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        tab('진행중인 문의', 0),
-        SizedBox(width: healthDp(context, 60)),
-        divider(),
-        SizedBox(width: healthDp(context, 60)),
-        tab('종료된 문의', 1),
+        Expanded(child: tab('진행중인 문의', openCount, 0)),
+        Expanded(child: tab('종료된 문의', closedCount, 1)),
       ],
     );
   }
 
   Widget _buildStickyHeaderContent() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _buildStatusTabs(),
-        SizedBox(height: healthDp(context, 10)),
-        _buildCountRow(),
-      ],
-    );
+    return _buildStatusTabs();
   }
 
   Widget _buildListHeader() {
@@ -601,15 +521,9 @@ class QaListScreenState extends State<QaListScreen> {
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
           SliverToBoxAdapter(child: _buildListHeader()),
-          SliverFillRemaining(
+          const SliverFillRemaining(
             hasScrollBody: false,
-            child: CenteredEmptyState(
-              iconWidget: CenteredEmptyState.assetIcon(
-                context,
-                AppAssets.emptyQAIcon,
-              ),
-              message: _emptyTabMessage,
-            ),
+            child: SizedBox.shrink(),
           ),
         ],
       );
@@ -654,8 +568,7 @@ class QaListScreenState extends State<QaListScreen> {
       primaryTextTheme:
           baseTheme.primaryTextTheme.apply(fontFamily: 'Gmarket Sans TTF'),
     );
-    final textScale =
-        healthTextScaleByWidth(MediaQuery.sizeOf(context).width);
+    final textScale = healthTextScaleByWidth(MediaQuery.sizeOf(context).width);
 
     return Theme(
       data: gmarketTheme,
@@ -672,7 +585,7 @@ class QaListScreenState extends State<QaListScreen> {
             backgroundColor: Colors.white,
             appBar: HealthAppBar(
               title: '1:1 문의',
-              leadingIconSize: healthDp(context, 24),
+              leadingIconSize: healthDp(context, 16),
             ),
             child: ColoredBox(
               color: Colors.white,
@@ -680,25 +593,41 @@ class QaListScreenState extends State<QaListScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Expanded(
-                    child: RefreshIndicator(
-                      color: _pink,
-                      displacement: healthDp(context, 40),
-                      onRefresh: () => _loadContacts(fromPullRefresh: true),
-                      child: ScrollRevealTopOverlay(
-                        controller: _scrollController,
-                        revealAfterOffset: healthDp(context, 44),
-                        barPadding: EdgeInsets.fromLTRB(
-                          _pagePadH(context),
-                          healthDp(context, 8),
-                          _pagePadH(context),
-                          healthDp(context, 8),
+                    child: Stack(
+                      children: [
+                        RefreshIndicator(
+                          color: _pink,
+                          displacement: healthDp(context, 40),
+                          onRefresh: () => _loadContacts(fromPullRefresh: true),
+                          child: ScrollRevealTopOverlay(
+                            controller: _scrollController,
+                            revealAfterOffset: healthDp(context, 44),
+                            barPadding: EdgeInsets.fromLTRB(
+                              _pagePadH(context),
+                              healthDp(context, 8),
+                              _pagePadH(context),
+                              healthDp(context, 8),
+                            ),
+                            topBar: _buildStickyHeaderContent(),
+                            scrollChild: _buildListBody(),
+                          ),
                         ),
-                        topBar: _buildStickyHeaderContent(),
-                        scrollChild: _buildListBody(),
-                      ),
+                        if (_showPageEmptyState)
+                          Positioned.fill(
+                            child: IgnorePointer(
+                              child: CenteredEmptyState(
+                                iconWidget: CenteredEmptyState.assetIcon(
+                                  context,
+                                  AppAssets.emptyQAIcon,
+                                ),
+                                message: _emptyTabMessage,
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
-                  if (!_requiresLogin && _selectedStatusTab == 0)
+                  if (!_requiresLogin)
                     SafeArea(
                       top: false,
                       child: Padding(
@@ -718,8 +647,8 @@ class QaListScreenState extends State<QaListScreen> {
                             decoration: ShapeDecoration(
                               color: _pink,
                               shape: RoundedRectangleBorder(
-                                borderRadius:
-                                    BorderRadius.circular(healthDp(context, 10)),
+                                borderRadius: BorderRadius.circular(
+                                    healthDp(context, 10)),
                               ),
                             ),
                             alignment: Alignment.center,
