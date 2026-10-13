@@ -482,7 +482,7 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
               Icon(
                 Icons.access_time,
                 size: healthDp(context, 20),
-                color: const Color(0xFF898986),
+                color: const Color(0xFFE9E9E9),
               ),
               SizedBox(height: healthDp(context, 8)),
               Text(
