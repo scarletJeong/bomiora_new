@@ -6,6 +6,7 @@ import '../../../../core/utils/image_url_helper.dart';
 import '../../../../data/repositories/content/content_category_catalog.dart';
 import '../../../../data/services/content_service.dart';
 import '../../../common/widgets/appbar_menutap.dart';
+import '../../../common/widgets/app_network_image.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
 import '../../../common/widgets/centered_empty_state.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
@@ -569,9 +570,14 @@ class _ContentListScreenState extends State<ContentListScreen> {
             child: SizedBox(
               height: healthDp(context, 200),
               width: double.infinity,
-              child: Image.network(
-                imageUrl,
+              child: AppNetworkImage(
+                url: imageUrl,
                 fit: BoxFit.cover,
+                width: double.infinity,
+                height: healthDp(context, 200),
+                decodeWidthLogical: MobileAppLayoutWrapper.contentWidthOf(
+                  context,
+                ),
                 errorBuilder: (_, __, ___) => Container(
                   color: const Color(0xFFF2F2F2),
                   alignment: Alignment.center,
