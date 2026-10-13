@@ -88,8 +88,7 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
 
   bool get _isEditForm => _editingAddress != null;
 
-  String get _formTitle =>
-      _isEditForm ? '배송지 수정' : '배송지 신규 입력';
+  String get _formTitle => _isEditForm ? '배송지 수정' : '배송지 신규 입력';
 
   @override
   void initState() {
@@ -235,8 +234,8 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
       addr2: widget.recipientAddressDetail ?? '',
     );
     if (initialMatchedId != null) {
-      final idx =
-          _addresses.indexWhere((a) => _asAddressId(a['adId']) == initialMatchedId);
+      final idx = _addresses
+          .indexWhere((a) => _asAddressId(a['adId']) == initialMatchedId);
       if (idx > 0) {
         final item = _addresses.removeAt(idx);
         _addresses.insert(0, item);
@@ -398,8 +397,7 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
   void _loadFormFromExisting(Map<String, dynamic> m) {
     _editingAddress = m;
     _nameController.text = (m['adName'] ?? '').toString().trim();
-    _phoneController.text =
-        (m['adHp'] ?? m['adTel'] ?? '').toString().trim();
+    _phoneController.text = (m['adHp'] ?? m['adTel'] ?? '').toString().trim();
     _zipController.text = (m['adZip1'] ?? '').toString().trim();
     _addr1Controller.text = (m['adAddr1'] ?? '').toString().trim();
     _addr2Controller.text = (m['adAddr2'] ?? '').toString().trim();
@@ -640,14 +638,11 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
     final selected = await showDaumPostcodeSearchDialog(context);
     if (!mounted || selected == null) return;
 
-    final postalCode = (selected['postalCode'] ?? '').toString().trim();
-    final roadAddress = (selected['roadAddress'] ?? '').toString().trim();
-    final jibunAddress = (selected['jibunAddress'] ?? '').toString().trim();
-    final baseAddress = roadAddress.isNotEmpty ? roadAddress : jibunAddress;
+    final parsed = daumSelectedAddress(selected);
 
     setState(() {
-      _zipController.text = _formatPostalCodeDisplay(postalCode);
-      _addr1Controller.text = baseAddress;
+      _zipController.text = _formatPostalCodeDisplay(parsed.postalCode);
+      _addr1Controller.text = parsed.address;
       _addr2Controller.clear();
       if (_pulseFields.contains('address')) {
         _pulseFields = {..._pulseFields}..remove('address');
@@ -723,8 +718,7 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
 
   Widget _buildAddressCard(BuildContext context, Map<String, dynamic> a) {
     final adId = _asAddressId(a['adId']);
-    final selected =
-        _selectedAddressId != null && _selectedAddressId == adId;
+    final selected = _selectedAddressId != null && _selectedAddressId == adId;
     final subject = (a['adSubject'] ?? '').toString().trim();
     final name = (a['adName'] ?? '').toString().trim();
     final title = subject.isNotEmpty ? '$name($subject)' : name;
@@ -737,9 +731,8 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
     final isDefault = a['adDefault'] == 1;
 
     return InkWell(
-      onTap: adId == null
-          ? null
-          : () => setState(() => _selectedAddressId = adId),
+      onTap:
+          adId == null ? null : () => setState(() => _selectedAddressId = adId),
       borderRadius: BorderRadius.circular(healthDp(context, 12)),
       child: Container(
         width: double.infinity,
@@ -1040,37 +1033,6 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
     );
   }
 
-  Widget _readOnlyBox(BuildContext context, String text, {String? hint}) {
-    final display = text.trim();
-    final radius = healthDp(context, 10);
-    return Container(
-      width: double.infinity,
-      height: _fieldHeight(context),
-      padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
-      clipBehavior: Clip.antiAlias,
-      decoration: ShapeDecoration(
-        color: _kReadonlyFill,
-        shape: RoundedRectangleBorder(
-          side: const BorderSide(color: _kBorder),
-          borderRadius: BorderRadius.circular(radius),
-        ),
-      ),
-      alignment: Alignment.centerLeft,
-      child: Text(
-        display.isEmpty ? (hint ?? '') : display,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: TextStyle(
-          color: display.isEmpty ? _kMuted : _kInk,
-          fontSize: healthSp(context, 12),
-          fontFamily: _kFont,
-          fontWeight: display.isEmpty ? FontWeight.w300 : FontWeight.w500,
-          height: 1.2,
-        ),
-      ),
-    );
-  }
-
   /// '주소 검색' 버튼 고정 폭 (입력칸 정렬용)
   double _addressSearchButtonWidth(BuildContext context) {
     final style = TextStyle(
@@ -1118,8 +1080,7 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
   }
 
   Widget _addressSearchRow(BuildContext context) {
-    // 검색 후 이 칸에 우편번호 표시 (총 3칸: 우편번호+검색 / 주소1 / 상세)
-    final zipText = _zipController.text.trim();
+    final addressText = _addr1Controller.text.trim();
     final borderColor = _pulseBorderColor('address');
     final radius = healthDp(context, 10);
     final fieldH = _fieldHeight(context);
@@ -1143,15 +1104,15 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
               ),
               alignment: Alignment.centerLeft,
               child: Text(
-                zipText.isEmpty ? '주소를 검색해 주세요' : zipText,
+                addressText.isEmpty ? '주소를 검색해 주세요' : addressText,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: zipText.isEmpty ? _kMuted : _kInk,
+                  color: addressText.isEmpty ? _kMuted : _kInk,
                   fontSize: healthSp(context, 12),
                   fontFamily: _kFont,
                   fontWeight:
-                      zipText.isEmpty ? FontWeight.w300 : FontWeight.w500,
+                      addressText.isEmpty ? FontWeight.w300 : FontWeight.w500,
                   height: 1.2,
                 ),
               ),
@@ -1285,9 +1246,7 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
                   pad20,
                   healthDp(context, 16),
                   pad20,
-                  healthDp(context, 12) +
-                      keyboardInset +
-                      healthDp(context, 24),
+                  healthDp(context, 12) + keyboardInset + healthDp(context, 24),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1383,12 +1342,6 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
                     _addressSearchRow(context),
                     if (hasAddress) ...[
                       SizedBox(height: healthDp(context, 8)),
-                      _readOnlyBox(
-                        context,
-                        _addr1Controller.text,
-                        hint: '기본 주소',
-                      ),
-                      SizedBox(height: healthDp(context, 8)),
                       _field(
                         context: context,
                         controller: _addr2Controller,
@@ -1415,9 +1368,8 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
   }
 
   Widget _buildFooter(BuildContext context) {
-    final confirmEnabled = _page == _PopupPage.form
-        ? _isFormComplete
-        : _selectedAddressId != null;
+    final confirmEnabled =
+        _page == _PopupPage.form ? _isFormComplete : _selectedAddressId != null;
     return SizedBox(
       height: healthDp(context, 50),
       child: Row(
@@ -1443,9 +1395,7 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
           ),
           Expanded(
             child: Material(
-              color: confirmEnabled
-                  ? _kPink
-                  : _kPink.withValues(alpha: 0.45),
+              color: confirmEnabled ? _kPink : _kPink.withValues(alpha: 0.45),
               child: InkWell(
                 onTap: (_isSubmitting || !confirmEnabled) ? null : _onConfirm,
                 child: Center(

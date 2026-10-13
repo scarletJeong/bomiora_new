@@ -11,6 +11,22 @@ import 'mobile_layout_wrapper.dart';
 const double _kPostcodeDialogMaxWidth = 650;
 const String _kPostcodeRouteName = 'daum_postcode_search';
 
+/// 다음 주소 검색 결과에서 저장용 우편번호와 화면 표시용 주소를 나눈다.
+/// 참고항목은 기본 주소에 붙이고, 상세주소에는 넣지 않는다.
+({String postalCode, String address}) daumSelectedAddress(
+  Map<String, dynamic> selected,
+) {
+  final postalCode = (selected['postalCode'] ?? '').toString().trim();
+  final roadAddress = (selected['roadAddress'] ?? '').toString().trim();
+  final jibunAddress = (selected['jibunAddress'] ?? '').toString().trim();
+  final extraAddress = (selected['extraAddress'] ?? '').toString().trim();
+  final baseAddress = roadAddress.isNotEmpty ? roadAddress : jibunAddress;
+  final address = extraAddress.isEmpty || baseAddress.contains(extraAddress)
+      ? baseAddress
+      : '$baseAddress $extraAddress';
+  return (postalCode: postalCode, address: address);
+}
+
 Future<Map<String, dynamic>?> showDaumPostcodeSearchDialog(
   BuildContext context,
 ) {
@@ -77,9 +93,8 @@ class _DaumPostcodeDialogShell extends StatelessWidget {
     final preferredH = contentW * 1.35;
     final fillScreen = screenSize.width <= 375;
     final dialogW = fillScreen ? screenSize.width : contentW;
-    final dialogH = fillScreen
-        ? screenSize.height
-        : preferredH.clamp(420.0, availableH);
+    final dialogH =
+        fillScreen ? screenSize.height : preferredH.clamp(420.0, availableH);
 
     final dialog = GestureDetector(
       onTap: () {},

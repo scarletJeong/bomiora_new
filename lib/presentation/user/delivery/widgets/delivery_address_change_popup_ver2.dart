@@ -674,14 +674,11 @@ class _AddressFormDialogState extends State<_AddressFormDialog>
     final selected = await showDaumPostcodeSearchDialog(context);
     if (!mounted || selected == null) return;
 
-    final postalCode = (selected['postalCode'] ?? '').toString().trim();
-    final roadAddress = (selected['roadAddress'] ?? '').toString().trim();
-    final jibunAddress = (selected['jibunAddress'] ?? '').toString().trim();
-    final baseAddress = roadAddress.isNotEmpty ? roadAddress : jibunAddress;
+    final parsed = daumSelectedAddress(selected);
 
     setState(() {
-      _zipController.text = _formatPostalCodeDisplay(postalCode);
-      _addr1Controller.text = baseAddress;
+      _zipController.text = _formatPostalCodeDisplay(parsed.postalCode);
+      _addr1Controller.text = parsed.address;
       _addr2Controller.clear();
       if (_pulseFields.contains('address')) {
         _pulseFields = {..._pulseFields}..remove('address');
@@ -885,36 +882,6 @@ class _AddressFormDialogState extends State<_AddressFormDialog>
     );
   }
 
-  Widget _readOnlyBox(BuildContext context, String text, {String? hint}) {
-    final display = text.trim();
-    final radius = healthDp(context, 10);
-    return Container(
-      width: double.infinity,
-      height: healthDp(context, 45),
-      padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
-      clipBehavior: Clip.antiAlias,
-      decoration: ShapeDecoration(
-        color: _kFieldFill,
-        shape: RoundedRectangleBorder(
-          side: const BorderSide(color: _kBorder),
-          borderRadius: BorderRadius.circular(radius),
-        ),
-      ),
-      alignment: Alignment.centerLeft,
-      child: Text(
-        display.isEmpty ? (hint ?? '') : display,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: TextStyle(
-          color: display.isEmpty ? _kMuted : _kInk,
-          fontSize: healthSp(context, 12),
-          fontFamily: _kFont,
-          fontWeight: display.isEmpty ? FontWeight.w300 : FontWeight.w500,
-        ),
-      ),
-    );
-  }
-
   double _addressSearchButtonWidth(BuildContext context) {
     final style = TextStyle(
       fontSize: healthSp(context, 12),
@@ -961,8 +928,7 @@ class _AddressFormDialogState extends State<_AddressFormDialog>
   }
 
   Widget _addressSearchRow(BuildContext context) {
-    // 검색 후 이 칸에 우편번호 표시 (총 3칸: 우편번호+검색 / 주소1 / 상세)
-    final zipText = _zipController.text.trim();
+    final addressText = _addr1Controller.text.trim();
     final borderColor = _pulseBorderColor('address');
     final radius = healthDp(context, 10);
     final fieldH = healthDp(context, 45);
@@ -987,15 +953,15 @@ class _AddressFormDialogState extends State<_AddressFormDialog>
               ),
               alignment: Alignment.centerLeft,
               child: Text(
-                zipText.isEmpty ? '주소를 검색해 주세요' : zipText,
+                addressText.isEmpty ? '주소를 검색해 주세요' : addressText,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: zipText.isEmpty ? _kMuted : _kInk,
+                  color: addressText.isEmpty ? _kMuted : _kInk,
                   fontSize: healthSp(context, 12),
                   fontFamily: _kFont,
                   fontWeight:
-                      zipText.isEmpty ? FontWeight.w300 : FontWeight.w500,
+                      addressText.isEmpty ? FontWeight.w300 : FontWeight.w500,
                 ),
               ),
             ),
@@ -1218,12 +1184,6 @@ class _AddressFormDialogState extends State<_AddressFormDialog>
                           SizedBox(height: healthDp(context, 8)),
                           _addressSearchRow(context),
                           if (hasAddress) ...[
-                            SizedBox(height: healthDp(context, 8)),
-                            _readOnlyBox(
-                              context,
-                              _addr1Controller.text,
-                              hint: '기본 주소',
-                            ),
                             SizedBox(height: healthDp(context, 8)),
                             _field(
                               context: context,

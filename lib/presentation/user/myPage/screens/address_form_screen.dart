@@ -298,15 +298,12 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
     }
     if (!mounted || selected == null) return;
 
-    final postalCode = (selected['postalCode'] ?? '').toString().trim();
-    final roadAddress = (selected['roadAddress'] ?? '').toString().trim();
-    final jibunAddress = (selected['jibunAddress'] ?? '').toString().trim();
-    final baseAddress = roadAddress.isNotEmpty ? roadAddress : jibunAddress;
-    final displayZip = _formatPostalCodeDisplay(postalCode);
+    final parsed = daumSelectedAddress(selected);
+    final displayZip = _formatPostalCodeDisplay(parsed.postalCode);
 
     setState(() {
       _zipController.text = displayZip;
-      _address1Controller.text = baseAddress;
+      _address1Controller.text = parsed.address;
       _address2Controller.text = '';
       _showDetailAddress = true;
       _highlightDetailAddress = true;
@@ -586,18 +583,13 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
                     children: [
                       Expanded(
                         child: _buildReadonlyBox(
-                          text: _zipController.text.trim(),
-                          hintText: '우편번호',
+                          text: _address1Controller.text.trim(),
+                          hintText: '주소를 검색해주세요.',
                         ),
                       ),
                       SizedBox(width: healthDp(context, 10)),
                       _buildAddressSearchButton(fieldHeight),
                     ],
-                  ),
-                  SizedBox(height: healthDp(context, 8)),
-                  _buildReadonlyBox(
-                    text: _address1Controller.text.trim(),
-                    hintText: '주소',
                   ),
                   SizedBox(height: healthDp(context, 8)),
                   _BoxField(

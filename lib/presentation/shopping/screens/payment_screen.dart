@@ -594,6 +594,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
       AppToastOverlay.showAlert(context, '배송지 주소를 검색해 주세요.');
       return false;
     }
+    if (!_hasSavedAddress && _detailAddressController.text.trim().isEmpty) {
+      AppToastOverlay.showAlert(context, '상세주소를 입력해 주세요.');
+      return false;
+    }
     if (_finalAmount < _minPayableAmount) {
       AppToastOverlay.showAlert(
         context,
@@ -1334,12 +1338,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   Widget _buildDeliveryEmptyForm(BuildContext context) {
-    final addressDisplay = [
-      if (_zipController.text.trim().isNotEmpty)
-        '(${_zipController.text.trim()})',
-      _addressController.text.trim(),
-      _detailAddressController.text.trim(),
-    ].where((e) => e.isNotEmpty).join(' ');
+    final addressDisplay = _addressController.text.trim();
 
     return _sectionCard(
       child: Column(
@@ -1966,19 +1965,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
     final selected = await showDaumPostcodeSearchDialog(context);
     if (!mounted || selected == null) return;
 
-    final postalCode = (selected['postalCode'] ?? '').toString().trim();
-    final roadAddress = (selected['roadAddress'] ?? '').toString().trim();
-    final jibunAddress = (selected['jibunAddress'] ?? '').toString().trim();
-    final extraAddress = (selected['extraAddress'] ?? '').toString().trim();
-    final baseAddress = roadAddress.isNotEmpty ? roadAddress : jibunAddress;
+    final parsed = daumSelectedAddress(selected);
 
     setState(() {
-      _zipController.text = _formatPostalCodeDisplay(postalCode);
-      _addressController.text = baseAddress;
-      if (_detailAddressController.text.trim().isEmpty &&
-          extraAddress.isNotEmpty) {
-        _detailAddressController.text = extraAddress;
-      }
+      _zipController.text = _formatPostalCodeDisplay(parsed.postalCode);
+      _addressController.text = parsed.address;
+      _detailAddressController.clear();
     });
   }
 
