@@ -51,6 +51,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
   String? _fetchError;
 
   bool? _isWished;
+  int _wishLoadToken = 0;
   int _recommendCount = 0;
   bool? _userRecommended;
   bool _wishBusy = false;
@@ -77,7 +78,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
     super.dispose();
   }
 
-  void _applyDetailResult(Map<String, dynamic> result, int id, String? mbId) {
+  void _applyDetailResult(Map<String, dynamic> result, int id) {
     if (result['success'] != true) {
       _fetchError = result['message']?.toString();
       return;
@@ -98,17 +99,6 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
     _nextTitle = next?['title']?.toString();
     _nextId = _toInt(next?['id']);
     _recommendCount = recCount;
-    if (data.containsKey('is_wished')) {
-      final w = data['is_wished'];
-      _isWished = w == true || w == 1 || w == '1' || w == 'true';
-      if (mbId != null) {
-        WishService.rememberWished(mbId, '$id', _isWished == true);
-      }
-    } else if (mbId != null) {
-      _isWished ??= WishService.peekIsWished(mbId, '$id') ?? false;
-    } else {
-      _isWished ??= false;
-    }
     if (data.containsKey('user_recommended')) {
       final ur = data['user_recommended'];
       _userRecommended = ur is bool
@@ -121,7 +111,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
     final cached = ContentService.peekDetail(id);
     if (cached != null && mounted) {
       setState(() {
-        _applyDetailResult(cached, id, _userId);
+        _applyDetailResult(cached, id);
         _isLoading = false;
       });
     } else if (mounted && !_isLoading) {
@@ -139,12 +129,10 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
       } catch (_) {}
     }
     if (mounted) {
-      setState(() {
-        _userId = mbId;
-        if (mbId != null) {
-          _isWished ??= WishService.peekIsWished(mbId, '$id');
-        }
-      });
+      setState(() => _userId = mbId);
+    }
+    if (mbId != null && mbId.isNotEmpty) {
+      _loadWishState(id, mbId);
     }
     final result = await ContentService.getContentDetail(
       id,
@@ -154,12 +142,30 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
     if (!mounted) return;
     if (result['success'] == true || _title.isEmpty) {
       setState(() {
-        _applyDetailResult(result, id, mbId);
+        _applyDetailResult(result, id);
         _isLoading = false;
       });
     } else {
       setState(() => _isLoading = false);
     }
+  }
+
+  Future<void> _loadWishState(int id, String mbId) async {
+    final token = ++_wishLoadToken;
+    final peeked = WishService.peekIsWished(mbId, '$id');
+    if (peeked != null &&
+        mounted &&
+        token == _wishLoadToken &&
+        _currentContentId == id) {
+      setState(() => _isWished = peeked);
+    }
+    try {
+      final wished = await WishService.isWished('$id');
+      if (!mounted || token != _wishLoadToken || _currentContentId != id) {
+        return;
+      }
+      setState(() => _isWished = wished);
+    } catch (_) {}
   }
 
   Future<void> _toggleWish() async {
@@ -168,6 +174,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
     final mbId = _userId;
     if (mbId == null || mbId.isEmpty) return;
 
+    _wishLoadToken++;
     final prev = _isWished == true;
     setState(() {
       _wishBusy = true;
