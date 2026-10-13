@@ -131,14 +131,11 @@ class _DeliverySelectListState extends State<DeliverySelectList> {
 
   List<String> _metaParts(OrderItem item) {
     final parts = <String>['수량: ${item.ctQty}'];
-    final option = (item.ctOption ?? '').trim();
+    final option = item.displayOptionText;
     if (option.isEmpty) return parts;
     if (option.contains(' / ')) {
       parts.addAll(
-        option
-            .split(' / ')
-            .map((e) => e.trim())
-            .where((e) => e.isNotEmpty),
+        option.split(' / ').map((e) => e.trim()).where((e) => e.isNotEmpty),
       );
     } else if (option.contains('|')) {
       parts.addAll(
@@ -420,9 +417,7 @@ class _DeliverySelectListState extends State<DeliverySelectList> {
               height: healthDp(context, 49),
               child: Center(
                 child: Text(
-                  enabled
-                      ? '${_selectedCtIds.length}개 상품 리뷰쓰기'
-                      : '상품을 선택해 주세요',
+                  enabled ? '${_selectedCtIds.length}개 상품 리뷰쓰기' : '상품을 선택해 주세요',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: enabled ? Colors.white : const Color(0xFFC0B9B9),

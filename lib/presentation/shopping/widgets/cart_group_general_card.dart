@@ -233,7 +233,7 @@ class _VendorProductCard extends StatelessWidget {
 
   String get _subjectLabel => item.itSubject?.trim() ?? '';
 
-  String get _optionText => item.ctOption.trim();
+  String get _optionText => item.displayOptionText;
 
   Widget _soldOutThumb(BuildContext context, Widget thumb) {
     if (item.isAvailable) return thumb;

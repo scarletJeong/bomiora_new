@@ -24,13 +24,11 @@ class CartIntegrationScreen extends StatefulWidget {
 
 class _CartIntegrationScreenState extends State<CartIntegrationScreen> {
   late int _selectedTabIndex;
-  bool _generalTabMounted = false;
 
   @override
   void initState() {
     super.initState();
     _selectedTabIndex = widget.initialTabIndex == 1 ? 1 : 0;
-    _generalTabMounted = _selectedTabIndex == 1;
   }
 
   void _handleBackNavigation() {
@@ -43,9 +41,6 @@ class _CartIntegrationScreenState extends State<CartIntegrationScreen> {
 
   void _onTabSelected(int index) {
     if (_selectedTabIndex == index) return;
-    if (index == 1) {
-      _generalTabMounted = true;
-    }
     setState(() => _selectedTabIndex = index);
   }
 
@@ -98,9 +93,7 @@ class _CartIntegrationScreenState extends State<CartIntegrationScreen> {
           label,
           textAlign: TextAlign.center,
           style: TextStyle(
-            color: selected
-                ? const Color(0xFF1A1A1E)
-                : const Color(0xFF898686),
+            color: selected ? const Color(0xFF1A1A1E) : const Color(0xFF898686),
             fontSize: healthSp(context, 13),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w500,
@@ -113,31 +106,25 @@ class _CartIntegrationScreenState extends State<CartIntegrationScreen> {
   @override
   Widget build(BuildContext context) {
     return MobileAppLayoutWrapper(
-      child: Scaffold(
-        backgroundColor: Colors.white,
-        appBar: HealthAppBar(
-          title: '장바구니',
-          onBack: _handleBackNavigation,
-          actions: const [],
-        ),
-        body: IndexedStack(
-          index: _selectedTabIndex,
-          children: [
-            cart_prescription.CartScreen(
+      backgroundColor: Colors.white,
+      appBar: HealthAppBar(
+        title: '장바구니',
+        onBack: _handleBackNavigation,
+        actions: const [],
+      ),
+      child: _selectedTabIndex == 0
+          ? cart_prescription.CartScreen(
+              key: const ValueKey('prescription-cart'),
+              embedInParent: true,
+              backToProductId: widget.backToProductId,
+              scrollHeader: _buildTabBar(),
+            )
+          : cart_general.CartScreen(
+              key: const ValueKey('general-cart'),
               embedInParent: true,
               backToProductId: widget.backToProductId,
               scrollHeader: _buildTabBar(),
             ),
-            _generalTabMounted
-                ? cart_general.CartScreen(
-                    embedInParent: true,
-                    backToProductId: widget.backToProductId,
-                    scrollHeader: _buildTabBar(),
-                  )
-                : const SizedBox.shrink(),
-          ],
-        ),
-      ),
     );
   }
 }

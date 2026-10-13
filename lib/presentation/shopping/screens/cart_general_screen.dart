@@ -52,6 +52,7 @@ class _CartScreenState extends State<CartScreen> {
   int totalPrice = 0; // 총구매금액
   Set<int> selectedItems = {}; // 선택된 아이템의 ctId 집합
   bool selectAll = false; // 현재 탭의 전체 선택 상태
+  bool _checkoutOpening = false;
   final ScrollController _scrollController = ScrollController();
   Timer? _shippingDebounce;
 
@@ -88,8 +89,8 @@ class _CartScreenState extends State<CartScreen> {
         .map((item) => item.ctId)
         .toSet();
     final available = _availableDisplayedItemIds;
-    selectAll = available.isNotEmpty &&
-        available.difference(selectedItems).isEmpty;
+    selectAll =
+        available.isNotEmpty && available.difference(selectedItems).isEmpty;
   }
 
   void _scheduleShippingRefresh() {
@@ -104,9 +105,8 @@ class _CartScreenState extends State<CartScreen> {
         .where((item) => selectedItems.contains(item.ctId) && item.isAvailable)
         .map((item) => item.ctId)
         .toList();
-    final cost = ids.isEmpty
-        ? 0
-        : await CartService.getShippingCost(ctIds: ids);
+    final cost =
+        ids.isEmpty ? 0 : await CartService.getShippingCost(ctIds: ids);
     if (!mounted) return;
     setState(() => _selectedShippingCost = cost);
   }
@@ -261,8 +261,7 @@ class _CartScreenState extends State<CartScreen> {
 
       final data = result['data'];
       if (data is Map) {
-        cartItems[index] =
-            CartItem.fromJson(Map<String, dynamic>.from(data));
+        cartItems[index] = CartItem.fromJson(Map<String, dynamic>.from(data));
       } else {
         final old = cartItems[index];
         final unitPrice =
@@ -398,36 +397,46 @@ class _CartScreenState extends State<CartScreen> {
 
   int get finalPrice => selectedTotalPrice + selectedShippingCost;
 
-  Future<void> _openPaymentScreen() async {
-    if (!await _ensureLoggedIn(message: '상품 구매는 로그인 후 이용할 수 있습니다.')) {
-      return;
-    }
-    if (_selectedDisplayedItemIds.isEmpty) return;
+  Future<void> _openPaymentScreen(Set<int> selectedIds) async {
+    if (_checkoutOpening || selectedIds.isEmpty) return;
 
     final selectedCartItems = _displayedCartItems
-        .where((item) =>
-            _selectedDisplayedItemIds.contains(item.ctId) && item.isAvailable)
-        .toList();
+        .where((item) => selectedIds.contains(item.ctId) && item.isAvailable)
+        .toList(growable: false);
     if (selectedCartItems.isEmpty) {
       AppToastOverlay.show(context, '판매 가능한 상품을 선택해 주세요.');
       return;
     }
 
-    final paid = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(
-        settings: const RouteSettings(name: '/pay'),
-        builder: (context) => PaymentScreen(
-          cartItems: selectedCartItems,
-          shippingCost: selectedShippingCost,
-          sourceTitle: '일반상품 장바구니',
-        ),
-      ),
-    );
+    setState(() => _checkoutOpening = true);
+    try {
+      if (!await _ensureLoggedIn(message: '상품 구매는 로그인 후 이용할 수 있습니다.')) {
+        return;
+      }
+      if (!mounted) return;
 
-    if (!mounted) return;
-    if (paid == true) {
-      await _loadCart(showCachedData: false);
+      final navigator = Navigator.of(context, rootNavigator: true);
+      final paid = await navigator.push<bool>(
+        MaterialPageRoute(
+          settings: const RouteSettings(name: '/pay'),
+          builder: (context) => PaymentScreen(
+            cartItems: selectedCartItems,
+            shippingCost: selectedShippingCost,
+            sourceTitle: '일반상품 장바구니',
+          ),
+        ),
+      );
+
+      if (!mounted) return;
+      if (paid == true) {
+        await _loadCart(showCachedData: false);
+      }
+    } catch (_) {
+      if (mounted) {
+        AppToastOverlay.show(context, '주문/결제 화면을 열지 못했습니다.');
+      }
+    } finally {
+      if (mounted) setState(() => _checkoutOpening = false);
     }
   }
 
@@ -502,177 +511,155 @@ class _CartScreenState extends State<CartScreen> {
       );
     }
     return Column(
-                    children: [
-                      Expanded(
-                        child: ScrollRevealTopOverlay(
-                          controller: _scrollController,
-                          revealAfterOffset: healthDp(context, 44),
-                          barPadding: EdgeInsets.fromLTRB(
-                            healthDp(context, 27),
-                            healthDp(context, 8),
-                            healthDp(context, 27),
-                            0,
-                          ),
-                          topBar: _buildSelectAllRow(),
-                          scrollChild: RefreshIndicator(
-                            onRefresh: () => _loadCart(
-                              showCachedData: false,
-                              forceRefresh: true,
-                            ),
-                            child: SingleChildScrollView(
-                              controller: _scrollController,
-                              physics: const AlwaysScrollableScrollPhysics(),
-                              padding: EdgeInsets.only(
-                                bottom: healthDp(context, 16),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  if (widget.scrollHeader != null)
-                                    widget.scrollHeader!,
-                                  Padding(
-                                    padding: EdgeInsets.fromLTRB(
-                                      healthDp(context, 27),
-                                      widget.scrollHeader != null
-                                          ? 0
-                                          : healthDp(context, 16),
-                                      healthDp(context, 27),
-                                      healthDp(context, 16),
-                                    ),
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.center,
-                                      children: [
-                                        _buildSelectAllRow(),
-                                        SizedBox(height: healthDp(context, 12)),
-                                        ...groupCartByVendor(_displayedGroups)
-                                            .expand(
-                                          (entry) => [
-                                            CartGroupGeneralCard(
-                                              vendorName: entry.key,
-                                              groups: entry.value,
-                                              selectedItems: selectedItems,
-                                              buildCheckbox: ({
-                                                required value,
-                                                required onChanged,
-                                              }) =>
-                                                  _lightCheckbox(
-                                                value: value,
-                                                onChanged: onChanged,
-                                              ),
-                                              buildQtyControl: ({
-                                                required quantity,
-                                                required onDecrease,
-                                                required onIncrease,
-                                              }) =>
-                                                  _buildFigmaQtyControl(
-                                                quantity: quantity,
-                                                onDecrease: onDecrease,
-                                                onIncrease: onIncrease,
-                                              ),
-                                              onToggleVendor: (selected) {
-                                                setState(() {
-                                                  final ids = entry.value
-                                                      .expand((g) => g.allItems)
-                                                      .where((e) => e.isAvailable)
-                                                      .map((e) => e.ctId);
-                                                  if (selected) {
-                                                    selectedItems.addAll(ids);
-                                                  } else {
-                                                    selectedItems
-                                                        .removeAll(ids);
-                                                  }
-                                                  selectAll =
-                                                      _availableDisplayedItemIds
-                                                              .isNotEmpty &&
-                                                          _availableDisplayedItemIds
-                                                              .difference(
-                                                                  selectedItems)
-                                                              .isEmpty;
-                                                });
-                                                _persistCartSelection();
-                                              },
-                                              onToggleItem: (item, selected) {
-                                                if (!item.isAvailable) return;
-                                                setState(() {
-                                                  if (selected) {
-                                                    selectedItems.add(item.ctId);
-                                                    for (final g
-                                                        in _displayedGroups) {
-                                                      if (g.parent.ctId ==
-                                                          item.ctId) {
-                                                        for (final c
-                                                            in g.children) {
-                                                          if (c.isAvailable) {
-                                                            selectedItems
-                                                                .add(c.ctId);
-                                                          }
-                                                        }
-                                                      }
-                                                    }
-                                                  } else {
-                                                    selectedItems
-                                                        .remove(item.ctId);
-                                                    for (final g
-                                                        in _displayedGroups) {
-                                                      if (g.parent.ctId ==
-                                                          item.ctId) {
-                                                        for (final c
-                                                            in g.children) {
-                                                          selectedItems
-                                                              .remove(c.ctId);
-                                                        }
-                                                      }
-                                                    }
-                                                  }
-                                                  selectAll =
-                                                      _availableDisplayedItemIds
-                                                              .isNotEmpty &&
-                                                          _availableDisplayedItemIds
-                                                              .difference(
-                                                                  selectedItems)
-                                                              .isEmpty;
-                                                });
-                                                _persistCartSelection();
-                                              },
-                                              onQuantityChanged: (item, qty) =>
-                                                  _updateQuantity(
-                                                      item.ctId, qty),
-                                              onDelete: (item) =>
-                                                  _deleteCartItem(item.ctId),
-                                              onOpenDetail: (item) =>
-                                                  _openGeneralProductDetail(
-                                                      item.itId),
-                                            ),
-                                            SizedBox(
-                                                height: healthDp(context, 12)),
-                                          ],
-                                        ),
-                                        if (_displayedCartItems.isEmpty)
-                                          Padding(
-                                            padding: EdgeInsets.symmetric(
-                                                vertical: healthDp(context, 40)),
-                                            child: Text(
-                                              '선택한 탭에 상품이 없습니다.',
-                                              style: TextStyle(
-                                                fontSize: healthSp(context, 14),
-                                                color: Colors.grey[600],
-                                              ),
-                                            ),
-                                          ),
-                                        SizedBox(height: healthDp(context, 18)),
-                                        _buildScrollablePriceSummary(),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
+      children: [
+        Expanded(
+          child: ScrollRevealTopOverlay(
+            controller: _scrollController,
+            revealAfterOffset: healthDp(context, 44),
+            barPadding: EdgeInsets.fromLTRB(
+              healthDp(context, 27),
+              healthDp(context, 8),
+              healthDp(context, 27),
+              0,
+            ),
+            topBar: _buildSelectAllRow(),
+            scrollChild: RefreshIndicator(
+              onRefresh: () => _loadCart(
+                showCachedData: false,
+                forceRefresh: true,
+              ),
+              child: SingleChildScrollView(
+                controller: _scrollController,
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: EdgeInsets.only(
+                  bottom: healthDp(context, 16),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (widget.scrollHeader != null) widget.scrollHeader!,
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        healthDp(context, 27),
+                        widget.scrollHeader != null ? 0 : healthDp(context, 16),
+                        healthDp(context, 27),
+                        healthDp(context, 16),
                       ),
-                      _buildCheckoutBar(),
-                    ],
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          _buildSelectAllRow(),
+                          SizedBox(height: healthDp(context, 12)),
+                          ...groupCartByVendor(_displayedGroups).expand(
+                            (entry) => [
+                              CartGroupGeneralCard(
+                                vendorName: entry.key,
+                                groups: entry.value,
+                                selectedItems: selectedItems,
+                                buildCheckbox: ({
+                                  required value,
+                                  required onChanged,
+                                }) =>
+                                    _lightCheckbox(
+                                  value: value,
+                                  onChanged: onChanged,
+                                ),
+                                buildQtyControl: ({
+                                  required quantity,
+                                  required onDecrease,
+                                  required onIncrease,
+                                }) =>
+                                    _buildFigmaQtyControl(
+                                  quantity: quantity,
+                                  onDecrease: onDecrease,
+                                  onIncrease: onIncrease,
+                                ),
+                                onToggleVendor: (selected) {
+                                  setState(() {
+                                    final ids = entry.value
+                                        .expand((g) => g.allItems)
+                                        .where((e) => e.isAvailable)
+                                        .map((e) => e.ctId);
+                                    if (selected) {
+                                      selectedItems.addAll(ids);
+                                    } else {
+                                      selectedItems.removeAll(ids);
+                                    }
+                                    selectAll =
+                                        _availableDisplayedItemIds.isNotEmpty &&
+                                            _availableDisplayedItemIds
+                                                .difference(selectedItems)
+                                                .isEmpty;
+                                  });
+                                  _persistCartSelection();
+                                },
+                                onToggleItem: (item, selected) {
+                                  if (!item.isAvailable) return;
+                                  setState(() {
+                                    if (selected) {
+                                      selectedItems.add(item.ctId);
+                                      for (final g in _displayedGroups) {
+                                        if (g.parent.ctId == item.ctId) {
+                                          for (final c in g.children) {
+                                            if (c.isAvailable) {
+                                              selectedItems.add(c.ctId);
+                                            }
+                                          }
+                                        }
+                                      }
+                                    } else {
+                                      selectedItems.remove(item.ctId);
+                                      for (final g in _displayedGroups) {
+                                        if (g.parent.ctId == item.ctId) {
+                                          for (final c in g.children) {
+                                            selectedItems.remove(c.ctId);
+                                          }
+                                        }
+                                      }
+                                    }
+                                    selectAll =
+                                        _availableDisplayedItemIds.isNotEmpty &&
+                                            _availableDisplayedItemIds
+                                                .difference(selectedItems)
+                                                .isEmpty;
+                                  });
+                                  _persistCartSelection();
+                                },
+                                onQuantityChanged: (item, qty) =>
+                                    _updateQuantity(item.ctId, qty),
+                                onDelete: (item) => _deleteCartItem(item.ctId),
+                                onOpenDetail: (item) =>
+                                    _openGeneralProductDetail(item.itId),
+                              ),
+                              SizedBox(height: healthDp(context, 12)),
+                            ],
+                          ),
+                          if (_displayedCartItems.isEmpty)
+                            Padding(
+                              padding: EdgeInsets.symmetric(
+                                  vertical: healthDp(context, 40)),
+                              child: Text(
+                                '선택한 탭에 상품이 없습니다.',
+                                style: TextStyle(
+                                  fontSize: healthSp(context, 14),
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ),
+                          SizedBox(height: healthDp(context, 18)),
+                          _buildScrollablePriceSummary(),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+        _buildCheckoutBar(),
+      ],
     );
   }
 
@@ -764,7 +751,9 @@ class _CartScreenState extends State<CartScreen> {
         width: double.infinity,
         height: healthDp(context, 40),
         child: ElevatedButton(
-          onPressed: selected.isEmpty ? null : _openPaymentScreen,
+          onPressed: selected.isEmpty || _checkoutOpening
+              ? null
+              : () => _openPaymentScreen(Set<int>.from(selected)),
           style: ElevatedButton.styleFrom(
             minimumSize: Size(double.infinity, healthDp(context, 40)),
             maximumSize: Size(double.infinity, healthDp(context, 40)),
@@ -776,14 +765,23 @@ class _CartScreenState extends State<CartScreen> {
               borderRadius: BorderRadius.circular(healthDp(context, 10)),
             ),
           ),
-          child: Text(
-            '결제하기',
-            style: TextStyle(
-              fontSize: healthSp(context, 16),
-              fontFamily: 'Gmarket Sans TTF',
-              fontWeight: FontWeight.w500,
-            ),
-          ),
+          child: _checkoutOpening
+              ? SizedBox(
+                  width: healthDp(context, 20),
+                  height: healthDp(context, 20),
+                  child: const CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : Text(
+                  '결제하기',
+                  style: TextStyle(
+                    fontSize: healthSp(context, 16),
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
         ),
       ),
     );
@@ -1056,4 +1054,3 @@ class _CartScreenState extends State<CartScreen> {
 
   // 탭 UI 제거: 처방상품 장바구니 단일 화면
 }
-

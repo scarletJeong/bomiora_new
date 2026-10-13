@@ -120,12 +120,12 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
         odId: odId,
       );
       if (!mounted) return;
-        setState(() {
+      setState(() {
         _reviewedItIds =
             (check['reviewedItIds'] as List<String>?) ?? const <String>[];
-        });
+      });
     } catch (_) {}
-      }
+  }
 
   bool _canWriteReview(OrderDetailModel order) {
     return pendingReviewProducts(order, _reviewedItIds).isNotEmpty;
@@ -215,11 +215,8 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
     final delivering = _isDeliveringStage(order);
     final completed = _isCompletedStage(order);
     final cancelled = _isCancelledStage(order);
-    final canChangeAddress = !cancelled &&
-        !completed &&
-        !consultDone &&
-        !delivering &&
-        !preparing;
+    final canChangeAddress =
+        !cancelled && !completed && !consultDone && !delivering && !preparing;
     final showDepositCard = awaiting &&
         (order.paymentMethod.contains('가상') ||
             (order.odBankAccount ?? '').trim().isNotEmpty);
@@ -365,15 +362,15 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
               else if (!completed) ...[
                 gap,
                 if (!isRx && preparing) ...[
-        Container(
-          width: double.infinity,
+                  Container(
+                    width: double.infinity,
                     padding: EdgeInsets.symmetric(
                       vertical: healthDp(context, 10),
                     ),
                     clipBehavior: Clip.antiAlias,
-          decoration: ShapeDecoration(
+                    decoration: ShapeDecoration(
                       color: const Color(0x19FF5A8D),
-            shape: RoundedRectangleBorder(
+                      shape: RoundedRectangleBorder(
                         borderRadius:
                             BorderRadius.circular(healthDp(context, 10)),
                       ),
@@ -381,11 +378,11 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
                     child: Text(
                       '배송준비중인 상태로\n배송지 변경 또는 취소가 어렵습니다.',
                       textAlign: TextAlign.center,
-                              style: TextStyle(
+                      style: TextStyle(
                         color: const Color(0xFFFF5A8D),
                         fontSize: healthSp(context, 12),
-                                fontFamily: 'Gmarket Sans TTF',
-                                fontWeight: FontWeight.w500,
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w500,
                         height: 1.50,
                       ),
                     ),
@@ -426,10 +423,10 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
                   showChangeButton: false,
                 ),
               ],
-              ],
             ],
-          ),
+          ],
         ),
+      ),
     );
   }
 
@@ -487,12 +484,11 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
     final actions = _productActions(order);
     if (!order.isPrescriptionOrder) {
       VoidCallback? onCancel;
-      final rest = <
-          ({
-            String label,
-            VoidCallback? onTap,
-            DeliveryDetailProductActionStyle style,
-          })>[];
+      final rest = <({
+        String label,
+        VoidCallback? onTap,
+        DeliveryDetailProductActionStyle style,
+      })>[];
       for (final a in actions) {
         if (a.label == '주문취소') {
           onCancel = a.onTap;
@@ -554,15 +550,15 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
           style: DeliveryDetailProductActionStyle.outlinePink,
         ),
         (
-              label: '배송조회',
-              onTap: _trackDelivery,
+          label: '배송조회',
+          onTap: _trackDelivery,
           style: DeliveryDetailProductActionStyle.outlinePink,
         ),
       ];
       if (_canWriteReview(order)) {
         actions.add((
-              label: '리뷰쓰기',
-              onTap: _writeReviewFromDetail,
+          label: '리뷰쓰기',
+          onTap: _writeReviewFromDetail,
           style: DeliveryDetailProductActionStyle.primary,
         ));
       } else {
@@ -578,13 +574,13 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
     if (_isDeliveringStage(order)) {
       return [
         (
-              label: '수령확인',
-              onTap: _confirmPurchase,
+          label: '수령확인',
+          onTap: _confirmPurchase,
           style: DeliveryDetailProductActionStyle.outlinePink,
-            ),
+        ),
         (
-              label: '배송조회',
-              onTap: _trackDelivery,
+          label: '배송조회',
+          onTap: _trackDelivery,
           style: DeliveryDetailProductActionStyle.primary,
         ),
       ];
@@ -666,10 +662,10 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
         _orderDetail!.reservationTime == null) {
       return;
     }
-    
+
     final orderIdToUse =
         widget.orderNumber.isNotEmpty ? widget.orderNumber : _orderDetail!.odId;
-    
+
     final result = await showGeneralDialog<ReservationPickResult?>(
       context: context,
       barrierDismissible: true,
@@ -833,8 +829,8 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
     final bool? result;
     if (pending.length > 1) {
       result = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(
+        context,
+        MaterialPageRoute(
           builder: (_) => DeliverySelectList(
             orderDetail: _orderDetail!,
             pendingProducts: pending,
@@ -866,9 +862,8 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
       context,
       MaterialPageRoute(
         builder: (_) => QaWriteScreen(
-          prefilledDraft: order != null
-              ? QaInquiryDraft.fromOrderDetail(order)
-              : null,
+          prefilledDraft:
+              order != null ? QaInquiryDraft.fromOrderDetail(order) : null,
         ),
       ),
     );
@@ -876,10 +871,10 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
 
   Future<void> _trackDelivery() async {
     if (_orderDetail == null) return;
-    
+
     final companyName = _orderDetail!.deliveryCompany;
     final trackingNumber = _orderDetail!.trackingNumber;
-    
+
     if (companyName == null || companyName.isEmpty) return;
     if (trackingNumber == null || trackingNumber.isEmpty) return;
     if (!DeliveryTracker.isSupported(companyName)) return;
@@ -949,8 +944,7 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
         addedItems.add(cartItem);
         final ctId = CartService.ctIdFromCartResponseData(map);
         if (ctId != null) addedCtIds.add(ctId);
-        sharedOdId ??=
-            (map['od_id'] ?? map['odId'])?.toString();
+        sharedOdId ??= (map['od_id'] ?? map['odId'])?.toString();
       }
     }
 
@@ -987,7 +981,9 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
             'it_id': item.itId,
             'it_name': item.itName,
             'id': item.ioId ?? '',
-            'name': item.ctOption.isNotEmpty ? item.ctOption : item.itName,
+            'name': item.displayOptionText.isNotEmpty
+                ? item.displayOptionText
+                : item.itName,
             'price': item.ioPrice ?? 0,
             'quantity': item.ctQty,
             'totalPrice': item.lineAmount,
@@ -1006,7 +1002,7 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
           cartCtIdsForCheckout: result.ctIds,
           checkoutCartItems: items,
         ),
-            ),
+      ),
     );
   }
 }

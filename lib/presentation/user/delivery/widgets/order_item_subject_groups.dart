@@ -63,7 +63,7 @@ List<String> filterOptionPartsAgainstTitle({
 }
 
 String orderItemQtyOptionLine(OrderItem item) {
-  final raw = (item.ctOption ?? '').trim();
+  final raw = item.displayOptionText;
   if (raw.isEmpty) return '수량: ${item.ctQty}';
   final parts = filterOptionPartsAgainstTitle(
     title: orderItemDisplayTitle(item),
@@ -110,8 +110,7 @@ class OrderItemTitleOptionBlock extends StatelessWidget {
         final maxW = constraints.maxWidth;
         final titleLines = _lineCount(title, titleStyle, maxW);
         final optionLines = _lineCount(qtyOptionLine, optionStyle, maxW);
-        final titleMaxLines =
-            (titleLines >= 2 && optionLines >= 2) ? 1 : 2;
+        final titleMaxLines = (titleLines >= 2 && optionLines >= 2) ? 1 : 2;
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,

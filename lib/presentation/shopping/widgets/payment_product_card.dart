@@ -424,7 +424,7 @@ class _PaymentParentBlock extends StatelessWidget {
     final thumb = healthDp(context, 72);
     final optionParts = filterOptionPartsAgainstTitle(
       title: item.itName.trim(),
-      rawOption: item.ctOption.trim(),
+      rawOption: item.displayOptionText,
     );
     final qtyOptionLine = optionParts.isEmpty
         ? '수량: ${item.ctQty}'

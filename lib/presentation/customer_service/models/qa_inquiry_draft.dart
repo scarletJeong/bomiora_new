@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 
 import '../../../data/models/delivery/delivery_model.dart';
 
@@ -35,8 +35,7 @@ class QaInquiryCardItem {
         if ((optionText ?? '').trim().isNotEmpty) 'o': optionText,
         's': showOptions,
         'h': isHerbal,
-        if (extras.isNotEmpty)
-          'e': extras.map((e) => e.toJson()).toList(),
+        if (extras.isNotEmpty) 'e': extras.map((e) => e.toJson()).toList(),
       };
 
   factory QaInquiryCardItem.fromJson(Map<String, dynamic> json) {
@@ -46,7 +45,9 @@ class QaInquiryCardItem {
       vendor: json['v']?.toString(),
       imageUrl: json['i']?.toString(),
       price: json['p'] is int ? json['p'] as int : int.tryParse('${json['p']}'),
-      qty: json['q'] is int ? json['q'] as int : int.tryParse('${json['q']}') ?? 1,
+      qty: json['q'] is int
+          ? json['q'] as int
+          : int.tryParse('${json['q']}') ?? 1,
       optionText: json['o']?.toString(),
       showOptions: json['s'] != false,
       isHerbal: json['h'] == true,
@@ -67,6 +68,7 @@ class QaInquiryDraft {
   final String category; // 상품 | 주문 | 기타
   /// 큰 카테고리 (상품문의, 예약/결제, …) — 주문/상품 공통
   final String? majorCategory;
+
   /// 문의유형에 따른 상세 내용
   final String? detailCategory;
   final String? itId;
@@ -76,12 +78,16 @@ class QaInquiryDraft {
   final int? price;
   final String? odId;
   final String? orderDate;
+
   /// 장바구니/주문 옵션 표시용
   final String? optionText;
+
   /// it_subject (상품명 위 표시)
   final String? itSubject;
+
   /// 상품선택 탭명 (장바구니/찜한 상품, 주문/배송/취소)
   final String? selectTabLabel;
+
   /// 상세 카드에 표시할 선택 상품들
   final List<QaInquiryCardItem> cardItems;
 
@@ -224,8 +230,7 @@ class QaInquiryDraft {
   static const String askPrompt = '어떤 것이 궁금하신가요?';
 
   /// 기타 카테고리 진입 시 CS 첫 안내 (칩 없음)
-  static const String etcAskPrompt =
-      '안녕하세요. 보미오라 한의원입니다.\n 궁금한 내용을 입력해 주세요.';
+  static const String etcAskPrompt = '안녕하세요. 보미오라 한의원입니다.\n 궁금한 내용을 입력해 주세요.';
 
   /// 문의 유형 (랜딩 화면 드롭다운)
   static const List<String> inquiryTypes = [
@@ -301,8 +306,7 @@ class QaInquiryDraft {
     return _detailOptionsFor(category);
   }
 
-  static String guideMessage(String category) =>
-      _guideMessages[category] ?? '';
+  static String guideMessage(String category) => _guideMessages[category] ?? '';
 
   static String? _itSubjectFromItem(OrderItem item) {
     final name = item.itName.trim();
@@ -352,9 +356,8 @@ class QaInquiryDraft {
 
     if (source.isNotEmpty) {
       final cards = source.map(_cardFromOrderItem).toList(growable: false);
-      final firstName = cards.first.name.trim().isNotEmpty
-          ? cards.first.name.trim()
-          : '상품';
+      final firstName =
+          cards.first.name.trim().isNotEmpty ? cards.first.name.trim() : '상품';
       final extraCount = cards.length > 1
           ? cards.length - 1
           : ((fallbackCount != null && fallbackCount > 1)
@@ -384,8 +387,7 @@ class QaInquiryDraft {
 
     final count = fallbackCount ?? 1;
     final baseName = fallbackProductName ?? '주문 상품';
-    final displayName =
-        count > 1 ? '$baseName 외 ${count - 1}건' : baseName;
+    final displayName = count > 1 ? '$baseName 외 ${count - 1}건' : baseName;
     return QaInquiryDraft(
       category: '주문',
       productName: displayName,
@@ -418,7 +420,8 @@ class QaInquiryDraft {
       imageUrl: item.imageUrl,
       price: item.totalPrice > 0 ? item.totalPrice : item.ctPrice,
       qty: item.ctQty,
-      optionText: formatOptionText(ctOption: item.ctOption, itSubject: null),
+      optionText:
+          formatOptionText(ctOption: item.displayOptionText, itSubject: null),
       showOptions: true,
       isHerbal: isHerbalProduct(kind, item.itSubject),
     );

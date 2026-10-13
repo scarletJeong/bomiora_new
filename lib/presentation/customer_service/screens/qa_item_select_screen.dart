@@ -6,6 +6,7 @@ import '../../../core/utils/node_value_parser.dart';
 import '../../../core/utils/price_formatter.dart';
 import '../../../data/models/cart/cart_item_model.dart';
 import '../../../data/models/delivery/delivery_model.dart';
+import '../../../data/models/product/product_option_model.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/cart_service.dart';
 import '../../../data/services/delivery_service.dart';
@@ -144,11 +145,7 @@ class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
 
   bool _isOrderShippingStatus(String odStatus) {
     final s = odStatus.trim();
-    return s == '주문' ||
-        s == '배송' ||
-        s == '완료' ||
-        s == '입금' ||
-        s == '준비';
+    return s == '주문' || s == '배송' || s == '완료' || s == '입금' || s == '준비';
   }
 
   bool _isCancelExchangeRefund(OrderListModel order) {
@@ -210,7 +207,9 @@ class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
           orderDate: order.orderDate,
           optionParts: _optionParts(
             qty: 1,
-            optionText: order.firstProductOption,
+            optionText: ProductOption.visibleLabel(
+              ctOption: order.firstProductOption,
+            ),
           ),
         ));
       }
@@ -234,7 +233,7 @@ class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
       '수량: ${item.ctQty}',
       ...filterOptionPartsAgainstTitle(
         title: title,
-        rawOption: item.ctOption ?? '',
+        rawOption: item.displayOptionText,
       ),
     ];
     return _SelectableItem(
@@ -296,9 +295,8 @@ class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
     final cartItem = CartItem.fromJson(m);
     final itId = cartItem.itId.trim();
     if (itId.isEmpty) return null;
-    final name = cartItem.itName.trim().isNotEmpty
-        ? cartItem.itName.trim()
-        : '상품';
+    final name =
+        cartItem.itName.trim().isNotEmpty ? cartItem.itName.trim() : '상품';
     final optionText = QaInquiryDraft.formatOptionText(
       ctOption: cartItem.ctOption,
       itSubject: null,
@@ -441,9 +439,7 @@ class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
       }
       if (out.isEmpty) return out;
       final odId = (out.first.odId ?? '').trim();
-      return out
-          .where((e) => (e.odId ?? '').trim() == odId)
-          .toList();
+      return out.where((e) => (e.odId ?? '').trim() == odId).toList();
     }
 
     collect(_items);
@@ -560,8 +556,7 @@ class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
                         ? _pink.withValues(alpha: 0.4)
                         : _pink,
                     shape: RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.circular(healthDp(context, 8)),
+                      borderRadius: BorderRadius.circular(healthDp(context, 8)),
                     ),
                   ),
                   child: Text(
@@ -749,7 +744,8 @@ class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
           _ProductSelectRow(
             item: item,
             selected: _selectedKeys.contains(item.key),
-            showOptions: item.showOptions && _currentTab != QaItemSelectTab.wish,
+            showOptions:
+                item.showOptions && _currentTab != QaItemSelectTab.wish,
             embedded: true,
             onTap: () => _toggleItem(item),
           ),
@@ -866,9 +862,7 @@ class _CheckBox extends StatelessWidget {
         shape: RoundedRectangleBorder(
           side: BorderSide(
             width: healthDp(context, 1),
-            color: selected
-                ? const Color(0xFFFF5A8D)
-                : const Color(0xFFD2D2D2),
+            color: selected ? const Color(0xFFFF5A8D) : const Color(0xFFD2D2D2),
           ),
           borderRadius: BorderRadius.circular(healthDp(context, 4)),
         ),
@@ -974,9 +968,7 @@ class _ProductSelectRow extends StatelessWidget {
     final thumbW = healthDp(context, compact ? 72 : 78);
     final thumbH = healthDp(context, 72);
     final parts = showOptions
-        ? (item.optionParts.isNotEmpty
-            ? item.optionParts
-            : ['수량: ${item.qty}'])
+        ? (item.optionParts.isNotEmpty ? item.optionParts : ['수량: ${item.qty}'])
         : const <String>[];
 
     return InkWell(
@@ -1088,9 +1080,7 @@ class _OptionMetaRow extends StatelessWidget {
           Text(
             parts[i],
             style: TextStyle(
-              color: i == 1
-                  ? const Color(0xFF898383)
-                  : const Color(0xFF898686),
+              color: i == 1 ? const Color(0xFF898383) : const Color(0xFF898686),
               fontSize: healthSp(context, 10),
               fontFamily: _font,
               fontWeight: FontWeight.w500,
@@ -1115,9 +1105,7 @@ class _ExtraDropdown extends StatelessWidget {
   final VoidCallback onToggle;
 
   String _optionLine(_SelectableItem extra) {
-    final opts = extra.optionParts
-        .where((e) => !e.startsWith('수량:'))
-        .toList();
+    final opts = extra.optionParts.where((e) => !e.startsWith('수량:')).toList();
     if (opts.isEmpty) return extra.qty > 0 ? '수량: ${extra.qty}' : '';
     return opts.join(' ㅣ ');
   }

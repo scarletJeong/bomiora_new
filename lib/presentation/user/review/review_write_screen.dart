@@ -723,7 +723,7 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
                       ),
                       SizedBox(height: healthDp(context, 10)),
                       Text(
-                        '수량: ${item.ctQty}${item.ctOption != null && item.ctOption!.isNotEmpty ? ' / ${item.ctOption}' : ''}',
+                        '수량: ${item.ctQty}${item.displayOptionText.isNotEmpty ? ' / ${item.displayOptionText}' : ''}',
                         style: TextStyle(
                           fontFamily: _kFont,
                           color: const Color(0xFF898383),

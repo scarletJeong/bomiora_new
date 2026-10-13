@@ -1650,7 +1650,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
             'it_id': item.itId,
             'it_name': item.itName,
             'id': item.ioId ?? '',
-            'name': item.ctOption.isNotEmpty ? item.ctOption : item.itName,
+            'name': item.displayOptionText.isNotEmpty
+                ? item.displayOptionText
+                : item.itName,
             'price': item.ioPrice ?? 0,
             'quantity': item.ctQty,
             'totalPrice': item.ctPrice,

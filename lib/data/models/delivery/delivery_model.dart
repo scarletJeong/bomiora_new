@@ -1,4 +1,5 @@
 import '../../../core/utils/node_value_parser.dart';
+import '../product/product_option_model.dart';
 
 /// 라인아이템의 상품유형 문자열 (`prescription` | `general` | '').
 String orderItemProductKind(OrderItem item) {
@@ -16,9 +17,8 @@ bool resolveIsPrescriptionOrder({
   required List<OrderItem> items,
 }) {
   if (items.isEmpty) return topLevelFlag;
-  final mains = items
-      .where((p) => (p.parent ?? '').toString().trim().isEmpty)
-      .toList();
+  final mains =
+      items.where((p) => (p.parent ?? '').toString().trim().isEmpty).toList();
   final check = mains.isNotEmpty ? mains : items;
   final kinds = check.map(orderItemProductKind).toList();
   if (kinds.any((k) => k == 'prescription')) return true;
@@ -42,8 +42,10 @@ class OrderItem {
   final String? imageUrl; // 상품 이미지 URL
   /// 옵션 ID (`io_id`)
   final String? ioId;
+
   /// 장바구니 kind (`ct_kind`) — prescription | general
   final String? ctKind;
+
   /// 추가상품이면 부모 상품 it_id, 본품이면 null/빈값
   final String? parent;
   final int ioType;
@@ -67,11 +69,21 @@ class OrderItem {
     this.ioType = 0,
   });
 
+  String get displayOptionText => ProductOption.visibleLabel(
+        ioId: ioId,
+        ctOption: ctOption,
+        itId: itId,
+      );
+
   factory OrderItem.fromJson(Map<dynamic, dynamic> json) {
-    final normalized = NodeValueParser.normalizeMap(Map<String, dynamic>.from(json));
+    final normalized =
+        NodeValueParser.normalizeMap(Map<String, dynamic>.from(json));
     return OrderItem(
-      ctId: NodeValueParser.asInt(normalized['ctId'] ?? normalized['ct_id']) ?? 0,
-      itId: NodeValueParser.asString(normalized['itId'] ?? normalized['it_id']) ?? '',
+      ctId:
+          NodeValueParser.asInt(normalized['ctId'] ?? normalized['ct_id']) ?? 0,
+      itId:
+          NodeValueParser.asString(normalized['itId'] ?? normalized['it_id']) ??
+              '',
       itName: NodeValueParser.asString(
             normalized['itName'] ??
                 normalized['it_name'] ??
@@ -79,27 +91,39 @@ class OrderItem {
                 normalized['itemName'],
           ) ??
           '',
-      itKind: NodeValueParser.asString(normalized['itKind'] ?? normalized['it_kind']),
+      itKind: NodeValueParser.asString(
+          normalized['itKind'] ?? normalized['it_kind']),
       itSubject: NodeValueParser.asString(
             normalized['itSubject'] ?? normalized['it_subject'],
           ) ??
           '',
-      ctOption: NodeValueParser.asString(normalized['ctOption'] ?? normalized['ct_option']),
-      ctQty: NodeValueParser.asInt(normalized['ctQty'] ?? normalized['ct_qty']) ?? 0,
-      ctPrice: NodeValueParser.asInt(normalized['ctPrice'] ?? normalized['ct_price']) ?? 0,
-      ioPrice: NodeValueParser.asInt(normalized['ioPrice'] ?? normalized['io_price']) ?? 0,
-      totalPrice: NodeValueParser.asInt(normalized['totalPrice'] ?? normalized['total_price']) ?? 0,
-      ctStatus: NodeValueParser.asString(normalized['ctStatus'] ?? normalized['ct_status']),
+      ctOption: NodeValueParser.asString(
+          normalized['ctOption'] ?? normalized['ct_option']),
+      ctQty:
+          NodeValueParser.asInt(normalized['ctQty'] ?? normalized['ct_qty']) ??
+              0,
+      ctPrice: NodeValueParser.asInt(
+              normalized['ctPrice'] ?? normalized['ct_price']) ??
+          0,
+      ioPrice: NodeValueParser.asInt(
+              normalized['ioPrice'] ?? normalized['io_price']) ??
+          0,
+      totalPrice: NodeValueParser.asInt(
+              normalized['totalPrice'] ?? normalized['total_price']) ??
+          0,
+      ctStatus: NodeValueParser.asString(
+          normalized['ctStatus'] ?? normalized['ct_status']),
       imageUrl: NodeValueParser.asString(
-            normalized['imageUrl'] ??
-                normalized['image_url'] ??
-                normalized['itImg1'] ??
-                normalized['it_img1'] ??
-                normalized['productImage'] ??
-                normalized['product_image'],
-          ),
+        normalized['imageUrl'] ??
+            normalized['image_url'] ??
+            normalized['itImg1'] ??
+            normalized['it_img1'] ??
+            normalized['productImage'] ??
+            normalized['product_image'],
+      ),
       ioId: NodeValueParser.asString(normalized['ioId'] ?? normalized['io_id']),
-      ctKind: NodeValueParser.asString(normalized['ctKind'] ?? normalized['ct_kind']),
+      ctKind: NodeValueParser.asString(
+          normalized['ctKind'] ?? normalized['ct_kind']),
       parent: () {
         final p = NodeValueParser.asString(
               normalized['parent'] ??
@@ -118,7 +142,9 @@ class OrderItem {
         }
         return null;
       }(),
-      ioType: NodeValueParser.asInt(normalized['ioType'] ?? normalized['io_type']) ?? 0,
+      ioType: NodeValueParser.asInt(
+              normalized['ioType'] ?? normalized['io_type']) ??
+          0,
     );
   }
 
@@ -156,6 +182,7 @@ class OrderListModel {
   final int deliveryFee;
   final int odCartCount;
   final bool isPrescriptionOrder;
+
   /// 상담(처방) 완료 — hp_9=prescription + hp_10=completion + hp_mdatetime
   final bool isConsultationDone;
   final List<OrderItem> items;
@@ -197,7 +224,8 @@ class OrderListModel {
   });
 
   factory OrderListModel.fromJson(Map<dynamic, dynamic> json) {
-    final normalized = NodeValueParser.normalizeMap(Map<String, dynamic>.from(json));
+    final normalized =
+        NodeValueParser.normalizeMap(Map<String, dynamic>.from(json));
     List<OrderItem> itemList = [];
 
     List<OrderItem> parseItemArray(dynamic raw) {
@@ -221,19 +249,19 @@ class OrderListModel {
       itemList = parseItemArray(normalized['orderItems']);
     }
 
-    final parsedTotalPrice =
-        NodeValueParser.asInt(normalized['totalPrice']) ??
+    final parsedTotalPrice = NodeValueParser.asInt(normalized['totalPrice']) ??
         NodeValueParser.asInt(normalized['total_price']) ??
         NodeValueParser.asInt(normalized['odReceiptPrice']) ??
         NodeValueParser.asInt(normalized['od_receipt_price']) ??
         0;
     final parsedDeliveryFee =
         NodeValueParser.asInt(normalized['deliveryFee']) ??
-        NodeValueParser.asInt(normalized['delivery_fee']) ??
-        NodeValueParser.asInt(normalized['odSendCost']) ??
-        NodeValueParser.asInt(normalized['od_send_cost']) ??
-        0;
-    final itemsTotalPrice = itemList.fold<int>(0, (sum, item) => sum + item.totalPrice);
+            NodeValueParser.asInt(normalized['delivery_fee']) ??
+            NodeValueParser.asInt(normalized['odSendCost']) ??
+            NodeValueParser.asInt(normalized['od_send_cost']) ??
+            0;
+    final itemsTotalPrice =
+        itemList.fold<int>(0, (sum, item) => sum + item.totalPrice);
     final resolvedTotalPrice = parsedTotalPrice > 0
         ? parsedTotalPrice
         : (itemsTotalPrice > 0 ? itemsTotalPrice : 0);
@@ -248,13 +276,17 @@ class OrderListModel {
             (NodeValueParser.asString(normalized['isConsultationDone']) ?? '')
                     .toLowerCase() ==
                 'true' ||
-            (NodeValueParser.asInt(normalized['is_consultation_done']) ?? 0) == 1;
+            (NodeValueParser.asInt(normalized['is_consultation_done']) ?? 0) ==
+                1;
 
     return OrderListModel(
-      odId: NodeValueParser.asString(normalized['odId']) ?? '0', // String으로 변환 (int도 처리)
+      odId: NodeValueParser.asString(normalized['odId']) ??
+          '0', // String으로 변환 (int도 처리)
       orderDate: NodeValueParser.asString(normalized['orderDate']) ?? '',
-      orderDateTime: NodeValueParser.asString(normalized['orderDateTime']) ?? '',
-      displayStatus: NodeValueParser.asString(normalized['displayStatus']) ?? '',
+      orderDateTime:
+          NodeValueParser.asString(normalized['orderDateTime']) ?? '',
+      displayStatus:
+          NodeValueParser.asString(normalized['displayStatus']) ?? '',
       odStatus: NodeValueParser.asString(normalized['odStatus']) ?? '',
       totalPrice: resolvedTotalPrice,
       deliveryFee: parsedDeliveryFee,
@@ -265,8 +297,10 @@ class OrderListModel {
       ),
       isConsultationDone: consultationDone,
       items: itemList,
-      firstProductName: NodeValueParser.asString(normalized['firstProductName']),
-      firstProductOption: NodeValueParser.asString(normalized['firstProductOption']),
+      firstProductName:
+          NodeValueParser.asString(normalized['firstProductName']),
+      firstProductOption:
+          NodeValueParser.asString(normalized['firstProductOption']),
       firstProductQty: NodeValueParser.asInt(normalized['firstProductQty']),
       firstProductPrice: NodeValueParser.asInt(normalized['firstProductPrice']),
       recipientName:
@@ -295,9 +329,7 @@ class OrderListModel {
     if (display == '배송완료') return false;
 
     if (display == '배송중' || od == '배송') return true;
-    if (display == '상담완료' ||
-        display.contains('상담') ||
-        isConsultationDone) {
+    if (display == '상담완료' || display.contains('상담') || isConsultationDone) {
       return true;
     }
     if (display == '배송준비중' || od == '준비') return true;
@@ -393,26 +425,35 @@ class OrderDetailModel {
   final int productPrice;
   final int deliveryFee;
   final int discountAmount;
+
   /// 쿠폰 합계 (장바구니·배송비·주문 쿠폰)
   final int couponDiscount;
+
   /// 포인트 사용액
   final int pointDiscount;
   final int totalPrice;
+
   /// 취소 금액 (`od_cancel_price`)
   final int cancelPrice;
   final bool isPrescriptionOrder;
+
   /// 상담(처방) 완료 — hp_9=prescription + hp_10=completion + hp_mdatetime
   final bool isConsultationDone;
   final String paymentMethod;
   final String? paymentMethodDetail;
+
   /// KCP 거래번호 (`od_tno`) — 영수증 URL 등
   final String? odTno;
+
   /// 카드 승인번호 (`od_app_no`)
   final String? odAppNo;
+
   /// 가상계좌 등 원문 `od_bank_account` (은행/계좌/입금기한)
   final String? odBankAccount;
+
   /// 가상계좌 예금주 (`od_deposit_name`)
   final String? odDepositName;
+
   /// 카드 매출전표/영수증 URL (백엔드가 내려주는 경우)
   final String? cardReceiptUrl;
   final String ordererName;
@@ -420,8 +461,10 @@ class OrderDetailModel {
   final String ordererEmail;
   final String? cancelReason;
   final String? cancelType;
+
   /// 취소일시 (`od_shop_memo` / `od_mod_history`에서 추출)
   final String? cancelDate;
+
   /// 표시용 취소 사유: 고객요청 / 입금기한만료 / 고객요청(관리자) / 기타
   final String? cancelReasonLabel;
   final String? reservationDate; // 예약 날짜 (hp_rsvt_date)
@@ -500,7 +543,8 @@ class OrderDetailModel {
   }
 
   factory OrderDetailModel.fromJson(Map<dynamic, dynamic> json) {
-    final normalized = NodeValueParser.normalizeMap(Map<String, dynamic>.from(json));
+    final normalized =
+        NodeValueParser.normalizeMap(Map<String, dynamic>.from(json));
     List<OrderItem> productList = [];
     if (normalized['products'] != null) {
       productList = (normalized['products'] as List)
@@ -522,7 +566,8 @@ class OrderDetailModel {
             (NodeValueParser.asString(normalized['isConsultationDone']) ?? '')
                     .toLowerCase() ==
                 'true' ||
-            (NodeValueParser.asInt(normalized['is_consultation_done']) ?? 0) == 1;
+            (NodeValueParser.asInt(normalized['is_consultation_done']) ?? 0) ==
+                1;
 
     final receiptUrl = NodeValueParser.asString(normalized['cardReceiptUrl']) ??
         NodeValueParser.asString(normalized['card_receipt_url']) ??
@@ -534,12 +579,17 @@ class OrderDetailModel {
     return OrderDetailModel(
       odId: odIdString,
       orderDate: NodeValueParser.asString(normalized['orderDate']) ?? '',
-      displayStatus: NodeValueParser.asString(normalized['displayStatus']) ?? '',
+      displayStatus:
+          NodeValueParser.asString(normalized['displayStatus']) ?? '',
       odStatus: NodeValueParser.asString(normalized['odStatus']) ?? '',
-      recipientName: NodeValueParser.asString(normalized['recipientName']) ?? '',
-      recipientPhone: NodeValueParser.asString(normalized['recipientPhone']) ?? '',
-      recipientAddress: NodeValueParser.asString(normalized['recipientAddress']) ?? '',
-      recipientAddressDetail: NodeValueParser.asString(normalized['recipientAddressDetail']) ?? '',
+      recipientName:
+          NodeValueParser.asString(normalized['recipientName']) ?? '',
+      recipientPhone:
+          NodeValueParser.asString(normalized['recipientPhone']) ?? '',
+      recipientAddress:
+          NodeValueParser.asString(normalized['recipientAddress']) ?? '',
+      recipientAddressDetail:
+          NodeValueParser.asString(normalized['recipientAddressDetail']) ?? '',
       deliveryMessage: NodeValueParser.asString(normalized['deliveryMessage']),
       deliveryCompany: NodeValueParser.asString(normalized['deliveryCompany']),
       trackingNumber: NodeValueParser.asString(normalized['trackingNumber']),
@@ -547,10 +597,12 @@ class OrderDetailModel {
       productPrice: NodeValueParser.asInt(normalized['productPrice']) ?? 0,
       deliveryFee: NodeValueParser.asInt(normalized['deliveryFee']) ?? 0,
       discountAmount: NodeValueParser.asInt(normalized['discountAmount']) ?? 0,
-      couponDiscount:
-          NodeValueParser.asInt(normalized['couponDiscount'] ?? normalized['coupon_discount']) ?? 0,
-      pointDiscount:
-          NodeValueParser.asInt(normalized['pointDiscount'] ?? normalized['point_discount']) ?? 0,
+      couponDiscount: NodeValueParser.asInt(
+              normalized['couponDiscount'] ?? normalized['coupon_discount']) ??
+          0,
+      pointDiscount: NodeValueParser.asInt(
+              normalized['pointDiscount'] ?? normalized['point_discount']) ??
+          0,
       totalPrice: NodeValueParser.asInt(normalized['totalPrice']) ?? 0,
       cancelPrice: NodeValueParser.asInt(
             normalized['cancelPrice'] ?? normalized['od_cancel_price'],
@@ -561,11 +613,16 @@ class OrderDetailModel {
         items: productList,
       ),
       isConsultationDone: consultationDone,
-      paymentMethod: NodeValueParser.asString(normalized['paymentMethod']) ?? '',
-      paymentMethodDetail: NodeValueParser.asString(normalized['paymentMethodDetail']),
-      odTno: NodeValueParser.asString(normalized['odTno'] ?? normalized['od_tno']),
-      odAppNo: NodeValueParser.asString(normalized['odAppNo'] ?? normalized['od_app_no']),
-      odBankAccount: NodeValueParser.asString(normalized['odBankAccount'] ?? normalized['od_bank_account']),
+      paymentMethod:
+          NodeValueParser.asString(normalized['paymentMethod']) ?? '',
+      paymentMethodDetail:
+          NodeValueParser.asString(normalized['paymentMethodDetail']),
+      odTno:
+          NodeValueParser.asString(normalized['odTno'] ?? normalized['od_tno']),
+      odAppNo: NodeValueParser.asString(
+          normalized['odAppNo'] ?? normalized['od_app_no']),
+      odBankAccount: NodeValueParser.asString(
+          normalized['odBankAccount'] ?? normalized['od_bank_account']),
       odDepositName: NodeValueParser.asString(
         normalized['odDepositName'] ?? normalized['od_deposit_name'],
       ),
@@ -639,4 +696,3 @@ class OrderDetailModel {
     };
   }
 }
-

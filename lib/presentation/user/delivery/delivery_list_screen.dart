@@ -12,6 +12,7 @@ import '../../../data/services/auth_service.dart';
 import '../../../data/services/cart_service.dart';
 import '../../../data/services/review_service.dart';
 import '../../../data/models/delivery/delivery_model.dart';
+import '../../../data/models/product/product_option_model.dart';
 import '../../../utils/delivery_tracker.dart';
 import '../../shopping/utils/cart_navigation.dart';
 import '../../../core/constants/app_assets.dart';
@@ -553,8 +554,10 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
 
     final qty = order.firstProductQty ?? 1;
     var qtyLine = '수량: $qty';
-    final opt = order.firstProductOption;
-    if (opt != null && opt.isNotEmpty) {
+    final opt = ProductOption.visibleLabel(
+      ctOption: order.firstProductOption,
+    );
+    if (opt.isNotEmpty) {
       qtyLine += 'ㅣ$opt';
     }
 

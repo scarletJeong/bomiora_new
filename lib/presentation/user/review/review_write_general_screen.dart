@@ -965,8 +965,8 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
                   ),
                   SizedBox(height: healthDp(context, 10)),
                   Text(
-                    item.ctOption?.isNotEmpty == true
-                        ? item.ctOption!
+                    item.displayOptionText.isNotEmpty
+                        ? item.displayOptionText
                         : '옵션 없음',
                     style: TextStyle(
                       color: const Color(0xFF898383),
