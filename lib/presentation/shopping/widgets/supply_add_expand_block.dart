@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
+import '../../../core/constants/app_assets.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../core/utils/price_formatter.dart';
 import '../../health/health_common/health_responsive_scale.dart';
@@ -12,87 +14,84 @@ const _kDivider = Color(0x26FF5A8D);
 const _kInkAlt = Color(0xFF1A1A1E);
 const _kMuted2 = Color(0xFF898383);
 
-/// 추가상품(supply_add) 펼치기/접기 블록 — 장바구니·주문·문의 등 공통
-///
-/// [onToggle]이 null이면 항상 펼쳐진 상태(장바구니), 있으면 접기/펼치기 가능.
-class SupplyAddExpandBlock extends StatelessWidget {
+/// 추가상품(supply_add) 블록 — 장바구니·주문·문의 등 공통.
+/// 헤더의 화살표로 목록을 열거나 닫는다.
+class SupplyAddExpandBlock extends StatefulWidget {
   const SupplyAddExpandBlock({
     super.key,
     required this.count,
     required this.children,
-    this.expanded = true,
-    this.onToggle,
+    this.initiallyExpanded = false,
     this.title,
     this.showSameReservationHint = false,
   });
 
   final int count;
   final List<Widget> children;
-  final bool expanded;
-  final VoidCallback? onToggle;
+  final bool initiallyExpanded;
   final String? title;
   final bool showSameReservationHint;
 
-  bool get _collapsible => onToggle != null;
+  @override
+  State<SupplyAddExpandBlock> createState() => _SupplyAddExpandBlockState();
+}
 
-  String _defaultTitle() {
-    if (_collapsible) return '추가상품 $count개 포함';
-    return '추가 상품 $count개';
+class _SupplyAddExpandBlockState extends State<SupplyAddExpandBlock> {
+  late bool _expanded;
+
+  @override
+  void initState() {
+    super.initState();
+    _expanded = widget.initiallyExpanded;
   }
 
   @override
   Widget build(BuildContext context) {
-    if (count <= 0 && children.isEmpty) return const SizedBox.shrink();
+    if (widget.count <= 0 && widget.children.isEmpty) {
+      return const SizedBox.shrink();
+    }
 
     final radius = healthDp(context, 8);
     final borderW = healthDp(context, 1.11);
-    final headerTitle = title ?? _defaultTitle();
+    final headerTitle = widget.title ?? '추가상품 ${widget.count}개 포함';
+    final icon = healthDp(context, 14);
 
-    Widget header = Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: healthDp(context, 10),
-        vertical: healthDp(context, 7),
-      ),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: _collapsible
-            ? (expanded
-                ? Border(
-                    bottom: BorderSide(width: borderW, color: _kDivider),
-                  )
-                : null)
-            : const Border(
-                bottom: BorderSide(width: 1, color: _kDivider),
-              ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: healthDp(context, _collapsible ? 5 : 6),
-            height: healthDp(context, _collapsible ? 5 : 6),
-            decoration: const BoxDecoration(
-              color: _kPink,
-              shape: BoxShape.circle,
+    final header = InkWell(
+      onTap: () => setState(() => _expanded = !_expanded),
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: healthDp(context, 10),
+          vertical: healthDp(context, 7),
+        ),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: _expanded
+              ? Border(
+                  bottom: BorderSide(width: borderW, color: _kDivider),
+                )
+              : null,
+        ),
+        child: Row(
+          children: [
+            SvgPicture.asset(
+              AppAssets.supplyAddExpandProductIcon,
+              width: icon,
+              height: icon,
             ),
-          ),
-          SizedBox(width: healthDp(context, 6)),
-          Text(
-            headerTitle,
-            style: TextStyle(
-              color: _kPink,
-              fontSize: healthSp(context, _collapsible ? 12 : 10),
-              fontFamily: _kGmarketSans,
-              fontWeight: FontWeight.w500,
-              height: 1.5,
-            ),
-          ),
-          if (!_collapsible) ...[
             SizedBox(width: healthDp(context, 6)),
             Expanded(
-              child: Container(height: 0.5, color: _kBorderSoft),
+              child: Text(
+                headerTitle,
+                style: TextStyle(
+                  color: _kPink,
+                  fontSize: healthSp(context, 12),
+                  fontFamily: _kGmarketSans,
+                  fontWeight: FontWeight.w500,
+                  height: 1.5,
+                ),
+              ),
             ),
-            if (showSameReservationHint) ...[
-              SizedBox(width: healthDp(context, 6)),
+            if (widget.showSameReservationHint) ...[
               Icon(
                 Icons.schedule,
                 size: healthSp(context, 10),
@@ -109,43 +108,23 @@ class SupplyAddExpandBlock extends StatelessWidget {
                   height: 1.5,
                 ),
               ),
+              SizedBox(width: healthDp(context, 4)),
             ],
-          ],
-          if (_collapsible) ...[
-            const Spacer(),
-            Text(
-              expanded ? '접기' : '펼치기',
-              style: TextStyle(
-                color: _kPink,
-                fontSize: healthSp(context, 10),
-                fontFamily: _kGmarketSans,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
             Icon(
-              expanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-              size: healthDp(context, 11),
+              _expanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+              size: healthDp(context, 16),
               color: _kPink,
             ),
           ],
-        ],
+        ),
       ),
     );
-
-    if (_collapsible) {
-      header = InkWell(onTap: onToggle, child: header);
-    }
-
-    final showChildren = !_collapsible || expanded;
 
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(radius),
-        border: Border.all(
-          width: _collapsible ? borderW : 1,
-          color: _kBorderSoft,
-        ),
+        border: Border.all(width: borderW, color: _kBorderSoft),
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(radius > 1 ? radius - 1 : radius),
@@ -156,7 +135,7 @@ class SupplyAddExpandBlock extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               header,
-              if (showChildren) ...children,
+              if (_expanded) ...widget.children,
             ],
           ),
         ),
@@ -221,7 +200,11 @@ class SupplyAddReadOnlyRow extends StatelessWidget {
         vertical: healthDp(context, 10),
       ),
       decoration: BoxDecoration(
-        border: Border.all(width: borderW, color: const Color(0x1EFF5A8D)),
+        border: showDivider
+            ? Border(
+                bottom: BorderSide(width: borderW, color: const Color(0x1EFF5A8D)),
+              )
+            : null,
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
