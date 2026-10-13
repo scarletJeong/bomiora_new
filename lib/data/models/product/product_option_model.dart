@@ -14,6 +14,7 @@ class ProductOption {
   final int price;
   final int stock;
   final String? type;
+
   /// 0=선택옵션, 1=추가옵션(레거시), 2=종속1, 3=종속2
   final int ioType;
 
@@ -43,8 +44,7 @@ class ProductOption {
 
   factory ProductOption.fromJson(Map<String, dynamic> json) {
     final normalized = NodeValueParser.normalizeMap(json);
-    final rawIoId =
-        NodeValueParser.asString(normalized['id']) ??
+    final rawIoId = NodeValueParser.asString(normalized['id']) ??
         NodeValueParser.asString(normalized['io_id']) ??
         '';
     // chr(30)은 반드시 유지. 다른 C0 제어문자만 제거.
@@ -52,16 +52,12 @@ class ProductOption {
 
     final parsed = _parseIoId(ioId);
     final parsedIoType = _parseInt(
-      normalized['io_type'] ??
-          normalized['ioType'] ??
-          normalized['type'] ??
-          0,
+      normalized['io_type'] ?? normalized['ioType'] ?? normalized['type'] ?? 0,
     );
 
     return ProductOption(
       id: ioId,
-      productId:
-          NodeValueParser.asString(normalized['productId']) ??
+      productId: NodeValueParser.asString(normalized['productId']) ??
           NodeValueParser.asString(normalized['it_id']) ??
           '',
       optionParts: parsed.parts,
@@ -75,9 +71,7 @@ class ProductOption {
             0,
       ),
       stock: _parseInt(
-        normalized['stock'] ??
-            normalized['io_stock_qty'] ??
-            0,
+        normalized['stock'] ?? normalized['io_stock_qty'] ?? 0,
       ),
       type: NodeValueParser.asString(normalized['type']),
       ioType: parsedIoType.clamp(0, 3),
@@ -114,8 +108,7 @@ class ProductOption {
     if (ioId.contains(axisDelimiter)) {
       final parts = splitOptionValues(ioId);
       final step = parts.isNotEmpty ? parts.first : '';
-      final subOption =
-          parts.length > 1 ? parts.skip(1).join(' > ') : '';
+      final subOption = parts.length > 1 ? parts.skip(1).join(' > ') : '';
       int? months;
       for (final p in parts) {
         final m = _monthsBoundary.firstMatch(p);
@@ -183,11 +176,52 @@ class ProductOption {
     if (optionParts.length >= 2) {
       return optionParts.join(' / ');
     }
-    if (subOption.isNotEmpty) {
+    if (subOption.isNotEmpty && step.isNotEmpty) {
       return '$step / $subOption';
     }
+    if (subOption.isNotEmpty) return subOption;
     if (step.isNotEmpty) return step;
     return _sanitizePart(id.replaceAll(axisDelimiter, ' / '));
+  }
+
+  /// `io_id`와 `ct_option` 중 선택한 개월 수가 보이는 쪽을 고른다.
+  /// `io_id`의 chr(30) 뒤에서 잘리면 `ct_option`의 `N개월`이 사라지므로 그쪽을 남긴다.
+  static String visibleLabel({
+    String? ioId,
+    String? ctOption,
+    String? itId,
+  }) {
+    String normalizeSeparators(String value) {
+      return value
+          .replaceAll(axisDelimiter, ' / ')
+          .replaceAll('ㅣ', ' / ')
+          .replaceAll(RegExp(r'\s*\|\s*'), ' / ')
+          .replaceAll(RegExp(r'(?:\s*/\s*)+'), ' / ')
+          .replaceAll(RegExp(r'\s+'), ' ')
+          .trim();
+    }
+
+    String fromRaw(String raw) {
+      final t = raw.trim();
+      if (t.isEmpty) return '';
+      final parsed = ProductOption.fromJson({
+        'io_id': t,
+        'it_id': itId ?? '',
+      }).displayText.trim();
+      return normalizeSeparators(parsed.isNotEmpty ? parsed : t);
+    }
+
+    final fromIo = fromRaw(ioId ?? '');
+    final fromCt = fromRaw(ctOption ?? '');
+    final ioMonth = fromIo.contains('개월');
+    final ctMonth = fromCt.contains('개월');
+    if (ctMonth && !ioMonth) return fromCt;
+    if (ioMonth && !ctMonth) return fromIo;
+    if (fromCt.contains('개월') && fromCt.length > fromIo.length) {
+      return fromCt;
+    }
+    if (fromIo.isNotEmpty) return fromIo;
+    return fromCt;
   }
 
   /// 2번째 축 값 (드롭다운 하위 항목)
@@ -198,8 +232,8 @@ class ProductOption {
 
   String get formattedPrice {
     return '${price.toString().replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (Match m) => '${m[1]},',
-    )}원';
+          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+          (Match m) => '${m[1]},',
+        )}원';
   }
 }
