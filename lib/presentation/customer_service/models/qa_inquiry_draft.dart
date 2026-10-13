@@ -323,20 +323,18 @@ class QaInquiryDraft {
   static String? vendorLabel({
     String? brandName,
     String? itSubject,
-    String? productKind,
   }) {
+    final subject = (itSubject ?? '').trim();
+    if (subject.isNotEmpty) return subject;
     final brand = (brandName ?? '').trim();
     if (brand.isNotEmpty) return brand;
-    final subject = (itSubject ?? '').trim();
-    if (subject.isEmpty) return null;
-    return subject;
+    return null;
   }
 
-  static bool isHerbalProduct(String? productKind, String? itSubject) {
+  /// 비대면(처방) 상품인지. 상품 종류만 본다.
+  static bool isHerbalProduct(String? productKind) {
     final k = (productKind ?? '').toLowerCase().trim();
-    if (k.contains('prescription')) return true;
-    final subject = (itSubject ?? '').trim();
-    return RegExp(r'보미오라\s*한의원').hasMatch(subject);
+    return k.isNotEmpty && k != 'general';
   }
 
   static String? _nonEmpty(String? value) {
@@ -417,9 +415,7 @@ class QaInquiryDraft {
     return QaInquiryCardItem(
       name: name,
       vendor: vendorLabel(
-        brandName: null,
         itSubject: item.itSubject,
-        productKind: kind,
       ),
       imageUrl: item.imageUrl,
       price: item.totalPrice > 0 ? item.totalPrice : item.ctPrice,
@@ -427,7 +423,7 @@ class QaInquiryDraft {
       optionText:
           formatOptionText(ctOption: item.displayOptionText, itSubject: null),
       showOptions: true,
-      isHerbal: isHerbalProduct(kind, item.itSubject),
+      isHerbal: isHerbalProduct(kind),
     );
   }
 
