@@ -17,34 +17,34 @@ class QaInquiryTypeBadge extends StatelessWidget {
   static const _Style _fallback = _Style(
     label: '기타',
     background: Color(0xFFDFDFDF),
-    foreground: Color(0xFF9CA6B9),
+    foreground: Color(0xFF8B857E),
   );
 
   static const Map<String, _Style> _styles = {
-    '상품 문의': _Style(
-      label: '상품 문의',
-      background: Color(0xFFFFEAF1),
-      foreground: Color(0xFFFF5A8D),
+    '상품문의': _Style(
+      label: '상품문의',
+      background: Color(0xFFFFF6D9),
+      foreground: Color(0xFFA67D00),
     ),
     '예약/결제': _Style(
       label: '예약/결제',
-      background: Color(0xFFE5F0FF),
-      foreground: Color(0xFF2B6EF2),
+      background: Color(0xFFEAF1FF),
+      foreground: Color(0xFF2E6ADE),
     ),
     '배송 문의': _Style(
       label: '배송 문의',
-      background: Color(0xFFE3F5EE),
-      foreground: Color(0xFF12A879),
+      background: Color(0xFFE1F2FA),
+      foreground: Color(0xFF0E7C9E),
     ),
     '교환/반품': _Style(
       label: '교환/반품',
-      background: Color(0xFFFFE6E6),
-      foreground: Color(0xFFE25353),
+      background: Color(0xFFFFEDE7),
+      foreground: Color(0xFFD9603D),
     ),
     '취소/환불': _Style(
       label: '취소/환불',
-      background: Color(0x33F29F2B),
-      foreground: Color(0xFFF29F2B),
+      background: Color(0xFFFFF3DC),
+      foreground: Color(0xFFC6871C),
     ),
     '이벤트/쿠폰/회원': _Style(
       label: '이벤트/쿠폰/회원',
@@ -61,7 +61,7 @@ class QaInquiryTypeBadge extends StatelessWidget {
       case '상품':
       case '상품문의':
       case '상품 문의':
-        return '상품 문의';
+        return '상품문의';
       case '배송':
       case '배송문의':
       case '배송 문의':
