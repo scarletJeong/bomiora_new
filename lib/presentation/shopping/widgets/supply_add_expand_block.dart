@@ -80,7 +80,7 @@ class SupplyAddExpandBlock extends StatelessWidget {
             headerTitle,
             style: TextStyle(
               color: _kPink,
-              fontSize: healthSp(context, _collapsible ? 11 : 10),
+              fontSize: healthSp(context, _collapsible ? 12 : 10),
               fontFamily: _kGmarketSans,
               fontWeight: FontWeight.w500,
               height: 1.5,
@@ -173,19 +173,33 @@ class SupplyAddReadOnlyRow extends StatelessWidget {
     this.optionLine,
     this.price,
     this.imageUrl,
+    this.vendorLabel,
     this.showDivider = true,
+    this.thumbBase = 44,
+    this.nameFontBase = 10,
+    this.optionFontBase = 9,
+    this.priceFontBase = 10,
+    this.nameLetterSpacingBase = 0,
+    this.optionLetterSpacingBase = 0,
   });
 
   final String name;
   final String? optionLine;
   final int? price;
   final String? imageUrl;
+  final String? vendorLabel;
   final bool showDivider;
+  final double thumbBase;
+  final double nameFontBase;
+  final double optionFontBase;
+  final double priceFontBase;
+  final double nameLetterSpacingBase;
+  final double optionLetterSpacingBase;
 
   @override
   Widget build(BuildContext context) {
     final url = (imageUrl ?? '').trim();
-    final thumb = healthDp(context, 44);
+    final thumb = healthDp(context, thumbBase);
     final borderW = healthDp(context, 1.11);
 
     return Container(
@@ -229,14 +243,28 @@ class SupplyAddReadOnlyRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if ((vendorLabel ?? '').trim().isNotEmpty)
+                  Text(
+                    vendorLabel!.trim(),
+                    style: TextStyle(
+                      color: _kMuted,
+                      fontSize: healthSp(context, 8),
+                      fontFamily: _kGmarketSans,
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: healthSp(context, -0.72),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 Text(
                   name,
                   style: TextStyle(
                     color: _kInkAlt,
-                    fontSize: healthSp(context, 10),
+                    fontSize: healthSp(context, nameFontBase),
                     fontFamily: _kGmarketSans,
                     fontWeight: FontWeight.w500,
                     height: 1.4,
+                    letterSpacing: healthSp(context, nameLetterSpacingBase),
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -246,10 +274,11 @@ class SupplyAddReadOnlyRow extends StatelessWidget {
                     optionLine!,
                     style: TextStyle(
                       color: _kMuted2,
-                      fontSize: healthSp(context, 9),
+                      fontSize: healthSp(context, optionFontBase),
                       fontFamily: _kGmarketSans,
                       fontWeight: FontWeight.w500,
                       height: 1.62,
+                      letterSpacing: healthSp(context, optionLetterSpacingBase),
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -262,7 +291,7 @@ class SupplyAddReadOnlyRow extends StatelessWidget {
               '+${PriceFormatter.format(price)}원',
               style: TextStyle(
                 color: _kInkAlt,
-                fontSize: healthSp(context, 10),
+                fontSize: healthSp(context, priceFontBase),
                 fontFamily: _kGmarketSans,
                 fontWeight: FontWeight.w500,
               ),

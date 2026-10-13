@@ -167,6 +167,35 @@ class _MergedSupplyLine {
   }
 }
 
+/// 추가상품(supply_add) 펼침 블록. 처방·일반 장바구니가 같은 UI를 쓴다.
+class CartSupplyAddSection extends StatelessWidget {
+  const CartSupplyAddSection({
+    super.key,
+    required this.items,
+    this.onQuantityChanged,
+    this.onDelete,
+    this.onOpenDetail,
+    this.interactive = true,
+  });
+
+  final List<CartItem> items;
+  final void Function(CartItem item, int quantity)? onQuantityChanged;
+  final void Function(CartItem item)? onDelete;
+  final void Function(CartItem item)? onOpenDetail;
+  final bool interactive;
+
+  @override
+  Widget build(BuildContext context) {
+    return _SupplyAddBlock(
+      items: items,
+      onQuantityChanged: onQuantityChanged,
+      onDelete: onDelete,
+      onOpenDetail: onOpenDetail,
+      interactive: interactive,
+    );
+  }
+}
+
 /// 추가상품(supply_add) 리스트 UI — [CartAddGroupCard] 내부용 (기본 접힘)
 class _SupplyAddBlock extends StatefulWidget {
   const _SupplyAddBlock({

@@ -4,6 +4,7 @@ import '../../../core/utils/price_formatter.dart';
 import '../../../data/models/cart/cart_item_model.dart';
 import '../../../data/models/cart/cart_line_group.dart';
 import '../../health/health_common/health_responsive_scale.dart';
+import 'cart_add_group_card.dart';
 import 'get_cartImage.dart';
 
 const _kGmarketSans = 'Gmarket Sans TTF';
@@ -32,6 +33,9 @@ class CartGroupGeneralCard extends StatelessWidget {
   final Set<int> selectedItems;
   final bool readOnly;
   final bool showBundleTotal;
+
+  /// true면 추가상품을 본품 아래 '추가상품 N개 포함' 블록으로 보여 준다.
+  final bool nestSupplyAdds;
   final Widget Function({
     required bool value,
     required ValueChanged<bool?>? onChanged,
@@ -54,6 +58,7 @@ class CartGroupGeneralCard extends StatelessWidget {
     this.selectedItems = const {},
     this.readOnly = false,
     this.showBundleTotal = true,
+    this.nestSupplyAdds = false,
     this.buildCheckbox,
     this.buildQtyControl,
     this.onToggleItem,
@@ -124,30 +129,70 @@ class CartGroupGeneralCard extends StatelessWidget {
                   ],
                 ),
                 SizedBox(height: healthDp(context, 10)),
-                for (var i = 0; i < items.length; i++) ...[
-                  if (i > 0) ...[
-                    SizedBox(height: healthDp(context, 10)),
-                    Container(
-                      width: double.infinity,
-                      height: 0.5,
-                      color: _kBorder,
+                if (nestSupplyAdds)
+                  for (var i = 0; i < groups.length; i++) ...[
+                    if (i > 0) ...[
+                      SizedBox(height: healthDp(context, 10)),
+                      Container(
+                        width: double.infinity,
+                        height: 0.5,
+                        color: _kBorder,
+                      ),
+                      SizedBox(height: healthDp(context, 10)),
+                    ],
+                    _VendorProductCard(
+                      item: groups[i].parent,
+                      selected:
+                          selectedItems.contains(groups[i].parent.ctId),
+                      readOnly: readOnly,
+                      compactBottom: groups[i].children.isEmpty &&
+                          groups.length < 2,
+                      buildCheckbox: buildCheckbox,
+                      buildQtyControl: buildQtyControl,
+                      onToggle: (v) =>
+                          onToggleItem?.call(groups[i].parent, v),
+                      onQuantityChanged: (q) =>
+                          onQuantityChanged?.call(groups[i].parent, q),
+                      onDelete: () => onDelete?.call(groups[i].parent),
+                      onOpenDetail: () =>
+                          onOpenDetail?.call(groups[i].parent),
                     ),
-                    SizedBox(height: healthDp(context, 10)),
+                    if (groups[i].children.isNotEmpty) ...[
+                      SizedBox(height: healthDp(context, 8)),
+                      CartSupplyAddSection(
+                        items: groups[i].children,
+                        interactive: !readOnly,
+                        onQuantityChanged: readOnly ? null : onQuantityChanged,
+                        onDelete: readOnly ? null : onDelete,
+                        onOpenDetail: onOpenDetail,
+                      ),
+                    ],
+                  ]
+                else
+                  for (var i = 0; i < items.length; i++) ...[
+                    if (i > 0) ...[
+                      SizedBox(height: healthDp(context, 10)),
+                      Container(
+                        width: double.infinity,
+                        height: 0.5,
+                        color: _kBorder,
+                      ),
+                      SizedBox(height: healthDp(context, 10)),
+                    ],
+                    _VendorProductCard(
+                      item: items[i],
+                      selected: selectedItems.contains(items[i].ctId),
+                      readOnly: readOnly,
+                      compactBottom: items.length < 2,
+                      buildCheckbox: buildCheckbox,
+                      buildQtyControl: buildQtyControl,
+                      onToggle: (v) => onToggleItem?.call(items[i], v),
+                      onQuantityChanged: (q) =>
+                          onQuantityChanged?.call(items[i], q),
+                      onDelete: () => onDelete?.call(items[i]),
+                      onOpenDetail: () => onOpenDetail?.call(items[i]),
+                    ),
                   ],
-                  _VendorProductCard(
-                    item: items[i],
-                    selected: selectedItems.contains(items[i].ctId),
-                    readOnly: readOnly,
-                    compactBottom: items.length < 2,
-                    buildCheckbox: buildCheckbox,
-                    buildQtyControl: buildQtyControl,
-                    onToggle: (v) => onToggleItem?.call(items[i], v),
-                    onQuantityChanged: (q) =>
-                        onQuantityChanged?.call(items[i], q),
-                    onDelete: () => onDelete?.call(items[i]),
-                    onOpenDetail: () => onOpenDetail?.call(items[i]),
-                  ),
-                ],
                 if (items.length >= 2)
                   SizedBox(height: healthDp(context, 7)),
               ],

@@ -557,6 +557,7 @@ class _CartScreenState extends State<CartScreen> {
                                 vendorName: entry.key,
                                 groups: entry.value,
                                 selectedItems: selectedItems,
+                                nestSupplyAdds: true,
                                 buildCheckbox: ({
                                   required value,
                                   required onChanged,
