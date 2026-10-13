@@ -370,7 +370,9 @@ class _CartScreenState extends State<CartScreen> {
             'it_id': item.itId,
             'it_name': item.itName,
             'id': item.ioId ?? '',
-            'name': item.ctOption.isNotEmpty ? item.ctOption : item.itName,
+            'name': item.displayOptionText.isNotEmpty
+                ? item.displayOptionText
+                : item.itName,
             'price': item.ioPrice ?? 0,
             'quantity': item.ctQty,
             'totalPrice': item.lineAmount,
@@ -700,7 +702,7 @@ class _CartScreenState extends State<CartScreen> {
             ),
           ),
           child: Text(
-            '결제하기',
+            '처방 예약하기',
             style: TextStyle(
               fontSize: healthSp(context, 16),
               fontFamily: 'Gmarket Sans TTF',
