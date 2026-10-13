@@ -13,6 +13,8 @@ class DeliveryMemoDropdown extends StatefulWidget {
     this.readOnly = false,
     this.showLabel = true,
     this.commitCustomOnUnfocus = true,
+    this.customSelected = false,
+    this.onCustomModeChanged,
   });
 
   static const String customLabel = '직접 입력';
@@ -34,6 +36,8 @@ class DeliveryMemoDropdown extends StatefulWidget {
   final ValueChanged<String>? onChanged;
   final bool readOnly;
   final bool showLabel;
+  final bool customSelected;
+  final ValueChanged<bool>? onCustomModeChanged;
 
   /// true면 직접 입력 내용은 포커스 해제/엔터 때 [onChanged] 호출 (주문 상세).
   /// false면 입력할 때마다 호출 (결제 — 제출 직전 값 유지).
@@ -58,7 +62,8 @@ class _DeliveryMemoDropdownState extends State<DeliveryMemoDropdown> {
   @override
   void initState() {
     super.initState();
-    _isCustom = DeliveryMemoDropdown.isCustomMemo(widget.value);
+    _isCustom = widget.customSelected ||
+        DeliveryMemoDropdown.isCustomMemo(widget.value);
     _customController = TextEditingController(
       text: _isCustom ? widget.value : '',
     );
@@ -69,8 +74,12 @@ class _DeliveryMemoDropdownState extends State<DeliveryMemoDropdown> {
   @override
   void didUpdateWidget(DeliveryMemoDropdown oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.value == widget.value) return;
-    final custom = DeliveryMemoDropdown.isCustomMemo(widget.value);
+    if (oldWidget.value == widget.value &&
+        oldWidget.customSelected == widget.customSelected) {
+      return;
+    }
+    final custom = widget.customSelected ||
+        DeliveryMemoDropdown.isCustomMemo(widget.value);
     _isCustom = custom;
     _customDirty = false;
     final nextText = custom ? widget.value : '';
@@ -104,12 +113,14 @@ class _DeliveryMemoDropdownState extends State<DeliveryMemoDropdown> {
           _customController.text = widget.value;
         }
       });
+      widget.onCustomModeChanged?.call(true);
       return;
     }
     setState(() {
       _isCustom = false;
       _customDirty = false;
     });
+    widget.onCustomModeChanged?.call(false);
     widget.onChanged?.call(value);
   }
 
