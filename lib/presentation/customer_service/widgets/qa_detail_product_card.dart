@@ -28,30 +28,8 @@ class _QaDetailProductCardState extends State<QaDetailProductCard> {
   static const String _font = 'Gmarket Sans TTF';
 
   List<QaInquiryCardItem> _itemsOf(QaInquiry root) {
-    final subjectIt = (root.subjectItSubject ?? '').trim();
     final parsed = QaInquiryDraft.parseCardItems(root.wrContent);
-    if (parsed.isNotEmpty) {
-      // 예전 vendorLabel이 '보미한의원'으로 저장한 카드 → 품목(it_subject) 원문으로 보정
-      if (subjectIt.isEmpty) return parsed;
-      return [
-        for (final item in parsed)
-          (item.isHerbal &&
-                  ((item.vendor ?? '').trim().isEmpty ||
-                      (item.vendor ?? '').trim() == '보미한의원'))
-              ? QaInquiryCardItem(
-                  name: item.name,
-                  vendor: subjectIt,
-                  imageUrl: item.imageUrl,
-                  price: item.price,
-                  qty: item.qty,
-                  optionText: item.optionText,
-                  showOptions: item.showOptions,
-                  isHerbal: item.isHerbal,
-                  extras: item.extras,
-                )
-              : item,
-      ];
-    }
+    if (parsed.isNotEmpty) return parsed;
 
     final name = (root.subjectProductName ?? '').trim();
     if (name.isEmpty) return const [];
@@ -68,7 +46,7 @@ class _QaDetailProductCardState extends State<QaDetailProductCard> {
         price: root.subjectPrice,
         optionText: root.subjectOptionText,
         showOptions: (root.subjectTabLabel ?? '') != '찜한상품',
-        isHerbal: QaInquiryDraft.isHerbalProduct(null, root.subjectItSubject),
+        isHerbal: false,
       ),
     ];
   }
@@ -96,8 +74,6 @@ class _QaDetailProductCardState extends State<QaDetailProductCard> {
       ...tokens,
     ];
   }
-
-  String _optionLine(QaInquiryCardItem item) => _optionParts(item).join(' ');
 
   List<_VendorGroup> _groups(List<QaInquiryCardItem> items) {
     final map = <String, List<QaInquiryCardItem>>{};
@@ -195,6 +171,10 @@ class _QaDetailProductCardState extends State<QaDetailProductCard> {
               ],
             ),
           ),
+          for (final label in _clinicLabels(items)) ...[
+            SizedBox(height: healthDp(context, 10)),
+            _clinicBar(context, label),
+          ],
           if (groups.isNotEmpty) SizedBox(height: healthDp(context, 14)),
           for (var gi = 0; gi < groups.length; gi++) ...[
             if (gi > 0) SizedBox(height: healthDp(context, 14)),
@@ -217,7 +197,9 @@ class _QaDetailProductCardState extends State<QaDetailProductCard> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (showVendorBar && group.vendor.isNotEmpty)
+        if (showVendorBar &&
+            group.vendor.isNotEmpty &&
+            !group.items.every((e) => e.isHerbal))
           Container(
             width: double.infinity,
             padding: EdgeInsets.all(healthDp(context, 10)),
@@ -351,8 +333,10 @@ class _QaDetailProductCardState extends State<QaDetailProductCard> {
                 for (var i = 0; i < item.extras.length; i++)
                   SupplyAddReadOnlyRow(
                     name: item.extras[i].name,
-                    vendorLabel: item.extras[i].vendor,
-                    optionLine: _optionLine(item.extras[i]),
+                    vendorLabel: (item.extras[i].vendor ?? '').trim().isNotEmpty
+                        ? item.extras[i].vendor
+                        : item.vendor,
+                    optionParts: _optionParts(item.extras[i]),
                     price: item.extras[i].price,
                     imageUrl: item.extras[i].imageUrl,
                     showDivider: i < item.extras.length - 1,
@@ -366,6 +350,49 @@ class _QaDetailProductCardState extends State<QaDetailProductCard> {
               ],
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  List<String> _clinicLabels(List<QaInquiryCardItem> items) {
+    final labels = <String>[];
+    for (final item in items) {
+      if (!item.isHerbal) continue;
+      final label = (item.vendor ?? '').trim();
+      if (label.isEmpty || labels.contains(label)) continue;
+      labels.add(label);
+    }
+    return labels;
+  }
+
+  Widget _clinicBar(BuildContext context, String label) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(healthDp(context, 10)),
+      decoration: ShapeDecoration(
+        color: const Color(0xFFFCFCFB),
+        shape: RoundedRectangleBorder(
+          side: BorderSide(
+            width: healthDp(context, 1),
+            color: const Color(0x7FD2D2D2),
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: const Color(0xFF898986),
+              fontSize: healthSp(context, 12),
+              fontFamily: _font,
+              fontWeight: FontWeight.w500,
+              letterSpacing: healthSp(context, -0.48),
+            ),
+          ),
+          SizedBox(width: healthDp(context, 4)),
+          const _HerbalBadge(),
         ],
       ),
     );

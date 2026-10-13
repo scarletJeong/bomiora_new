@@ -286,8 +286,6 @@ class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
       itSubject: _productSubjectLabel(
         NodeValueParser.asString(m['it_subject']) ??
             NodeValueParser.asString(m['itSubject']),
-        productKind: NodeValueParser.asString(m['it_kind']) ??
-            NodeValueParser.asString(m['product_kind']),
       ),
     );
   }
@@ -319,10 +317,7 @@ class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
       optionParts: _optionParts(qty: cartItem.ctQty, optionText: optionText),
       parentItId: cartItem.parentItId,
       fromCart: true,
-      itSubject: _productSubjectLabel(
-        cartItem.itSubject,
-        productKind: cartItem.ctKind,
-      ),
+      itSubject: _productSubjectLabel(cartItem.itSubject),
     );
   }
 
@@ -339,12 +334,8 @@ class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
     return parts;
   }
 
-  String? _productSubjectLabel(String? raw, {String? productKind}) {
+  String? _productSubjectLabel(String? raw) {
     final subject = stripProductCatalogHtml(raw);
-    if (isBomioraHospitalProductSubject(subject)) return '보미오라 한의원';
-    if (shouldShowProductCardSubject(subject)) return subject;
-    final kind = (productKind ?? '').trim().toLowerCase();
-    if (kind.isNotEmpty && kind != 'general') return '보미오라 한의원';
     return subject.isNotEmpty ? subject : null;
   }
 
@@ -454,17 +445,13 @@ class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
       vendor: QaInquiryDraft.vendorLabel(
         brandName: item.brandName,
         itSubject: item.itSubject,
-        productKind: item.productKind,
       ),
       imageUrl: item.imageUrl,
       price: item.price,
       qty: item.qty,
       optionText: item.optionText,
       showOptions: item.showOptions && _currentTab != QaItemSelectTab.wish,
-      isHerbal: QaInquiryDraft.isHerbalProduct(
-        item.productKind,
-        item.itSubject,
-      ),
+      isHerbal: QaInquiryDraft.isHerbalProduct(item.productKind),
       extras: [
         for (final extra in item.extras) _toCardItem(extra),
       ],
