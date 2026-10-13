@@ -171,6 +171,7 @@ class SupplyAddReadOnlyRow extends StatelessWidget {
     super.key,
     required this.name,
     this.optionLine,
+    this.optionParts,
     this.price,
     this.imageUrl,
     this.vendorLabel,
@@ -185,6 +186,7 @@ class SupplyAddReadOnlyRow extends StatelessWidget {
 
   final String name;
   final String? optionLine;
+  final List<String>? optionParts;
   final int? price;
   final String? imageUrl;
   final String? vendorLabel;
@@ -201,16 +203,25 @@ class SupplyAddReadOnlyRow extends StatelessWidget {
     final url = (imageUrl ?? '').trim();
     final thumb = healthDp(context, thumbBase);
     final borderW = healthDp(context, 1.11);
+    final parts = (optionParts ?? const <String>[])
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+    final gap = healthDp(context, 4);
+    final lines = <Widget>[];
+    void addLine(Widget child) {
+      if (lines.isNotEmpty) lines.add(SizedBox(height: gap));
+      lines.add(child);
+    }
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.all(healthDp(context, 8)),
+      padding: EdgeInsets.symmetric(
+        horizontal: healthDp(context, 8),
+        vertical: healthDp(context, 10),
+      ),
       decoration: BoxDecoration(
-        border: showDivider
-            ? Border(
-                bottom: BorderSide(width: borderW, color: _kDivider),
-              )
-            : null,
+        border: Border.all(width: borderW, color: const Color(0x1EFF5A8D)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -243,59 +254,98 @@ class SupplyAddReadOnlyRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if ((vendorLabel ?? '').trim().isNotEmpty)
-                  Text(
-                    vendorLabel!.trim(),
-                    style: TextStyle(
-                      color: _kMuted,
-                      fontSize: healthSp(context, 8),
-                      fontFamily: _kGmarketSans,
-                      fontWeight: FontWeight.w500,
-                      letterSpacing: healthSp(context, -0.72),
+                ...() {
+                  if ((vendorLabel ?? '').trim().isNotEmpty) {
+                    addLine(
+                      Text(
+                        vendorLabel!.trim(),
+                        style: TextStyle(
+                          color: _kMuted,
+                          fontSize: healthSp(context, 8),
+                          fontFamily: _kGmarketSans,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: healthSp(context, -0.72),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    );
+                  }
+                  addLine(
+                    Text(
+                      name,
+                      style: TextStyle(
+                        color: _kInkAlt,
+                        fontSize: healthSp(context, nameFontBase),
+                        fontFamily: _kGmarketSans,
+                        fontWeight: FontWeight.w500,
+                        height: 1.4,
+                        letterSpacing: healthSp(context, nameLetterSpacingBase),
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                Text(
-                  name,
-                  style: TextStyle(
-                    color: _kInkAlt,
-                    fontSize: healthSp(context, nameFontBase),
-                    fontFamily: _kGmarketSans,
-                    fontWeight: FontWeight.w500,
-                    height: 1.4,
-                    letterSpacing: healthSp(context, nameLetterSpacingBase),
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if ((optionLine ?? '').isNotEmpty)
-                  Text(
-                    optionLine!,
-                    style: TextStyle(
-                      color: _kMuted2,
-                      fontSize: healthSp(context, optionFontBase),
-                      fontFamily: _kGmarketSans,
-                      fontWeight: FontWeight.w500,
-                      height: 1.62,
-                      letterSpacing: healthSp(context, optionLetterSpacingBase),
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                  );
+                  if (parts.isNotEmpty) {
+                    addLine(
+                      Wrap(
+                        spacing: gap,
+                        runSpacing: gap,
+                        children: [
+                          for (final part in parts)
+                            Text(
+                              part,
+                              style: TextStyle(
+                                color: _kMuted2,
+                                fontSize: healthSp(context, optionFontBase),
+                                fontFamily: _kGmarketSans,
+                                fontWeight: FontWeight.w500,
+                                letterSpacing:
+                                    healthSp(context, optionLetterSpacingBase),
+                              ),
+                            ),
+                        ],
+                      ),
+                    );
+                  } else if ((optionLine ?? '').trim().isNotEmpty) {
+                    addLine(
+                      Text(
+                        optionLine!.trim(),
+                        style: TextStyle(
+                          color: _kMuted2,
+                          fontSize: healthSp(context, optionFontBase),
+                          fontFamily: _kGmarketSans,
+                          fontWeight: FontWeight.w500,
+                          height: 1.62,
+                          letterSpacing:
+                              healthSp(context, optionLetterSpacingBase),
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    );
+                  }
+                  if (price != null) {
+                    addLine(
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                          '+${PriceFormatter.format(price)}원',
+                          style: TextStyle(
+                            color: _kInkAlt,
+                            fontSize: healthSp(context, priceFontBase),
+                            fontFamily: _kGmarketSans,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+                  return lines;
+                }(),
               ],
             ),
           ),
-          if (price != null)
-            Text(
-              '+${PriceFormatter.format(price)}원',
-              style: TextStyle(
-                color: _kInkAlt,
-                fontSize: healthSp(context, priceFontBase),
-                fontFamily: _kGmarketSans,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
         ],
       ),
     );
