@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -223,10 +222,10 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     );
   }
 
-  bool get _confirmOtpActive {
-    final digits = _digitsOnly(_enteredPhoneDigits);
-    return _phoneChanged && digits.length >= 10 && digits.length <= 11;
-  }
+  bool get _confirmOtpActive =>
+      !_contactPhoneVerified &&
+      _contactOtpToken != null &&
+      _contactOtpToken!.isNotEmpty;
 
   ButtonStyle _confirmOtpButtonStyle() {
     final pink = _confirmOtpActive || _contactOtpVerifying;
@@ -401,7 +400,6 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
 
     setState(() {
       _contactPhoneVerified = true;
-      _originalPhoneDigits = _digitsOnly(_enteredPhoneDigits);
       _contactOtpToken = null;
       _secondsLeft = 0;
       _contactOtpErrorText = null;
@@ -443,9 +441,10 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     }
 
     try {
-      final phone = _enteredPhoneDigits;
+      final phone = _digitsOnly(_enteredPhoneDigits);
       if (phone != _originalPhoneDigits && !_contactPhoneVerified) {
         if (!mounted) return;
+        AppToastOverlay.showAlert(context, '인증번호를 입력하세요');
         return;
       }
       final result = await AuthService.updateProfile(
@@ -533,94 +532,91 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
       required TextEditingController controller,
       required FocusNode focusNode,
       required int maxLength,
-      required double width,
       FocusNode? nextFocus,
     }) {
-      return SizedBox(
-        width: width,
-        child: _InputBox(
-          padding: EdgeInsets.symmetric(
-            horizontal: healthDp(context, 4),
-            vertical: healthDp(context, 8),
+      final fontSize = healthSp(context, 16);
+      return _InputBox(
+        padding: EdgeInsets.symmetric(horizontal: healthDp(context, 2)),
+        alignment: Alignment.center,
+        child: TextField(
+          controller: controller,
+          focusNode: focusNode,
+          keyboardType: TextInputType.phone,
+          textInputAction:
+              nextFocus == null ? TextInputAction.done : TextInputAction.next,
+          inputFormatters: _digitsOnlyFormatters,
+          maxLength: maxLength,
+          textAlign: TextAlign.center,
+          textAlignVertical: TextAlignVertical.center,
+          cursorColor: const Color(0xFF1A1A1A),
+          onChanged: (value) {
+            _onPhoneDigitsChanged();
+            if (value.length == maxLength && nextFocus != null) {
+              nextFocus.requestFocus();
+            }
+          },
+          onSubmitted: (_) {
+            if (nextFocus != null) {
+              nextFocus.requestFocus();
+            } else {
+              focusNode.unfocus();
+            }
+          },
+          decoration: const InputDecoration(
+            counterText: '',
+            border: InputBorder.none,
+            isCollapsed: true,
+            isDense: true,
+            contentPadding: EdgeInsets.zero,
           ),
-          alignment: Alignment.center,
-          child: TextField(
-            controller: controller,
-            focusNode: focusNode,
-            keyboardType: const TextInputType.numberWithOptions(
-              decimal: false,
-              signed: false,
-            ),
-            textInputAction:
-                nextFocus == null ? TextInputAction.done : TextInputAction.next,
-            inputFormatters: _digitsOnlyFormatters,
-            maxLength: maxLength,
-            textAlign: TextAlign.center,
-            cursorColor: const Color(0xFF1A1A1A),
-            onChanged: (value) {
-              _onPhoneDigitsChanged();
-              if (value.length == maxLength && nextFocus != null) {
-                nextFocus.requestFocus();
-              }
-            },
-            onSubmitted: (_) {
-              if (nextFocus != null) {
-                nextFocus.requestFocus();
-              } else {
-                focusNode.unfocus();
-              }
-            },
-            decoration: const InputDecoration(
-              counterText: '',
-              border: InputBorder.none,
-              isCollapsed: true,
-              contentPadding: EdgeInsets.zero,
-            ),
-            style: TextStyle(
-              color: Colors.black,
-              fontSize: healthSp(context, 16),
-              fontWeight: FontWeight.w500,
-              height: 1,
-            ),
+          strutStyle: StrutStyle(
+            fontSize: fontSize,
+            height: 1,
+            forceStrutHeight: true,
+            leading: 0,
+          ),
+          style: TextStyle(
+            color: Colors.black,
+            fontSize: fontSize,
+            fontWeight: FontWeight.w500,
+            height: 1,
           ),
         ),
       );
     }
 
-    Widget buildPhoneRow(double maxWidth) {
-      final idealW = healthDp(context, 62.3);
+    Widget buildPhoneRow() {
       final gap = healthDp(context, 5);
-      final hyphenW = healthDp(context, 10);
-      final fixedExtra = 4 * gap + 2 * hyphenW;
-      final segmentW = math.min(idealW, (maxWidth - fixedExtra) / 3);
-
       return Row(
         children: [
-          phoneSegment(
-            controller: _phone1Controller,
-            focusNode: _phone1Focus,
-            maxLength: 3,
-            width: segmentW,
-            nextFocus: _phone2Focus,
+          Expanded(
+            child: phoneSegment(
+              controller: _phone1Controller,
+              focusNode: _phone1Focus,
+              maxLength: 3,
+              nextFocus: _phone2Focus,
+            ),
           ),
           SizedBox(width: gap),
-          _Hyphen(),
+          const _Hyphen(),
           SizedBox(width: gap),
-          phoneSegment(
-            controller: _phone2Controller,
-            focusNode: _phone2Focus,
-            maxLength: 4,
-            width: segmentW,
-            nextFocus: _phone3Focus,
+          Expanded(
+            child: phoneSegment(
+              controller: _phone2Controller,
+              focusNode: _phone2Focus,
+              maxLength: 4,
+              nextFocus: _phone3Focus,
+            ),
           ),
           SizedBox(width: gap),
-          _Hyphen(),
+          const _Hyphen(),
           SizedBox(width: gap),
-          phoneSegment(
-            controller: _phone3Controller,
-            focusNode: _phone3Focus,
-            maxLength: 4,
-            width: segmentW,
+          Expanded(
+            child: phoneSegment(
+              controller: _phone3Controller,
+              focusNode: _phone3Focus,
+              maxLength: 4,
+            ),
           ),
         ],
       );
@@ -731,7 +727,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   }
 
   Widget _buildProfileFormContent({
-    required Widget Function(double maxWidth) buildPhoneRow,
+    required Widget Function() buildPhoneRow,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -801,12 +797,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         SizedBox(height: healthDp(context, 8)),
         Row(
           children: [
-            Expanded(
-              child: LayoutBuilder(
-                builder: (context, constraints) =>
-                    buildPhoneRow(constraints.maxWidth),
-              ),
-            ),
+            Expanded(child: buildPhoneRow()),
             SizedBox(width: healthDp(context, 8)),
             SizedBox(
               height: healthDp(context, 40),
@@ -814,8 +805,12 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                 onPressed: _contactOtpSending ? null : _requestContactChangeOtp,
                 style: MyPageButtonStyles.pinkElevated(
                   padding:
-                      EdgeInsets.symmetric(horizontal: healthDp(context, 20)),
+                      EdgeInsets.symmetric(horizontal: healthDp(context, 14)),
                 ).copyWith(
+                  minimumSize: WidgetStatePropertyAll(
+                    Size(0, healthDp(context, 40)),
+                  ),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   shape: WidgetStatePropertyAll(
                     RoundedRectangleBorder(
                       borderRadius:
@@ -1160,6 +1155,7 @@ class _InputBoxState extends State<_InputBox> {
       },
       child: Container(
         height: h,
+        clipBehavior: Clip.antiAlias,
         padding: pad,
         decoration: ShapeDecoration(
           color: Colors.white,
