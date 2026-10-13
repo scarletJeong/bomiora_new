@@ -111,6 +111,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       TextEditingController();
 
   String _deliveryMemo = '';
+  bool _deliveryMemoCustomSelected = false;
 
   bool _loading = true;
   bool _submitting = false;
@@ -126,6 +127,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
   List<Coupon> _applicableCoupons = [];
   List<Coupon> _selectedCoupons = [];
   Map<String, dynamic>? _defaultAddress;
+
   /// 기본 배송지 없을 때: 배송지명 칩 (집/회사/직접입력)
   String _addressLabelChip = '집';
   bool _saveAsDefault = false;
@@ -168,61 +170,67 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   Future<void> _loadData() async {
-    final user = await AuthService.getUser();
-    if (user == null || user.id.isEmpty) {
+    try {
+      final user = await AuthService.getUser();
+      if (user == null || user.id.isEmpty) {
+        if (!mounted) return;
+        setState(() => _loading = false);
+        return;
+      }
+
+      if (widget.prefetch != null) {
+        _applyPrefetch(user, widget.prefetch!);
+        return;
+      }
+
+      final results = await Future.wait([
+        AddressService.getAddressList(user.id),
+        CouponService.getAvailableCoupons(user.id),
+        PointService.getUserPoint(user.id),
+      ]);
+
+      final addresses = results[0] as List<Map<String, dynamic>>;
+      final coupons = results[1] as List<Coupon>;
+      final point = (results[2] as int?) ?? 0;
+      final defaultAddress = addresses.firstWhere(
+        (e) => e['adDefault'] == 1,
+        orElse: () =>
+            addresses.isNotEmpty ? addresses.first : <String, dynamic>{},
+      );
+
+      if (!mounted) return;
+      setState(() {
+        _defaultAddress = defaultAddress.isEmpty ? null : defaultAddress;
+        _myPoint = point;
+        _applicableCoupons = _couponPointDisabled
+            ? []
+            : coupons.where(_isCouponApplicable).toList();
+        if (_couponPointDisabled) {
+          _selectedCoupons = [];
+          _usedPoint = 0;
+          _pointController.clear();
+        }
+        _loading = false;
+        _applyAddressMode();
+      });
+      // 기본 배송지 없으면 회원 성함/연락처 프리필
+      if (_defaultAddress == null) {
+        setState(() {
+          if (_receiverController.text.trim().isEmpty) {
+            _receiverController.text = user.name;
+          }
+          if (_phoneController.text.trim().isEmpty &&
+              (user.phone ?? '').trim().isNotEmpty) {
+            _phoneController.text =
+                (user.phone ?? '').replaceAll(RegExp(r'[^0-9]'), '');
+          }
+          _addressNameController.text = _addressLabelChip;
+        });
+      }
+    } catch (_) {
       if (!mounted) return;
       setState(() => _loading = false);
-      return;
-    }
-
-    if (widget.prefetch != null) {
-      _applyPrefetch(user, widget.prefetch!);
-      return;
-    }
-
-    final results = await Future.wait([
-      AddressService.getAddressList(user.id),
-      CouponService.getAvailableCoupons(user.id),
-      PointService.getUserPoint(user.id),
-    ]);
-
-    final addresses = results[0] as List<Map<String, dynamic>>;
-    final coupons = results[1] as List<Coupon>;
-    final point = (results[2] as int?) ?? 0;
-    final defaultAddress = addresses.firstWhere(
-      (e) => e['adDefault'] == 1,
-      orElse: () =>
-          addresses.isNotEmpty ? addresses.first : <String, dynamic>{},
-    );
-
-    if (!mounted) return;
-    setState(() {
-      _defaultAddress = defaultAddress.isEmpty ? null : defaultAddress;
-      _myPoint = point;
-      _applicableCoupons = _couponPointDisabled
-          ? []
-          : coupons.where(_isCouponApplicable).toList();
-      if (_couponPointDisabled) {
-        _selectedCoupons = [];
-        _usedPoint = 0;
-        _pointController.clear();
-      }
-      _loading = false;
-      _applyAddressMode();
-    });
-    // 기본 배송지 없으면 회원 성함/연락처 프리필
-    if (_defaultAddress == null) {
-      setState(() {
-        if (_receiverController.text.trim().isEmpty) {
-          _receiverController.text = user.name;
-        }
-        if (_phoneController.text.trim().isEmpty &&
-            (user.phone ?? '').trim().isNotEmpty) {
-          _phoneController.text =
-              (user.phone ?? '').replaceAll(RegExp(r'[^0-9]'), '');
-        }
-        _addressNameController.text = _addressLabelChip;
-      });
+      AppToastOverlay.show(context, '주문 정보를 불러오지 못했습니다.');
     }
   }
 
@@ -230,10 +238,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
     if (!mounted) return;
     final defaultAddress = prefetch.addresses.firstWhere(
       (e) => e['adDefault'] == 1,
-      orElse: () =>
-          prefetch.addresses.isNotEmpty
-              ? prefetch.addresses.first
-              : <String, dynamic>{},
+      orElse: () => prefetch.addresses.isNotEmpty
+          ? prefetch.addresses.first
+          : <String, dynamic>{},
     );
     setState(() {
       _defaultAddress = defaultAddress.isEmpty ? null : defaultAddress;
@@ -282,9 +289,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
     switch (coupon.method) {
       case 0:
         return widget.cartItems.any(
-          (item) =>
-              !_isInfluencerCartItem(item) &&
-              item.itId == coupon.target,
+          (item) => !_isInfluencerCartItem(item) && item.itId == coupon.target,
         );
       case 1:
         if (coupon.target.trim().isEmpty) return _nonInfluencerAmount > 0;
@@ -306,15 +311,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
   int get _purchaseAmount =>
       widget.cartItems.fold(0, (sum, item) => sum + item.ctPrice);
 
-  bool _isInfluencerCartItem(CartItem item) =>
-      item.ctMbInf.trim().isNotEmpty;
+  bool _isInfluencerCartItem(CartItem item) => item.ctMbInf.trim().isNotEmpty;
 
   int get _nonInfluencerAmount => widget.cartItems
       .where((item) => !_isInfluencerCartItem(item))
       .fold<int>(0, (sum, item) => sum + item.ctPrice);
 
-  bool get _hasInfluencerItems =>
-      widget.cartItems.any(_isInfluencerCartItem);
+  bool get _hasInfluencerItems => widget.cartItems.any(_isInfluencerCartItem);
 
   bool get _isInfluencerOnly =>
       widget.cartItems.isNotEmpty &&
@@ -419,8 +422,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
   int get _maxUsablePointHundreds => (_maxUsablePoint ~/ 100) * 100;
 
   int get _pointDiscount {
-    final capped =
-        _usedPoint > _maxUsablePointHundreds ? _maxUsablePointHundreds : _usedPoint;
+    final capped = _usedPoint > _maxUsablePointHundreds
+        ? _maxUsablePointHundreds
+        : _usedPoint;
     return (capped ~/ 100) * 100;
   }
 
@@ -477,6 +481,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
     final addressMemo = _safe(ad?['adMemo']);
     if (addressMemo.isNotEmpty || !preserveDeliveryMemo) {
       _deliveryMemo = addressMemo;
+      _deliveryMemoCustomSelected =
+          DeliveryMemoDropdown.isCustomMemo(addressMemo);
     }
   }
 
@@ -571,13 +577,28 @@ class _PaymentScreenState extends State<PaymentScreen> {
       MediaQuery.sizeOf(context).width <= 650;
 
   bool _validateBeforePay() {
-    if (_receiverController.text.trim().isEmpty ||
-        _phoneController.text.trim().isEmpty ||
-        _zipController.text.trim().isEmpty ||
-        _addressController.text.trim().isEmpty) {
+    final receiverEmpty = _receiverController.text.trim().isEmpty;
+    final phoneEmpty = _phoneController.text.trim().isEmpty;
+    final zipEmpty = _zipController.text.trim().isEmpty;
+    final addressEmpty = _addressController.text.trim().isEmpty;
+
+    if (receiverEmpty) {
+      AppToastOverlay.showAlert(context, '받는 분을 입력해 주세요.');
+      return false;
+    }
+    if (phoneEmpty) {
+      AppToastOverlay.showAlert(context, '연락처를 입력해 주세요.');
+      return false;
+    }
+    if (zipEmpty || addressEmpty) {
+      AppToastOverlay.showAlert(context, '배송지 주소를 검색해 주세요.');
       return false;
     }
     if (_finalAmount < _minPayableAmount) {
+      AppToastOverlay.showAlert(
+        context,
+        '최종 결제금액은 ${PriceFormatter.format(_minPayableAmount)}원 이상이어야 합니다.',
+      );
       return false;
     }
     return true;
@@ -664,10 +685,20 @@ class _PaymentScreenState extends State<PaymentScreen> {
     if (!_validateBeforePay()) return;
 
     final user = await AuthService.getUser();
-    if (user == null || user.id.trim().isEmpty) return;
+    if (user == null || user.id.trim().isEmpty) {
+      if (mounted) {
+        AppToastOverlay.showAlert(context, '로그인 정보를 확인할 수 없습니다.');
+      }
+      return;
+    }
 
     final cartIds = widget.cartItems.map((e) => e.ctId).toList();
-    if (cartIds.isEmpty) return;
+    if (cartIds.isEmpty) {
+      if (mounted) {
+        AppToastOverlay.showAlert(context, '결제할 상품이 없습니다.');
+      }
+      return;
+    }
 
     setState(() {
       _submitting = true;
@@ -754,7 +785,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
             pageBuilder: (context, animation, secondaryAnimation) {
               return payScreen;
             },
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
               return FadeTransition(opacity: animation, child: child);
             },
           ),
@@ -767,7 +799,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
       }
 
       if (!mounted) return;
-      if (result == null) return;
+      if (result == null) {
+        AppToastOverlay.showAlert(context, '결제가 완료되지 않았습니다.');
+        return;
+      }
       final resultMap = result is Map
           ? Map<String, dynamic>.from(result)
           : <String, dynamic>{};
@@ -781,11 +816,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
         // 가상계좌 등에서 order_id 누락 시 결과 API로 한 번 더 보정
         if (orderId.isEmpty && token.isNotEmpty) {
           try {
-            final retry =
-                await ApiClient.get(ApiEndpoints.kcpPayResult(token));
+            final retry = await ApiClient.get(ApiEndpoints.kcpPayResult(token));
             if (retry.statusCode == 200) {
-              final retryData =
-                  jsonDecode(retry.body) as Map<String, dynamic>;
+              final retryData = jsonDecode(retry.body) as Map<String, dynamic>;
               orderId = (retryData['order_id'] ?? '').toString().trim();
             }
           } catch (_) {}
@@ -840,6 +873,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
       }
     } catch (e) {
       if (!mounted) return;
+      final message =
+          e is KcpPayStartException ? e.message : '결제 요청 중 오류가 발생했습니다.';
+      AppToastOverlay.showAlert(context, message);
     } finally {
       if (mounted) {
         setState(() {
@@ -889,43 +925,41 @@ class _PaymentScreenState extends State<PaymentScreen> {
   @override
   Widget build(BuildContext context) {
     return MobileAppLayoutWrapper(
-      child: Scaffold(
-        backgroundColor: Colors.white,
-        appBar: HealthAppBar(
-          title: widget.showPrescriptionBookingProgress
-              ? '진료예약 중 _ 03 주문/결제'
-              : '주문/결제',
-          bottom: widget.showPrescriptionBookingProgress
-              ? PreferredSize(
-                  preferredSize: const Size.fromHeight(
-                    PrescriptionBookingProgressBar.preferredHeight,
-                  ),
-                  child: ValueListenableBuilder<double>(
-                    valueListenable: _scrollProgress,
-                    builder: (context, progress, _) {
-                      return PrescriptionBookingProgressBar(
-                        currentStep: PrescriptionBookingSteps.payment,
-                        stepProgress: progress,
-                      );
-                    },
-                  ),
-                )
-              : null,
-        ),
-        body: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : Column(
-                children: [
-                  Expanded(
-                    child: NotificationListener<ScrollNotification>(
-                      onNotification: _handleBookingScrollNotification,
-                      child: SingleChildScrollView(
+      backgroundColor: Colors.white,
+      appBar: HealthAppBar(
+        title: widget.showPrescriptionBookingProgress
+            ? '진료예약 중 _ 03 주문/결제'
+            : '주문/결제',
+        bottom: widget.showPrescriptionBookingProgress
+            ? PreferredSize(
+                preferredSize: const Size.fromHeight(
+                  PrescriptionBookingProgressBar.preferredHeight,
+                ),
+                child: ValueListenableBuilder<double>(
+                  valueListenable: _scrollProgress,
+                  builder: (context, progress, _) {
+                    return PrescriptionBookingProgressBar(
+                      currentStep: PrescriptionBookingSteps.payment,
+                      stepProgress: progress,
+                    );
+                  },
+                ),
+              )
+            : null,
+      ),
+      child: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
+              children: [
+                Expanded(
+                  child: NotificationListener<ScrollNotification>(
+                    onNotification: _handleBookingScrollNotification,
+                    child: SingleChildScrollView(
                       padding: EdgeInsets.only(
                         bottom: healthDp(context, 16),
                       ),
                       child: DefaultTextStyle.merge(
-                        style:
-                            const TextStyle(fontFamily: 'Gmarket Sans TTF'),
+                        style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -942,12 +976,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
                         ),
                       ),
                     ),
-                    ),
                   ),
-                  _buildPaymentBottomBar(context),
-                ],
-              ),
-      ),
+                ),
+                _buildPaymentBottomBar(context),
+              ],
+            ),
     );
   }
 
@@ -1165,8 +1198,15 @@ class _PaymentScreenState extends State<PaymentScreen> {
   Widget _buildDeliveryMemoDropdown() {
     return DeliveryMemoDropdown(
       value: _deliveryMemo,
+      customSelected: _deliveryMemoCustomSelected,
       commitCustomOnUnfocus: false,
-      onChanged: (value) => _deliveryMemo = value,
+      onCustomModeChanged: (selected) {
+        if (_deliveryMemoCustomSelected == selected) return;
+        setState(() => _deliveryMemoCustomSelected = selected);
+      },
+      onChanged: (value) {
+        setState(() => _deliveryMemo = value);
+      },
     );
   }
 
@@ -1295,7 +1335,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   Widget _buildDeliveryEmptyForm(BuildContext context) {
     final addressDisplay = [
-      if (_zipController.text.trim().isNotEmpty) '(${_zipController.text.trim()})',
+      if (_zipController.text.trim().isNotEmpty)
+        '(${_zipController.text.trim()})',
       _addressController.text.trim(),
       _detailAddressController.text.trim(),
     ].where((e) => e.isNotEmpty).join(' ');
@@ -1855,8 +1896,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   Widget _buildPaymentMethodHeaderSection(BuildContext context) {
-    final showEscrow =
-        _paymentMethodIndex == 1 || _paymentMethodIndex == 2;
+    final showEscrow = _paymentMethodIndex == 1 || _paymentMethodIndex == 2;
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: healthDp(context, 41)),
@@ -2067,8 +2107,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 _selectedCoupons.removeWhere((c) => c.no == coupon.no);
                 if (_usedPoint > _maxUsablePointHundreds) {
                   _usedPoint = _maxUsablePointHundreds;
-                  _pointController.text =
-                      _usedPoint == 0 ? '' : '$_usedPoint';
+                  _pointController.text = _usedPoint == 0 ? '' : '$_usedPoint';
                 }
               });
             },
@@ -2222,12 +2261,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     padding: EdgeInsets.all(healthDp(context, 2)),
                     decoration: BoxDecoration(
                       color: on ? _pink : const Color(0xFFD2D2D2),
-                      borderRadius: BorderRadius.circular(healthDp(context, 12)),
+                      borderRadius:
+                          BorderRadius.circular(healthDp(context, 12)),
                     ),
                     child: Row(
-                      mainAxisAlignment: on
-                          ? MainAxisAlignment.end
-                          : MainAxisAlignment.start,
+                      mainAxisAlignment:
+                          on ? MainAxisAlignment.end : MainAxisAlignment.start,
                       children: [
                         Container(
                           width: healthDp(context, 15),
