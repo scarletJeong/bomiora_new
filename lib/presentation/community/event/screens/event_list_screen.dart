@@ -286,7 +286,28 @@ class _EventListScreenState extends State<EventListScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          ClipRRect(
+          Container(
+            decoration: BoxDecoration(
+              border: Border(
+                top: BorderSide(
+                  color: _kBorder,
+                  width: healthDp(context, 0.8),
+                ),
+                left: BorderSide(
+                  color: _kBorder,
+                  width: healthDp(context, 0.8),
+                ),
+                right: BorderSide(
+                  color: _kBorder,
+                  width: healthDp(context, 0.8),
+                ),
+              ),
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(healthDp(context, 10)),
+                topRight: Radius.circular(healthDp(context, 10)),
+              ),
+            ),
+            child: ClipRRect(
             borderRadius: BorderRadius.only(
               topLeft: Radius.circular(healthDp(context, 10)),
               topRight: Radius.circular(healthDp(context, 10)),
@@ -317,6 +338,7 @@ class _EventListScreenState extends State<EventListScreen> {
                       ),
                     ),
             ),
+          ),
           ),
           Container(
             padding: EdgeInsets.symmetric(
