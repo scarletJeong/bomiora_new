@@ -82,14 +82,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
 
   Future<void> _initTabsAndLoad() async {
     final requestToken = ++_tabsRequestToken;
-    final fallback = widget.productKind == 'general'
-        ? productGeneralCategoryListFallback
-        : productPrescriptionCategoryListFallback;
-    _baseTabOrder = _tabsFrom(fallback);
-    _tabKeys = List.generate(_baseTabOrder.length, (_) => GlobalKey());
-    _stickyTabKeys = List.generate(_baseTabOrder.length, (_) => GlobalKey());
     _activeCategoryId = _activeCategoryId.trim();
-    if (mounted) setState(() => _tabsReady = true);
 
     final productsFuture = _loadProducts();
     final List<ProductCategoryItem> source;
@@ -106,9 +99,9 @@ class _ProductListScreenState extends State<ProductListScreen> {
     final fromApi = _tabsFrom(source);
     if (fromApi.isNotEmpty) {
       _baseTabOrder = fromApi;
-      _tabKeys = List.generate(_baseTabOrder.length, (_) => GlobalKey());
-      _stickyTabKeys = List.generate(_baseTabOrder.length, (_) => GlobalKey());
     }
+    _tabKeys = List.generate(_baseTabOrder.length, (_) => GlobalKey());
+    _stickyTabKeys = List.generate(_baseTabOrder.length, (_) => GlobalKey());
 
     final categoryChanged = _baseTabOrder.isNotEmpty &&
         !_baseTabOrder.any((tab) => tab.id == _activeCategoryId);
@@ -116,7 +109,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
       _activeCategoryId = _baseTabOrder.first.id;
     }
 
-    if (mounted) setState(() {});
+    if (mounted) setState(() => _tabsReady = true);
     if (categoryChanged) {
       await _loadProducts();
     } else {
@@ -407,16 +400,6 @@ class _ProductListScreenState extends State<ProductListScreen> {
     return tabs;
   }
 
-  String _tabDisplayLabel(String label) {
-    if (widget.productKind == 'general') return label.trim();
-    return label
-        .replaceAll(' 제품', '')
-        .replaceAll(' / ', '')
-        .replaceAll('/', '')
-        .replaceAll('환', '')
-        .trim();
-  }
-
   Widget _buildCategoryTabs({bool forSticky = false}) {
     final tabKeys = forSticky ? _stickyTabKeys : _tabKeys;
     final tabController =
@@ -449,7 +432,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
 
   Widget _buildCategoryTabChip(_CategoryTab tab, GlobalKey tabKey) {
     final selected = tab.id == _activeCategoryId;
-    final label = _tabDisplayLabel(tab.label);
+    final label = tab.label.trim();
 
     if (selected) {
       return KeyedSubtree(
