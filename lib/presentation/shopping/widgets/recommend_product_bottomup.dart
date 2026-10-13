@@ -52,13 +52,10 @@ Widget _buildFixedRecommendRow({
 }) {
   if (products.isEmpty) return const SizedBox.shrink();
 
-  final visibleSlots = products.length <= kRecommendBottomSheetVisibleCount
-      ? products.length
-      : kRecommendBottomSheetVisibleCount;
   final layout = computeRecommendBottomSheetCardLayout(
     context,
     innerWidth,
-    itemCount: visibleSlots,
+    itemCount: kRecommendBottomSheetVisibleCount,
   );
 
   // 3개 이하면 스크롤 없이 전부 표시
