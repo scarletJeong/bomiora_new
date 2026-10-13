@@ -11,6 +11,7 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_endpoints.dart';
 import '../../../core/utils/web_kcp_popup.dart';
+import '../widgets/kcp_launch_frame.dart';
 
 class KcpPaySession {
   const KcpPaySession({required this.html, required this.token});
@@ -365,6 +366,7 @@ class _KcpPayWebViewScreenState extends State<KcpPayWebViewScreen> {
     final useInlineHtml = inlineHtml.isNotEmpty;
 
     final webView = InAppWebView(
+              key: ValueKey<String>('html:$_token'),
               initialData: useInlineHtml
                   ? InAppWebViewInitialData(
                       data: inlineHtml,
@@ -466,7 +468,14 @@ class _KcpPayWebViewScreenState extends State<KcpPayWebViewScreen> {
               },
             );
 
-    final body = _bootstrapping || (!useInlineHtml && _token.isEmpty)
+    final waiting = _bootstrapping ||
+        (kIsWeb ? _token.isEmpty : (!useInlineHtml && _token.isEmpty));
+    // 웹 InAppWebView 는 결제 HTML을 data: 주소로 넣는다.
+    // 네이버 앱은 그 주소를 결제 모듈이 아니라 다운로드 확인창으로 연다.
+    final Widget payView = kIsWeb
+        ? KcpLaunchFrame(key: ValueKey<String>(_launchUrl), url: _launchUrl)
+        : webView;
+    final body = waiting
         ? const Center(
             child: SizedBox(
               width: 36,
@@ -477,7 +486,7 @@ class _KcpPayWebViewScreenState extends State<KcpPayWebViewScreen> {
               ),
             ),
           )
-        : webView;
+        : payView;
 
     final topInset = MediaQuery.paddingOf(context).top;
     final scaffold = Scaffold(
