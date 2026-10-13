@@ -5,7 +5,6 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../../core/constants/app_assets.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
-import 'product_main_category_tap.dart';
 
 const _sectionLineColor = Color(0xFFD9D9D9);
 
@@ -695,7 +694,7 @@ class ProductMainCheckpointSection extends StatelessWidget {
   }
 }
 
-/// 믿을 수 있는 든든한 ~ (분홍 구분선 + 카테고리 + 회색 구분선 + 카피)
+/// 믿을 수 있는 든든한 주치의
 class ProductMainTrustSection extends StatelessWidget {
   const ProductMainTrustSection({super.key});
 
@@ -704,21 +703,6 @@ class ProductMainTrustSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SizedBox(height: healthDp(context, 8)),
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: healthDp(context, 20)),
-          child: Divider(
-            height: healthDp(context, 1),
-            thickness: healthDp(context, 1),
-            color: const Color(0xFFFF5A8D),
-          ),
-        ),
-        SizedBox(height: healthDp(context, 20)),
-        const ProductMainCategoryTap(
-          productKind: 'prescription',
-          compact: true,
-          enableNavigation: false,
-        ),
         SizedBox(height: healthDp(context, 28)),
         Text(
           '믿을 수 있는 든든한 주치의가',
@@ -895,7 +879,7 @@ class _StaggeredBottomGrid extends StatelessWidget {
               aspectRatio: leftW / h,
               child: Image.asset(
                 asset,
-                fit: BoxFit.cover,
+                fit: BoxFit.contain,
                 errorBuilder: (_, __, ___) =>
                     ColoredBox(color: Colors.grey[200]!),
               ),
