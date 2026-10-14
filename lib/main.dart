@@ -4,6 +4,8 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'presentation/home/screens/home_screen.dart';
+import 'core/utils/kcp_pay_session_store.dart';
+import 'presentation/common/screens/kcp_pay_resume_splash.dart';
 import 'presentation/common/screens/splash_screen.dart';
 import 'presentation/auth/screens/login_screen.dart';
 import 'presentation/auth/screens/find_account_main_screen.dart';
@@ -139,7 +141,9 @@ class _BomioraAppState extends State<BomioraApp> {
       ],
       home: kDevForceLoginScreenFirst
           ? const LoginScreen()
-          : const SplashScreen(),
+          : (kIsWeb && (readKcpPayToken() ?? '').isNotEmpty)
+              ? const KcpPayResumeSplash()
+              : const SplashScreen(),
       routes: {
         '/login': (context) => const LoginScreen(),
         '/find-account': (context) {
