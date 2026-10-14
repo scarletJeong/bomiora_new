@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
@@ -17,11 +15,9 @@ import 'cart_dropdown_menu.dart';
 /// 홈: 검색·알림·장바구니 / 마이페이지: 장바구니·설정
 enum AppBarMenuActionsStyle { home, myPage }
 
-/// [HealthAppBar]와 동일한 전체 높이(375 기준 60).
-/// 아이콘·로고는 60 높이 안에서 세로 중앙 배치.
-/// 좌우 패딩 `5`, 좌측 메뉴·우측 액션 아이콘 `19.82`, 액션 당김(겹침) `12`,
-/// 로고는 패딩 안 전체 폭 기준 [Stack] + [Center]로 **화면 가로 정중앙**.
-/// 모든 길이·간격은 [healthDp] / [healthAppBarTotalHeight]로 스케일합니다.
+/// [HealthAppBar]와 동일한 전체 높이(375 기준 60 = 상하 18 + 아이콘 24).
+/// 좌우 패딩 20, 메뉴 16×12, 우측 아이콘 20, 아이콘 간격 8, 로고 94.09×20.
+/// 로고는 화면 가로 정중앙. 길이는 [healthDp]로 스케일합니다.
 class AppBarMenu extends StatefulWidget
     implements HealthResponsivePreferredSizeWidget {
   final VoidCallback onMenuPressed;
@@ -286,116 +282,85 @@ class _AppBarMenuState extends State<AppBarMenu> {
   Widget build(BuildContext context) {
     final topInset = healthStatusBarTopInset(context);
     final barH = healthAppBarTotalHeight(context);
-    final padH = healthDp(context, 5);
-    final iconSz = healthDp(context, 19.82);
-    final menuIconW = healthDp(context, 18);
-    final menuIconH = healthDp(context, 14);
-
-    /// [Row.spacing]은 0 이상만 허용. 예전 음수 간격과 같은 밀도는 `Stack`으로 겹침 배치.
-    final actionOverlap = healthDp(context, 12);
-    final logoW = healthDp(context, 99.09);
+    final padH = healthDp(context, 20);
+    final padV = healthDp(context, 18);
+    final iconSz = healthDp(context, 20);
+    final menuIconW = healthDp(context, 16);
+    final menuIconH = healthDp(context, 12);
+    final actionGap = healthDp(context, 8);
+    final logoW = healthDp(context, 94.09);
     final logoH = healthDp(context, 20);
-    final tapBoxW = math.max(iconSz, healthDp(context, 40));
 
     final isMyPage = widget.actionsStyle == AppBarMenuActionsStyle.myPage;
-    final actionCount = isMyPage ? 2 : 3;
-    final actionStep = math.max(4.0, tapBoxW - actionOverlap);
-    final actionsWidth = tapBoxW + (actionCount - 1) * actionStep;
 
-    final List<Widget> actionChildren;
-    if (isMyPage) {
-      actionChildren = [
-        Positioned(
-          left: 0,
-          top: 0,
-          height: barH,
-          width: tapBoxW,
-          child: _actionSvg(
-            key: _cartIconKey,
-            asset: AppAssets.appbarCartIcon,
-            width: tapBoxW,
-            height: barH,
-            iconSz: iconSz,
-            onPressed: _toggleCartMenu,
-          ),
-        ),
-        Positioned(
-          left: actionStep,
-          top: 0,
-          height: barH,
-          width: tapBoxW,
-          child: _actionSvg(
-            asset: AppAssets.appbarSettingsIcon,
-            width: tapBoxW,
-            height: barH,
-            iconSz: healthDp(context, 14),
-            onPressed: () {
-              Navigator.of(context).push<void>(
-                MaterialPageRoute<void>(
-                  builder: (_) => const SettingsScreen(),
-                ),
-              );
-            },
-          ),
-        ),
-      ];
-    } else {
-      actionChildren = [
-        Positioned(
-          left: 0,
-          top: 0,
-          height: barH,
-          width: tapBoxW,
-          child: _actionSvg(
-            asset: AppAssets.appbarSearchIcon,
-            width: tapBoxW,
-            height: barH,
-            iconSz: iconSz,
-            onPressed: () {
-              if (widget.onSearchPressed != null) {
-                widget.onSearchPressed!();
-              } else {
-                SearchPopup.show(context);
-              }
-            },
-          ),
-        ),
-        Positioned(
-          left: actionStep,
-          top: 0,
-          height: barH,
-          width: tapBoxW,
-          child: _actionSvg(
-            asset: AppAssets.appbarAlarmIcon,
-            width: tapBoxW,
-            height: barH,
-            iconSz: iconSz,
-            badge: _notificationCountBadge(),
-            onPressed: () {
-              Navigator.of(context).push<void>(
-                MaterialPageRoute<void>(
-                  builder: (_) => const NotificationCenterScreen(),
-                ),
-              );
-            },
-          ),
-        ),
-        Positioned(
-          left: 2 * actionStep,
-          top: 0,
-          height: barH,
-          width: tapBoxW,
-          child: _actionSvg(
-            key: _cartIconKey,
-            asset: AppAssets.appbarCartIcon,
-            width: tapBoxW,
-            height: barH,
-            iconSz: iconSz,
-            onPressed: _toggleCartMenu,
-          ),
-        ),
-      ];
+    Widget actionBox({
+      Key? key,
+      required String asset,
+      required VoidCallback onPressed,
+      Widget? badge,
+      double? drawSize,
+    }) {
+      return _actionSvg(
+        key: key,
+        asset: asset,
+        width: iconSz,
+        height: iconSz,
+        iconSz: drawSize ?? iconSz,
+        badge: badge,
+        onPressed: onPressed,
+      );
     }
+
+    final List<Widget> actionChildren = isMyPage
+        ? [
+            actionBox(
+              key: _cartIconKey,
+              asset: AppAssets.appbarCartIcon,
+              onPressed: _toggleCartMenu,
+            ),
+            SizedBox(width: actionGap),
+            actionBox(
+              asset: AppAssets.appbarSettingsIcon,
+              drawSize: healthDp(context, 15.08),
+              onPressed: () {
+                Navigator.of(context).push<void>(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const SettingsScreen(),
+                  ),
+                );
+              },
+            ),
+          ]
+        : [
+            actionBox(
+              asset: AppAssets.appbarSearchIcon,
+              onPressed: () {
+                if (widget.onSearchPressed != null) {
+                  widget.onSearchPressed!();
+                } else {
+                  SearchPopup.show(context);
+                }
+              },
+            ),
+            SizedBox(width: actionGap),
+            actionBox(
+              asset: AppAssets.appbarAlarmIcon,
+              badge: _notificationCountBadge(),
+              onPressed: () {
+                Navigator.of(context).push<void>(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const NotificationCenterScreen(),
+                  ),
+                );
+              },
+            ),
+            SizedBox(width: actionGap),
+            actionBox(
+              key: _cartIconKey,
+              asset: AppAssets.appbarCartIcon,
+              onPressed: _toggleCartMenu,
+            ),
+          ];
 
     return SizedBox(
       height: barH + topInset,
@@ -411,9 +376,9 @@ class _AppBarMenuState extends State<AppBarMenu> {
           child: Padding(
             padding: EdgeInsets.only(top: topInset),
             child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: padH),
+              padding: EdgeInsets.symmetric(horizontal: padH, vertical: padV),
               child: SizedBox(
-                height: barH,
+                height: barH - padV * 2,
                 child: Stack(
                   clipBehavior: Clip.none,
                   alignment: Alignment.center,
@@ -422,20 +387,17 @@ class _AppBarMenuState extends State<AppBarMenu> {
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         _leadingMenu(
-                          width: tapBoxW,
-                          height: barH,
+                          width: menuIconW,
+                          height: menuIconH,
                           iconW: menuIconW,
                           iconH: menuIconH,
                           onPressed: widget.onMenuPressed,
                         ),
                         const Spacer(),
-                        SizedBox(
-                          height: barH,
-                          width: actionsWidth,
-                          child: Stack(
-                            clipBehavior: Clip.none,
-                            children: actionChildren,
-                          ),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: actionChildren,
                         ),
                       ],
                     ),
