@@ -57,6 +57,9 @@ abstract final class AppAssets {
   // 안내 아이콘
   static const String guideIcon = '${_img}guide_icon.svg';
 
+  // 추가 상품 카드 문구 앞 아이콘
+  static const String supplyAddExpandProductIcon = '${_img}supply_add_expand_product_icon.svg';
+
   /* 검색 */
   // 결과 없음 아이콘
   static const String searchEmptyIcon = '${_img}search_empty_icon.svg';
