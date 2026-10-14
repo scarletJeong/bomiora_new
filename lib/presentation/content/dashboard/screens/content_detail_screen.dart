@@ -320,24 +320,6 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      if (_categoryLabel.trim().isNotEmpty) ...[
-                        Padding(
-                          padding: EdgeInsets.symmetric(
-                            vertical: healthDp(context, 5),
-                          ),
-                          child: Text(
-                            _categoryLabel.trim(),
-                            textAlign: TextAlign.start,
-                            style: TextStyle(
-                              color: const Color(0xFF1A1A1A),
-                              fontSize: healthSp(context, 16),
-                              fontFamily: 'Gmarket Sans TTF',
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                        SizedBox(height: healthDp(context, 20)),
-                      ],
                       _buildArticleHeader(context),
                       SizedBox(height: healthDp(context, 20)),
                       Container(
