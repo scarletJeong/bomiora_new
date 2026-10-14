@@ -458,21 +458,15 @@ class _CartScreenState extends State<CartScreen> {
     }
     if (errorMessage != null) {
       return _wrapWithOptionalHeader(
-        Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                errorMessage!,
-                style: const TextStyle(color: Colors.red),
-              ),
-              SizedBox(height: healthDp(context, 16)),
-              ElevatedButton(
-                onPressed: _loadCart,
-                child: const Text('다시 시도'),
-              ),
-            ],
+        CenteredEmptyState(
+          iconWidget: CenteredEmptyState.assetIcon(
+            context,
+            AppAssets.emptyCartIcon,
           ),
+          message: '장바구니에 담긴 상품이 없습니다 \n원하는 상품을 담아보세요',
+          trailing: [
+            CartEmptyShopButton(prescriptionTab: true),
+          ],
         ),
       );
     }

@@ -15,6 +15,7 @@ import '../../../data/services/auth_service.dart';
 import '../../../data/services/cart_service.dart';
 import '../../../data/services/delivery_service.dart';
 import '../../../data/services/wish_service.dart';
+import '../../common/widgets/centered_empty_state.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/product_card.dart';
 import '../../health/health_common/health_responsive_scale.dart';
@@ -43,7 +44,6 @@ class QaItemSelectScreen extends StatefulWidget {
 
 class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
   static const Color _pink = Color(0xFFFF5A8D);
-  static const Color _muted = Color(0xFF898686);
   static const String _font = 'Gmarket Sans TTF';
 
   int _tabIndex = 0;
@@ -710,15 +710,14 @@ class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
       return const Center(child: CircularProgressIndicator(color: _pink));
     }
     if (_error != null) {
-      return Center(
-        child: Text(
-          _error!,
-          style: TextStyle(
-            color: _muted,
-            fontSize: healthSp(context, 14),
-            fontFamily: _font,
-          ),
+      return CenteredEmptyState(
+        iconWidget: CenteredEmptyState.assetIcon(
+          context,
+          AppAssets.emptyCategoryIcon,
         ),
+        message: _error == '로그인이 필요합니다.'
+            ? '로그인 후 이용 가능합니다.'
+            : '선택할 상품이 없습니다.',
       );
     }
 

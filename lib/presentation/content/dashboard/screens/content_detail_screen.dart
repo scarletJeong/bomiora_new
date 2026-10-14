@@ -9,6 +9,7 @@ import '../../../../data/services/content_service.dart';
 import '../../../../data/services/wish_service.dart';
 import '../../../common/navigation/board_list_navigation.dart';
 import '../../../common/widgets/app_network_image.dart';
+import '../../../common/widgets/centered_empty_state.dart';
 import '../../../common/widgets/article_adjacent_nav.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
@@ -35,7 +36,6 @@ class ContentDetailScreen extends StatefulWidget {
 
 class _ContentDetailScreenState extends State<ContentDetailScreen> {
   static const Color _textDark = Color(0xFF1A1A1A);
-  static const Color _textMuted = Color(0xFF898686);
   static const Color _pink = Color(0xFFFF5A8D);
 
   String _categoryLabel = '';
@@ -263,12 +263,12 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
           title: _appBarTitle,
         ),
         backgroundColor: Colors.white,
-        child: Center(
-          child: Icon(
-            Icons.error_outline,
-            size: healthDp(context, 48),
-            color: _textMuted,
+        child: CenteredEmptyState(
+          iconWidget: CenteredEmptyState.assetIcon(
+            context,
+            AppAssets.emptyContentIcon,
           ),
+          message: '등록된 콘텐츠가 없습니다.',
         ),
       );
     }
@@ -279,20 +279,12 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
           title: _appBarTitle,
         ),
         backgroundColor: Colors.white,
-        child: Center(
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: healthDp(context, 27)),
-            child: Text(
-              _fetchError!,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: _textDark,
-                fontSize: healthSp(context, 14),
-                fontFamily: 'Gmarket Sans TTF',
-                fontWeight: FontWeight.w500,
-              ),
-            ),
+        child: CenteredEmptyState(
+          iconWidget: CenteredEmptyState.assetIcon(
+            context,
+            AppAssets.emptyContentIcon,
           ),
+          message: '등록된 콘텐츠가 없습니다.',
         ),
       );
     }

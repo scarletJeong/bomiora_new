@@ -278,26 +278,12 @@ class _WishListScreenState extends State<WishListScreen> {
   }
 
   Widget _buildError() {
-    return Center(
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: healthDp(context, 20)),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              _errorMessage!,
-              style: TextStyle(
-                  color: Colors.red, fontSize: healthSp(context, 14)),
-              textAlign: TextAlign.center,
-            ),
-            SizedBox(height: healthDp(context, 16)),
-            OutlinedButton(
-              onPressed: _loadWishList,
-              child: const Text('다시 시도'),
-            ),
-          ],
-        ),
+    return CenteredEmptyState(
+      iconWidget: CenteredEmptyState.assetIcon(
+        context,
+        AppAssets.emptyWishlistIcon,
       ),
+      message: _emptyMessageForTab(),
     );
   }
 
@@ -478,7 +464,9 @@ class _WishListScreenState extends State<WishListScreen> {
         child: SizedBox(
           width: double.infinity,
           height: healthDp(context, 200),
-          child: Image.network(
+          child: imageUrl.isEmpty
+              ? const ColoredBox(color: Color(0xFFF5F5F5))
+              : Image.network(
             imageUrl,
             fit: fit,
             width: double.infinity,
@@ -712,18 +700,22 @@ class _WishListScreenState extends State<WishListScreen> {
     final contentId = _contentIdFromWish(item);
     final idStr = contentId?.toString() ?? (item['it_id']?.toString() ?? '');
     final cached = contentId != null ? _contentCache[contentId] : null;
-    if (contentId != null) {
-      _ensureContentLoaded(contentId);
-    }
 
     final category = (cached?['category'] ?? item['category'] ?? '').toString().trim();
     final title = (cached?['title'] ?? item['title'] ?? '').toString().trim();
-    final thumbRaw = (cached?['thumbnail'] ?? cached?['thumbnail_url'] ?? item['thumbnail'] ?? item['thumbnail_url'])
+    final thumbRaw = (item['thumbnail'] ??
+            item['thumbnail_url'] ??
+            cached?['thumbnail'] ??
+            cached?['thumbnail_url'])
         ?.toString();
-    final imageUrl = ContentService.resolveThumbnailUrl(
+    final resolvedThumb = ContentService.resolveThumbnailUrl(
       thumbRaw,
-      fallback: ImageUrlHelper.placeholdCo(321, 200),
+      fallback: '',
     );
+    final imageUrl = resolvedThumb.trim();
+    if (contentId != null && imageUrl.isEmpty) {
+      _ensureContentLoaded(contentId);
+    }
 
     final openDetail = contentId == null
         ? null

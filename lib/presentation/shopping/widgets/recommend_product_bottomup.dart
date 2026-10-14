@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+
+import '../../../core/constants/app_assets.dart';
 
 import '../../../data/models/product/product_model.dart';
 import '../../../data/models/cart/cart_item_model.dart';
@@ -414,16 +417,30 @@ class _RecommendProductBottomSheetState extends State<RecommendProductBottomShee
 
     final loader = widget.productsLoader;
     if (loader == null) {
+      final iconSz = healthDp(context, 40);
       return SizedBox(
         height: healthDp(context, 120),
         child: Center(
-          child: Text(
-            '추천 상품을 불러오지 못했습니다.',
-            style: TextStyle(
-              color: Colors.grey[600],
-              fontSize: healthSp(context, 12),
-              fontFamily: 'Gmarket Sans TTF',
-            ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SvgPicture.asset(
+                AppAssets.emptyCategoryIcon,
+                width: iconSz,
+                height: iconSz,
+                fit: BoxFit.contain,
+              ),
+              SizedBox(height: healthDp(context, 8)),
+              Text(
+                '추천 상품이 없습니다.',
+                style: TextStyle(
+                  color: const Color(0x665B3F43),
+                  fontSize: healthSp(context, 12),
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
           ),
         ),
       );
@@ -446,16 +463,30 @@ class _RecommendProductBottomSheetState extends State<RecommendProductBottomShee
 
         final loaded = snapshot.data ?? const <Product>[];
         if (loaded.isEmpty) {
+          final iconSz = healthDp(context, 40);
           return SizedBox(
-            height: healthDp(context, 48),
+            height: healthDp(context, 120),
             child: Center(
-              child: Text(
-                '추천 상품이 없습니다.',
-                style: TextStyle(
-                  color: Colors.grey[600],
-                  fontSize: healthSp(context, 12),
-                  fontFamily: 'Gmarket Sans TTF',
-                ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SvgPicture.asset(
+                    AppAssets.emptyCategoryIcon,
+                    width: iconSz,
+                    height: iconSz,
+                    fit: BoxFit.contain,
+                  ),
+                  SizedBox(height: healthDp(context, 8)),
+                  Text(
+                    '추천 상품이 없습니다.',
+                    style: TextStyle(
+                      color: const Color(0x665B3F43),
+                      fontSize: healthSp(context, 12),
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
               ),
             ),
           );

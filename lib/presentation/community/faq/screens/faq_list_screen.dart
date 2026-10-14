@@ -138,9 +138,7 @@ class _FaqListScreenState extends State<FaqListScreen> {
                 hasScrollBody: false,
                 child: Center(child: CircularProgressIndicator()),
               )
-            else if (_error != null)
-              SliverToBoxAdapter(child: _buildError())
-            else if (_items.isEmpty)
+            else if (_error != null || _items.isEmpty)
               SliverFillRemaining(
                 hasScrollBody: false,
                 child: _buildEmpty(),
@@ -471,31 +469,13 @@ class _FaqListScreenState extends State<FaqListScreen> {
         .trim();
   }
 
-  Widget _buildError() {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: healthDp(context, 50)),
-      child: Center(
-        child: Text(
-          _error!,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: _kMuted,
-            fontSize: healthSp(context, 14),
-            fontFamily: 'Gmarket Sans TTF',
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildEmpty() {
     return CenteredEmptyState(
       iconWidget: CenteredEmptyState.assetIcon(
         context,
         AppAssets.emptyNoticeIcon,
       ),
-      message: '조건에 맞는 FAQ가 없습니다.',
+      message: 'FAQ가 없습니다.',
     );
   }
 }

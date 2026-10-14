@@ -493,23 +493,14 @@ class QaListScreenState extends State<QaListScreen> {
         physics: const AlwaysScrollableScrollPhysics(),
         children: [
           _buildListHeader(),
-          SizedBox(height: healthDp(context, 80)),
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: _pagePadH(context)),
-            child: Column(
-              children: [
-                Text(
-                  _errorMessage!,
-                  textAlign: TextAlign.center,
-                  style: _qaText(context, size: 14, color: Colors.red),
-                ),
-                SizedBox(height: healthDp(context, 16)),
-                ElevatedButton(
-                  onPressed: _loadContacts,
-                  child: const Text('다시 시도'),
-                ),
-              ],
+          SizedBox(height: healthDp(context, 40)),
+          CenteredEmptyState(
+            fillAvailable: false,
+            iconWidget: CenteredEmptyState.assetIcon(
+              context,
+              AppAssets.emptyQAIcon,
             ),
+            message: '문의내역이 없습니다.',
           ),
         ],
       );

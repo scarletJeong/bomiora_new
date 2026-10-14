@@ -2,11 +2,13 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 
+import '../../../core/constants/app_assets.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../data/models/qa/qa_inquiry_model.dart';
 import '../../../data/repositories/product/product_repository.dart';
 import '../../../data/services/qa_service.dart';
+import '../../common/widgets/centered_empty_state.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../health/health_common/widgets/health_app_bar.dart';
@@ -262,27 +264,17 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator(color: _pink));
     }
-    if (_errorMessage != null) {
-      return Center(
-        child: Padding(
-          padding: EdgeInsets.all(healthDp(context, 27)),
-          child: Text(
-            _errorMessage!,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontFamily: _font,
-              fontSize: healthSp(context, 14),
-              color: Colors.black54,
-            ),
-          ),
+    if (_errorMessage != null || _rootQuestion == null) {
+      return CenteredEmptyState(
+        iconWidget: CenteredEmptyState.assetIcon(
+          context,
+          AppAssets.emptyQAIcon,
         ),
+        message: '문의 내용이 없습니다.',
       );
     }
 
-    final root = _rootQuestion;
-    if (root == null) {
-      return const Center(child: Text('문의 내용이 없습니다.'));
-    }
+    final root = _rootQuestion!;
     final answered = _isAnswered(root);
     final photos = _inquiryPhotoUrls(root);
     final dateTime = _formatInquiryDateTime(root.wrDatetime);

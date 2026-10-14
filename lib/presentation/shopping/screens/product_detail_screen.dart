@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../../core/constants/app_assets.dart';
+import '../../common/widgets/centered_empty_state.dart';
 import '../../../data/models/cart/cart_item_model.dart';
 import '../../../data/models/product/product_model.dart';
 import '../../../data/repositories/product/product_repository.dart';
@@ -55,7 +56,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   Product? _product;
   bool _isLoading = true;
   bool _hasError = false;
-  String? _errorMessage;
   bool _isFavorite = false;
   int _currentImageIndex = 0;
   late TabController _tabController;
@@ -133,7 +133,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       _product = preview;
       _isLoading = preview == null;
       _hasError = false;
-      _errorMessage = null;
     });
 
     try {
@@ -144,7 +143,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
         _isLoading = false;
         if (product == null) {
           _hasError = true;
-          _errorMessage = '제품 정보를 찾을 수 없습니다.';
         } else {
           // 제품이 로드되면 이미지가 있을 때 PageController 초기화
           final images = _getProductImages();
@@ -170,11 +168,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       _checkFavoriteStatus();
       _loadRecommendedProducts();
       _resumePendingCheckoutIfNeeded();
-    } catch (e) {
+    } catch (_) {
       _safeSetState(() {
         _isLoading = false;
         _hasError = true;
-        _errorMessage = '제품 정보를 불러오는데 실패했습니다: $e';
       });
     }
   }
@@ -445,31 +442,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   }
 
   Widget _buildErrorState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.error_outline,
-            size: healthDp(context, 64),
-            color: Colors.grey[400],
-          ),
-          SizedBox(height: healthDp(context, 16)),
-          Text(
-            _errorMessage ?? '제품 정보를 불러올 수 없습니다',
-            style: TextStyle(
-              fontSize: healthSp(context, 16),
-              color: Colors.grey[600],
-            ),
-            textAlign: TextAlign.center,
-          ),
-          SizedBox(height: healthDp(context, 24)),
-          ElevatedButton(
-            onPressed: _loadProductDetail,
-            child: const Text('다시 시도'),
-          ),
-        ],
+    return CenteredEmptyState(
+      iconWidget: CenteredEmptyState.assetIcon(
+        context,
+        AppAssets.emptyCategoryIcon,
       ),
+      message: '상품 정보가 없습니다.',
     );
   }
 

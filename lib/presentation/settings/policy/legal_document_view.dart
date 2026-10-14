@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
+import '../../../core/constants/app_assets.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 
 /// `legal/` 마크다운을 제목·본문·목록으로 표시합니다.
@@ -45,15 +47,30 @@ class _LegalDocumentViewState extends State<LegalDocumentView> {
     final padding = widget.padding ?? EdgeInsets.all(healthDp(context, 20));
 
     if (_failed) {
+      final iconSz = healthDp(context, 40);
       return Padding(
         padding: padding,
-        child: Text(
-          '약관을 불러오지 못했습니다.',
-          style: TextStyle(
-            fontFamily: _font,
-            fontSize: healthSp(context, 14),
-            color: Colors.black87,
-          ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SvgPicture.asset(
+              AppAssets.emptyNoticeIcon,
+              width: iconSz,
+              height: iconSz,
+              fit: BoxFit.contain,
+            ),
+            SizedBox(height: healthDp(context, 8)),
+            Text(
+              '등록된 약관이 없습니다.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: const Color(0x665B3F43),
+                fontSize: healthSp(context, 12),
+                fontFamily: _font,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
         ),
       );
     }

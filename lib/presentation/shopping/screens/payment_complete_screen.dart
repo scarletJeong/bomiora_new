@@ -3,10 +3,12 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
+import '../../../core/constants/app_assets.dart';
 import '../../../data/models/delivery/delivery_model.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/delivery_service.dart' as delivery;
 import '../../common/widgets/app_toast_overlay.dart';
+import '../../common/widgets/centered_empty_state.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../health/health_common/widgets/health_app_bar.dart';
@@ -38,7 +40,6 @@ class PaymentCompleteScreen extends StatefulWidget {
 
 class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
   static const Color _pink = Color(0xFFFF5A8D);
-  static const Color _ink = Color(0xFF1A1A1E);
   static const Color _muted = Color(0xFF898686);
   static const String _font = 'Gmarket Sans TTF';
 
@@ -321,29 +322,12 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
   }
 
   Widget _buildError() {
-    return Center(
-      child: Padding(
-        padding: EdgeInsets.all(healthDp(context, 24)),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              _error!,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: _ink,
-                fontSize: healthSp(context, 14),
-                fontFamily: _font,
-              ),
-            ),
-            SizedBox(height: healthDp(context, 12)),
-            OutlinedButton(
-              onPressed: _loadOrder,
-              child: const Text('다시 시도'),
-            ),
-          ],
-        ),
+    return CenteredEmptyState(
+      iconWidget: CenteredEmptyState.assetIcon(
+        context,
+        AppAssets.emptyDeliveryIcon,
       ),
+      message: '주문 정보가 없습니다.',
     );
   }
 

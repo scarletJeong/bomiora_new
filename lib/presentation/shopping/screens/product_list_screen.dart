@@ -47,7 +47,6 @@ class _ProductListScreenState extends State<ProductListScreen> {
   List<Product> _products = [];
   bool _isLoading = true;
   bool _hasError = false;
-  String? _errorMessage;
   int _currentPage = 1;
   final int _pageSize = 20;
   bool _hasMore = true;
@@ -158,7 +157,6 @@ class _ProductListScreenState extends State<ProductListScreen> {
     setState(() {
       _isLoading = true;
       _hasError = false;
-      _errorMessage = null;
     });
 
     try {
@@ -176,11 +174,10 @@ class _ProductListScreenState extends State<ProductListScreen> {
         _currentPage = 1;
       });
       _scheduleActiveTabScroll();
-    } catch (e) {
+    } catch (_) {
       setState(() {
         _isLoading = false;
         _hasError = true;
-        _errorMessage = '상품 목록을 불러오는데 실패했습니다: $e';
       });
       _scheduleActiveTabScroll();
     }
@@ -262,32 +259,12 @@ class _ProductListScreenState extends State<ProductListScreen> {
     }
 
     if (_hasError && _products.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.error_outline,
-              size: healthDp(context, 64),
-              color: Colors.grey[400],
-            ),
-            SizedBox(height: healthDp(context, 16)),
-            Text(
-              _errorMessage ?? '상품을 불러올 수 없습니다',
-              style: TextStyle(
-                fontSize: healthSp(context, 16),
-                color: Colors.grey[600],
-                fontFamily: _gmarket,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            SizedBox(height: healthDp(context, 24)),
-            ElevatedButton(
-              onPressed: _loadProducts,
-              child: const Text('다시 시도'),
-            ),
-          ],
+      return CenteredEmptyState(
+        iconWidget: CenteredEmptyState.assetIcon(
+          context,
+          AppAssets.emptyCategoryIcon,
         ),
+        message: '등록된 상품이 없습니다.',
       );
     }
 
@@ -505,7 +482,6 @@ class _ProductListScreenState extends State<ProductListScreen> {
       _hasMore = true;
       _isLoadingMore = false;
       _hasError = false;
-      _errorMessage = null;
       _isLoading = true;
     });
 

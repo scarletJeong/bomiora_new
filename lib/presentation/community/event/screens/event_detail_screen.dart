@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import '../../../../core/constants/app_assets.dart';
 import '../../../../core/utils/date_formatter.dart';
 import '../../../../data/models/event/event_model.dart';
 import '../../../../data/services/event_service.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
 import '../../../common/navigation/board_list_navigation.dart';
 import '../../../common/widgets/article_adjacent_nav.dart';
+import '../../../common/widgets/centered_empty_state.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 
@@ -107,38 +109,22 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     }
 
     if (_errorMessage != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              _errorMessage!,
-              style: TextStyle(
-                color: Colors.red,
-                fontSize: healthSp(context, 14),
-                fontFamily: _font,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            SizedBox(height: healthDp(context, 16)),
-            ElevatedButton(
-              onPressed: _loadEventDetail,
-              child: const Text('다시 시도'),
-            ),
-          ],
+      return CenteredEmptyState(
+        iconWidget: CenteredEmptyState.assetIcon(
+          context,
+          AppAssets.emptyEventIcon,
         ),
+        message: '이벤트가 없습니다.',
       );
     }
 
     if (_event == null) {
-      return Center(
-        child: Text(
-          '이벤트를 찾을 수 없습니다.',
-          style: TextStyle(
-            fontFamily: _font,
-            fontSize: healthSp(context, 14),
-          ),
+      return CenteredEmptyState(
+        iconWidget: CenteredEmptyState.assetIcon(
+          context,
+          AppAssets.emptyEventIcon,
         ),
+        message: '이벤트가 없습니다.',
       );
     }
 
