@@ -186,20 +186,7 @@ class _SearchListScreenState extends State<SearchListScreen> {
       child: _initialLoad && _loading
           ? const Center(child: CircularProgressIndicator(color: _pink))
           : _error != null
-              ? Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(healthDp(context, 24)),
-                    child: Text(
-                      '검색 중 오류가 발생했습니다.\n$_error',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: healthSp(context, 14),
-                        color: _muted,
-                        fontFamily: 'Gmarket Sans TTF',
-                      ),
-                    ),
-                  ),
-                )
+              ? Center(child: _buildGlobalEmptyContent())
               : _buildResults(),
     );
   }
@@ -566,20 +553,21 @@ class _SearchListScreenState extends State<SearchListScreen> {
           '검색 결과가 없습니다.',
           textAlign: TextAlign.center,
           style: TextStyle(
-            color: _ink,
-            fontSize: healthSp(context, 16),
+            color: const Color(0xFFC0C0C0),
+            fontSize: healthSp(context, 14),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w500,
           ),
         ),
+        SizedBox(height: healthDp(context, 10)),
         Text(
           '검색어를 다시 입력해주세요.',
           textAlign: TextAlign.center,
           style: TextStyle(
-            color: _muted,
-            fontSize: healthSp(context, 14),
+            color: const Color(0xFFB0B0B0),
+            fontSize: healthSp(context, 12),
             fontFamily: 'Gmarket Sans TTF',
-            fontWeight: FontWeight.w500,
+            fontWeight: FontWeight.w300,
           ),
         ),
       ],
