@@ -32,11 +32,7 @@ import '../utils/get_review.dart';
 import '../utils/product_detail_html_helper.dart';
 import '../utils/product_info_spec_helper.dart';
 import '../../common/widgets/login_required_dialog.dart';
-import '../../common/widgets/app_alert_dialog.dart';
-import '../../user/healthprofile/screens/health_profile_form1_screen.dart';
 import '../../user/healthprofile/screens/health_profile_list_screen.dart';
-import '../../../data/services/health_profile_service.dart';
-import '../../user/healthprofile/models/health_profile_model.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../../data/services/pending_product_checkout.dart';
 
@@ -1663,29 +1659,60 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   }
 
   Future<void> _startPrescriptionReservationCheckout() async {
-    if (_product == null || _selectedOptions.isEmpty) return;
+    if (_product == null || _selectedOptions.isEmpty || !mounted) return;
 
-    final addedCtIds = await _addPrescriptionItemsToShoppingCart(
-      navigateToCart: false,
+    final product = _product!;
+    final options = Map<ProductOption, int>.from(_selectedOptions);
+    final supply = List<SupplyCartLine>.from(_supplyLines);
+    final itemsFuture = _bookingItemsAfterAdd(
+      product: product,
+      options: options,
+      supply: supply,
     );
-    if (addedCtIds == null || addedCtIds.isEmpty || !mounted) return;
+    setState(() {
+      _selectedOptions.clear();
+      _supplyLines.clear();
+    });
+
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PrescriptionProfileScreen(
+          productId: product.id,
+          productName: product.name,
+          checkoutItemsFuture: itemsFuture,
+        ),
+      ),
+    );
+  }
+
+  Future<List<CartItem>> _bookingItemsAfterAdd({
+    required Product product,
+    required Map<ProductOption, int> options,
+    required List<SupplyCartLine> supply,
+  }) async {
+    final result = await CartService.addOptionsToCart(
+      product: product,
+      selectedOptions: options,
+      supplyLines: supply,
+    );
+    if (result['success'] != true) return const [];
+
+    final added = CartService.addedItemsFromAddOptionsResult(result);
+    if (added.isNotEmpty) return added;
+
+    final cartIds = CartService.cartIdsFromAddOptionsResult(result);
+    if (cartIds.isEmpty) return const [];
 
     final cartResult = await CartService.getCart();
-    if (!mounted || cartResult['success'] != true) return;
-
+    if (cartResult['success'] != true) return const [];
     final rawItems = cartResult['data'];
     final allItems = (rawItems is List ? rawItems : [])
         .whereType<Map>()
         .map((e) => CartItem.fromJson(Map<String, dynamic>.from(e)))
         .toList();
-
-    final addedIdSet = addedCtIds.toSet();
-    final bookingItems =
-        allItems.where((item) => addedIdSet.contains(item.ctId)).toList();
-
-    if (bookingItems.isEmpty || !mounted) return;
-
-    await _openPrescriptionProfileFlow(bookingItems);
+    final addedIdSet = cartIds.toSet();
+    return allItems.where((item) => addedIdSet.contains(item.ctId)).toList();
   }
 
   Future<void> _showRecommendProductBottomup({
@@ -1778,15 +1805,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   Future<void> _openPrescriptionProfileFlow(List<CartItem> bookingItems) async {
     if (bookingItems.isEmpty || !mounted) return;
 
-    final user = await AuthService.getUser();
-    if (user == null || user.id.isEmpty || !mounted) return;
-
-    HealthProfileModel? profile;
-    try {
-      profile = await HealthProfileService.getHealthProfile(user.id);
-    } catch (_) {
-      profile = null;
-    }
     if (!mounted) return;
 
     final booking = HealthProfilePrescriptionBookingArgs(
@@ -1797,28 +1815,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       checkoutCartItems: bookingItems,
       checkoutShippingCost: 0,
     );
-
-    if (profile == null || profile.needsInitialQuestionnaire) {
-      await AppAlertDialog.show(
-        context,
-        title: '',
-        message: '초진으로 문진표를 작성해야합니다',
-        useRootNavigator: true,
-      );
-      if (!mounted) return;
-      await Navigator.push<void>(
-        context,
-        MaterialPageRoute(
-          settings:
-              const RouteSettings(name: HealthProfileForm1Screen.routeName),
-          builder: (context) => HealthProfileForm1Screen(
-            prescriptionBooking: booking,
-            existingProfile: profile,
-          ),
-        ),
-      );
-      return;
-    }
 
     if (!mounted) return;
     await Navigator.push<void>(

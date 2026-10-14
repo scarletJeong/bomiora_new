@@ -5,12 +5,14 @@ import '../../../common/widgets/app_toast_overlay.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
+import '../../../shopping/screens/prescription_booking/consultation_prepare_splash.dart';
 import '../../../shopping/screens/prescription_booking/prescription_time_screen.dart';
 import '../../../shopping/widgets/prescription_booking_progress_bar.dart';
 import '../models/health_profile_model.dart';
 import 'health_profile_common.dart';
 import 'health_profile_form_session.dart';
 import 'health_profile_payload.dart';
+import 'health_profile_prescription_booking_args.dart';
 import 'health_profile_questionnaire_options.dart';
 
 /// 문진표 1~4 공통 UI (히어로 · 하단바 · 칩 · 질문 블록).
@@ -49,26 +51,30 @@ abstract final class HealthProfileFormUi {
           session.currentUser!.id,
         );
         if (!context.mounted) return;
-        final navigator = Navigator.of(context);
-        navigator.popUntil((route) {
-          if (route.isFirst) return true;
-          return !HealthProfileFormCommon.isFormRouteName(route.settings.name);
-        });
-        navigator.push(
-          MaterialPageRoute<void>(
-            builder: (context) => PrescriptionTimeScreen(
+        await openPrescriptionTimeAfterPrepare(
+          context: context,
+          booking: booking,
+          popFormRoutes: true,
+          buildNext: (items) {
+            final selectedOptions = booking.selectedOptions is List &&
+                    (booking.selectedOptions as List).isNotEmpty
+                ? booking.selectedOptions
+                : HealthProfilePrescriptionBookingArgs.optionMapsFromItems(
+                    items,
+                  );
+            return PrescriptionTimeScreen(
               productId: booking.productId,
               productName: booking.productName,
-              selectedOptions: booking.selectedOptions,
+              selectedOptions: selectedOptions,
               formData: profile != null
                   ? HealthProfilePayload.formDataFromProfile(profile)
                   : Map<String, dynamic>.from(session.formData),
               existingProfile: profile,
-              cartCtIdsForCheckout: booking.cartCtIdsForCheckout,
-              checkoutCartItems: booking.checkoutCartItems,
+              cartCtIdsForCheckout: items.map((e) => e.ctId).toList(),
+              checkoutCartItems: items,
               checkoutShippingCost: booking.checkoutShippingCost,
-            ),
-          ),
+            );
+          },
         );
         return;
       }

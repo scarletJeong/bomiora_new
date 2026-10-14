@@ -17,6 +17,7 @@ import '../../../common/widgets/centered_empty_state.dart';
 import '../../../common/widgets/app_alert_dialog.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
+import '../../../shopping/screens/prescription_booking/consultation_prepare_splash.dart';
 import '../../../shopping/screens/prescription_booking/prescription_time_screen.dart';
 import '../../../shopping/widgets/prescription_booking_progress_bar.dart';
 
@@ -890,20 +891,25 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
       await _promptInitialQuestionnaire();
       return;
     }
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => PrescriptionTimeScreen(
+    await openPrescriptionTimeAfterPrepare(
+      context: context,
+      booking: booking,
+      buildNext: (items) {
+        final selectedOptions = booking.selectedOptions is List &&
+                (booking.selectedOptions as List).isNotEmpty
+            ? booking.selectedOptions
+            : HealthProfilePrescriptionBookingArgs.optionMapsFromItems(items);
+        return PrescriptionTimeScreen(
           productId: booking.productId,
           productName: booking.productName,
-          selectedOptions: booking.selectedOptions,
+          selectedOptions: selectedOptions,
           formData: HealthProfilePayload.formDataFromProfile(profile),
           existingProfile: profile,
-          cartCtIdsForCheckout: booking.cartCtIdsForCheckout,
-          checkoutCartItems: booking.checkoutCartItems,
+          cartCtIdsForCheckout: items.map((e) => e.ctId).toList(),
+          checkoutCartItems: items,
           checkoutShippingCost: booking.checkoutShippingCost,
-        ),
-      ),
+        );
+      },
     );
   }
 

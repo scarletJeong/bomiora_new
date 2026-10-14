@@ -10,6 +10,7 @@ class PrescriptionProfileScreen extends StatelessWidget {
   final List<int>? cartCtIdsForCheckout;
   final List<CartItem>? checkoutCartItems;
   final int? checkoutShippingCost;
+  final Future<List<CartItem>>? checkoutItemsFuture;
 
   const PrescriptionProfileScreen({
     super.key,
@@ -19,6 +20,7 @@ class PrescriptionProfileScreen extends StatelessWidget {
     this.cartCtIdsForCheckout,
     this.checkoutCartItems,
     this.checkoutShippingCost,
+    this.checkoutItemsFuture,
   });
 
   @override
@@ -32,6 +34,7 @@ class PrescriptionProfileScreen extends StatelessWidget {
         cartCtIdsForCheckout: cartCtIdsForCheckout,
         checkoutCartItems: checkoutCartItems,
         checkoutShippingCost: checkoutShippingCost,
+        checkoutItemsFuture: checkoutItemsFuture,
       ),
     );
   }
