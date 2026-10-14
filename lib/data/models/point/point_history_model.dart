@@ -1,3 +1,4 @@
+import '../../../core/utils/api_date_time.dart';
 import '../../../core/utils/node_value_parser.dart';
 
 class PointHistory {
@@ -83,7 +84,8 @@ class PointHistory {
         return null;
       }
       
-      return DateTime.parse(dateStr);
+      // `...Z`는 UTC라서 .year/.day가 한국 날짜보다 하루 전으로 나온다.
+      return ApiDateTime.parseInstant(dateStr);
     } catch (_) {
       return null;
     }
