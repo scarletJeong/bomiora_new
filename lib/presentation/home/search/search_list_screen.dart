@@ -192,7 +192,11 @@ class _SearchListScreenState extends State<SearchListScreen> {
   }
 
   Widget _buildResults() {
-    return CustomScrollView(
+    final showEmpty = !_loading && _total == 0;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        CustomScrollView(
       slivers: [
         SliverToBoxAdapter(
           child: Padding(
@@ -222,9 +226,9 @@ class _SearchListScreenState extends State<SearchListScreen> {
             ),
           )
         else if (_total == 0)
-          SliverFillRemaining(
+          const SliverFillRemaining(
             hasScrollBody: false,
-            child: Center(child: _buildGlobalEmptyContent()),
+            child: SizedBox.shrink(),
           )
         else
           SliverPadding(
@@ -238,6 +242,10 @@ class _SearchListScreenState extends State<SearchListScreen> {
               ),
             ),
           ),
+      ],
+        ),
+        if (showEmpty)
+          PageCenteredEmptyOverlay(child: _buildGlobalEmptyContent()),
       ],
     );
   }

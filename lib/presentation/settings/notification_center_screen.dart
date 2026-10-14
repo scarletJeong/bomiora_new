@@ -266,7 +266,10 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                       );
                     },
                   )
-                : Column(
+                : Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Padding(
@@ -321,19 +324,8 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                                     return SingleChildScrollView(
                                       physics:
                                           const AlwaysScrollableScrollPhysics(),
-                                      child: ConstrainedBox(
-                                        constraints: BoxConstraints(
-                                          minHeight: constraints.maxHeight,
-                                        ),
-                                        child: CenteredEmptyState(
-                                          fillAvailable: true,
-                                          iconWidget:
-                                              CenteredEmptyState.assetIcon(
-                                            context,
-                                            AppAssets.emptyAlarmIcon,
-                                          ),
-                                          message: '표시할 알림이 없습니다.',
-                                        ),
+                                      child: SizedBox(
+                                        height: constraints.maxHeight,
                                       ),
                                     );
                                   },
@@ -358,6 +350,18 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                                 ),
                         ),
                       ),
+                    ],
+                      ),
+                      if (items.isEmpty)
+                        PageCenteredEmptyOverlay(
+                          child: CenteredEmptyState(
+                            iconWidget: CenteredEmptyState.assetIcon(
+                              context,
+                              AppAssets.emptyAlarmIcon,
+                            ),
+                            message: '표시할 알림이 없습니다.',
+                          ),
+                        ),
                     ],
                   ),
       ),

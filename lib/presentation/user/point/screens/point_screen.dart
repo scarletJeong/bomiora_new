@@ -164,7 +164,11 @@ class _PointScreenState extends State<PointScreen> {
   }
 
   Widget _buildContent() {
-    return Padding(
+    final showEmpty = _displayedHistory.isEmpty;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Padding(
       //padding: EdgeInsets.all(healthDp(context, 20)),
       padding: EdgeInsets.symmetric(horizontal: healthDp(context, 20), vertical: healthDp(context, 10)),
       child: Column(
@@ -173,32 +177,8 @@ class _PointScreenState extends State<PointScreen> {
           _buildAvailablePointSection(),
           SizedBox(height: healthDp(context, 20)),
           _buildHistoryTabs(),
-          if (_displayedHistory.isEmpty)
-            Expanded(
-              child: CenteredEmptyState(
-                iconWidget: CenteredEmptyState.assetIcon(
-                  context,
-                  AppAssets.emptyPointIcon,
-                ),
-                message: _currentUser == null
-                    ? '로그인 후 이용 가능합니다.'
-                    : '포인트 내역이 없습니다.',
-                trailing: _currentUser == null
-                    ? null
-                    : [
-                        Text(
-                          '첫 구매를 하거나 리뷰를 남기면\n포인트가 쌓여요',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: const Color(0xFF898686),
-                            fontSize: healthSp(context, 12),
-                            fontFamily: 'Gmarket Sans TTF',
-                            fontWeight: FontWeight.w300,
-                          ),
-                        ),
-                      ],
-              ),
-            )
+          if (showEmpty)
+            const Expanded(child: SizedBox.shrink())
           else
             Expanded(
               child: ListView(
@@ -214,6 +194,34 @@ class _PointScreenState extends State<PointScreen> {
             ),
         ],
       ),
+        ),
+        if (showEmpty)
+          PageCenteredEmptyOverlay(
+            child: CenteredEmptyState(
+              iconWidget: CenteredEmptyState.assetIcon(
+                context,
+                AppAssets.emptyPointIcon,
+              ),
+              message: _currentUser == null
+                  ? '로그인 후 이용 가능합니다.'
+                  : '포인트 내역이 없습니다.',
+              trailing: _currentUser == null
+                  ? null
+                  : [
+                      Text(
+                        '첫 구매를 하거나 리뷰를 남기면\n포인트가 쌓여요',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: const Color(0xFF898686),
+                          fontSize: healthSp(context, 12),
+                          fontFamily: 'Gmarket Sans TTF',
+                          fontWeight: FontWeight.w300,
+                        ),
+                      ),
+                    ],
+            ),
+          ),
+      ],
     );
   }
 

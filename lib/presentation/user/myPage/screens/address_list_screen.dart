@@ -347,27 +347,27 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                         );
 
                         if (_addresses.isEmpty) {
-                          return Padding(
-                            padding: contentPadding,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _buildAddAddressButton(),
-                                SizedBox(height: healthDp(context, 10)),
-                                Expanded(
-                                  child: Center(
-                                    child: CenteredEmptyState(
-                                      iconWidget: CenteredEmptyState.assetIcon(
-                                        context,
-                                        AppAssets.emptyAddressIcon,
-                                      ),
-                                      message: '등록된 배송지가 없습니다',
-                                      subtitle: '배송지를 등록해주세요',
-                                    ),
-                                  ),
+                          return Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              Padding(
+                                padding: contentPadding,
+                                child: Align(
+                                  alignment: Alignment.topCenter,
+                                  child: _buildAddAddressButton(),
                                 ),
-                              ],
-                            ),
+                              ),
+                              PageCenteredEmptyOverlay(
+                                child: CenteredEmptyState(
+                                  iconWidget: CenteredEmptyState.assetIcon(
+                                    context,
+                                    AppAssets.emptyAddressIcon,
+                                  ),
+                                  message: '등록된 배송지가 없습니다',
+                                  subtitle: '배송지를 등록해주세요',
+                                ),
+                              ),
+                            ],
                           );
                         }
 

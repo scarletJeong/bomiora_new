@@ -270,9 +270,13 @@ class _ReviewBestScreenState extends State<ReviewBestScreen> {
   }
 
   Widget _buildReviewPage(BuildContext context, double padH) {
+    final showEmpty = !_loading && _reviews.isEmpty;
     return _loading && _reviews.isEmpty
         ? const Center(child: CircularProgressIndicator(color: _pink))
-        : RefreshIndicator(
+        : Stack(
+            fit: StackFit.expand,
+            children: [
+              RefreshIndicator(
             color: _pink,
             onRefresh: () => _load(page: _page),
             child: CustomScrollView(
@@ -301,15 +305,9 @@ class _ReviewBestScreenState extends State<ReviewBestScreen> {
                     ),
                   )
                 else if (_reviews.isEmpty)
-                  SliverFillRemaining(
+                  const SliverFillRemaining(
                     hasScrollBody: false,
-                    child: CenteredEmptyState(
-                      iconWidget: CenteredEmptyState.assetIcon(
-                        context,
-                        AppAssets.emptyProductReviewIcon,
-                      ),
-                      message: '등록된 베스트 리뷰가 없습니다.',
-                    ),
+                    child: SizedBox.shrink(),
                   )
                 else
                   SliverPadding(
@@ -331,6 +329,18 @@ class _ReviewBestScreenState extends State<ReviewBestScreen> {
                   ),
               ],
             ),
+              ),
+              if (showEmpty)
+                PageCenteredEmptyOverlay(
+                  child: CenteredEmptyState(
+                    iconWidget: CenteredEmptyState.assetIcon(
+                      context,
+                      AppAssets.emptyProductReviewIcon,
+                    ),
+                    message: '등록된 베스트 리뷰가 없습니다.',
+                  ),
+                ),
+            ],
           );
   }
 

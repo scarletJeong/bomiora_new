@@ -89,7 +89,10 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
   Widget build(BuildContext context) {
     return MobileAppLayoutWrapper(
       appBar: const HealthAppBar(title: '공지사항'),
-      child: RefreshIndicator(
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          RefreshIndicator(
         onRefresh: () => _load(page: 1),
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -117,12 +120,10 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
                 hasScrollBody: false,
                 child: Center(child: CircularProgressIndicator()),
               )
-            else if (_error != null)
-              SliverToBoxAdapter(child: _buildError(context))
-            else if (_items.isEmpty)
-              SliverFillRemaining(
+            else if (_error != null || _items.isEmpty)
+              const SliverFillRemaining(
                 hasScrollBody: false,
-                child: _buildEmpty(context),
+                child: SizedBox.shrink(),
               )
             else
               SliverPadding(
@@ -142,6 +143,10 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
               ),
           ],
         ),
+          ),
+          if (!_loading && (_error != null || _items.isEmpty))
+            PageCenteredEmptyOverlay(child: _buildEmpty(context)),
+        ],
       ),
     );
   }
@@ -395,23 +400,6 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
           icon: const Icon(Icons.chevron_right_rounded),
         ),
       ],
-    );
-  }
-
-  Widget _buildError(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.symmetric(vertical: healthDp(context, 40)),
-      alignment: Alignment.center,
-      child: Text(
-        _error ?? '오류가 발생했습니다.',
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          color: _kMuted,
-          fontSize: healthSp(context, 14),
-          fontFamily: 'Gmarket Sans TTF',
-          fontWeight: FontWeight.w500,
-        ),
-      ),
     );
   }
 

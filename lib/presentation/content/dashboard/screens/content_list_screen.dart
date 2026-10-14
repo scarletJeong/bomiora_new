@@ -177,11 +177,22 @@ class _ContentListScreenState extends State<ContentListScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: ScrollRevealTopOverlay(
-                  controller: _scrollController,
-                  revealAfterOffset: healthDp(context, 80),
-                  topBar: _buildTopControls(),
-                  scrollChild: _buildContentScroll(),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    ScrollRevealTopOverlay(
+                      controller: _scrollController,
+                      revealAfterOffset: healthDp(context, 80),
+                      topBar: _buildTopControls(),
+                      scrollChild: _buildContentScroll(),
+                    ),
+                    if (!_isLoading && _posts.isEmpty)
+                      PageCenteredEmptyOverlay(
+                        child: _hasActiveSearch
+                            ? _buildEmptySearchResult(context)
+                            : _buildEmptyPostsState(context),
+                      ),
+                  ],
                 ),
               ),
               const FooterBar(),
@@ -233,11 +244,9 @@ class _ContentListScreenState extends State<ContentListScreen> {
             ),
           )
         else if (_posts.isEmpty)
-          SliverFillRemaining(
+          const SliverFillRemaining(
             hasScrollBody: false,
-            child: _hasActiveSearch
-                ? _buildEmptySearchResult(context)
-                : _buildEmptyPostsState(context),
+            child: SizedBox.shrink(),
           )
         else ...[
           SliverPadding(

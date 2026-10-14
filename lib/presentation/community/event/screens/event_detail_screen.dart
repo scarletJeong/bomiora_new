@@ -148,9 +148,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         SingleChildScrollView(
           controller: _scrollController,
           padding: EdgeInsets.fromLTRB(
-            healthDp(context, 27),
             healthDp(context, 20),
-            healthDp(context, 27),
+            healthDp(context, 20),
+            healthDp(context, 20),
             healthDp(context, 20) + navHeight,
           ),
           child: Column(
@@ -249,10 +249,10 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         ),
         Padding(
           padding: EdgeInsets.fromLTRB(
-            healthDp(context, 27),
-            healthDp(context, 8),
-            healthDp(context, 27),
-            healthDp(context, 16),
+            healthDp(context, 20),
+            healthDp(context, 5),
+            healthDp(context, 20),
+            healthDp(context, 5),
           ),
           child: Align(
             alignment: Alignment.centerRight,

@@ -336,7 +336,11 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
 
   Widget _buildBody() {
     // 필터를 스크롤 밖에 두면 세로 스크롤과 탭/칩 제스처가 경쟁하지 않음
-    return Column(
+    final showEmpty = !_isLoading && _displayedOrders.isEmpty;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         DeliveryStatusFilterBar(
@@ -361,9 +365,9 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
                     ),
                   )
                 else if (_displayedOrders.isEmpty)
-                  SliverFillRemaining(
+                  const SliverFillRemaining(
                     hasScrollBody: false,
-                    child: _buildEmptyStateContent(),
+                    child: SizedBox.shrink(),
                   )
                 else
                   SliverPadding(
@@ -391,6 +395,10 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
             ),
           ),
         ),
+      ],
+        ),
+        if (showEmpty)
+          PageCenteredEmptyOverlay(child: _buildEmptyStateContent()),
       ],
     );
   }

@@ -268,7 +268,11 @@ class _ProductListScreenState extends State<ProductListScreen> {
       );
     }
 
-    return ScrollRevealTopOverlay(
+    final showEmpty = _products.isEmpty;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        ScrollRevealTopOverlay(
       controller: _scrollController,
       revealAfterOffset: healthDp(context, 230),
       barPadding: EdgeInsets.fromLTRB(
@@ -301,15 +305,9 @@ class _ProductListScreenState extends State<ProductListScreen> {
               ),
             ),
             if (_products.isEmpty)
-              SliverFillRemaining(
+              const SliverFillRemaining(
                 hasScrollBody: false,
-                child: CenteredEmptyState(
-                  iconWidget: CenteredEmptyState.assetIcon(
-                    context,
-                    AppAssets.emptyCategoryIcon,
-                  ),
-                  message: '등록된 상품이 없습니다',
-                ),
+                child: SizedBox.shrink(),
               )
             else ...[
               SliverPadding(
@@ -355,6 +353,18 @@ class _ProductListScreenState extends State<ProductListScreen> {
           ],
         ),
       ),
+        ),
+        if (showEmpty)
+          PageCenteredEmptyOverlay(
+            child: CenteredEmptyState(
+              iconWidget: CenteredEmptyState.assetIcon(
+                context,
+                AppAssets.emptyCategoryIcon,
+              ),
+              message: '등록된 상품이 없습니다',
+            ),
+          ),
+      ],
     );
   }
 

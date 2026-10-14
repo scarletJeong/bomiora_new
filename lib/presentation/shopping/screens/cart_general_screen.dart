@@ -455,6 +455,18 @@ class _CartScreenState extends State<CartScreen> {
     }
   }
 
+  Widget _buildPageCenteredEmpty(Widget empty) {
+    final header = widget.scrollHeader;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        if (header != null)
+          Align(alignment: Alignment.topCenter, child: header),
+        PageCenteredEmptyOverlay(child: empty),
+      ],
+    );
+  }
+
   Widget _wrapWithOptionalHeader(Widget body) {
     final header = widget.scrollHeader;
     if (header == null) return body;
@@ -476,22 +488,8 @@ class _CartScreenState extends State<CartScreen> {
         const Center(child: CircularProgressIndicator()),
       );
     }
-    if (errorMessage != null) {
-      return _wrapWithOptionalHeader(
-        CenteredEmptyState(
-          iconWidget: CenteredEmptyState.assetIcon(
-            context,
-            AppAssets.emptyCartGeneralIcon,
-          ),
-          message: '장바구니에 담긴 상품이 없습니다 \n원하는 상품을 담아보세요',
-          trailing: [
-            CartEmptyShopButton(prescriptionTab: false),
-          ],
-        ),
-      );
-    }
-    if (_displayedCartItems.isEmpty) {
-      return _wrapWithOptionalHeader(
+    if (errorMessage != null || _displayedCartItems.isEmpty) {
+      return _buildPageCenteredEmpty(
         CenteredEmptyState(
           iconWidget: CenteredEmptyState.assetIcon(
             context,

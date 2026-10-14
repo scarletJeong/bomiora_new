@@ -592,7 +592,10 @@ class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
         title: '1:1 문의',
         leadingIconSize: healthDp(context, 16),
       ),
-      child: Column(
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Column(
         children: [
           _buildTabs(context),
           Expanded(child: _buildBody(context)),
@@ -633,7 +636,42 @@ class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
             ),
           ),
         ],
+          ),
+          if (!_loading &&
+              (_error != null ||
+                  (_isOrderTab ? _orderGroups.isEmpty : _items.isEmpty)))
+            PageCenteredEmptyOverlay(child: _buildSelectEmpty(context)),
+        ],
       ),
+    );
+  }
+
+  Widget _buildSelectEmpty(BuildContext context) {
+    final login = _error == '로그인이 필요합니다.';
+    final message = _error != null
+        ? (login ? '로그인 후 이용 가능합니다.' : '선택할 상품이 없습니다.')
+        : _emptyText;
+    final icon = _error != null ? AppAssets.emptyCategoryIcon : _emptyIcon;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SvgPicture.asset(
+          icon,
+          width: healthDp(context, 80),
+          height: healthDp(context, 80),
+          fit: BoxFit.contain,
+        ),
+        SizedBox(height: healthDp(context, 10)),
+        Text(
+          message,
+          style: TextStyle(
+            color: const Color(0xFFC0C0C0),
+            fontSize: healthSp(context, 14),
+            fontFamily: _font,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
     );
   }
 
@@ -709,19 +747,8 @@ class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
     if (_loading) {
       return const Center(child: CircularProgressIndicator(color: _pink));
     }
-    if (_error != null) {
-      return CenteredEmptyState(
-        iconWidget: CenteredEmptyState.assetIcon(
-          context,
-          AppAssets.emptyCategoryIcon,
-        ),
-        message: _error == '로그인이 필요합니다.'
-            ? '로그인 후 이용 가능합니다.'
-            : '선택할 상품이 없습니다.',
-      );
-    }
-
-    final hasItems = _isOrderTab ? _orderGroups.isNotEmpty : _items.isNotEmpty;
+    final hasItems = _error == null &&
+        (_isOrderTab ? _orderGroups.isNotEmpty : _items.isNotEmpty);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -759,31 +786,7 @@ class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
           ),
         ),
         if (!hasItems)
-          Expanded(
-            child: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SvgPicture.asset(
-                    _emptyIcon,
-                    width: healthDp(context, 80),
-                    height: healthDp(context, 80),
-                    fit: BoxFit.contain,
-                  ),
-                  SizedBox(height: healthDp(context, 10)),
-                  Text(
-                    _emptyText,
-                    style: TextStyle(
-                      color: const Color(0xFFC0C0C0),
-                      fontSize: healthSp(context, 14),
-                      fontFamily: _font,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          )
+          const Expanded(child: SizedBox.shrink())
         else
           Expanded(
             child: ListView(

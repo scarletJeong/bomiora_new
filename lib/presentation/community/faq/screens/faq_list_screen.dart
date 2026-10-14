@@ -108,7 +108,10 @@ class _FaqListScreenState extends State<FaqListScreen> {
       appBar: const HealthAppBar(
         title: 'FAQ',
       ),
-      child: RefreshIndicator(
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          RefreshIndicator(
         onRefresh: () => _load(page: 1),
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -139,9 +142,9 @@ class _FaqListScreenState extends State<FaqListScreen> {
                 child: Center(child: CircularProgressIndicator()),
               )
             else if (_error != null || _items.isEmpty)
-              SliverFillRemaining(
+              const SliverFillRemaining(
                 hasScrollBody: false,
-                child: _buildEmpty(),
+                child: SizedBox.shrink(),
               )
             else
               SliverPadding(
@@ -160,6 +163,10 @@ class _FaqListScreenState extends State<FaqListScreen> {
               ),
           ],
         ),
+          ),
+          if (!_loading && (_error != null || _items.isEmpty))
+            PageCenteredEmptyOverlay(child: _buildEmpty()),
+        ],
       ),
     );
   }

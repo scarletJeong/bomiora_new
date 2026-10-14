@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
 
+import '../../../../core/constants/app_assets.dart';
 import '../../../../core/utils/image_url_helper.dart';
 import '../../../../core/utils/node_value_parser.dart';
 import '../../../../data/models/announcement/announcement_model.dart';
@@ -9,6 +10,7 @@ import '../../../../data/services/content_service.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
 import '../../../common/navigation/board_list_navigation.dart';
 import '../../../common/widgets/app_network_image.dart';
+import '../../../common/widgets/centered_empty_state.dart';
 import '../../../common/widgets/article_adjacent_nav.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
@@ -99,29 +101,15 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
       appBar: const HealthAppBar(title: '공지사항'),
       child: _loading
           ? const Center(child: CircularProgressIndicator())
-          : _error != null
-              ? Center(
-                  child: Text(
-                    _error!,
-                    style: TextStyle(
-                      color: _kMuted,
-                      fontSize: healthSp(context, 14),
-                      fontFamily: 'Gmarket Sans TTF',
-                    ),
+          : _error != null || _item == null
+              ? CenteredEmptyState(
+                  iconWidget: CenteredEmptyState.assetIcon(
+                    context,
+                    AppAssets.emptyNoticeIcon,
                   ),
+                  message: '공지사항이 없습니다.',
                 )
-              : _item == null
-                  ? Center(
-                      child: Text(
-                        '공지사항을 찾을 수 없습니다.',
-                        style: TextStyle(
-                          color: _kMuted,
-                          fontSize: healthSp(context, 14),
-                          fontFamily: 'Gmarket Sans TTF',
-                        ),
-                      ),
-                    )
-                  : _buildBody(context, _item!),
+              : _buildBody(context, _item!),
     );
   }
 

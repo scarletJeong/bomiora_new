@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../../../../core/constants/app_assets.dart';
 import '../../../../core/utils/date_formatter.dart';
 import '../../../../data/models/event/event_model.dart';
 import '../../../../data/services/event_service.dart';
-import '../../../common/widgets/centered_empty_state.dart';
 import '../../../common/widgets/app_clickable.dart';
+import '../../../common/widgets/centered_empty_state.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
@@ -24,6 +25,7 @@ class _EventListScreenState extends State<EventListScreen> {
   static const Color _kPink = Color(0xFFFF5A8D);
 
   int _selectedTab = 0; // 0: 진행중, 1: 종료
+  int _visibleCount = 3;
   bool _isLoading = true;
   String? _errorMessage;
   List<EventModel> _activeEvents = [];
@@ -94,122 +96,97 @@ class _EventListScreenState extends State<EventListScreen> {
       style: const TextStyle(fontFamily: _font),
       child: MobileAppLayoutWrapper(
         appBar: const HealthAppBar(title: '이벤트'),
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(
-            healthDp(context, 27),
-            healthDp(context, 20),
-            healthDp(context, 27),
-            healthDp(context, 20),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _buildFilterTabs(context),
-              SizedBox(height: healthDp(context, 10)),
-              _buildCountRow(context, events.length),
-              SizedBox(height: healthDp(context, 10)),
-              Expanded(child: _buildBody(context, events)),
-            ],
-          ),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                healthDp(context, 20),
+                healthDp(context, 10),
+                healthDp(context, 20),
+                healthDp(context, 20),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _buildFilterTabs(context),
+                  SizedBox(height: healthDp(context, 20)),
+                  Expanded(
+                    child: _isLoading || events.isNotEmpty
+                        ? _buildBody(context, events)
+                        : const SizedBox.shrink(),
+                  ),
+                ],
+              ),
+            ),
+            if (!_isLoading && (_errorMessage != null || events.isEmpty))
+              PageCenteredEmptyOverlay(child: _buildEmptyMessage(context)),
+          ],
         ),
       ),
     );
   }
 
   Widget _buildFilterTabs(BuildContext context) {
-    Widget tab(String text, int index) {
+    Widget tab(String text, int count, int index) {
       final selected = _selectedTab == index;
-      return AppClickable(
-        onTap: () => setState(() => _selectedTab = index),
-        child: Container(
-          decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(
-                width: healthDp(context, 1),
-                color: selected ? _kPink : Colors.transparent,
+      final color = selected ? _kPink : _kMuted;
+      return Expanded(
+        child: AppClickable(
+          onTap: () => setState(() {
+            _selectedTab = index;
+            _visibleCount = 3;
+          }),
+          child: Container(
+            padding: EdgeInsets.only(bottom: healthDp(context, 10)),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(
+                  width: healthDp(context, 1),
+                  color: selected ? _kPink : _kBorder,
+                ),
               ),
             ),
-          ),
-          child: Text(
-            text,
-            style: TextStyle(
-              color: selected ? _kPink : const Color(0xFF898383),
-              fontSize: healthSp(context, 14),
-              fontFamily: _font,
-              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  text,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: healthSp(context, 14),
+                    fontFamily: _font,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  ),
+                ),
+                if (selected) ...[
+                  SizedBox(width: healthDp(context, 4)),
+                  Text(
+                    '$count',
+                    style: TextStyle(
+                      color: color,
+                      fontSize: healthSp(context, 12),
+                      fontFamily: _font,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
         ),
       );
     }
 
-    Widget divider() => Container(
-          width: healthDp(context, 0.5),
-          height: healthDp(context, 11),
-          color: const Color(0xFFD2D2D2),
-        );
+    final base = _mergeUniqueEvents();
+    final activeCount = base.where((e) => !_isEventEnded(e)).length;
+    final endedCount = base.where((e) => _isEventEnded(e)).length;
 
     return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        tab('진행중인 이벤트', 0),
-        SizedBox(width: healthDp(context, 22)),
-        divider(),
-        SizedBox(width: healthDp(context, 22)),
-        tab('종료된 이벤트', 1),
-      ],
-    );
-  }
-
-  Widget _buildCountRow(BuildContext context, int total) {
-    return Column(
-      children: [
-        Container(
-          height: healthDp(context, 1),
-          color: const Color(0x7FD2D2D2),
-        ),
-        SizedBox(height: healthDp(context, 5)),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: Text.rich(
-            TextSpan(
-              children: [
-                TextSpan(
-                  text: '총 ',
-                  style: TextStyle(
-                    color: _kMuted,
-                    fontSize: healthSp(context, 12),
-                    fontFamily: _font,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                TextSpan(
-                  text: '$total',
-                  style: TextStyle(
-                    color: _kPink,
-                    fontSize: healthSp(context, 12),
-                    fontFamily: _font,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                TextSpan(
-                  text: '건',
-                  style: TextStyle(
-                    color: _kMuted,
-                    fontSize: healthSp(context, 12),
-                    fontFamily: _font,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        SizedBox(height: healthDp(context, 5)),
-        Container(
-          height: healthDp(context, 1),
-          color: const Color(0x7FD2D2D2),
-        ),
+        tab('진행중인 이벤트', activeCount, 0),
+        tab('종료된 이벤트', endedCount, 1),
       ],
     );
   }
@@ -220,60 +197,97 @@ class _EventListScreenState extends State<EventListScreen> {
         child: CircularProgressIndicator(color: _kPink),
       );
     }
-    if (_errorMessage != null) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              _errorMessage!,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: _font,
-                fontSize: healthSp(context, 14),
-              ),
-            ),
-            SizedBox(height: healthDp(context, 12)),
-            ElevatedButton(
-              onPressed: _loadEvents,
-              child: const Text('다시 시도'),
-            ),
-          ],
-        ),
-      );
+    if (_errorMessage != null || events.isEmpty) {
+      return const SizedBox.shrink();
     }
-    if (events.isEmpty) {
-      return CenteredEmptyState(
-        iconWidget: CenteredEmptyState.assetIcon(
-          context,
-          AppAssets.emptyEventIcon,
-        ),
-        message: '이벤트가 없습니다.',
-      );
-    }
+
+    final visible = events.take(_visibleCount).toList();
+    final hasMore = events.length > visible.length;
 
     return RefreshIndicator(
       onRefresh: _loadEvents,
       child: ListView.separated(
-        itemCount: events.length,
-        padding: EdgeInsets.only(bottom: healthDp(context, 24)),
-        separatorBuilder: (_, __) => SizedBox(height: healthDp(context, 14)),
+        itemCount: visible.length + (hasMore ? 1 : 0),
+        padding: EdgeInsets.only(bottom: healthDp(context, 20)),
+        separatorBuilder: (_, __) => SizedBox(height: healthDp(context, 20)),
         itemBuilder: (context, index) {
-          final event = events[index];
-          return _buildEventCard(context, event, ended: _isEventEnded(event));
+          if (index >= visible.length) return _buildMoreButton(context);
+          return _buildEventCard(context, visible[index]);
         },
       ),
     );
   }
 
+  Widget _buildEmptyMessage(BuildContext context) {
+    final iconSz = healthDp(context, 40);
+    final emptyLabel = _selectedTab == 0
+        ? '진행중인 이벤트가 없습니다'
+        : '종료된 이벤트가 없습니다';
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SvgPicture.asset(
+          AppAssets.emptyEventIcon,
+          width: iconSz,
+          height: iconSz,
+          fit: BoxFit.contain,
+        ),
+        SizedBox(height: healthDp(context, 10)),
+        Text(
+          emptyLabel,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: const Color(0xFFC0C0C0),
+            fontSize: healthSp(context, 14),
+            fontFamily: _font,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMoreButton(BuildContext context) {
+    return AppClickable(
+      onTap: () => setState(() => _visibleCount += 3),
+      child: Container(
+        width: double.infinity,
+        height: healthDp(context, 40),
+        alignment: Alignment.center,
+        decoration: ShapeDecoration(
+          color: Colors.white,
+          shape: RoundedRectangleBorder(
+            side: BorderSide(
+              width: healthDp(context, 0.5),
+              color: _kBorder,
+            ),
+            borderRadius: BorderRadius.circular(healthDp(context, 10)),
+          ),
+        ),
+        child: Text(
+          '더보기',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: _kMuted,
+            fontSize: healthSp(context, 14),
+            fontFamily: _font,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ),
+    );
+  }
+
   //이벤트 카드
-  Widget _buildEventCard(
-    BuildContext context,
-    EventModel event, {
-    required bool ended,
-  }) {
+  Widget _buildEventCard(BuildContext context, EventModel event) {
     final imageUrl = event.getImageUrl();
-    final card = AppClickable(
+    final ended = _isEventEnded(event);
+    final radius = healthDp(context, 10);
+    final imageRadius = BorderRadius.only(
+      topLeft: Radius.circular(radius),
+      topRight: Radius.circular(radius),
+    );
+    return AppClickable(
       onTap: ended
           ? null
           : () => Navigator.push(
@@ -283,145 +297,79 @@ class _EventListScreenState extends State<EventListScreen> {
                   settings: RouteSettings(name: '/event/${event.wrId}'),
                 ),
               ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              border: Border(
-                top: BorderSide(
-                  color: _kBorder,
-                  width: healthDp(context, 0.8),
-                ),
-                left: BorderSide(
-                  color: _kBorder,
-                  width: healthDp(context, 0.8),
-                ),
-                right: BorderSide(
-                  color: _kBorder,
-                  width: healthDp(context, 0.8),
-                ),
-              ),
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(healthDp(context, 10)),
-                topRight: Radius.circular(healthDp(context, 10)),
-              ),
+      child: DecoratedBox(
+        decoration: ShapeDecoration(
+          color: Colors.white,
+          shape: RoundedRectangleBorder(
+            side: BorderSide(
+              width: healthDp(context, 1),
+              color: const Color(0x7FD2D2D2),
             ),
-            child: ClipRRect(
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(healthDp(context, 10)),
-              topRight: Radius.circular(healthDp(context, 10)),
-            ),
-            child: SizedBox(
-              height: healthDp(context, 220),
-              child: imageUrl == null
-                  ? Container(
-                      color: const Color(0xFFF4F4F4),
-                      alignment: Alignment.center,
-                      child: Icon(
-                        Icons.image_outlined,
-                        size: healthDp(context, 42),
-                        color: _kMuted,
-                      ),
-                    )
-                  : Image.network(
-                      imageUrl,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        color: const Color(0xFFF4F4F4),
-                        alignment: Alignment.center,
-                        child: Icon(
-                          Icons.broken_image_outlined,
-                          size: healthDp(context, 42),
-                          color: _kMuted,
-                        ),
-                      ),
-                    ),
-            ),
-          ),
-          ),
-          Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: healthDp(context, 12),
-              vertical: healthDp(context, 10),
-            ),
-            decoration: BoxDecoration(
-              border: Border(
-                left: BorderSide(
-                  color: _kBorder,
-                  width: healthDp(context, 0.8),
-                ),
-                right: BorderSide(
-                  color: _kBorder,
-                  width: healthDp(context, 0.8),
-                ),
-                bottom: BorderSide(
-                  color: _kBorder,
-                  width: healthDp(context, 0.8),
-                ),
-              ),
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(healthDp(context, 10)),
-                bottomRight: Radius.circular(healthDp(context, 10)),
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  event.wrSubject,
-                  style: TextStyle(
-                    color: const Color(0xFF231F20),
-                    fontSize: healthSp(context, 16),
-                    fontFamily: _font,
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: healthSp(context, -1.44),
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                SizedBox(height: healthDp(context, 10)),
-                Text(
-                  _periodText(event),
-                  style: TextStyle(
-                    color: _kMuted,
-                    fontSize: healthSp(context, 12),
-                    fontFamily: _font,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-
-    if (!ended) return card;
-
-    return Stack(
-      children: [
-        Opacity(opacity: 0.7, child: card),
-        Positioned.fill(
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.35),
-              borderRadius: BorderRadius.circular(healthDp(context, 10)),
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              '이벤트가\n종료 되었습니다.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: healthSp(context, 18),
-                fontFamily: _font,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+            borderRadius: BorderRadius.circular(radius),
           ),
         ),
-      ],
+        child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(
+                height: healthDp(context, 200),
+                foregroundDecoration: ShapeDecoration(
+                  color: ended ? Colors.black.withValues(alpha: 0.50) : null,
+                  shape: RoundedRectangleBorder(
+                    side: const BorderSide(
+                      width: 1,
+                      color: Color(0x7FD2D2D2),
+                    ),
+                    borderRadius: imageRadius,
+                  ),
+                ),
+                child: ClipRRect(
+                  borderRadius: imageRadius,
+                  child: imageUrl == null
+                      ? const ColoredBox(color: Color(0xFFF4F4F4))
+                      : Image.network(
+                          imageUrl,
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          height: healthDp(context, 200),
+                          errorBuilder: (_, __, ___) =>
+                              const ColoredBox(color: Color(0xFFF4F4F4)),
+                        ),
+                ),
+              ),
+              Padding(
+                padding: EdgeInsets.all(healthDp(context, 10)),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      event.wrSubject,
+                      style: TextStyle(
+                        color: const Color(0xFF1A1A1E),
+                        fontSize: healthSp(context, 14),
+                        fontFamily: _font,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: healthSp(context, -0.56),
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    SizedBox(height: healthDp(context, 4)),
+                    Text(
+                      _periodText(event),
+                      style: TextStyle(
+                        color: _kMuted,
+                        fontSize: healthSp(context, 10),
+                        fontFamily: _font,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
     );
   }
 

@@ -166,3 +166,33 @@ class CenteredEmptyState extends StatelessWidget {
     return Center(child: _buildContent(context));
   }
 }
+
+/// 앱바 아래 페이지 세로 가운데에 빈 안내를 올린다.
+/// 안내 밖 터치는 아래의 검색창·탭으로 통과한다.
+class PageCenteredEmptyOverlay extends StatelessWidget {
+  const PageCenteredEmptyOverlay({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned.fill(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return Stack(
+            alignment: Alignment.center,
+            children: [
+              UnconstrainedBox(
+                constrainedAxis: Axis.horizontal,
+                child: SizedBox(
+                  width: constraints.maxWidth,
+                  child: child,
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}

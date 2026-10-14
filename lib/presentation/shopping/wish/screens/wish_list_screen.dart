@@ -322,7 +322,10 @@ class _WishListScreenState extends State<WishListScreen> {
     final list = _currentTabList;
     final hasMore = _visibleCount < list.length;
 
-    return Column(
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Column(
       children: [
         Padding(
           padding: EdgeInsets.fromLTRB(
@@ -334,15 +337,7 @@ class _WishListScreenState extends State<WishListScreen> {
           child: _buildTabs(),
         ),
         if (list.isEmpty)
-          Expanded(
-            child: CenteredEmptyState(
-              iconWidget: CenteredEmptyState.assetIcon(
-                context,
-                AppAssets.emptyWishlistIcon,
-              ),
-              message: _emptyMessageForTab(),
-            ),
-          )
+          const Expanded(child: SizedBox.shrink())
         else
           Expanded(
             child: SingleChildScrollView(
@@ -365,6 +360,18 @@ class _WishListScreenState extends State<WishListScreen> {
                   ],
                 ],
               ),
+            ),
+          ),
+      ],
+        ),
+        if (list.isEmpty)
+          PageCenteredEmptyOverlay(
+            child: CenteredEmptyState(
+              iconWidget: CenteredEmptyState.assetIcon(
+                context,
+                AppAssets.emptyWishlistIcon,
+              ),
+              message: _emptyMessageForTab(),
             ),
           ),
       ],
