@@ -1,4 +1,6 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'dart:async';
+
+import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/constants/app_assets.dart';
@@ -20,6 +22,8 @@ import '../../health/health_common/widgets/health_app_bar.dart';
 import '../../shopping/widgets/supply_add_expand_block.dart';
 import '../../user/delivery/widgets/order_item_subject_groups.dart';
 import '../models/qa_inquiry_draft.dart';
+import '../models/qa_maker_resolver.dart';
+import '../widgets/qa_detail_product_card.dart';
 
 enum QaItemSelectTab { order, cancel, cart, wish }
 
@@ -48,7 +52,6 @@ class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
   List<_SelectableItem> _items = [];
   List<_OrderGroup> _orderGroups = [];
   final Set<String> _selectedKeys = {};
-  final Set<String> _expandedExtraKeys = {};
 
   QaItemSelectTab get _currentTab => QaItemSelectTab.values[_tabIndex];
 
@@ -67,7 +70,6 @@ class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
       _loading = true;
       _error = null;
       _selectedKeys.clear();
-      _expandedExtraKeys.clear();
     });
     try {
       if (_isOrderTab) {
@@ -113,6 +115,53 @@ class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
       _orderGroups = [];
       _loading = false;
     });
+    unawaited(_fillMissingMakers());
+  }
+
+  Future<void> _fillMissingMakers() async {
+    final ids = <String>{};
+    void collect(List<_SelectableItem> items) {
+      for (final item in items) {
+        final id = (item.itId ?? '').trim();
+        if (id.isNotEmpty && (item.brandName ?? '').trim().isEmpty) {
+          ids.add(id);
+        }
+        collect(item.extras);
+      }
+    }
+
+    collect(_items);
+    for (final group in _orderGroups) {
+      collect(group.products);
+    }
+    if (ids.isEmpty) return;
+    final labels = await QaMakerResolver.labelsFor(ids);
+    if (!mounted || labels.isEmpty) return;
+    setState(() {
+      _items = _applyMakers(_items, labels);
+      _orderGroups = [
+        for (final group in _orderGroups)
+          _OrderGroup(
+            odId: group.odId,
+            products: _applyMakers(group.products, labels),
+          ),
+      ];
+    });
+  }
+
+  List<_SelectableItem> _applyMakers(
+    List<_SelectableItem> items,
+    Map<String, String> labels,
+  ) {
+    return [
+      for (final item in items)
+        item.withMaker(
+          (item.brandName ?? '').trim().isNotEmpty
+              ? item.brandName
+              : labels[(item.itId ?? '').trim()],
+          extras: _applyMakers(item.extras, labels),
+        ),
+    ];
   }
 
   List<_SelectableItem> _groupCartExtras(List<_SelectableItem> items) {
@@ -222,6 +271,7 @@ class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
       _items = [];
       _loading = false;
     });
+    unawaited(_fillMissingMakers());
   }
 
   _SelectableItem _fromOrderItem(
@@ -242,6 +292,10 @@ class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
       itId: item.itId,
       productKind: item.ctKind ?? item.itKind,
       productName: title,
+      brandName: QaInquiryDraft.makerLabel(
+        itSubject: item.itSubject,
+        productName: title,
+      ),
       imageUrl: item.imageUrl,
       price: item.totalPrice > 0 ? item.totalPrice : item.ctPrice,
       odId: order.odId,
@@ -258,6 +312,13 @@ class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
   }
 
   _SelectableItem? _fromWishMap(Map<String, dynamic> m) {
+    final kind = (NodeValueParser.asString(m['wi_it_kind']) ??
+            NodeValueParser.asString(m['it_kind']) ??
+            NodeValueParser.asString(m['product_kind']) ??
+            '')
+        .trim()
+        .toLowerCase();
+    if (kind == 'content') return null;
     final itId = (NodeValueParser.asString(m['it_id']) ??
             NodeValueParser.asString(m['itId']) ??
             '')
@@ -265,18 +326,20 @@ class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
     if (itId.isEmpty) return null;
     final name = (NodeValueParser.asString(m['it_name']) ??
             NodeValueParser.asString(m['product_name']) ??
-            '상품')
+            '')
         .trim();
+    if (name.isEmpty) return null;
     return _SelectableItem(
       key: 'wish_$itId',
       itId: itId,
       productKind: NodeValueParser.asString(m['it_kind']) ??
           NodeValueParser.asString(m['product_kind']),
-      productName: name.isNotEmpty ? name : '상품',
-      brandName: NodeValueParser.asString(m['it_brand']) ??
-          NodeValueParser.asString(m['brand_name']) ??
-          NodeValueParser.asString(m['it_maker']) ??
-          NodeValueParser.asString(m['it_origin']),
+      productName: name,
+      brandName: QaInquiryDraft.makerLabel(
+        itSubject: NodeValueParser.asString(m['it_subject']) ??
+            NodeValueParser.asString(m['itSubject']),
+        productName: name,
+      ),
       imageUrl: NodeValueParser.asString(m['it_img1']) ??
           NodeValueParser.asString(m['image_url']) ??
           NodeValueParser.asString(m['it_img']),
@@ -305,10 +368,10 @@ class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
       itId: itId,
       productKind: cartItem.ctKind,
       productName: name,
-      brandName: NodeValueParser.asString(m['it_brand']) ??
-          NodeValueParser.asString(m['brand_name']) ??
-          NodeValueParser.asString(m['it_maker']) ??
-          NodeValueParser.asString(m['it_origin']),
+      brandName: QaInquiryDraft.makerLabel(
+        itSubject: cartItem.itSubject,
+        productName: name,
+      ),
       imageUrl: cartItem.imageUrl ??
           NodeValueParser.asString(m['it_img1']) ??
           NodeValueParser.asString(m['image_url']),
@@ -443,9 +506,9 @@ class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
     return QaInquiryCardItem(
       name: item.productName,
       vendor: QaInquiryDraft.vendorLabel(
-        brandName: item.brandName,
         itSubject: item.itSubject,
       ),
+      maker: (item.brandName ?? '').trim().isEmpty ? null : item.brandName!.trim(),
       imageUrl: item.imageUrl,
       price: item.price,
       qty: item.qty,
@@ -463,11 +526,7 @@ class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
     if (selected.isEmpty) return;
     final item = selected.first;
     final odId = (item.odId ?? '').trim();
-    final selectedByOrderNumber = _isOrderTab &&
-        odId.isNotEmpty &&
-        _orderGroups.any(
-          (group) => group.odId == odId && _isGroupFullySelected(group),
-        );
+    final selectedByOrderNumber = _isOrderTab && odId.isNotEmpty;
     Navigator.pop(
       context,
       QaInquiryDraft(
@@ -734,15 +793,7 @@ class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
                 if (_isOrderTab)
                   for (final group in _orderGroups) _buildOrderGroup(group)
                 else
-                  for (var i = 0; i < _items.length; i++) ...[
-                    if (i > 0)
-                      Container(
-                        width: double.infinity,
-                        height: healthDp(context, 1),
-                        color: const Color(0x7FD2D2D2),
-                      ),
-                    _buildProductRow(_items[i]),
-                  ],
+                  ..._productRows(_items),
               ],
             ),
           ),
@@ -758,21 +809,62 @@ class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
           selected: _isGroupFullySelected(group),
           onTap: () => _toggleOrderGroup(group),
         ),
-        for (var i = 0; i < group.products.length; i++) ...[
-          if (i > 0)
-            Container(
-              width: double.infinity,
-              height: healthDp(context, 1),
-              color: const Color(0x7FD2D2D2),
-            ),
-          _buildProductRow(group.products[i]),
-        ],
+        ..._productRows(group.products),
       ],
     );
   }
 
+  List<Widget> _productRows(List<_SelectableItem> items) {
+    final makers = <String>[];
+    for (final item in items) {
+      final maker = (item.brandName ?? '').trim();
+      if (maker.isEmpty || makers.contains(maker)) continue;
+      makers.add(maker);
+    }
+    if (makers.length < 2) {
+      return [
+        for (var i = 0; i < items.length; i++) ...[
+          if (i > 0) _rowDivider(context),
+          _buildProductRow(items[i]),
+        ],
+      ];
+    }
+
+    final order = <String>[];
+    final map = <String, List<_SelectableItem>>{};
+    for (final item in items) {
+      final key = (item.brandName ?? '').trim();
+      if (!map.containsKey(key)) {
+        order.add(key);
+        map[key] = [];
+      }
+      map[key]!.add(item);
+    }
+
+    final rows = <Widget>[];
+    for (final key in order) {
+      if (key.isNotEmpty) {
+        rows.add(QaManufacturerBar(name: key));
+      }
+      for (final item in map[key]!) {
+        if (rows.isNotEmpty && rows.last is! QaManufacturerBar) {
+          rows.add(_rowDivider(context));
+        }
+        rows.add(_buildProductRow(item));
+      }
+    }
+    return rows;
+  }
+
+  Widget _rowDivider(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      height: healthDp(context, 1),
+      color: const Color(0x7FD2D2D2),
+    );
+  }
+
   Widget _buildProductRow(_SelectableItem item) {
-    final expanded = _expandedExtraKeys.contains(item.key);
     final extraInset = healthDp(context, 24);
     return Container(
       width: double.infinity,
@@ -797,17 +889,7 @@ class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
             SizedBox(height: healthDp(context, 10)),
             Padding(
               padding: EdgeInsets.only(left: extraInset),
-              child: _ExtraDropdown(
-                extras: item.extras,
-                expanded: expanded,
-                onToggle: () => setState(() {
-                  if (expanded) {
-                    _expandedExtraKeys.remove(item.key);
-                  } else {
-                    _expandedExtraKeys.add(item.key);
-                  }
-                }),
-              ),
+              child: _ExtraDropdown(extras: item.extras),
             ),
           ],
         ],
@@ -863,6 +945,30 @@ class _SelectableItem {
     final opts = optionParts.where((e) => !e.startsWith('수량:')).toList();
     if (opts.isEmpty) return null;
     return opts.join(' | ');
+  }
+
+  _SelectableItem withMaker(
+    String? maker, {
+    List<_SelectableItem>? extras,
+  }) {
+    return _SelectableItem(
+      key: key,
+      itId: itId,
+      productKind: productKind,
+      productName: productName,
+      brandName: (maker ?? '').trim().isNotEmpty ? maker : brandName,
+      imageUrl: imageUrl,
+      price: price,
+      odId: odId,
+      orderDate: orderDate,
+      qty: qty,
+      optionParts: optionParts,
+      itSubject: itSubject,
+      parentItId: parentItId,
+      fromCart: fromCart,
+      showOptions: showOptions,
+      extras: extras ?? this.extras,
+    );
   }
 
   _SelectableItem copyWith({
@@ -1123,13 +1229,9 @@ class _OptionMetaRow extends StatelessWidget {
 class _ExtraDropdown extends StatelessWidget {
   const _ExtraDropdown({
     required this.extras,
-    required this.expanded,
-    required this.onToggle,
   });
 
   final List<_SelectableItem> extras;
-  final bool expanded;
-  final VoidCallback onToggle;
 
   String _optionLine(_SelectableItem extra) {
     final opts = extra.optionParts.where((e) => !e.startsWith('수량:')).toList();
@@ -1141,8 +1243,6 @@ class _ExtraDropdown extends StatelessWidget {
   Widget build(BuildContext context) {
     return SupplyAddExpandBlock(
       count: extras.length,
-      expanded: expanded,
-      onToggle: onToggle,
       children: [
         for (var i = 0; i < extras.length; i++)
           SupplyAddReadOnlyRow(

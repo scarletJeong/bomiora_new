@@ -350,16 +350,10 @@ class QaInquiryDraft {
     return null;
   }
 
-  static String? makerLabel(
-    String? maker,
-    String? brand, {
+  static String? makerLabel({
     String? itSubject,
     String? productName,
   }) {
-    final made = (maker ?? '').trim();
-    if (made.isNotEmpty) return made;
-    final named = (brand ?? '').trim();
-    if (named.isNotEmpty) return named;
     final subject = (itSubject ?? '').trim();
     final name = (productName ?? '').trim();
     if (subject.isNotEmpty && subject != name) return subject;
@@ -453,8 +447,6 @@ class QaInquiryDraft {
         itSubject: item.itSubject,
       ),
       maker: makerLabel(
-        item.itMaker,
-        item.itBrand,
         itSubject: item.itSubject,
         productName: name,
       ),

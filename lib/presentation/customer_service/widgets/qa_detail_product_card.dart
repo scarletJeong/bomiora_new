@@ -6,6 +6,7 @@ import '../../../data/models/qa/qa_inquiry_model.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../shopping/widgets/supply_add_expand_block.dart';
 import '../models/qa_inquiry_draft.dart';
+import '../models/qa_maker_resolver.dart';
 import 'qa_inquiry_type_badge.dart';
 
 class QaDetailProductCard extends StatefulWidget {
@@ -23,32 +24,83 @@ class QaDetailProductCard extends StatefulWidget {
 }
 
 class _QaDetailProductCardState extends State<QaDetailProductCard> {
-  final Set<String> _expanded = {};
-
   static const String _font = 'Gmarket Sans TTF';
 
-  List<QaInquiryCardItem> _itemsOf(QaInquiry root) {
-    final parsed = QaInquiryDraft.parseCardItems(root.wrContent);
-    if (parsed.isNotEmpty) return parsed;
+  final Map<String, String> _makerById = {};
 
-    final name = (root.subjectProductName ?? '').trim();
-    if (name.isEmpty) return const [];
-    return [
-      QaInquiryCardItem(
-        name: name,
-        vendor: QaInquiryDraft.vendorLabel(
-          brandName: root.subjectBrandName,
-          itSubject: root.subjectItSubject,
-        ),
-        imageUrl: (root.subjectImageUrl ?? '').trim().isNotEmpty
-            ? root.subjectImageUrl
-            : widget.fallbackImageUrl,
-        price: root.subjectPrice,
-        optionText: root.subjectOptionText,
-        showOptions: (root.subjectTabLabel ?? '') != '찜한상품',
-        isHerbal: false,
-      ),
-    ];
+  @override
+  void initState() {
+    super.initState();
+    _loadMakers();
+  }
+
+  Future<void> _loadMakers() async {
+    final ids = <String>{};
+    void collect(QaInquiryCardItem item) {
+      if ((item.maker ?? '').trim().isNotEmpty) return;
+      final id = QaMakerResolver.itIdFromImage(item.imageUrl);
+      if (id != null) ids.add(id);
+      for (final extra in item.extras) {
+        collect(extra);
+      }
+    }
+
+    for (final item in _itemsOf(widget.inquiry, applyResolved: false)) {
+      collect(item);
+    }
+    if (ids.isEmpty) return;
+    final labels = await QaMakerResolver.labelsFor(ids);
+    if (!mounted || labels.isEmpty) return;
+    setState(() => _makerById.addAll(labels));
+  }
+
+  List<QaInquiryCardItem> _itemsOf(
+    QaInquiry root, {
+    bool applyResolved = true,
+  }) {
+    final parsed = QaInquiryDraft.parseCardItems(root.wrContent);
+    final base = parsed.isNotEmpty
+        ? parsed
+        : () {
+            final name = (root.subjectProductName ?? '').trim();
+            if (name.isEmpty) return const <QaInquiryCardItem>[];
+            return [
+              QaInquiryCardItem(
+                name: name,
+                vendor: QaInquiryDraft.vendorLabel(
+                  brandName: root.subjectBrandName,
+                  itSubject: root.subjectItSubject,
+                ),
+                imageUrl: (root.subjectImageUrl ?? '').trim().isNotEmpty
+                    ? root.subjectImageUrl
+                    : widget.fallbackImageUrl,
+                price: root.subjectPrice,
+                optionText: root.subjectOptionText,
+                showOptions: (root.subjectTabLabel ?? '') != '찜한상품',
+                isHerbal: false,
+              ),
+            ];
+          }();
+    if (!applyResolved || _makerById.isEmpty) return base;
+    return base.map(_applyMaker).toList();
+  }
+
+  QaInquiryCardItem _applyMaker(QaInquiryCardItem item) {
+    final existing = (item.maker ?? '').trim();
+    final id = QaMakerResolver.itIdFromImage(item.imageUrl);
+    final resolved = existing.isNotEmpty ? existing : (id == null ? '' : (_makerById[id] ?? ''));
+    return QaInquiryCardItem(
+      name: item.name,
+      vendor: item.vendor,
+      maker: resolved.isEmpty ? null : resolved,
+      imageUrl: item.imageUrl,
+      price: item.price,
+      qty: item.qty,
+      optionText: item.optionText,
+      showOptions: item.showOptions,
+      isHerbal: item.isHerbal,
+      extras: item.extras.map(_applyMaker).toList(),
+    );
   }
 
   String _orderIdOf(QaInquiry root) {
@@ -182,6 +234,7 @@ class _QaDetailProductCardState extends State<QaDetailProductCard> {
               context,
               groups[gi],
               showVendorBar: showVendorBar,
+              showMakers: _distinctMakers(items).length > 1,
             ),
           ],
         ],
@@ -193,11 +246,14 @@ class _QaDetailProductCardState extends State<QaDetailProductCard> {
     BuildContext context,
     _VendorGroup group, {
     required bool showVendorBar,
+    required bool showMakers,
   }) {
+    final clusters = showMakers ? _makerClusters(group.items) : null;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (showVendorBar &&
+            !showMakers &&
             group.vendor.isNotEmpty &&
             !group.items.every((e) => e.isHerbal))
           Container(
@@ -235,17 +291,20 @@ class _QaDetailProductCardState extends State<QaDetailProductCard> {
               ],
             ),
           ),
-        for (var i = 0; i < group.items.length; i++) ...[
-          SizedBox(height: healthDp(context, 10)),
-          _buildProductBlock(context, group.items[i]),
+        for (final cluster in clusters ??
+            [_MakerCluster(maker: '', items: group.items)]) ...[
+          if (showMakers && cluster.maker.isNotEmpty)
+            QaManufacturerBar(name: cluster.maker),
+          for (var i = 0; i < cluster.items.length; i++) ...[
+            SizedBox(height: healthDp(context, 10)),
+            _buildProductBlock(context, cluster.items[i]),
+          ],
         ],
       ],
     );
   }
 
   Widget _buildProductBlock(BuildContext context, QaInquiryCardItem item) {
-    final key = '${item.name}|${item.imageUrl}|${item.price}';
-    final expanded = _expanded.contains(key);
     final parts = _optionParts(item);
     final imageUrl = (item.imageUrl ?? '').trim();
 
@@ -321,14 +380,6 @@ class _QaDetailProductCardState extends State<QaDetailProductCard> {
             SizedBox(height: healthDp(context, 14)),
             SupplyAddExpandBlock(
               count: item.extras.length,
-              expanded: expanded,
-              onToggle: () => setState(() {
-                if (expanded) {
-                  _expanded.remove(key);
-                } else {
-                  _expanded.add(key);
-                }
-              }),
               children: [
                 for (var i = 0; i < item.extras.length; i++)
                   SupplyAddReadOnlyRow(
@@ -353,6 +404,32 @@ class _QaDetailProductCardState extends State<QaDetailProductCard> {
         ],
       ),
     );
+  }
+
+  List<String> _distinctMakers(List<QaInquiryCardItem> items) {
+    final names = <String>[];
+    for (final item in items) {
+      final maker = (item.maker ?? '').trim();
+      if (maker.isEmpty || names.contains(maker)) continue;
+      names.add(maker);
+    }
+    return names;
+  }
+
+  List<_MakerCluster> _makerClusters(List<QaInquiryCardItem> items) {
+    final order = <String>[];
+    final map = <String, List<QaInquiryCardItem>>{};
+    for (final item in items) {
+      final key = (item.maker ?? '').trim();
+      if (!map.containsKey(key)) {
+        order.add(key);
+        map[key] = [];
+      }
+      map[key]!.add(item);
+    }
+    return [
+      for (final key in order) _MakerCluster(maker: key, items: map[key]!),
+    ];
   }
 
   List<String> _clinicLabels(List<QaInquiryCardItem> items) {
@@ -432,6 +509,41 @@ class _VendorGroup {
   _VendorGroup({required this.vendor, required this.items});
   final String vendor;
   final List<QaInquiryCardItem> items;
+}
+
+class _MakerCluster {
+  _MakerCluster({required this.maker, required this.items});
+  final String maker;
+  final List<QaInquiryCardItem> items;
+}
+
+/// 제조사가 서로 다를 때 상품 위에 붙는 이름 바.
+class QaManufacturerBar extends StatelessWidget {
+  const QaManufacturerBar({super.key, required this.name});
+
+  final String name;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(
+        horizontal: healthDp(context, 12),
+        vertical: healthDp(context, 6),
+      ),
+      color: const Color(0xFFFAFAFA),
+      child: Text(
+        name,
+        style: TextStyle(
+          color: const Color(0xFF737373),
+          fontSize: healthSp(context, 10),
+          fontFamily: 'Noto Sans KR',
+          fontWeight: FontWeight.w400,
+          height: 1.60,
+        ),
+      ),
+    );
+  }
 }
 
 class _HerbalBadge extends StatelessWidget {
