@@ -94,7 +94,6 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _tabsError;
   final Map<String, List<Product>> _productsByCategory = {};
   bool _categoryLoading = false;
-  String? _categoryError;
 
   @override
   void initState() {
@@ -356,7 +355,6 @@ class _HomeScreenState extends State<HomeScreen> {
           if (_tabs.isNotEmpty &&
               _cacheKeyForTab(_tabs[_selectedTabIndex]) == key) {
             _categoryLoading = false;
-            _categoryError = null;
           }
         });
       }, onError: (_, __) {});
@@ -386,7 +384,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
     setState(() {
       _categoryLoading = true;
-      _categoryError = null;
     });
 
     try {
@@ -405,7 +402,6 @@ class _HomeScreenState extends State<HomeScreen> {
       if (!mounted) return;
       setState(() {
         _categoryLoading = false;
-        _categoryError = '상품을 불러오지 못했습니다.';
       });
     }
   }
@@ -686,42 +682,33 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       );
     }
-    if (_categoryError != null && products.isEmpty) {
-      return Center(
-        child: Text(
-          _categoryError!,
-          style: TextStyle(
-            color: const Color(0x665B3F43),
-            fontSize: healthSp(context, 12),
-            fontFamily: 'Gmarket Sans TTF',
-            fontWeight: FontWeight.w400,
-          ),
-        ),
-      );
-    }
     if (products.isEmpty) {
       final iconSz = healthDp(context, 40);
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SvgPicture.asset(
-              AppAssets.emptyCategoryIcon,
-              width: iconSz,
-              height: iconSz,
-              fit: BoxFit.contain,
-            ),
-            SizedBox(height: healthDp(context, 8)),
-            Text(
-              '등록된 상품이 없습니다.',
-              style: TextStyle(
-                color: const Color(0x665B3F43),
-                fontSize: healthSp(context, 12),
-                fontFamily: 'Gmarket Sans TTF',
-                fontWeight: FontWeight.w400,
+      return SizedBox(
+        height: cardH,
+        child: Align(
+          alignment: const Alignment(0, -0.72),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SvgPicture.asset(
+                AppAssets.emptyCategoryIcon,
+                width: iconSz,
+                height: iconSz,
+                fit: BoxFit.contain,
               ),
-            ),
-          ],
+              SizedBox(height: healthDp(context, 8)),
+              Text(
+                '등록된 상품이 없습니다.',
+                style: TextStyle(
+                  color: const Color(0x665B3F43),
+                  fontSize: healthSp(context, 12),
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }

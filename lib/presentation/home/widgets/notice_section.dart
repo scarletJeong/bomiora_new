@@ -48,7 +48,9 @@ class NoticeSection extends StatelessWidget {
                 else if (items.isEmpty)
                   Padding(
                     padding: EdgeInsets.symmetric(vertical: healthDp(context, 12)),
-                    child: Row(
+                    child: Center(
+                      child: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         SvgPicture.asset(
                           AppAssets.emptyNoticeIcon,
@@ -67,6 +69,7 @@ class NoticeSection extends StatelessWidget {
                           ),
                         ),
                       ],
+                    ),
                     ),
                   )
                 else

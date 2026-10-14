@@ -121,6 +121,7 @@ class _ReviewSectionState extends State<ReviewSection> {
           ),
           SizedBox(height: layout.titleToGridGap),
           _buildGridBody(context, layout),
+          if (!_loading && _reviews.isNotEmpty) ...[
           SizedBox(height: healthDp(context, 48)),
           AppClickable(
             onTap: () {
@@ -178,6 +179,7 @@ class _ReviewSectionState extends State<ReviewSection> {
               ],
             ),
           ),
+          ],
           SizedBox(height: healthDp(context, 48)),
         ],
       ),
@@ -215,9 +217,10 @@ class _ReviewSectionState extends State<ReviewSection> {
               Text(
                 '등록된 리뷰가 없습니다.',
                 style: TextStyle(
-                  color: const Color(0x995B3F43),
-                  fontSize: healthSp(context, 13),
+                  color: const Color(0x665B3F43),
+                  fontSize: healthSp(context, 12),
                   fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ],

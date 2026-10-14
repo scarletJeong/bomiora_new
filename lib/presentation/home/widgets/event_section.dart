@@ -57,12 +57,14 @@ class EventSection extends StatelessWidget {
                 else if (topItems.isEmpty)
                   Padding(
                     padding: EdgeInsets.symmetric(vertical: healthDp(context, 12)),
-                    child: Row(
+                    child: Center(
+                      child: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         SvgPicture.asset(
                           AppAssets.emptyEventIcon,
-                          width: healthDp(context, 28),
-                          height: healthDp(context, 28),
+                          width: healthDp(context, 16),
+                          height: healthDp(context, 16),
                           fit: BoxFit.contain,
                         ),
                         SizedBox(width: healthDp(context, 8)),
@@ -76,6 +78,7 @@ class EventSection extends StatelessWidget {
                           ),
                         ),
                       ],
+                    ),
                     ),
                   )
                 else
