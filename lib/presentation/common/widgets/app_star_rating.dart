@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 /// 리뷰 별점 공통 색 (노랑)
@@ -37,11 +39,108 @@ class AppStarIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Icon(
-      filled ? Icons.star_rounded : Icons.star_border_rounded,
-      size: size,
-      color: color,
+    return _AppStarGlyph(size: size, color: color, fill: filled ? 1 : 0);
+  }
+}
+
+/// 채움 0~1. 빈 부분은 얇은 테두리만 그린다.
+class _AppStarGlyph extends StatelessWidget {
+  final double size;
+  final Color color;
+  final double fill;
+
+  const _AppStarGlyph({
+    required this.size,
+    required this.color,
+    required this.fill,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      size: Size.square(size),
+      painter: _ThinStarPainter(color: color, fill: fill.clamp(0.0, 1.0)),
     );
+  }
+}
+
+class _ThinStarPainter extends CustomPainter {
+  final Color color;
+  final double fill;
+
+  const _ThinStarPainter({required this.color, required this.fill});
+
+  static Path _starPath(Size size) {
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+    final outer = size.shortestSide / 2;
+    final inner = outer * 0.42;
+    final points = List<Offset>.generate(10, (i) {
+      final radius = i.isEven ? outer : inner;
+      final angle = -math.pi / 2 + i * math.pi / 5;
+      return Offset(
+        cx + radius * math.cos(angle),
+        cy + radius * math.sin(angle),
+      );
+    });
+    final corner = size.shortestSide * 0.16;
+    final path = Path();
+    final count = points.length;
+    for (var i = 0; i < count; i++) {
+      final curr = points[i];
+      final prev = points[(i - 1 + count) % count];
+      final next = points[(i + 1) % count];
+      final toPrev = prev - curr;
+      final toNext = next - curr;
+      final lenPrev = toPrev.distance;
+      final lenNext = toNext.distance;
+      final cut = math.min(corner, math.min(lenPrev, lenNext) * 0.45);
+      final start = curr + toPrev / lenPrev * cut;
+      final end = curr + toNext / lenNext * cut;
+      if (i == 0) {
+        path.moveTo(start.dx, start.dy);
+      } else {
+        path.lineTo(start.dx, start.dy);
+      }
+      path.quadraticBezierTo(curr.dx, curr.dy, end.dx, end.dy);
+    }
+    path.close();
+    return path;
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final stroke = (size.shortestSide * 0.045).clamp(0.7, 1.15);
+    final inset = stroke / 2;
+    final path = _starPath(Size(size.width - stroke, size.height - stroke));
+    canvas.save();
+    canvas.translate(inset, inset);
+    if (fill >= 1 - 1e-9) {
+      canvas.drawPath(path, Paint()..color = color);
+    } else {
+      canvas.drawPath(
+        path,
+        Paint()
+          ..color = color
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = stroke
+          ..strokeJoin = StrokeJoin.round
+          ..strokeCap = StrokeCap.round,
+      );
+      if (fill > 0) {
+        final innerW = size.width - stroke;
+        canvas.save();
+        canvas.clipRect(Rect.fromLTWH(0, 0, innerW * fill, size.height));
+        canvas.drawPath(path, Paint()..color = color);
+        canvas.restore();
+      }
+    }
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant _ThinStarPainter oldDelegate) {
+    return oldDelegate.color != color || oldDelegate.fill != fill;
   }
 }
 
@@ -79,41 +178,7 @@ class AppStarRating extends StatelessWidget {
     required double size,
     Color color = kAppStarYellow,
   }) {
-    final f = fill.clamp(0.0, 1.0);
-    if (f <= 0) {
-      return Icon(Icons.star_border_rounded, color: color, size: size);
-    }
-    if (f >= 1 - 1e-9) {
-      return Icon(Icons.star_rounded, color: color, size: size);
-    }
-    return SizedBox(
-      width: size,
-      height: size,
-      child: Stack(
-        alignment: Alignment.center,
-        clipBehavior: Clip.none,
-        children: [
-          Icon(Icons.star_border_rounded, color: color, size: size),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: ClipRect(
-              child: SizedBox(
-                width: size * f,
-                height: size,
-                child: OverflowBox(
-                  alignment: Alignment.centerLeft,
-                  minWidth: size,
-                  maxWidth: size,
-                  minHeight: size,
-                  maxHeight: size,
-                  child: Icon(Icons.star_rounded, color: color, size: size),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+    return _AppStarGlyph(size: size, color: color, fill: fill);
   }
 
   @override
@@ -124,10 +189,14 @@ class AppStarRating extends StatelessWidget {
       children: List.generate(5, (i) {
         final star = preciseFill
             ? fractionalStar(fill: value - i, size: starSize, color: color)
-            : Icon(
-                starIconFor(value, i),
-                color: color,
+            : _AppStarGlyph(
                 size: starSize,
+                color: color,
+                fill: value >= i + 1 - 1e-9
+                    ? 1
+                    : value >= i + 0.5 - 1e-9
+                        ? 0.5
+                        : 0,
               );
         if (gap <= 0 || i == 4) return star;
         return Padding(
@@ -203,10 +272,14 @@ class AppInteractiveStarRating extends StatelessWidget {
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
-                    Icon(
-                      AppStarRating.starIconFor(rating, i),
-                      color: color,
+                    _AppStarGlyph(
                       size: starSize,
+                      color: color,
+                      fill: rating >= i + 1 - 1e-9
+                          ? 1
+                          : rating >= i + 0.5 - 1e-9
+                              ? 0.5
+                              : 0,
                     ),
                     Row(
                       children: [
