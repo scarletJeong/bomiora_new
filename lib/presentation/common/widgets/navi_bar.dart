@@ -71,6 +71,7 @@ class FooterBar extends StatelessWidget {
     required double iconWidthBase,
     required double iconHeightBase,
     VoidCallback? onTap,
+    double nudgeXBase = 0,
   }) {
     return Expanded(
       child: Material(
@@ -78,37 +79,42 @@ class FooterBar extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(healthDp(context, 8)),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              SizedBox(
-                height: healthDp(context, 19.12),
-                child: Center(
-                  child: SvgPicture.asset(
-                    iconAsset,
-                    width: healthDp(context, iconWidthBase),
-                    height: healthDp(context, iconHeightBase),
-                    fit: BoxFit.contain,
-                    colorFilter:
-                        const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+          child: Transform.translate(
+            offset: Offset(healthDp(context, nudgeXBase), 0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(
+                  height: healthDp(context, 19.12),
+                  child: Center(
+                    child: SvgPicture.asset(
+                      iconAsset,
+                      width: healthDp(context, iconWidthBase),
+                      height: healthDp(context, iconHeightBase),
+                      fit: BoxFit.contain,
+                      colorFilter: const ColorFilter.mode(
+                        Colors.white,
+                        BlendMode.srcIn,
+                      ),
+                    ),
                   ),
                 ),
-              ),
-              SizedBox(height: healthDp(context, 4)),
-              Text(
-                label,
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: healthSp(context, 10),
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w500,
+                SizedBox(height: healthDp(context, 4)),
+                Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: healthSp(context, 10),
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -157,6 +163,7 @@ class FooterBar extends StatelessWidget {
             iconAsset: AppAssets.naviIcon2,
             iconWidthBase: 18,
             iconHeightBase: 14.22,
+            nudgeXBase: -6,
             onTap: () => _go(context, '/health'),
           ),
           _item(
