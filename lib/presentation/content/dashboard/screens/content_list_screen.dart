@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../../core/constants/app_assets.dart';
 import '../../../../core/utils/image_url_helper.dart';
@@ -195,19 +194,20 @@ class _ContentListScreenState extends State<ContentListScreen> {
   Widget _buildTopControls() {
     return Padding(
       padding: EdgeInsets.fromLTRB(
-        healthDp(context, 27),
-        healthDp(context, 10),
-        healthDp(context, 27),
-        healthDp(context, 10),
+        healthDp(context, 20),
+        healthDp(context, 20),
+        healthDp(context, 20),
+        0,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          _buildSearchBox(),
+          SizedBox(height: healthDp(context, 20)),
           _buildCategoryChips(_categories),
           SizedBox(height: healthDp(context, 10)),
-          _buildSearchBox(),
-          SizedBox(height: healthDp(context, 10)),
           _buildCountRow(),
+          SizedBox(height: healthDp(context, 20)),
         ],
       ),
     );
@@ -241,12 +241,12 @@ class _ContentListScreenState extends State<ContentListScreen> {
         else ...[
           SliverPadding(
             padding: EdgeInsets.symmetric(
-              horizontal: healthDp(context, 27),
+              horizontal: healthDp(context, 20),
             ),
             sliver: SliverList(
               delegate: SliverChildBuilderDelegate(
                 (context, index) => Padding(
-                  padding: EdgeInsets.only(bottom: healthDp(context, 20)),
+                  padding: EdgeInsets.only(bottom: healthDp(context, 32)),
                   child: _buildListCard(context, _posts[index]),
                 ),
                 childCount: _posts.length,
@@ -256,14 +256,14 @@ class _ContentListScreenState extends State<ContentListScreen> {
           if (_showLoadMore)
             SliverPadding(
               padding: EdgeInsets.fromLTRB(
-                healthDp(context, 27),
-                healthDp(context, 4),
-                healthDp(context, 27),
+                healthDp(context, 20),
+                0,
+                healthDp(context, 20),
                 0,
               ),
               sliver: SliverToBoxAdapter(child: _buildLoadMoreButton()),
             ),
-          SliverToBoxAdapter(child: SizedBox(height: healthDp(context, 124))),
+          SliverToBoxAdapter(child: SizedBox(height: healthDp(context, 48))),
           const SliverToBoxAdapter(child: AppFooter()),
         ],
       ],
@@ -274,7 +274,7 @@ class _ContentListScreenState extends State<ContentListScreen> {
     final tabs = ['전체', ...categories];
 
     return SizedBox(
-      height: healthDp(context, 36),
+      height: healthDp(context, 30),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Padding(
@@ -283,7 +283,7 @@ class _ContentListScreenState extends State<ContentListScreen> {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               for (var i = 0; i < tabs.length; i++) ...[
-                if (i > 0) SizedBox(width: healthDp(context, i == 1 ? 10 : 14)),
+                if (i > 0) SizedBox(width: healthDp(context, 10)),
                 _buildTabChip(
                   label: tabs[i],
                   selected: i == _tabIndex,
@@ -389,64 +389,45 @@ class _ContentListScreenState extends State<ContentListScreen> {
   }
 
   Widget _buildSearchBox() {
-    final iconSz = healthDp(context, 18);
     return Container(
       width: double.infinity,
-      height: healthDp(context, 38),
-      padding: EdgeInsets.symmetric(horizontal: healthDp(context, 12)),
+      height: healthDp(context, 46.15),
+      padding: EdgeInsets.symmetric(horizontal: healthDp(context, 14)),
       decoration: ShapeDecoration(
         shape: RoundedRectangleBorder(
           side: BorderSide(
             width: healthDp(context, 1),
             color: const Color(0xFFD2D2D2),
           ),
-          borderRadius: BorderRadius.circular(healthDp(context, 20)),
+          borderRadius: BorderRadius.circular(healthDp(context, 12)),
         ),
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: _searchController,
-              onSubmitted: (_) => _onSearchSubmitted(),
-              decoration: InputDecoration(
-                hintText: '검색',
-                hintStyle: TextStyle(
-                  color: _textMuted,
-                  fontSize: healthSp(context, 14),
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w300,
-                ),
-                border: InputBorder.none,
-                enabledBorder: InputBorder.none,
-                focusedBorder: InputBorder.none,
-                hoverColor: Colors.transparent,
-                isDense: true,
-                contentPadding: EdgeInsets.zero,
-              ),
-              style: TextStyle(
-                color: _textDark,
-                fontSize: healthSp(context, 14),
-                fontFamily: 'Gmarket Sans TTF',
-                fontWeight: FontWeight.w500,
-              ),
-              textInputAction: TextInputAction.search,
-            ),
+      alignment: Alignment.centerLeft,
+      child: TextField(
+        controller: _searchController,
+        onSubmitted: (_) => _onSearchSubmitted(),
+        decoration: InputDecoration(
+          hintText: '검색',
+          hintStyle: TextStyle(
+            color: _textMuted,
+            fontSize: healthSp(context, 14),
+            fontFamily: 'Gmarket Sans TTF',
+            fontWeight: FontWeight.w300,
           ),
-          GestureDetector(
-            onTap: _onSearchSubmitted,
-            behavior: HitTestBehavior.opaque,
-            child: Padding(
-              padding: EdgeInsets.all(healthDp(context, 4)),
-              child: SvgPicture.asset(
-                AppAssets.searchIcon,
-                width: iconSz,
-                height: iconSz,
-                fit: BoxFit.contain,
-              ),
-            ),
-          ),
-        ],
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
+          hoverColor: Colors.transparent,
+          isDense: true,
+          contentPadding: EdgeInsets.zero,
+        ),
+        style: TextStyle(
+          color: _textDark,
+          fontSize: healthSp(context, 14),
+          fontFamily: 'Gmarket Sans TTF',
+          fontWeight: FontWeight.w500,
+        ),
+        textInputAction: TextInputAction.search,
       ),
     );
   }
@@ -474,7 +455,7 @@ class _ContentListScreenState extends State<ContentListScreen> {
                   color: const Color(0xFFFF5A8D),
                   fontSize: healthSp(context, 12),
                   fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
               TextSpan(text: '건', style: countStyle),
@@ -528,7 +509,7 @@ class _ContentListScreenState extends State<ContentListScreen> {
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: const Color(0xFF898686),
-                    fontSize: healthSp(context, 16),
+                    fontSize: healthSp(context, 14),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w500,
                   ),
@@ -590,20 +571,17 @@ class _ContentListScreenState extends State<ContentListScreen> {
               ),
             ),
           ),
-          Padding(
-            padding: EdgeInsets.symmetric(vertical: healthDp(context, 10)),
-            child: Text(
-              title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: _textDark,
-                fontSize: healthSp(context, 14),
-                fontFamily: 'Gmarket Sans TTF',
-                fontWeight: FontWeight.w500,
-                height: 0.94,
-                letterSpacing: -1.26,
-              ),
+          SizedBox(height: healthDp(context, 12)),
+          Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: _textDark,
+              fontSize: healthSp(context, 14),
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w500,
+              letterSpacing: healthSp(context, -1.26),
             ),
           ),
         ],
