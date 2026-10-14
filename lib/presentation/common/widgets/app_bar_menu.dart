@@ -15,7 +15,7 @@ import 'cart_dropdown_menu.dart';
 /// 홈: 검색·알림·장바구니 / 마이페이지: 장바구니·설정
 enum AppBarMenuActionsStyle { home, myPage }
 
-/// [HealthAppBar]와 동일한 전체 높이(375 기준 60 = 상하 18 + 아이콘 24).
+/// [HealthAppBar]와 동일한 전체 높이(375 기준 60, 패널 폭에 맞춰 최대 90).
 /// 좌우 패딩 20, 메뉴 16×12, 우측 아이콘 20, 아이콘 간격 8, 로고 94.09×20.
 /// 로고는 화면 가로 정중앙. 길이는 [healthDp]로 스케일합니다.
 class AppBarMenu extends StatefulWidget
