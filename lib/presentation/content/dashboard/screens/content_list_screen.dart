@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../../core/constants/app_assets.dart';
 import '../../../../core/utils/image_url_helper.dart';
@@ -195,7 +196,7 @@ class _ContentListScreenState extends State<ContentListScreen> {
     return Padding(
       padding: EdgeInsets.fromLTRB(
         healthDp(context, 20),
-        healthDp(context, 20),
+        healthDp(context, 0),
         healthDp(context, 20),
         0,
       ),
@@ -389,6 +390,7 @@ class _ContentListScreenState extends State<ContentListScreen> {
   }
 
   Widget _buildSearchBox() {
+    final iconSz = healthDp(context, 18);
     return Container(
       width: double.infinity,
       height: healthDp(context, 46.15),
@@ -402,32 +404,50 @@ class _ContentListScreenState extends State<ContentListScreen> {
           borderRadius: BorderRadius.circular(healthDp(context, 12)),
         ),
       ),
-      alignment: Alignment.centerLeft,
-      child: TextField(
-        controller: _searchController,
-        onSubmitted: (_) => _onSearchSubmitted(),
-        decoration: InputDecoration(
-          hintText: '검색',
-          hintStyle: TextStyle(
-            color: _textMuted,
-            fontSize: healthSp(context, 14),
-            fontFamily: 'Gmarket Sans TTF',
-            fontWeight: FontWeight.w300,
+      alignment: Alignment.center,
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _searchController,
+              onSubmitted: (_) => _onSearchSubmitted(),
+              cursorColor: _pink,
+              decoration: InputDecoration(
+                hintText: '검색',
+                hintStyle: TextStyle(
+                  color: _textMuted,
+                  fontSize: healthSp(context, 14),
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w300,
+                ),
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                hoverColor: Colors.transparent,
+                isDense: true,
+                contentPadding: EdgeInsets.zero,
+              ),
+              style: TextStyle(
+                color: _textDark,
+                fontSize: healthSp(context, 14),
+                fontFamily: 'Gmarket Sans TTF',
+                fontWeight: FontWeight.w500,
+              ),
+              textInputAction: TextInputAction.search,
+            ),
           ),
-          border: InputBorder.none,
-          enabledBorder: InputBorder.none,
-          focusedBorder: InputBorder.none,
-          hoverColor: Colors.transparent,
-          isDense: true,
-          contentPadding: EdgeInsets.zero,
-        ),
-        style: TextStyle(
-          color: _textDark,
-          fontSize: healthSp(context, 14),
-          fontFamily: 'Gmarket Sans TTF',
-          fontWeight: FontWeight.w500,
-        ),
-        textInputAction: TextInputAction.search,
+          SizedBox(width: healthDp(context, 5)),
+          GestureDetector(
+            onTap: _onSearchSubmitted,
+            behavior: HitTestBehavior.opaque,
+            child: SvgPicture.asset(
+              AppAssets.searchIcon,
+              width: iconSz,
+              height: iconSz,
+              fit: BoxFit.contain,
+            ),
+          ),
+        ],
       ),
     );
   }
