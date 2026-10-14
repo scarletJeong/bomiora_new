@@ -274,7 +274,7 @@ class _ContentListScreenState extends State<ContentListScreen> {
     final tabs = ['전체', ...categories];
 
     return SizedBox(
-      height: healthDp(context, 30),
+      height: healthDp(context, 36),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Padding(
@@ -312,7 +312,7 @@ class _ContentListScreenState extends State<ContentListScreen> {
         child: Container(
           padding: EdgeInsets.symmetric(
             horizontal: healthDp(context, 10),
-            vertical: healthDp(context, 2),
+            vertical: healthDp(context, 4),
           ),
           decoration: ShapeDecoration(
             color: _pink,
@@ -327,7 +327,7 @@ class _ContentListScreenState extends State<ContentListScreen> {
               color: Colors.white,
               fontSize: healthSp(context, 14),
               fontFamily: 'Gmarket Sans TTF',
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ),

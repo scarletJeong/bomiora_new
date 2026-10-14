@@ -312,23 +312,40 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
                 SingleChildScrollView(
                   controller: _scrollController,
                   padding: EdgeInsets.fromLTRB(
-                    healthDp(context, 27),
-                    healthDp(context, 10),
-                    healthDp(context, 27),
+                    healthDp(context, 20),
+                    healthDp(context, 20),
+                    healthDp(context, 20),
                     _articleScrollBottomPadding(context),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      if (_categoryLabel.trim().isNotEmpty) ...[
+                        Padding(
+                          padding: EdgeInsets.symmetric(
+                            vertical: healthDp(context, 5),
+                          ),
+                          child: Text(
+                            _categoryLabel.trim(),
+                            textAlign: TextAlign.start,
+                            style: TextStyle(
+                              color: const Color(0xFF1A1A1A),
+                              fontSize: healthSp(context, 16),
+                              fontFamily: 'Gmarket Sans TTF',
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: healthDp(context, 20)),
+                      ],
                       _buildArticleHeader(context),
                       SizedBox(height: healthDp(context, 20)),
                       Container(
                         height: healthDp(context, 1),
                         color: const Color(0x7FD2D2D2),
                       ),
-                      SizedBox(height: healthDp(context, 20)),
                       if (!_isLoading) ...[
-                        SizedBox(height: healthDp(context, 16)),
+                        SizedBox(height: healthDp(context, 20)),
                         _buildThumbnail(context),
                         _buildBodyContent(context),
                       ],
@@ -348,6 +365,11 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
                   ),
                 ArticleAdjacentNavOverlay(
                   controller: _scrollController,
+                  horizontalPaddingBase: 20,
+                  verticalPaddingBase: 20,
+                  iconBase: 16,
+                  labelFontBase: 13,
+                  labelTitleGapBase: 4,
                   previous: _prevId != null &&
                           (_prevTitle?.trim().isNotEmpty ?? false)
                       ? ArticleAdjacentItem(
@@ -366,18 +388,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
               ],
             ),
           ),
-          if (_currentContentId != null)
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Padding(
-                  padding:
-                      EdgeInsets.symmetric(horizontal: healthDp(context, 27)),
-                  child: _buildDetailPostNavActions(context),
-                ),
-              ],
-            ),
+          if (_currentContentId != null) _buildDetailPostNavActions(context),
         ],
       ),
     );
@@ -430,8 +441,19 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.symmetric(vertical: healthDp(context, 5)),
-      color: Colors.white,
+      padding: EdgeInsets.symmetric(
+        horizontal: healthDp(context, 20),
+        vertical: healthDp(context, 10),
+      ),
+      decoration: ShapeDecoration(
+        color: Colors.white,
+        shape: RoundedRectangleBorder(
+          side: BorderSide(
+            width: healthDp(context, 1),
+            color: const Color(0x33E0BEC4),
+          ),
+        ),
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -440,41 +462,36 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
                 ? null
                 : _toggleWish,
             behavior: HitTestBehavior.opaque,
-            child: Padding(
-              padding: EdgeInsets.all(healthDp(context, 0)),
-              child: _buildActionIcon(
-                size: iconSz,
-                filled: wished,
-                outlineAsset: AppAssets.heartIcon,
-                filledAsset: AppAssets.heartIconFilled,
-                filledSvg: _heartFilledSvg,
-              ),
+            child: _buildActionIcon(
+              size: iconSz,
+              filled: wished,
+              outlineAsset: AppAssets.heartIcon,
+              filledAsset: AppAssets.heartIconFilled,
+              filledSvg: _heartFilledSvg,
             ),
           ),
-          SizedBox(width: healthDp(context, 10)),
+          SizedBox(width: healthDp(context, 16)),
           GestureDetector(
             onTap: (_recommendBusy || _currentContentId == null)
                 ? null
                 : _onRecommend,
             behavior: HitTestBehavior.opaque,
-            child: Padding(
-              padding: EdgeInsets.all(healthDp(context, 0)),
-              child: _buildActionIcon(
-                size: iconSz,
-                filled: recommended,
-                outlineAsset: AppAssets.thumbUpIcon,
-                filledAsset: AppAssets.thumbUpIconFilled,
-                filledSvg: _thumbFilledSvg,
-              ),
+            child: _buildActionIcon(
+              size: iconSz,
+              filled: recommended,
+              outlineAsset: AppAssets.thumbUpIcon,
+              filledAsset: AppAssets.thumbUpIconFilled,
+              filledSvg: _thumbFilledSvg,
             ),
           ),
           if (_recommendCount > 0) ...[
-            SizedBox(width: healthDp(context, 3)),
+            SizedBox(width: healthDp(context, 4)),
             Text(
               '$_recommendCount',
+              textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: healthSp(context, 14),
-                color: _textMuted,
+                color: _pink,
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: FontWeight.w500,
               ),
@@ -490,17 +507,17 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
             behavior: HitTestBehavior.opaque,
             child: Container(
               padding: EdgeInsets.symmetric(
-                horizontal: healthDp(context, 15),
-                vertical: healthDp(context, 6),
+                horizontal: healthDp(context, 20),
+                vertical: healthDp(context, 12),
               ),
               decoration: BoxDecoration(
                 color: _pink,
-                borderRadius: BorderRadius.circular(healthDp(context, 4)),
+                borderRadius: BorderRadius.circular(healthDp(context, 8)),
               ),
               child: Text(
                 '목록',
                 style: TextStyle(
-                  fontSize: healthSp(context, 14),
+                  fontSize: healthSp(context, 15),
                   color: Colors.white,
                   fontFamily: 'Gmarket Sans TTF',
                   fontWeight: FontWeight.w500,
@@ -539,9 +556,9 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
     var rows = 0;
     if (_hasPreviousArticle) rows++;
     if (_hasNextArticle) rows++;
-    final base = healthDp(context, 20);
+    final base = healthDp(context, 40);
     if (rows == 0) return base;
-    final rowH = healthDp(context, 12) * 2 + healthDp(context, 22);
+    final rowH = healthDp(context, 20) * 2 + healthDp(context, 16);
     final borders = healthDp(context, 1) * (rows + 1);
     return base + rowH * rows + borders;
   }
@@ -565,17 +582,19 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
     if (_bodyHtml.contains(raw)) return const SizedBox.shrink();
 
     return Padding(
-      padding: EdgeInsets.only(bottom: healthDp(context, 16)),
+      padding: EdgeInsets.only(bottom: healthDp(context, 24)),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final width = constraints.maxWidth;
+          final height = healthDp(context, 200);
           return ClipRRect(
             borderRadius: BorderRadius.circular(healthDp(context, 10)),
             child: AppNetworkImage(
               url: url,
               width: width,
-              fit: BoxFit.fitWidth,
-              alignment: Alignment.topCenter,
+              height: height,
+              fit: BoxFit.cover,
+              alignment: Alignment.center,
               decodeWidthLogical: width,
               preferHtmlElementOnWeb: false,
               errorBuilder: (_, __, ___) => const SizedBox.shrink(),
@@ -602,15 +621,15 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
           fontSize: healthSp(context, 14),
           fontFamily: 'Gmarket Sans TTF',
           fontWeight: FontWeight.w500,
-          height: 2.08,
-          letterSpacing: healthSp(context, -1.08),
+          height: 1.43,
+          letterSpacing: healthSp(context, -0.56),
         ),
       );
     }
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final hPad = healthDp(context, 27);
+        final hPad = healthDp(context, 20);
         final maxWidth = constraints.maxWidth.isFinite
             ? constraints.maxWidth
             : MediaQuery.of(context).size.width - hPad * 2;
@@ -619,7 +638,8 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
           fontFamily: 'Gmarket Sans TTF',
           fontSize: FontSize(bodyFontSize),
           fontWeight: FontWeight.w500,
-          lineHeight: const LineHeight(1.8),
+          lineHeight: const LineHeight(1.43),
+          letterSpacing: healthSp(context, -0.56),
           textAlign: TextAlign.center,
           color: _textDark,
           whiteSpace: WhiteSpace.pre,

@@ -22,12 +22,22 @@ class ArticleAdjacentNav extends StatelessWidget {
   final ArticleAdjacentItem? previous;
   final ArticleAdjacentItem? next;
   final bool showBottomBorder;
+  final double horizontalPaddingBase;
+  final double verticalPaddingBase;
+  final double iconBase;
+  final double labelFontBase;
+  final double labelTitleGapBase;
 
   const ArticleAdjacentNav({
     super.key,
     this.previous,
     this.next,
     this.showBottomBorder = true,
+    this.horizontalPaddingBase = 27,
+    this.verticalPaddingBase = 12,
+    this.iconBase = 20,
+    this.labelFontBase = 14,
+    this.labelTitleGapBase = 10,
   });
 
   bool get hasItems => previous != null || next != null;
@@ -91,26 +101,26 @@ class ArticleAdjacentNav extends StatelessWidget {
       onTap: item.onTap,
       child: Padding(
         padding: EdgeInsets.symmetric(
-          horizontal: healthDp(context, 27),
-          vertical: healthDp(context, 12),
+          horizontal: healthDp(context, horizontalPaddingBase),
+          vertical: healthDp(context, verticalPaddingBase),
         ),
         child: Row(
           children: [
             Icon(
               isPrev ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-              size: healthDp(context, 20),
+              size: healthDp(context, iconBase),
               color: _kMuted,
             ),
             Text(
               label,
               style: TextStyle(
                 color: _kMuted,
-                fontSize: healthSp(context, 14),
+                fontSize: healthSp(context, labelFontBase),
                 fontFamily: _font,
                 fontWeight: FontWeight.w500,
               ),
             ),
-            SizedBox(width: healthDp(context, 10)),
+            SizedBox(width: healthDp(context, labelTitleGapBase)),
             Expanded(
               child: Text(
                 item.title,
@@ -136,12 +146,22 @@ class ArticleAdjacentNavOverlay extends StatefulWidget {
   final ScrollController controller;
   final ArticleAdjacentItem? previous;
   final ArticleAdjacentItem? next;
+  final double horizontalPaddingBase;
+  final double verticalPaddingBase;
+  final double iconBase;
+  final double labelFontBase;
+  final double labelTitleGapBase;
 
   const ArticleAdjacentNavOverlay({
     super.key,
     required this.controller,
     this.previous,
     this.next,
+    this.horizontalPaddingBase = 27,
+    this.verticalPaddingBase = 12,
+    this.iconBase = 20,
+    this.labelFontBase = 14,
+    this.labelTitleGapBase = 10,
   });
 
   @override
@@ -232,6 +252,11 @@ class _ArticleAdjacentNavOverlayState extends State<ArticleAdjacentNavOverlay> {
               child: ArticleAdjacentNav(
                 previous: widget.previous,
                 next: widget.next,
+                horizontalPaddingBase: widget.horizontalPaddingBase,
+                verticalPaddingBase: widget.verticalPaddingBase,
+                iconBase: widget.iconBase,
+                labelFontBase: widget.labelFontBase,
+                labelTitleGapBase: widget.labelTitleGapBase,
               ),
             ),
           ),
