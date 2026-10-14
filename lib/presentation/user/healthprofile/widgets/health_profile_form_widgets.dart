@@ -5,7 +5,7 @@ import '../../../common/widgets/app_toast_overlay.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
-import '../../../shopping/screens/prescription_booking/consultation_prepare_splash.dart';
+import '../../../common/screens/consultation_prepare_splash.dart';
 import '../../../shopping/screens/prescription_booking/prescription_time_screen.dart';
 import '../../../shopping/widgets/prescription_booking_progress_bar.dart';
 import '../models/health_profile_model.dart';

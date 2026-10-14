@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
-import '../../../../data/models/cart/cart_item_model.dart';
-import '../../../common/screens/splash_screen.dart';
-import '../../../health/health_common/health_responsive_scale.dart';
-import '../../../user/healthprofile/widgets/health_profile_common.dart';
-import '../../../user/healthprofile/widgets/health_profile_prescription_booking_args.dart';
+import '../../../data/models/cart/cart_item_model.dart';
+import '../../health/health_common/health_responsive_scale.dart';
+import '../../user/healthprofile/widgets/health_profile_common.dart';
+import '../../user/healthprofile/widgets/health_profile_prescription_booking_args.dart';
+import 'splash_screen.dart';
 
 /// 처방 예약 담기가 끝나기 전에 다음 단계로 갈 때 띄우는 스플래시.
 class ConsultationPrepareSplash extends StatefulWidget {
