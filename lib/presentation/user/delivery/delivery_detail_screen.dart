@@ -9,7 +9,9 @@ import '../../../data/services/cart_service.dart';
 import '../../../data/services/delivery_service.dart';
 import '../../../data/services/review_service.dart';
 import '../../../utils/delivery_tracker.dart';
+import '../../../core/constants/app_assets.dart';
 import '../../common/widgets/app_toast_overlay.dart';
+import '../../common/widgets/centered_empty_state.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../customer_service/models/qa_inquiry_draft.dart';
 import '../../customer_service/screens/qa_write_screen.dart';
@@ -178,30 +180,12 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
   }
 
   Widget _buildErrorState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.error_outline,
-            size: healthDp(context, 64),
-            color: Colors.grey[400],
-          ),
-          SizedBox(height: healthDp(context, 16)),
-          Text(
-            '주문 정보를 불러올 수 없습니다',
-            style: TextStyle(
-              fontSize: healthSp(context, 16),
-              color: Colors.grey[600],
-            ),
-          ),
-          SizedBox(height: healthDp(context, 16)),
-          ElevatedButton(
-            onPressed: _loadOrderDetail,
-            child: const Text('다시 시도'),
-          ),
-        ],
+    return CenteredEmptyState(
+      iconWidget: CenteredEmptyState.assetIcon(
+        context,
+        AppAssets.emptyDeliveryIcon,
       ),
+      message: '주문 내역이 없습니다.',
     );
   }
 

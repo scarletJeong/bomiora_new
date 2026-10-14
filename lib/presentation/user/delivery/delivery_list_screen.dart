@@ -236,8 +236,13 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
     });
 
     if (_selectedStatus == 'all') {
-      _displayedOrders =
-          byType.where((order) => order.countsAsOpenOrderHistory).toList();
+      _displayedOrders = byType.where((order) {
+        if (order.countsAsOpenOrderHistory) return true;
+        final prescription =
+            _selectedProductType == DeliveryProductType.prescription;
+        return prescription &&
+            (order.displayStatus == '결제대기중' || order.odStatus == '주문');
+      }).toList();
       return;
     }
 
@@ -968,8 +973,23 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
       ]);
     }
 
-    // 결제대기중 / 결제완료
-    if (_isPaymentWaitingStage(order) || _isPaidStage(order)) {
+    // 결제대기중: 예약시간 변경은 숨긴다.
+    if (_isPaymentWaitingStage(order)) {
+      return _buildActionRow([
+        (
+          label: '주문취소',
+          onTap: () => _cancelOrder(order.odId),
+          style: _CardActionStyle.outlineGray,
+        ),
+        (
+          label: '배송지변경',
+          onTap: () => _changeDeliveryAddress(order),
+          style: _CardActionStyle.primary,
+        ),
+      ]);
+    }
+
+    if (_isPaidStage(order)) {
       final specs = <({String label, VoidCallback? onTap, _CardActionStyle style})>[
         (
           label: '주문취소',
