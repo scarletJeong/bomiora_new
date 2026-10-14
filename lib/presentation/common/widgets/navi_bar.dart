@@ -52,22 +52,6 @@ class FooterBar extends StatelessWidget {
 
   static const Color _pink = Color(0xFFFF5A8D);
 
-  Widget _sep(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: healthDp(context, 6)),
-      child: Text(
-        '|',
-        style: TextStyle(
-          color: const Color(0xCCFFFFFF),
-          fontSize: healthSp(context, 10),
-          fontFamily: 'Gmarket Sans TTF',
-          fontWeight: FontWeight.w300,
-          height: 1,
-        ),
-      ),
-    );
-  }
-
   void _go(BuildContext context, String routeName, {Object? arguments}) {
     goNamedKeepingExisting(context, routeName, arguments: arguments);
   }
@@ -84,6 +68,8 @@ class FooterBar extends StatelessWidget {
     required BuildContext context,
     required String label,
     required String iconAsset,
+    required double iconWidthBase,
+    required double iconHeightBase,
     VoidCallback? onTap,
   }) {
     return Expanded(
@@ -92,37 +78,37 @@ class FooterBar extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(healthDp(context, 8)),
-          child: Padding(
-            padding: EdgeInsets.only(
-              top: healthDp(context, 6),
-              bottom: healthDp(context, 8),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                SvgPicture.asset(
-                  iconAsset,
-                  width: healthDp(context, 18),
-                  height: healthDp(context, 18),
-                  colorFilter:
-                      const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                ),
-                SizedBox(height: healthDp(context, 4.62)),
-                Text(
-                  label,
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: healthSp(context, 8),
-                    fontFamily: 'Gmarket Sans TTF',
-                    fontWeight: FontWeight.w500,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(
+                height: healthDp(context, 19.12),
+                child: Center(
+                  child: SvgPicture.asset(
+                    iconAsset,
+                    width: healthDp(context, iconWidthBase),
+                    height: healthDp(context, iconHeightBase),
+                    fit: BoxFit.contain,
+                    colorFilter:
+                        const ColorFilter.mode(Colors.white, BlendMode.srcIn),
                   ),
                 ),
-              ],
-            ),
+              ),
+              SizedBox(height: healthDp(context, 4)),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: healthSp(context, 10),
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -135,9 +121,9 @@ class FooterBar extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    final padH = healthDp(context, 10);
-    final barH = healthDp(context, 62);
-    final radius = healthDp(context, 15);
+    final padH = healthDp(context, 20);
+    final barH = healthDp(context, 66.35);
+    final radius = healthDp(context, 20);
 
     return Container(
       width: double.infinity,
@@ -159,36 +145,42 @@ class FooterBar extends StatelessWidget {
         children: [
           _item(
             context: context,
-            label: 'HOME',
+            label: '홈',
             iconAsset: AppAssets.naviIcon1,
+            iconWidthBase: 16,
+            iconHeightBase: 17.27,
             onTap: () => _go(context, '/home'),
           ),
-          _sep(context),
           _item(
             context: context,
             label: '건강대시보드',
             iconAsset: AppAssets.naviIcon2,
+            iconWidthBase: 18,
+            iconHeightBase: 14.22,
             onTap: () => _go(context, '/health'),
           ),
-          _sep(context),
           _item(
             context: context,
             label: '비대면 진료',
             iconAsset: AppAssets.naviIcon3,
+            iconWidthBase: 18.46,
+            iconHeightBase: 14.23,
             onTap: () => _goPrescriptionDiet(context),
           ),
-          _sep(context),
           _item(
             context: context,
             label: '문진표',
             iconAsset: AppAssets.naviIcon4,
+            iconWidthBase: 16,
+            iconHeightBase: 19.12,
             onTap: () => _go(context, '/profile'),
           ),
-          _sep(context),
           _item(
             context: context,
-            label: 'MY PAGE',
+            label: '마이페이지',
             iconAsset: AppAssets.naviIcon5,
+            iconWidthBase: 12.11,
+            iconHeightBase: 18,
             onTap: () => _go(context, '/my_page'),
           ),
         ],
