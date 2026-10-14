@@ -196,8 +196,8 @@ class CartSupplyAddSection extends StatelessWidget {
   }
 }
 
-/// 추가상품(supply_add) 리스트 UI — [CartAddGroupCard] 내부용 (기본 접힘)
-class _SupplyAddBlock extends StatefulWidget {
+/// 추가상품(supply_add) 리스트 UI — [CartAddGroupCard] 내부용
+class _SupplyAddBlock extends StatelessWidget {
   const _SupplyAddBlock({
     required this.items,
     this.onQuantityChanged,
@@ -213,23 +213,14 @@ class _SupplyAddBlock extends StatefulWidget {
   final bool interactive;
 
   @override
-  State<_SupplyAddBlock> createState() => _SupplyAddBlockState();
-}
-
-class _SupplyAddBlockState extends State<_SupplyAddBlock> {
-  bool _expanded = false;
-
-  @override
   Widget build(BuildContext context) {
-    if (widget.items.isEmpty) return const SizedBox.shrink();
+    if (items.isEmpty) return const SizedBox.shrink();
 
-    final merged = _MergedSupplyLine.merge(widget.items);
-    final canEdit = widget.interactive && widget.onQuantityChanged != null;
+    final merged = _MergedSupplyLine.merge(items);
+    final canEdit = interactive && onQuantityChanged != null;
 
     return SupplyAddExpandBlock(
       count: merged.length,
-      expanded: _expanded,
-      onToggle: () => setState(() => _expanded = !_expanded),
       showSameReservationHint: false,
       children: [
         for (var i = 0; i < merged.length; i++) ...[
@@ -243,28 +234,27 @@ class _SupplyAddBlockState extends State<_SupplyAddBlock> {
                     final line = merged[i];
                     final primary = line.primary;
                     if (primary.ctQty > 1) {
-                      widget.onQuantityChanged!(primary, primary.ctQty - 1);
-                    } else if (line.lines.length > 1 &&
-                        widget.onDelete != null) {
-                      widget.onDelete!(primary);
+                      onQuantityChanged!(primary, primary.ctQty - 1);
+                    } else if (line.lines.length > 1 && onDelete != null) {
+                      onDelete!(primary);
                     }
                   },
             onIncrease: canEdit
                 ? () {
                     final primary = merged[i].primary;
-                    widget.onQuantityChanged!(primary, primary.ctQty + 1);
+                    onQuantityChanged!(primary, primary.ctQty + 1);
                   }
                 : null,
-            onDelete: widget.interactive && widget.onDelete != null
+            onDelete: interactive && onDelete != null
                 ? () {
                     for (final item in merged[i].lines) {
-                      widget.onDelete!(item);
+                      onDelete!(item);
                     }
                   }
                 : null,
-            onOpenDetail: widget.onOpenDetail == null
+            onOpenDetail: onOpenDetail == null
                 ? null
-                : () => widget.onOpenDetail!(merged[i].primary),
+                : () => onOpenDetail!(merged[i].primary),
           ),
         ],
       ],
