@@ -13,208 +13,168 @@ class AppFooter extends StatelessWidget {
   static const _text = Color(0xFF676767);
   static const _font = 'Gmarket Sans TTF';
 
-  TextStyle _rowStyle(BuildContext context) {
-    final t = healthTextScaleByWidth(MediaQuery.sizeOf(context).width);
+  TextStyle _rowStyle(BuildContext context, {double fontBase = 10, double height = 1.73, double letterBase = -0.50}) {
     return TextStyle(
       color: _text,
-      fontSize: healthSp(context, 10),
+      fontSize: healthSp(context, fontBase),
       fontFamily: _font,
       fontWeight: FontWeight.w500,
-      height: 1.5,
-      letterSpacing: -0.5 * t,
+      height: height,
+      letterSpacing: healthSp(context, letterBase),
     );
   }
 
-  TextStyle _rowStyleSmall(BuildContext context) =>
-      _rowStyle(context).copyWith(fontSize: healthSp(context, 11));
-
-  /// `라벨 값` — 고정 라벨 칸 없음. 좁으면 값이 다음 줄로 넘어감.
-  Widget _pairLine(
+  Widget _pair(
     BuildContext context,
     String label,
-    String value,
-    TextStyle rowStyle,
-  ) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: healthDp(context, 6)),
-      child: Wrap(
-        alignment: WrapAlignment.start,
-        crossAxisAlignment: WrapCrossAlignment.start,
-        spacing: healthDp(context, 6),
-        runSpacing: healthDp(context, 4),
-        children: [
-          Text(label, style: rowStyle, textAlign: TextAlign.start),
-          Text(value, style: rowStyle, textAlign: TextAlign.start),
-        ],
-      ),
-    );
-  }
-
-  /// 한 쌍을 가로로 꼭 붙여야 할 때(고객센터+번호 | 팩스+번호).
-  Widget _pairInline(
-    BuildContext context,
-    String label,
-    String value,
-    TextStyle rowStyle,
-  ) {
+    String value, {
+    TextStyle? labelStyle,
+    TextStyle? valueStyle,
+    double gapBase = 11.54,
+    bool expand = true,
+  }) {
+    final style = _rowStyle(context);
+    final valueText = Text(value, style: valueStyle ?? style);
     return Row(
-      mainAxisSize: MainAxisSize.min,
+      mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: rowStyle, textAlign: TextAlign.start),
-        SizedBox(width: healthDp(context, 6)),
-        Text(value, style: rowStyle, textAlign: TextAlign.start),
+        Text(label, style: labelStyle ?? style),
+        SizedBox(width: healthDp(context, gapBase)),
+        if (expand) Expanded(child: valueText) else valueText,
       ],
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final insetL = healthDp(context, 60);
-    final padR = healthDp(context, 16);
-    final padTop = healthDp(context, 14);
-    final padBottom = healthDp(context, 14);
-    final padMidTop = healthDp(context, 8);
-    final iconH1 = healthDp(context, 22);
-    final iconH2 = healthDp(context, 12);
-    final gapIcons = healthDp(context, 5);
-    final gapAfterIcons = healthDp(context, 10);
-    final gapSmall = healthDp(context, 4);
-    final gapBeforeCopyright = healthDp(context, 8);
-    final dividerIndent = healthDp(context, 30);
-    final dividerThickness = healthDp(context, 0.1);
-    final rowStyle = _rowStyle(context);
-    final rowStyleSmall = _rowStyleSmall(context);
+    final outerH = healthDp(context, 20);
+    final outerV = healthDp(context, 28.85);
+    final innerH = healthDp(context, 17.31);
+    final iconH = healthDp(context, 21.06);
+    final infoStyle = _rowStyle(context);
+    final faxLabelStyle = _rowStyle(
+      context,
+      fontBase: 10.38,
+      height: 1.67,
+      letterBase: -0.52,
+    );
+    final linkStyle = TextStyle(
+      color: _text,
+      fontSize: healthSp(context, 10),
+      fontFamily: _font,
+      fontWeight: FontWeight.w500,
+    );
 
     return Container(
       width: double.infinity,
+      padding: EdgeInsets.symmetric(horizontal: outerH, vertical: outerV),
       decoration: const BoxDecoration(color: _bg),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+        crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
           Padding(
-            padding: EdgeInsets.fromLTRB(
-              insetL,
-              padTop,
-              padR,
-              0,
+            padding: EdgeInsets.symmetric(horizontal: innerH),
+            child: SizedBox(
+              height: iconH,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  SvgPicture.asset(
+                    AppAssets.footerIcon1,
+                    height: iconH,
+                    fit: BoxFit.contain,
+                  ),
+                  SizedBox(width: healthDp(context, 3.29)),
+                  SvgPicture.asset(
+                    AppAssets.footerIcon2,
+                    height: healthDp(context, 12),
+                    fit: BoxFit.contain,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          SizedBox(height: healthDp(context, 11.54)),
+          Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: innerH,
+              vertical: healthDp(context, 5.77),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
               children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
+                _pair(context, '상호명', '주식회사 보미오라'),
+                SizedBox(height: healthDp(context, 5.77)),
+                _pair(context, '대표이사', '정대진'),
+                SizedBox(height: healthDp(context, 5.77)),
+                _pair(context, '사업자번호', '356-87-02862'),
+                SizedBox(height: healthDp(context, 5.77)),
+                _pair(context, '통신판매업신고', '제2023-서울강남-02582호'),
+                SizedBox(height: healthDp(context, 5.77)),
+                _pair(context, '건강기능식품판매업신고', '제2023-0138695호'),
+                SizedBox(height: healthDp(context, 5.77)),
+                Wrap(
+                  spacing: healthDp(context, 6),
+                  runSpacing: healthDp(context, 4),
+                  crossAxisAlignment: WrapCrossAlignment.start,
                   children: [
-                    SvgPicture.asset(
-                      AppAssets.footerIcon1,
-                      height: iconH1,
-                      fit: BoxFit.contain,
-                    ),
-                    SizedBox(width: gapIcons),
-                    SvgPicture.asset(
-                      AppAssets.footerIcon2,
-                      height: iconH2,
-                      fit: BoxFit.contain,
+                    _pair(context, '고객센터', '02-546-1031', expand: false),
+                    _pair(
+                      context,
+                      '팩스',
+                      '02-547-1031',
+                      labelStyle: faxLabelStyle,
+                      valueStyle: infoStyle,
+                      expand: false,
                     ),
                   ],
                 ),
-                SizedBox(height: gapAfterIcons),
-                _pairLine(context, '상호명', '주식회사 보미오라', rowStyle),
-                _pairLine(context, '대표이사', '정대진', rowStyle),
-                _pairLine(context, '사업자번호', '356-87-02862', rowStyle),
-                _pairLine(context, '통신판매업신고', '제2023-서울강남-02582호', rowStyle),
-                _pairLine(context, '건강기능식품판매업신고', '제2023-0138695호', rowStyle),
-                SizedBox(height: gapSmall),
-                Padding(
-                  padding: EdgeInsets.only(bottom: healthDp(context, 6)),
-                  child: Wrap(
-                    spacing: healthDp(context, 6),
-                    runSpacing: healthDp(context, 2),
-                    alignment: WrapAlignment.start,
-                    crossAxisAlignment: WrapCrossAlignment.start,
-                    children: [
-                      _pairInline(context, '고객센터', '02-546-1031', rowStyle),
-                      _pairInline(context, '팩스', '02-547-1031', rowStyle),
-                    ],
-                  ),
-                ),
-                _pairLine(context, '이메일', 'official@bomiora.kr', rowStyle),
-                _pairLine(context, '주소', '서울 강남구 봉은사로 109, 6층(논현동)', rowStyle),
-                SizedBox(height: gapBeforeCopyright),
+                SizedBox(height: healthDp(context, 5.77)),
+                _pair(context, '이메일', 'official@bomiora.kr'),
+                SizedBox(height: healthDp(context, 5.77)),
+                _pair(context, '주소', '서울 강남구 봉은사로 109, 6층(논현동)'),
               ],
             ),
           ),
-          Divider(
-            color: Colors.black,
-            height: dividerThickness,
-            thickness: dividerThickness,
-            indent: dividerIndent,
-            endIndent: dividerIndent,
-          ),
+          SizedBox(height: healthDp(context, 6.92)),
           Padding(
-            padding: EdgeInsets.fromLTRB(
-              insetL,
-              padMidTop,
-              padR,
-              padBottom,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
+            padding: EdgeInsets.symmetric(horizontal: innerH),
+            child: Row(
               children: [
-                SizedBox(
-                  width: double.infinity,
-                  child: Wrap(
-                    alignment: WrapAlignment.start,
-                    spacing: healthDp(context, 12),
-                    runSpacing: healthDp(context, 4),
-                    crossAxisAlignment: WrapCrossAlignment.start,
-                    children: [
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute<void>(
-                              builder: (_) => const TermsOfServiceScreen(),
-                            ),
-                          );
-                        },
-                        child: Text(
-                          '이용약관',
-                          textAlign: TextAlign.start,
-                          style: rowStyleSmall,
-                        ),
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute<void>(
+                        builder: (_) => const TermsOfServiceScreen(),
                       ),
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute<void>(
-                              builder: (_) => const PrivacyPolicyScreen(),
-                            ),
-                          );
-                        },
-                        child: Text(
-                          '개인정보처리방침',
-                          textAlign: TextAlign.start,
-                          style: rowStyleSmall,
-                        ),
-                      ),
-                    ],
-                  ),
+                    );
+                  },
+                  child: Text('이용약관', style: linkStyle),
                 ),
-                SizedBox(height: gapBeforeCopyright),
-                SizedBox(
-                  width: double.infinity,
-                  child: Text(
-                    'ⓒ2026 bomiara, All rights reserved.',
-                    textAlign: TextAlign.start,
-                    style: rowStyleSmall,
-                  ),
+                SizedBox(width: healthDp(context, 11.54)),
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute<void>(
+                        builder: (_) => const PrivacyPolicyScreen(),
+                      ),
+                    );
+                  },
+                  child: Text('개인정보처리방침', style: linkStyle),
                 ),
               ],
+            ),
+          ),
+          SizedBox(height: healthDp(context, 14.42)),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: innerH),
+            child: Text(
+              'ⓒ2026 bomiara, All rights reserved.',
+              style: linkStyle,
             ),
           ),
         ],
