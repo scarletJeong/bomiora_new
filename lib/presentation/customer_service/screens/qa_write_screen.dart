@@ -38,15 +38,9 @@ class _QaWriteScreenState extends State<QaWriteScreen> {
   static const int _maxContentLength = 500;
   static const int _maxImages = 3;
   static const int _maxImageBytes = 5 * 1024 * 1024;
-  static const List<String> _requiredPhotoLabels = [
-    '제품사진 \n추가하기',
-    '운송장 \n추가하기',
-    '택배상자 \n추가하기',
-  ];
 
   final TextEditingController _contentController = TextEditingController();
   final List<XFile> _images = [];
-  final List<XFile?> _requiredPhotos = List<XFile?>.filled(3, null);
 
   String? _selectedInquiryType;
   String? _selectedDetailType;
@@ -79,14 +73,14 @@ class _QaWriteScreenState extends State<QaWriteScreen> {
       (_hasInquiryType && _hasDetailType && _hasSelectedProduct);
 
   bool get _isPhotoRequired =>
-      (_selectedInquiryType ?? '').trim() == '배송' &&
+      (_selectedInquiryType ?? '').trim() == '배송 문의' &&
       (_selectedDetailType ?? '').trim() == '배송 오류';
 
   bool get _canSubmit =>
       _showCompose &&
       !_sending &&
       _contentController.text.trim().isNotEmpty &&
-      (!_isPhotoRequired || _requiredPhotos.any((e) => e != null));
+      (!_isPhotoRequired || _images.isNotEmpty);
 
   String get _productFieldLabel {
     final draft = _selectedProduct;
@@ -163,7 +157,7 @@ class _QaWriteScreenState extends State<QaWriteScreen> {
       AppToastOverlay.show(context, '문의 내용을 입력해주세요.');
       return;
     }
-    if (_isPhotoRequired && !_requiredPhotos.any((e) => e != null)) {
+    if (_isPhotoRequired && _images.isEmpty) {
       AppToastOverlay.show(context, '배송 오류 문의는 사진 첨부가 필요합니다.');
       return;
     }
@@ -189,12 +183,7 @@ class _QaWriteScreenState extends State<QaWriteScreen> {
 
     setState(() => _sending = true);
     try {
-      final attachPhotos = <XFile>[
-        if (_isPhotoRequired)
-          ..._requiredPhotos.whereType<XFile>()
-        else
-          ..._images,
-      ];
+      final attachPhotos = List<XFile>.from(_images);
       final result = await QaService.create(
         subject: draft.buildSubject(text),
         content: draft.buildContent(text),
@@ -231,7 +220,6 @@ class _QaWriteScreenState extends State<QaWriteScreen> {
   }
 
   bool _canAddPhoto() {
-    if (_isPhotoRequired) return true;
     if (_images.length >= _maxImages) {
       AppToastOverlay.showAlert(context, '사진은 최대 3장까지 업로드할 수 있습니다.');
       return false;
@@ -239,9 +227,9 @@ class _QaWriteScreenState extends State<QaWriteScreen> {
     return true;
   }
 
-  Future<void> _applyPickedImage(XFile? image, {int? slotIndex}) async {
+  Future<void> _applyPickedImage(XFile? image) async {
     if (image == null || !mounted) return;
-    if (!_isPhotoRequired && _images.length >= _maxImages) {
+    if (_images.length >= _maxImages) {
       AppToastOverlay.showAlert(context, '사진은 최대 3장까지 업로드할 수 있습니다.');
       return;
     }
@@ -252,13 +240,7 @@ class _QaWriteScreenState extends State<QaWriteScreen> {
         AppToastOverlay.show(context, '파일당 5MB 이하만 첨부할 수 있습니다.');
         return;
       }
-      setState(() {
-        if (_isPhotoRequired && slotIndex != null) {
-          _requiredPhotos[slotIndex] = image;
-        } else {
-          _images.add(image);
-        }
-      });
+      setState(() => _images.add(image));
     } catch (_) {
       if (!mounted) return;
       AppToastOverlay.show(context, '이미지를 불러오지 못했습니다.');
@@ -359,12 +341,15 @@ class _QaWriteScreenState extends State<QaWriteScreen> {
                                   value: _selectedInquiryType,
                                   items: _inquiryTypeOptions,
                                   onChanged: (value) {
+                                    if (value == _selectedInquiryType) return;
                                     setState(() {
                                       _selectedInquiryType = value;
                                       _selectedDetailType = null;
-                                      if (value == '기타') {
+                                      if (!_isLockedProduct) {
                                         _selectedProduct = null;
                                       }
+                                      _contentController.clear();
+                                      _images.clear();
                                     });
                                   },
                                 ),
@@ -618,40 +603,18 @@ class _QaWriteScreenState extends State<QaWriteScreen> {
         SizedBox(height: healthDp(context, 10)),
         Row(
           children: [
-            if (_isPhotoRequired)
-              for (var i = 0; i < _maxImages; i++) ...[
-                if (i > 0) SizedBox(width: healthDp(context, 8)),
-                if (_requiredPhotos[i] != null)
-                  _PhotoThumb(
-                    file: _requiredPhotos[i]!,
-                    size: slot,
-                    onRemove: () => setState(() => _requiredPhotos[i] = null),
-                  )
-                else
-                  PhotoSourceAnchor(
-                    canOpen: _canAddPhoto,
-                    onImageSelected: (image) =>
-                        _applyPickedImage(image, slotIndex: i),
-                    child: _PhotoAddSlot(
-                      size: slot,
-                      label: _requiredPhotoLabels[i],
-                    ),
-                  ),
-              ]
-            else ...[
-              PhotoSourceAnchor(
-                canOpen: _canAddPhoto,
-                onImageSelected: (image) => _applyPickedImage(image),
-                child: _PhotoAddSlot(size: slot),
+            PhotoSourceAnchor(
+              canOpen: _canAddPhoto,
+              onImageSelected: _applyPickedImage,
+              child: _PhotoAddSlot(size: slot),
+            ),
+            for (var i = 0; i < _images.length; i++) ...[
+              SizedBox(width: healthDp(context, 8)),
+              _PhotoThumb(
+                file: _images[i],
+                size: slot,
+                onRemove: () => setState(() => _images.removeAt(i)),
               ),
-              for (var i = 0; i < _images.length; i++) ...[
-                SizedBox(width: healthDp(context, 8)),
-                _PhotoThumb(
-                  file: _images[i],
-                  size: slot,
-                  onRemove: () => setState(() => _images.removeAt(i)),
-                ),
-              ],
             ],
           ],
         ),
@@ -665,6 +628,18 @@ class _QaWriteScreenState extends State<QaWriteScreen> {
             fontWeight: FontWeight.w300,
           ),
         ),
+        if (_isPhotoRequired) ...[
+          SizedBox(height: healthDp(context, 4)),
+          Text(
+            '제품사진, 운송장사진, 택배상자 사진을 첨부해주세요.',
+            style: TextStyle(
+              color: const Color(0xFFEF4444),
+              fontSize: healthSp(context, 10),
+              fontFamily: _font,
+              fontWeight: FontWeight.w300,
+            ),
+          ),
+        ],
       ],
     );
   }
