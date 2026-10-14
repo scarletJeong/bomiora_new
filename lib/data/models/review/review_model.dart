@@ -6,6 +6,8 @@ class ReviewModel {
   final int? isId;
   final String itId;
   final String? itName; // 제품명
+  /// 제조사. 상품 `it_subject`.
+  final String? itSubject;
   /// `prescription`(비대면·처방) / `general`(일반) 등 상품 구분 (API: it_kind, itKind)
   final String? itKind;
   final String mbId;
@@ -78,6 +80,7 @@ class ReviewModel {
     this.isId,
     required this.itId,
     this.itName,
+    this.itSubject,
     this.itKind,
     required this.mbId,
     this.isName,
@@ -317,6 +320,9 @@ class ReviewModel {
       itId: NodeValueParser.asString(normalized['itId'] ?? normalized['it_id']) ??
           '',
       itName: itName,
+      itSubject: NodeValueParser.asString(
+        normalized['itSubject'] ?? normalized['it_subject'],
+      ),
       itKind: itKind,
       mbId: NodeValueParser.asString(normalized['mbId']) ?? '',
       isName: NodeValueParser.asString(normalized['isName']),
@@ -352,6 +358,7 @@ class ReviewModel {
       if (isId != null) 'isId': isId,
       'itId': itId,
       if (itName != null) 'itName': itName,
+      if (itSubject != null) 'itSubject': itSubject,
       if (itKind != null) 'itKind': itKind,
       'mbId': mbId,
       if (isName != null) 'isName': isName,

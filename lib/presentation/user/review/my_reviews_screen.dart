@@ -777,48 +777,55 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
             ),
           ),
           SizedBox(width: healthDp(context, 8)),
-          AppStarRating(
-            rating: average,
-            starSize: healthDp(context, 20.25),
-            gap: healthDp(context, 4),
-            color: _kPink,
-            preciseFill: true,
-          ),
-          if (kg != null && kg > 0) ...[
-            SizedBox(width: healthDp(context, 8)),
-            Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: healthDp(context, 6),
-                vertical: healthDp(context, 5.5),
-              ),
-              decoration: ShapeDecoration(
-                color: const Color(0x19FF5A8D),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(healthDp(context, 20)),
+          Flexible(
+            child: Wrap(
+              spacing: healthDp(context, 8),
+              runSpacing: healthDp(context, 6),
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                AppStarRating(
+                  rating: average,
+                  starSize: healthDp(context, 20.25),
+                  gap: healthDp(context, 4),
+                  color: _kPink,
+                  preciseFill: true,
                 ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.south,
-                    size: healthDp(context, 13),
-                    color: _kPink,
-                  ),
-                  SizedBox(width: healthDp(context, 4)),
-                  Text(
-                    '${kg}kg 감량',
-                    style: TextStyle(
-                      color: _kPink,
-                      fontSize: healthSp(context, 10),
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w500,
+                if (kg != null && kg > 0)
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: healthDp(context, 6),
+                      vertical: healthDp(context, 5.5),
+                    ),
+                    decoration: ShapeDecoration(
+                      color: const Color(0x19FF5A8D),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(healthDp(context, 20)),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.south,
+                          size: healthDp(context, 13),
+                          color: _kPink,
+                        ),
+                        SizedBox(width: healthDp(context, 4)),
+                        Text(
+                          '${kg}kg 감량',
+                          style: TextStyle(
+                            color: _kPink,
+                            fontSize: healthSp(context, 10),
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
-              ),
+              ],
             ),
-          ],
+          ),
         ],
       ),
     );

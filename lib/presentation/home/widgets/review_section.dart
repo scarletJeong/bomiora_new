@@ -206,7 +206,7 @@ class _ReviewSectionState extends State<ReviewSection> {
             mainAxisSize: MainAxisSize.min,
             children: [
               SvgPicture.asset(
-                AppAssets.emptyProductReviewIcon,
+                AppAssets.emptyReviewIcon,
                 width: iconSz,
                 height: iconSz,
                 fit: BoxFit.contain,
