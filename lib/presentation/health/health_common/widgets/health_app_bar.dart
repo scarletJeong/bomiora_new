@@ -58,21 +58,20 @@ class HealthAppBar extends StatelessWidget
         leadingIconSize = null,
         showLeading = true;
 
-  double get _toolbarHeight => _variant == _HealthAppBarVariant.back
-      ? healthBackAppBarTotalHeightBase
-      : healthAppBarTotalHeightBase;
+  double _toolbarHeightForWidth(double width) =>
+      _variant == _HealthAppBarVariant.back
+          ? healthBackAppBarTotalHeightForWidth(width)
+          : healthAppBarTotalHeightForWidth(width);
 
   @override
-  Size get preferredSize => healthAppBarPreferredSize(
-        bottomHeight: bottom?.preferredSize.height ?? 0,
-        toolbarHeight: _toolbarHeight,
-      );
+  Size get preferredSize =>
+      preferredSizeForWidth(healthPrimaryViewWidth());
 
   @override
   Size preferredSizeForWidth(double width) => healthAppBarPreferredSize(
         width: width,
         bottomHeight: bottom?.preferredSize.height ?? 0,
-        toolbarHeight: _toolbarHeight,
+        toolbarHeight: _toolbarHeightForWidth(width),
       );
 
   @override
@@ -90,7 +89,7 @@ class HealthAppBar extends StatelessWidget
   }
 
   Widget _buildBackBar(BuildContext context) {
-    final barH = healthBackAppBarTotalHeightBase;
+    final barH = healthBackAppBarTotalHeight(context);
     final iconSize = (leadingIconSize ?? healthDp(context, 24)).clamp(0.0, barH);
     final leadingSlot = healthDp(context, 40);
     final titleGap = healthDp(context, 4);

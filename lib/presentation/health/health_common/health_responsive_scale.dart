@@ -46,22 +46,28 @@ const double healthAppBarTopGapBase = 0;
 double healthAppBarTopGap(BuildContext context) =>
     healthDp(context, healthAppBarTopGapBase);
 
-/// AppBar 콘텐츠 영역 높이.
-/// 페이지마다 패널 폭이 달라도 모든 AppBar가 정확히 같은 높이를 사용합니다.
+/// AppBar 콘텐츠 영역 높이. 패널 폭 375~650에 맞춰 60에서 90까지 커집니다.
 double healthAppBarHeight(BuildContext context) =>
-    healthAppBarToolbarHeightBase;
+    healthDp(context, healthAppBarToolbarHeightBase);
 
 /// 건강 AppBar 제목 위·아래 패딩 (375 기준 5).
 double healthAppBarTitlePaddingV(BuildContext context) => healthDp(context, 5);
 
-/// AppBar 툴바 높이 (상태바 제외).
-/// 제목·아이콘은 반응형으로 커지지만 툴바 자체는 항상 60입니다.
+/// 로고 앱바 툴바 높이 (상태바 제외). 패널 폭에 맞춰 60에서 90까지 커집니다.
 double healthAppBarTotalHeight(BuildContext context) =>
-    healthAppBarTotalHeightBase;
+    healthDp(context, healthAppBarTotalHeightBase);
 
-/// [PreferredSize] 등 context 없이 사용하는 고정 툴바 높이.
+/// 뒤로가기 앱바 툴바 높이 (상태바 제외). 패널 폭에 맞춰 50에서 75까지 커집니다.
+double healthBackAppBarTotalHeight(BuildContext context) =>
+    healthDp(context, healthBackAppBarTotalHeightBase);
+
+/// [PreferredSize] 등 context 없이 사용하는 로고 앱바 툴바 높이.
 double healthAppBarTotalHeightForWidth(double layoutWidth) =>
-    healthAppBarTotalHeightBase;
+    healthAppBarTotalHeightBase * healthTextScaleByWidth(layoutWidth);
+
+/// [PreferredSize] 등 context 없이 사용하는 뒤로가기 앱바 툴바 높이.
+double healthBackAppBarTotalHeightForWidth(double layoutWidth) =>
+    healthBackAppBarTotalHeightBase * healthTextScaleByWidth(layoutWidth);
 
 /// 상태바·노치 등 상단 시스템 UI 여백 (Material [AppBar]와 동일 기준).
 double healthStatusBarTopInset(BuildContext context) =>
@@ -71,6 +77,19 @@ double healthStatusBarTopInset(BuildContext context) =>
 double healthStatusBarTopInsetForView(FlutterView view) =>
     view.viewPadding.top / view.devicePixelRatio;
 
+/// 첫 뷰의 논리 폭. 뷰가 없으면 375.
+double healthPrimaryViewWidth() {
+  final views = WidgetsBinding.instance.platformDispatcher.views;
+  if (views.isEmpty) return 375.0;
+  final view = views.first;
+  final dpr = view.devicePixelRatio;
+  final physicalW = view.physicalSize.width;
+  if (dpr > 0 && physicalW > 0 && physicalW.isFinite && dpr.isFinite) {
+    return physicalW / dpr;
+  }
+  return 375.0;
+}
+
 /// Scaffold가 [MediaQuery.padding.top]을 슬롯에 따로 더하므로,
 /// [preferredSize]에는 툴바(+ bottom)만 넣고 상태바 inset은 넣지 않습니다.
 Size healthAppBarPreferredSize({
@@ -78,19 +97,7 @@ Size healthAppBarPreferredSize({
   double bottomHeight = 0,
   double? toolbarHeight,
 }) {
-  final views = WidgetsBinding.instance.platformDispatcher.views;
-  var resolvedWidth = width ?? 375.0;
-  if (width == null && views.isNotEmpty) {
-    final view = views.first;
-    final dpr = view.devicePixelRatio;
-    final physicalW = view.physicalSize.width;
-    if (dpr > 0 &&
-        physicalW > 0 &&
-        physicalW.isFinite &&
-        dpr.isFinite) {
-      resolvedWidth = physicalW / dpr;
-    }
-  }
+  final resolvedWidth = width ?? healthPrimaryViewWidth();
   return Size.fromHeight(
     (toolbarHeight ?? healthAppBarTotalHeightForWidth(resolvedWidth)) +
         bottomHeight,
