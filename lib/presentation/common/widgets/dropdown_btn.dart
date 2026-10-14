@@ -28,6 +28,14 @@ class DropdownBtn extends StatefulWidget {
   final Color? valueTextColor;
   /// 테두리 색 — null이면 `#D2D2D2`
   final Color? borderColor;
+  /// 버튼 배경 — null이면 흰색
+  final Color? backgroundColor;
+  /// 미선택 글자 굵기 — null이면 w500
+  final FontWeight? emptyFontWeight;
+  /// 선택값 글자 굵기 — null이면 w500
+  final FontWeight? valueFontWeight;
+  /// 비활성일 때 전체를 흐리게. false면 [backgroundColor]만으로 비활성을 표현한다.
+  final bool dimWhenDisabled;
 
   /// 아이템 수가 이 값을 **초과**하면 스크롤 모드.
   /// 예: 6 → 7개 이상일 때 [maxVisibleItemsWhenScrolling]개만 노출
@@ -373,6 +381,10 @@ class DropdownBtn extends StatefulWidget {
     this.emptyTextColor,
     this.valueTextColor,
     this.borderColor,
+    this.backgroundColor,
+    this.emptyFontWeight,
+    this.valueFontWeight,
+    this.dimWhenDisabled = true,
     this.scrollWhenItemCountExceeds,
     this.maxVisibleItemsWhenScrolling,
   });
@@ -455,11 +467,14 @@ class _DropdownBtnState extends State<DropdownBtn> {
     final hasValue = widget.value.trim().isNotEmpty;
     final display = hasValue ? widget.value : widget.emptyText;
     final canOpen = widget.enabled && widget.items.isNotEmpty;
-    final displayColor = !widget.enabled
+    final displayColor = !widget.enabled && widget.dimWhenDisabled
         ? const Color(0xFFBDBDBD)
         : (hasValue
             ? (widget.valueTextColor ?? const Color(0xFF1A1A1A))
             : (widget.emptyTextColor ?? const Color(0xFF898686)));
+    final displayWeight = hasValue
+        ? (widget.valueFontWeight ?? FontWeight.w500)
+        : (widget.emptyFontWeight ?? FontWeight.w500);
     final leading = hasValue && widget.leadingBuilder != null
         ? widget.leadingBuilder!(widget.value)
         : null;
@@ -478,12 +493,12 @@ class _DropdownBtnState extends State<DropdownBtn> {
         borderRadius: BorderRadius.circular(radius),
         onTap: canOpen ? _toggle : null,
         child: Opacity(
-          opacity: widget.enabled ? 1 : 0.55,
+          opacity: widget.enabled || !widget.dimWhenDisabled ? 1 : 0.55,
           child: Container(
             key: _anchorKey,
             padding: EdgeInsets.symmetric(horizontal: padH),
             decoration: ShapeDecoration(
-              color: Colors.white,
+              color: widget.backgroundColor ?? Colors.white,
               shape: RoundedRectangleBorder(
                 side: BorderSide(width: borderW, color: borderColor),
                 borderRadius: BorderRadius.circular(radius),
@@ -505,7 +520,7 @@ class _DropdownBtnState extends State<DropdownBtn> {
                       color: displayColor,
                       fontSize: itemFontSize,
                       fontFamily: _fontFamily,
-                      fontWeight: FontWeight.w500,
+                      fontWeight: displayWeight,
                       height: 1.0,
                     ),
                   ),
