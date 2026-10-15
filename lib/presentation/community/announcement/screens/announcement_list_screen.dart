@@ -20,7 +20,7 @@ class AnnouncementListScreen extends StatefulWidget {
 }
 
 class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
-  static const Color _kText = Color(0xFF1A1A1A);
+  static const Color _kText = Color(0xFF1A1A1E);
   static const Color _kMuted = Color(0xFF898686);
   static const Color _kBorder = Color(0x7FD2D2D2);
   static const Color _kPink = Color(0xFFFF5A8D);
@@ -99,9 +99,9 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
           slivers: [
             SliverPadding(
               padding: EdgeInsets.fromLTRB(
-                healthDp(context, 27),
                 healthDp(context, 20),
-                healthDp(context, 27),
+                healthDp(context, 10),
+                healthDp(context, 20),
                 healthDp(context, 10),
               ),
               sliver: SliverToBoxAdapter(
@@ -128,10 +128,10 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
             else
               SliverPadding(
                 padding: EdgeInsets.fromLTRB(
-                  healthDp(context, 27),
-                  0,
-                  healthDp(context, 27),
                   healthDp(context, 20),
+                  0,
+                  healthDp(context, 20),
+                  healthDp(context, 48),
                 ),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
@@ -153,7 +153,6 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
 
   Widget _buildSearchBar(BuildContext context) {
     return Container(
-      height: healthDp(context, 36),
       decoration: ShapeDecoration(
         shape: RoundedRectangleBorder(
           side: BorderSide(
@@ -164,10 +163,7 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
         ),
       ),
       child: Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: healthDp(context, 10),
-          vertical: healthDp(context, 10),
-        ),
+        padding: EdgeInsets.all(healthDp(context, 10)),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
@@ -259,6 +255,16 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
     );
   }
 
+  String _formatCount(int value) {
+    final raw = value.toString();
+    final buffer = StringBuffer();
+    for (var i = 0; i < raw.length; i++) {
+      if (i > 0 && (raw.length - i) % 3 == 0) buffer.write(',');
+      buffer.write(raw[i]);
+    }
+    return buffer.toString();
+  }
+
   String _noticeDateLabel(AnnouncementModel item) {
     final fromRaw = DateDisplayFormatter.formatYmdFromString(item.createdAtRaw);
     if (fromRaw != '-') return fromRaw;
@@ -313,17 +319,8 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
             ),
             SizedBox(height: healthDp(context, 10)),
             Row(
+              spacing: healthDp(context, 10),
               children: [
-                if (item.isNotice) ...[
-                  Padding(
-                    padding: EdgeInsets.only(right: healthDp(context, 6)),
-                    child: Icon(
-                      Icons.push_pin_rounded,
-                      size: healthDp(context, 14),
-                      color: _kPink,
-                    ),
-                  ),
-                ],
                 Text(
                   date,
                   style: TextStyle(
@@ -331,17 +328,17 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
                     fontSize: healthSp(context, 10),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w500,
-                    letterSpacing: healthSp(context, -0.3),
+                    height: 1.65,
                   ),
                 ),
-                SizedBox(width: healthDp(context, 10)),
                 Text(
-                  '조회 : ${item.viewCount}',
+                  '조회 : ${_formatCount(item.viewCount)}',
                   style: TextStyle(
                     color: _kMuted,
                     fontSize: healthSp(context, 10),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w500,
+                    height: 1.65,
                   ),
                 ),
               ],

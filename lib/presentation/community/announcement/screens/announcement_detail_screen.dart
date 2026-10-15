@@ -9,9 +9,9 @@ import '../../../../data/services/announcement_service.dart';
 import '../../../../data/services/content_service.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
 import '../../../common/navigation/board_list_navigation.dart';
+import '../../../common/widgets/app_clickable.dart';
 import '../../../common/widgets/app_network_image.dart';
 import '../../../common/widgets/centered_empty_state.dart';
-import '../../../common/widgets/article_adjacent_nav.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 
@@ -28,7 +28,7 @@ class AnnouncementDetailScreen extends StatefulWidget {
 }
 
 class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
-  static const Color _kText = Color(0xFF1A1A1A);
+  static const Color _kText = Color(0xFF1A1A1E);
   static const Color _kMuted = Color(0xFF898686);
   static const Color _kBorder = Color(0x7FD2D2D2);
   static const Color _kPink = Color(0xFFFF5A8D);
@@ -38,7 +38,6 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
   AnnouncementModel? _item;
   Map<String, dynamic>? _prev;
   Map<String, dynamic>? _next;
-  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -90,12 +89,6 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
   }
 
   @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return MobileAppLayoutWrapper(
       appBar: const HealthAppBar(title: '공지사항'),
@@ -121,117 +114,170 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
     final nextId = _adjacentId(_next);
     final prevTitle = (_prev?['title'] ?? '').toString().trim();
     final nextTitle = (_next?['title'] ?? '').toString().trim();
-
-    final navHeight = ArticleAdjacentNav.reservedHeight(
-      context,
-      hasPrevious: prevId != null && prevTitle.isNotEmpty,
-      hasNext: nextId != null && nextTitle.isNotEmpty,
-    );
+    final hasPrev = prevId != null && prevTitle.isNotEmpty;
+    final hasNext = nextId != null && nextTitle.isNotEmpty;
 
     return Column(
       children: [
         Expanded(
-          child: Stack(
-            fit: StackFit.expand,
+          child: ListView(
+            padding: EdgeInsets.all(healthDp(context, 20)),
             children: [
-        ListView(
-          controller: _scrollController,
-          padding: EdgeInsets.fromLTRB(
-            healthDp(context, 27),
-            healthDp(context, 20),
-            healthDp(context, 27),
-            healthDp(context, 20) + navHeight,
-          ),
-          children: [
-            Text(
-              formattedTitle,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: _kText,
-                fontSize: healthSp(context, 14),
-                fontFamily: 'Gmarket Sans TTF',
-                fontWeight: FontWeight.w500,
-                letterSpacing: healthSp(context, -1.44),
-              ),
-            ),
-            SizedBox(height: healthDp(context, 10)),
-            Container(height: healthDp(context, 1), color: _kBorder),
-            SizedBox(height: healthDp(context, 30)),
-            if (hasImage) ...[
-              ClipRRect(
-                borderRadius: BorderRadius.circular(healthDp(context, 12)),
-                child: Image.network(
-                  ImageUrlHelper.getImageUrl(item.imagePath),
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
-                    height: healthDp(context, 180),
-                    alignment: Alignment.center,
-                    color: const Color(0xFFF6F6F6),
-                    child: Icon(
-                      Icons.broken_image_outlined,
-                      color: _kMuted,
-                      size: healthDp(context, 32),
-                    ),
-                  ),
+              Text(
+                formattedTitle,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: _kText,
+                  fontSize: healthSp(context, 16),
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: healthSp(context, -1.44),
                 ),
               ),
-              SizedBox(height: healthDp(context, 20)),
-            ],
-            _buildAnnouncementBody(context, item.content),
-          ],
-        ),
-        ArticleAdjacentNavOverlay(
-          controller: _scrollController,
-          previous: prevId != null && prevTitle.isNotEmpty
-              ? ArticleAdjacentItem(
+              SizedBox(height: healthDp(context, 10)),
+              Container(height: healthDp(context, 1), color: _kBorder),
+              SizedBox(height: healthDp(context, 30)),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  spacing: healthDp(context, 20),
+                  children: [
+                    if (hasImage)
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(healthDp(context, 12)),
+                        child: Image.network(
+                          ImageUrlHelper.getImageUrl(item.imagePath),
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            height: healthDp(context, 180),
+                            alignment: Alignment.center,
+                            color: const Color(0xFFF6F6F6),
+                            child: Icon(
+                              Icons.broken_image_outlined,
+                              color: _kMuted,
+                              size: healthDp(context, 32),
+                            ),
+                          ),
+                        ),
+                      ),
+                    _buildAnnouncementBody(context, item.content),
+                  ],
+                ),
+              ),
+              SizedBox(height: healthDp(context, 30)),
+              Container(height: healthDp(context, 1), color: _kBorder),
+              if (hasPrev) ...[
+                SizedBox(height: healthDp(context, 10)),
+                _buildAdjacentRow(
+                  context,
+                  label: '이전글',
                   title: prevTitle,
+                  isPrev: true,
+                  gap: 5,
                   onTap: () => _moveToAdjacent(prevId),
-                )
-              : null,
-          next: nextId != null && nextTitle.isNotEmpty
-              ? ArticleAdjacentItem(
+                ),
+              ],
+              if (hasNext) ...[
+                SizedBox(height: healthDp(context, 10)),
+                _buildAdjacentRow(
+                  context,
+                  label: '다음글',
                   title: nextTitle,
+                  isPrev: false,
+                  gap: 10,
                   onTap: () => _moveToAdjacent(nextId),
-                )
-              : null,
-        ),
+                ),
+              ],
+              if (hasPrev || hasNext) ...[
+                SizedBox(height: healthDp(context, 10)),
+                Container(height: healthDp(context, 1), color: _kBorder),
+              ],
             ],
           ),
         ),
         Padding(
           padding: EdgeInsets.fromLTRB(
-            healthDp(context, 27),
-            healthDp(context, 8),
-            healthDp(context, 27),
-            healthDp(context, 16),
+            healthDp(context, 20),
+            0,
+            healthDp(context, 20),
+            healthDp(context, 20),
           ),
           child: Align(
             alignment: Alignment.centerRight,
-            child: FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: _kPink,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(healthDp(context, 4)),
-                ),
+            child: AppClickable(
+              onTap: () => popToBoardList(context, '/announcement'),
+              child: Container(
                 padding: EdgeInsets.symmetric(
                   horizontal: healthDp(context, 15),
-                  vertical: healthDp(context, 8),
+                  vertical: healthDp(context, 6),
                 ),
-              ),
-              onPressed: () => popToBoardList(context, '/announcement'),
-              child: Text(
-                '목록',
-                style: TextStyle(
-                  fontSize: healthSp(context, 14),
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w500,
+                decoration: ShapeDecoration(
+                  color: _kPink,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(healthDp(context, 4)),
+                  ),
+                ),
+                child: Text(
+                  '목록',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: healthSp(context, 14),
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
             ),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildAdjacentRow(
+    BuildContext context, {
+    required String label,
+    required String title,
+    required bool isPrev,
+    required double gap,
+    required VoidCallback onTap,
+  }) {
+    return AppClickable(
+      onTap: onTap,
+      child: Row(
+        children: [
+          Icon(
+            isPrev ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+            size: healthDp(context, 16),
+            color: _kMuted,
+          ),
+          Text(
+            label,
+            style: TextStyle(
+              color: _kMuted,
+              fontSize: healthSp(context, 14),
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          SizedBox(width: healthDp(context, gap)),
+          Expanded(
+            child: Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: _kText,
+                fontSize: healthSp(context, 14),
+                fontFamily: 'Gmarket Sans TTF',
+                fontWeight: FontWeight.w500,
+                letterSpacing: healthSp(context, -1.26),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -252,7 +298,8 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
     }
     return LayoutBuilder(
       builder: (context, constraints) {
-        final horizontalPad = healthDp(context, 27) * 2;
+        final horizontalPad =
+            healthDp(context, 20) * 2 + healthDp(context, 10) * 2;
         final maxWidth = constraints.maxWidth.isFinite
             ? constraints.maxWidth
             : MediaQuery.sizeOf(context).width - horizontalPad;
