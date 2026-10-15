@@ -200,6 +200,14 @@ class QaListScreenState extends State<QaListScreen> {
       _errorMessage == null &&
       (_inquiries.isEmpty || _filteredContacts.isEmpty);
 
+  /// 탭 헤더 높이. 빈 안내를 탭 아래 영역의 세로 가운데에 둔다.
+  double _emptyHeaderExtent(BuildContext context) {
+    return healthDp(context, 5) +
+        healthSp(context, 14) * 1.2 +
+        healthDp(context, 10) +
+        healthDp(context, 20);
+  }
+
   Future<void> _deleteInquiry(QaInquiry item) async {
     try {
       final result = await QaService.delete(item.wrId);
@@ -585,6 +593,7 @@ class QaListScreenState extends State<QaListScreen> {
                 children: [
                   Expanded(
                     child: Stack(
+                      fit: StackFit.expand,
                       children: [
                         RefreshIndicator(
                           color: _pink,
@@ -604,14 +613,30 @@ class QaListScreenState extends State<QaListScreen> {
                           ),
                         ),
                         if (_showPageEmptyState)
-                          Positioned.fill(
+                          Positioned(
+                            left: 0,
+                            right: 0,
+                            top: _emptyHeaderExtent(context),
+                            bottom: 0,
                             child: IgnorePointer(
-                              child: CenteredEmptyState(
-                                iconWidget: CenteredEmptyState.assetIcon(
-                                  context,
-                                  AppAssets.emptyQAIcon,
+                              child: Center(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    CenteredEmptyState.assetIcon(
+                                      context,
+                                      AppAssets.emptyQAIcon,
+                                    ),
+                                    SizedBox(height: healthDp(context, 15)),
+                                    Text(
+                                      _emptyTabMessage,
+                                      textAlign: TextAlign.center,
+                                      textScaler: TextScaler.noScaling,
+                                      style: CenteredEmptyState
+                                          .defaultMessageStyle(context),
+                                    ),
+                                  ],
                                 ),
-                                message: _emptyTabMessage,
                               ),
                             ),
                           ),

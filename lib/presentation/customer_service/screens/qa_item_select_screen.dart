@@ -1,7 +1,6 @@
 ﻿import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/constants/app_assets.dart';
 import '../../../core/utils/date_formatter.dart';
@@ -655,12 +654,7 @@ class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        SvgPicture.asset(
-          icon,
-          width: healthDp(context, 80),
-          height: healthDp(context, 80),
-          fit: BoxFit.contain,
-        ),
+        CenteredEmptyState.assetIcon(context, icon),
         SizedBox(height: healthDp(context, 10)),
         Text(
           message,

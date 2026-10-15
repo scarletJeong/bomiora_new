@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import '../../../../core/constants/app_assets.dart';
 import '../../../../core/utils/date_formatter.dart';
 import '../../../../data/models/event/event_model.dart';
@@ -219,19 +218,13 @@ class _EventListScreenState extends State<EventListScreen> {
   }
 
   Widget _buildEmptyMessage(BuildContext context) {
-    final iconSz = healthDp(context, 40);
     final emptyLabel = _selectedTab == 0
         ? '진행중인 이벤트가 없습니다'
         : '종료된 이벤트가 없습니다';
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        SvgPicture.asset(
-          AppAssets.emptyEventIcon,
-          width: iconSz,
-          height: iconSz,
-          fit: BoxFit.contain,
-        ),
+        CenteredEmptyState.assetIcon(context, AppAssets.emptyEventIcon),
         SizedBox(height: healthDp(context, 10)),
         Text(
           emptyLabel,
@@ -311,30 +304,54 @@ class _EventListScreenState extends State<EventListScreen> {
         child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Container(
+              SizedBox(
                 height: healthDp(context, 200),
-                foregroundDecoration: ShapeDecoration(
-                  color: ended ? Colors.black.withValues(alpha: 0.50) : null,
-                  shape: RoundedRectangleBorder(
-                    side: const BorderSide(
-                      width: 1,
-                      color: Color(0x7FD2D2D2),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Positioned.fill(
+                      child: ClipRRect(
+                        borderRadius: imageRadius,
+                        child: imageUrl == null
+                            ? const ColoredBox(color: Color(0xFFF4F4F4))
+                            : Image.network(
+                                imageUrl,
+                                fit: BoxFit.cover,
+                                width: double.infinity,
+                                height: healthDp(context, 200),
+                                errorBuilder: (_, __, ___) =>
+                                    const ColoredBox(color: Color(0xFFF4F4F4)),
+                              ),
+                      ),
                     ),
-                    borderRadius: imageRadius,
-                  ),
-                ),
-                child: ClipRRect(
-                  borderRadius: imageRadius,
-                  child: imageUrl == null
-                      ? const ColoredBox(color: Color(0xFFF4F4F4))
-                      : Image.network(
-                          imageUrl,
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                          height: healthDp(context, 200),
-                          errorBuilder: (_, __, ___) =>
-                              const ColoredBox(color: Color(0xFFF4F4F4)),
+                    Positioned.fill(
+                      child: DecoratedBox(
+                        decoration: ShapeDecoration(
+                          color: ended
+                              ? Colors.black.withValues(alpha: 0.50)
+                              : null,
+                          shape: RoundedRectangleBorder(
+                            side: const BorderSide(
+                              width: 1,
+                              color: Color(0x7FD2D2D2),
+                            ),
+                            borderRadius: imageRadius,
+                          ),
                         ),
+                      ),
+                    ),
+                    if (ended)
+                      Text(
+                        '이벤트가\n종료되었습니다',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: healthSp(context, 16),
+                          fontFamily: _font,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                  ],
                 ),
               ),
               Padding(

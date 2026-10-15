@@ -136,6 +136,11 @@ class _SearchListScreenState extends State<SearchListScreen> {
     } catch (e) {
       if (!mounted || requestId != _searchRequestId) return;
       setState(() {
+        _rx = const [];
+        _store = const [];
+        _events = const [];
+        _announcements = const [];
+        _content = const [];
         _loading = false;
         _initialLoad = false;
         _error = e.toString();
@@ -185,14 +190,12 @@ class _SearchListScreenState extends State<SearchListScreen> {
       appBar: const HealthAppBar(title: '검색'),
       child: _initialLoad && _loading
           ? const Center(child: CircularProgressIndicator(color: _pink))
-          : _error != null
-              ? Center(child: _buildGlobalEmptyContent())
-              : _buildResults(),
+          : _buildResults(),
     );
   }
 
   Widget _buildResults() {
-    final showEmpty = !_loading && _total == 0;
+    final showEmpty = !_loading && (_error != null || _total == 0);
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -225,7 +228,7 @@ class _SearchListScreenState extends State<SearchListScreen> {
               ),
             ),
           )
-        else if (_total == 0)
+        else if (_error != null || _total == 0)
           const SliverFillRemaining(
             hasScrollBody: false,
             child: SizedBox.shrink(),

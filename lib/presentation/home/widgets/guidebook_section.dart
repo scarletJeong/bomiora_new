@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/constants/app_assets.dart';
 import '../../../data/services/content_service.dart';
 import '../../common/widgets/app_clickable.dart';
+import '../../common/widgets/centered_empty_state.dart';
 import '../../common/widgets/web_dragscroll.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../content/dashboard/screens/content_detail_screen.dart';
@@ -77,18 +77,16 @@ class _GuidebookSectionState extends State<GuidebookSection> {
                   );
                 }
                 if (items.isEmpty) {
-                  final iconSz = healthDp(context, 40);
                   return Padding(
                     padding: EdgeInsets.symmetric(horizontal: healthDp(context, 20)),
                     child: Center(
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          SvgPicture.asset(
+                          CenteredEmptyState.assetIcon(
+                            context,
                             AppAssets.emptyContentIcon,
-                            width: iconSz,
-                            height: iconSz,
-                            fit: BoxFit.contain,
+                            slot: 56,
                           ),
                           SizedBox(height: healthDp(context, 8)),
                           Text(

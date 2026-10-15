@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/constants/app_assets.dart';
 import '../../../core/utils/image_url_helper.dart';
@@ -8,6 +7,7 @@ import '../../../data/services/review_service.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../review/screens/review_best_screen.dart';
 import '../../common/widgets/app_clickable.dart';
+import '../../common/widgets/centered_empty_state.dart';
 import 'home_section_widgets.dart';
 
 /// 베스트 리뷰 화면과 동일 — `mr_img` 우선, 없으면 상품 썸네일
@@ -200,18 +200,16 @@ class _ReviewSectionState extends State<ReviewSection> {
       );
     }
     if (_reviews.isEmpty) {
-      final iconSz = healthDp(context, 40);
       return SizedBox(
-        height: healthDp(context, 100),
+        height: healthDp(context, 120),
         child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              SvgPicture.asset(
+              CenteredEmptyState.assetIcon(
+                context,
                 AppAssets.emptyReviewIcon,
-                width: iconSz,
-                height: iconSz,
-                fit: BoxFit.contain,
+                slot: 56,
               ),
               SizedBox(height: healthDp(context, 8)),
               Text(

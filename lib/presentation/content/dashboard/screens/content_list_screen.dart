@@ -187,10 +187,18 @@ class _ContentListScreenState extends State<ContentListScreen> {
                       scrollChild: _buildContentScroll(),
                     ),
                     if (!_isLoading && _posts.isEmpty)
-                      PageCenteredEmptyOverlay(
-                        child: _hasActiveSearch
-                            ? _buildEmptySearchResult(context)
-                            : _buildEmptyPostsState(context),
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        top: _topControlsExtent(context),
+                        bottom: 0,
+                        child: IgnorePointer(
+                          child: Center(
+                            child: _hasActiveSearch
+                                ? _buildEmptySearchResult(context)
+                                : _buildEmptyPostsState(context),
+                          ),
+                        ),
                       ),
                   ],
                 ),
@@ -365,13 +373,38 @@ class _ContentListScreenState extends State<ContentListScreen> {
 
   bool get _hasActiveSearch => _searchController.text.trim().isNotEmpty;
 
+  /// 검색·칩·건수 높이. 빈 안내를 그 아래 영역의 가운데에 둔다.
+  double _topControlsExtent(BuildContext context) {
+    final countText = healthSp(context, 12);
+    return healthDp(context, 46.15) +
+        healthDp(context, 20) +
+        healthDp(context, 30) +
+        healthDp(context, 10) +
+        healthDp(context, 1) +
+        healthDp(context, 5) +
+        countText +
+        healthDp(context, 5) +
+        healthDp(context, 1) +
+        healthDp(context, 20);
+  }
+
   Widget _buildEmptyPostsState(BuildContext context) {
-    return CenteredEmptyState(
-      iconWidget: CenteredEmptyState.assetIcon(
-        context,
-        AppAssets.emptyContentIcon,
-      ),
-      message: '등록된 게시글이 없습니다.',
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        CenteredEmptyState.assetIcon(
+          context,
+          AppAssets.emptyContentIcon,
+          slot: 58,
+        ),
+        SizedBox(height: healthDp(context, 15)),
+        Text(
+          '등록된 게시글이 없습니다.',
+          textAlign: TextAlign.center,
+          textScaler: TextScaler.noScaling,
+          style: CenteredEmptyState.defaultMessageStyle(context),
+        ),
+      ],
     );
   }
 

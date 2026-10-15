@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
+
+import '../../common/widgets/centered_empty_state.dart';
 
 import '../../../core/constants/app_assets.dart';
 import '../../../data/models/home/banner_model.dart';
@@ -683,7 +684,6 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
     if (products.isEmpty) {
-      final iconSz = healthDp(context, 40);
       return SizedBox(
         height: cardH,
         child: Align(
@@ -691,11 +691,10 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              SvgPicture.asset(
+              CenteredEmptyState.assetIcon(
+                context,
                 AppAssets.emptyCategoryIcon,
-                width: iconSz,
-                height: iconSz,
-                fit: BoxFit.contain,
+                slot: 56,
               ),
               SizedBox(height: healthDp(context, 8)),
               Text(

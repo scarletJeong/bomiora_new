@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/constants/app_assets.dart';
 
 import '../../../data/models/product/product_model.dart';
 import '../../../data/models/cart/cart_item_model.dart';
+import '../../common/widgets/centered_empty_state.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/product_card.dart';
 import '../../health/health_common/health_responsive_scale.dart';
@@ -417,19 +417,13 @@ class _RecommendProductBottomSheetState extends State<RecommendProductBottomShee
 
     final loader = widget.productsLoader;
     if (loader == null) {
-      final iconSz = healthDp(context, 40);
       return SizedBox(
         height: healthDp(context, 120),
         child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              SvgPicture.asset(
-                AppAssets.emptyCategoryIcon,
-                width: iconSz,
-                height: iconSz,
-                fit: BoxFit.contain,
-              ),
+              CenteredEmptyState.assetIcon(context, AppAssets.emptyCategoryIcon),
               SizedBox(height: healthDp(context, 8)),
               Text(
                 '추천 상품이 없습니다.',
@@ -463,18 +457,15 @@ class _RecommendProductBottomSheetState extends State<RecommendProductBottomShee
 
         final loaded = snapshot.data ?? const <Product>[];
         if (loaded.isEmpty) {
-          final iconSz = healthDp(context, 40);
           return SizedBox(
             height: healthDp(context, 120),
             child: Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  SvgPicture.asset(
+                  CenteredEmptyState.assetIcon(
+                    context,
                     AppAssets.emptyCategoryIcon,
-                    width: iconSz,
-                    height: iconSz,
-                    fit: BoxFit.contain,
                   ),
                   SizedBox(height: healthDp(context, 8)),
                   Text(

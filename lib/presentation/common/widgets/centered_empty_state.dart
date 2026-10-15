@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+import '../../../core/constants/app_assets.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 
 /// 빈 화면 아이콘 기본 색 (선이 진하지 않은 연한 회색)
@@ -53,14 +54,60 @@ class CenteredEmptyState extends StatelessWidget {
         height: 1.0,
       );
 
-  /// 빈 화면 / 로그인 유도용 SVG 아이콘 (문구 위)
-  static Widget assetIcon(BuildContext context, String assetPath) {
-    final size = healthDp(context, 70);
-    return SvgPicture.asset(
-      assetPath,
-      width: size,
-      height: size,
-      fit: BoxFit.contain,
+  /// 공지사항 아이콘이 80 칸에서 실제로 차지하는 긴 변.
+  static const double _noticeBox = 80;
+  static const double _noticeInk = 52.3;
+
+  /// viewBox 긴 변, 선까지 포함한 그림의 긴 변.
+  static const Map<String, List<double>> _iconInk = {
+    AppAssets.emptyNoticeIcon: [80, 52.3],
+    AppAssets.emptyEventIcon: [60, 59.2],
+    AppAssets.emptyQAIcon: [67, 66.9],
+    AppAssets.emptyAddressIcon: [70, 69.2],
+    AppAssets.emptyAlarmIcon: [63, 62.9],
+    AppAssets.emptyCartIcon: [72, 58.2],
+    AppAssets.emptyCartGeneralIcon: [72, 58.2],
+    AppAssets.emptyCategoryIcon: [63, 62.7],
+    AppAssets.emptyContentIcon: [80, 55.8],
+    AppAssets.emptyCouponIcon: [70, 60.3],
+    AppAssets.emptyDeliveryIcon: [72, 56.7],
+    AppAssets.emptyHealthIcon: [80, 64.0],
+    AppAssets.emptyPointIcon: [70, 60.3],
+    AppAssets.emptyProductReviewIcon: [72, 55.2],
+    AppAssets.emptyRefundIcon: [80, 62.5],
+    AppAssets.emptyReviewIcon: [80, 62.5],
+    AppAssets.searchEmptyIcon: [80, 62.5],
+    AppAssets.qaSelectCartIcon: [80, 60.4],
+    AppAssets.emptyOrderDeliveryIcon: [80, 65.7],
+    AppAssets.emptyReturnIcon: [80, 62.7],
+    AppAssets.qaSelectWishlistIcon: [80, 61.8],
+    AppAssets.emptySettingIcon: [72, 61.0],
+    AppAssets.emptyWishlistIcon: [62, 61.8],
+  };
+
+  /// 빈 화면 SVG. 캔버스 여백이 달라도 공지사항 아이콘과 같은 크기로 보인다.
+  /// [slot]은 아이콘이 놓이는 칸. 페이지 빈 화면은 70, 홈 한 줄은 28.
+  static Widget assetIcon(
+    BuildContext context,
+    String assetPath, {
+    double slot = 70,
+  }) {
+    final box = healthDp(context, slot);
+    final spec = _iconInk[assetPath];
+    final draw = spec == null
+        ? box
+        : box * (_noticeInk / _noticeBox) * (spec[0] / spec[1]);
+    return SizedBox(
+      width: box,
+      height: box,
+      child: Center(
+        child: SvgPicture.asset(
+          assetPath,
+          width: draw,
+          height: draw,
+          fit: BoxFit.contain,
+        ),
+      ),
     );
   }
 

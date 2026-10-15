@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/constants/app_assets.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../data/models/event/event_model.dart';
 import '../../../data/services/event_service.dart';
+import '../../common/widgets/centered_empty_state.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import 'home_section_widgets.dart';
 
@@ -61,11 +61,10 @@ class EventSection extends StatelessWidget {
                       child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        SvgPicture.asset(
+                        CenteredEmptyState.assetIcon(
+                          context,
                           AppAssets.emptyEventIcon,
-                          width: healthDp(context, 16),
-                          height: healthDp(context, 16),
-                          fit: BoxFit.contain,
+                          slot: 28,
                         ),
                         SizedBox(width: healthDp(context, 8)),
                         Text(
