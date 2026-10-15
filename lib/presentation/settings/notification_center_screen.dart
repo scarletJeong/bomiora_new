@@ -6,7 +6,6 @@ import '../../data/models/notification/app_notification_model.dart';
 import '../../data/services/auth_service.dart';
 import '../../data/services/notification_inbox_service.dart';
 import '../common/widgets/centered_empty_state.dart';
-import '../common/widgets/app_toast_overlay.dart';
 import '../common/widgets/mobile_layout_wrapper.dart';
 import '../health/health_common/health_responsive_scale.dart';
 import '../health/health_common/widgets/health_app_bar.dart';
@@ -22,8 +21,7 @@ class NotificationCenterScreen extends StatefulWidget {
 
 class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
   static const String _font = 'Gmarket Sans TTF';
-  static const Color _kBorder = Color(0xFFD2D2D2);
-  static const Color _kText = Color(0xFF1A1A1A);
+  static const Color _kText = Color(0xFF1A1A1E);
   static const Color _kMuted = Color(0xFF898686);
   static const Color _kPink = Color(0xFFFF5A8D);
 
@@ -111,53 +109,6 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
     }
   }
 
-  Future<void> _clearAllNotifications() async {
-    if (_items.isEmpty) return;
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text(
-          '모든 알림 삭제',
-          style: TextStyle(
-            fontFamily: _font,
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        content: const Text(
-          '알림센터의 모든 알림을 삭제할까요?',
-          style: TextStyle(fontFamily: _font, fontSize: 14),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text(
-              '취소',
-              style: TextStyle(fontFamily: _font, color: _kMuted),
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text(
-              '삭제',
-              style: TextStyle(fontFamily: _font, color: _kPink),
-            ),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true || !mounted) return;
-
-    final ok = await NotificationInboxService.clearAll();
-    if (!mounted) return;
-    if (ok) {
-      setState(() => _items = []);
-      AppToastOverlay.show(context, '모든 알림을 삭제했습니다.');
-    }
-  }
-
   void _openNotification(AppNotificationItem item) {
     _markAsRead(item);
     final type = item.type?.toLowerCase() ?? '';
@@ -213,28 +164,22 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
       style: const TextStyle(fontFamily: _font),
       child: MobileAppLayoutWrapper(
         appBar: HealthAppBar(
-          title: '알림센터',
+          title: '알림 센터',
           actions: [
             Padding(
-              padding: EdgeInsets.only(right: healthDp(context, 27)),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: _openNotificationSettings,
-                  borderRadius: BorderRadius.circular(healthDp(context, 8)),
-                  splashFactory: NoSplash.splashFactory,
-                  hoverColor: Colors.transparent,
-                  highlightColor: Colors.transparent,
-                  child: SizedBox(
-                    width: healthDp(context, 30),
-                    height: healthDp(context, 30),
-                    child: Center(
-                      child: SvgPicture.asset(
-                        AppAssets.settingsIcon,
-                        width: healthDp(context, 22),
-                        height: healthDp(context, 22),
-                        fit: BoxFit.contain,
-                      ),
+              padding: EdgeInsets.only(right: healthDp(context, 15)),
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: _openNotificationSettings,
+                child: SizedBox(
+                  width: healthDp(context, 30),
+                  height: healthDp(context, 30),
+                  child: Center(
+                    child: SvgPicture.asset(
+                      AppAssets.appbarSettingsIcon,
+                      width: healthDp(context, 20),
+                      height: healthDp(context, 20),
+                      fit: BoxFit.contain,
                     ),
                   ),
                 ),
@@ -274,44 +219,12 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                     children: [
                       Padding(
                         padding: EdgeInsets.fromLTRB(
-                          healthDp(context, 27),
                           healthDp(context, 20),
-                          healthDp(context, 27),
+                          healthDp(context, 20),
+                          healthDp(context, 20),
                           0,
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            _buildTabSelector(context),
-                            if (_items.isNotEmpty) ...[
-                              SizedBox(height: healthDp(context, 10)),
-                              Align(
-                                alignment: Alignment.centerRight,
-                                child: TextButton(
-                                  onPressed: _clearAllNotifications,
-                                  style: TextButton.styleFrom(
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: healthDp(context, 4),
-                                      vertical: healthDp(context, 2),
-                                    ),
-                                    minimumSize: Size.zero,
-                                    tapTargetSize:
-                                        MaterialTapTargetSize.shrinkWrap,
-                                  ),
-                                  child: Text(
-                                    '모두 지우기',
-                                    style: TextStyle(
-                                      fontFamily: _font,
-                                      fontSize: healthDp(context, 13),
-                                      color: _kMuted,
-                                      fontWeight: FontWeight.w400,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
+                        child: _buildTabSelector(context),
                       ),
                       SizedBox(height: healthDp(context, 14)),
                       Expanded(
@@ -334,10 +247,10 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                                   physics:
                                       const AlwaysScrollableScrollPhysics(),
                                   padding: EdgeInsets.fromLTRB(
-                                    healthDp(context, 27),
-                                    0,
-                                    healthDp(context, 27),
                                     healthDp(context, 20),
+                                    0,
+                                    healthDp(context, 20),
+                                    healthDp(context, 48),
                                   ),
                                   children: items
                                       .map(
@@ -370,7 +283,6 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
 
   Widget _buildTabSelector(BuildContext context) {
     return Container(
-      height: healthDp(context, 36),
       decoration: ShapeDecoration(
         color: const Color(0xFFF9F9F9),
         shape: RoundedRectangleBorder(
@@ -390,7 +302,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
           Expanded(
             child: _buildTabButton(
               context,
-              label: '안읽음',
+              label: '안읽음 ',
               selected: _selectedTab == 1,
               count: _unreadCount,
               onTap: () => setState(() => _selectedTab = 1),
@@ -413,6 +325,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
       onTap: onTap,
       child: Container(
         alignment: Alignment.center,
+        padding: EdgeInsets.symmetric(vertical: healthDp(context, 10)),
         decoration: selected
             ? ShapeDecoration(
                 color: Colors.white,
@@ -430,7 +343,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                 label,
                 style: TextStyle(
                   color: selected ? _kText : _kMuted,
-                  fontSize: healthSp(context, 16),
+                  fontSize: healthSp(context, 14),
                   fontFamily: _font,
                   fontWeight: FontWeight.w500,
                   height: 1,
@@ -476,7 +389,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
 
   Widget _buildNotificationCard(BuildContext context, AppNotificationItem item) {
     return Padding(
-      padding: EdgeInsets.only(bottom: healthDp(context, 10)),
+      padding: EdgeInsets.only(bottom: healthDp(context, 14)),
       child: _SwipeDeleteNotificationCard(
         item: item,
         onTap: () => _openNotification(item),
@@ -507,9 +420,39 @@ class _SwipeDeleteNotificationCardState
     extends State<_SwipeDeleteNotificationCard> {
   static const String _font = 'Gmarket Sans TTF';
   static const Color _kBorder = Color(0xFFD2D2D2);
-  static const Color _kText = Color(0xFF1A1A1A);
+  static const Color _kText = Color(0xFF1A1A1E);
   static const Color _kMuted = Color(0xFF898686);
   static const Color _kPink = Color(0xFFFF5A8D);
+
+  String _categoryIcon(AppNotificationItem item) {
+    final type = item.type?.toLowerCase() ?? '';
+    final category = item.category;
+    if (type == 'point' || category.contains('포인트')) {
+      return AppAssets.menu_point_icon;
+    }
+    if (type == 'coupon' || category.contains('쿠폰')) {
+      return AppAssets.menu_coupon_icon;
+    }
+    if (type == 'review' || category.contains('리뷰')) {
+      return AppAssets.appbarAlarmIcon;
+    }
+    if (type == 'contact' ||
+        type == 'inquiry' ||
+        type == 'qna' ||
+        category.contains('문의')) {
+      return AppAssets.menu_QA_icon;
+    }
+    return AppAssets.appbarAlarmIcon;
+  }
+
+  String _bodyText(AppNotificationItem item) {
+    final title = item.title.trim();
+    final desc = (item.description ?? '').trim();
+    if (desc.isNotEmpty && desc != title) {
+      return title.isEmpty ? desc : '$title\n$desc';
+    }
+    return title.isNotEmpty ? title : desc;
+  }
 
   double _offsetX = 0;
 
@@ -606,94 +549,84 @@ class _SwipeDeleteNotificationCardState
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
+                      spacing: healthDp(context, 10),
                       children: [
-                        Text(
-                          item.formattedDate,
-                          style: TextStyle(
-                            color: _kMuted,
-                            fontSize: healthSp(context, 10),
-                            fontFamily: _font,
-                            fontWeight: FontWeight.w300,
-                            letterSpacing: healthSp(context, -0.9),
-                          ),
-                        ),
-                        SizedBox(height: healthDp(context, 6)),
                         Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            if (!item.isRead) ...[
-                              Container(
-                                width: healthDp(context, 8),
-                                height: healthDp(context, 8),
-                                decoration: const ShapeDecoration(
-                                  color: _kPink,
-                                  shape: OvalBorder(),
-                                ),
+                            Expanded(
+                              child: Row(
+                                children: [
+                                  Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      SvgPicture.asset(
+                                        _categoryIcon(item),
+                                        width: healthDp(context, 24),
+                                        height: healthDp(context, 24),
+                                        fit: BoxFit.contain,
+                                      ),
+                                      if (!item.isRead)
+                                        Container(
+                                          width: healthDp(context, 4),
+                                          height: healthDp(context, 4),
+                                          decoration: const ShapeDecoration(
+                                            color: _kPink,
+                                            shape: OvalBorder(),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                  SizedBox(width: healthDp(context, 4)),
+                                  Flexible(
+                                    child: Text(
+                                      item.category,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color: _kText,
+                                        fontSize: healthSp(context, 14),
+                                        fontFamily: _font,
+                                        fontWeight: FontWeight.w500,
+                                        letterSpacing: -1.26,
+                                      ),
+                                    ),
+                                  ),
+                                  SizedBox(width: healthDp(context, 6)),
+                                  Text(
+                                    '${item.createdAt.month}월 ${item.createdAt.day}일',
+                                    style: TextStyle(
+                                      color: _kMuted,
+                                      fontSize: healthSp(context, 12),
+                                      fontFamily: _font,
+                                      fontWeight: FontWeight.w500,
+                                      letterSpacing: -1.08,
+                                    ),
+                                  ),
+                                ],
                               ),
-                              SizedBox(width: healthDp(context, 4)),
-                            ],
-                            Text(
-                              item.category,
-                              style: TextStyle(
-                                color: _kText,
-                                fontSize: healthSp(context, 14),
-                                fontFamily: _font,
-                                fontWeight: FontWeight.w500,
-                                letterSpacing: healthSp(context, -1.26),
+                            ),
+                            SizedBox(width: healthDp(context, 10)),
+                            GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: widget.onDelete,
+                              child: SvgPicture.asset(
+                                AppAssets.popupCloseIcon,
+                                width: healthDp(context, 20),
+                                height: healthDp(context, 20),
+                                fit: BoxFit.contain,
                               ),
                             ),
                           ],
                         ),
-                        SizedBox(height: healthDp(context, 5)),
-                        Container(
-                          width: double.infinity,
-                          height: healthDp(context, 1),
-                          color: const Color(0x7FD2D2D2),
-                        ),
-                        SizedBox(height: healthDp(context, 10)),
-                        Builder(
-                          builder: (context) {
-                            final desc = (item.description ?? '').trim();
-                            final showDesc =
-                                desc.isNotEmpty && desc != item.title.trim();
-                            if (!showDesc) {
-                              return Text(
-                                item.title,
-                                style: TextStyle(
-                                  color: _kText,
-                                  fontSize: healthSp(context, 12),
-                                  fontFamily: _font,
-                                  fontWeight: FontWeight.w500,
-                                  letterSpacing: healthSp(context, -1.08),
-                                ),
-                              );
-                            }
-                            return Wrap(
-                              crossAxisAlignment: WrapCrossAlignment.center,
-                              spacing: healthDp(context, 5),
-                              children: [
-                                Text(
-                                  item.title,
-                                  style: TextStyle(
-                                    color: _kText,
-                                    fontSize: healthSp(context, 12),
-                                    fontFamily: _font,
-                                    fontWeight: FontWeight.w500,
-                                    letterSpacing: healthSp(context, -1.08),
-                                  ),
-                                ),
-                                Text(
-                                  desc,
-                                  style: TextStyle(
-                                    color: _kMuted,
-                                    fontSize: healthSp(context, 12),
-                                    fontFamily: _font,
-                                    fontWeight: FontWeight.w500,
-                                    letterSpacing: healthSp(context, -1.08),
-                                  ),
-                                ),
-                              ],
-                            );
-                          },
+                        Text(
+                          _bodyText(item),
+                          style: TextStyle(
+                            color: _kText,
+                            fontSize: healthSp(context, 12),
+                            fontFamily: _font,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ],
                     ),
