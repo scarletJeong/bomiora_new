@@ -29,6 +29,7 @@ import '../../user/myPage/screens/my_page_screen.dart';
 import '../widgets/banner_slider.dart';
 import '../widgets/event_section.dart';
 import '../widgets/guidebook_section.dart';
+import '../widgets/home_big_card.dart';
 import '../widgets/home_section_widgets.dart';
 import '../widgets/notice_section.dart';
 import '../widgets/review_section.dart';
@@ -684,17 +685,18 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
     if (products.isEmpty) {
+      final layout = HomeBigCardLayout.fromWidth(MediaQuery.sizeOf(context).width);
+      final emptyH = layout.imageH + layout.columnGap + layout.titleFs * 1.25;
       return SizedBox(
-        height: cardH,
-        child: Align(
-          alignment: const Alignment(0, -0.72),
+        height: emptyH,
+        child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               CenteredEmptyState.assetIcon(
                 context,
                 AppAssets.emptyCategoryIcon,
-                slot: 56,
+                slot: 65,
               ),
               SizedBox(height: healthDp(context, 8)),
               Text(
