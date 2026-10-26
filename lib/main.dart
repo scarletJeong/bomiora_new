@@ -116,8 +116,14 @@ class _BomioraAppState extends State<BomioraApp> {
       navigatorKey: appNavigatorKey,
       title: '보미오라',
       builder: (context, child) {
-        return LayoutScaffoldMessenger(
-          child: child ?? const SizedBox.shrink(),
+        final media = MediaQuery.of(context);
+        // 키보드가 열리면 viewInsets만큼 화면이 줄고 가운데 문구가 위로 올라간다.
+        // 인셋을 없애 모든 페이지가 그 자리에 머물게 한다.
+        return MediaQuery(
+          data: media.copyWith(viewInsets: EdgeInsets.zero),
+          child: LayoutScaffoldMessenger(
+            child: child ?? const SizedBox.shrink(),
+          ),
         );
       },
       theme: ThemeData(

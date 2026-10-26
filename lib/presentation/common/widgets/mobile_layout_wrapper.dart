@@ -226,7 +226,7 @@ class MobileAppLayoutWrapper extends StatelessWidget {
     this.backgroundColor,
     this.outerBackgroundColor,
     this.maxWidth = 650,
-    this.resizeToAvoidBottomInset = true,
+    this.resizeToAvoidBottomInset = false,
   });
 
   /// 앱 콘텐츠 패널 가로 폭 (다이얼로그·오버레이 정렬용)
@@ -253,10 +253,8 @@ class MobileAppLayoutWrapper extends StatelessWidget {
       drawerEnableOpenDragGesture: !kIsWeb,
       endDrawerEnableOpenDragGesture: !kIsWeb,
       bottomNavigationBar: hideBottomNav ? null : bottomNavigationBar,
-      // 하단 네비가 있으면 키보드가 열려도 바를 위로 밀지 않는다.
-      resizeToAvoidBottomInset: hideBottomNav
-          ? resizeToAvoidBottomInset
-          : bottomNavigationBar == null && resizeToAvoidBottomInset,
+      // 키보드가 열려도 본문·하단 네비를 위로 밀지 않는다.
+      resizeToAvoidBottomInset: resizeToAvoidBottomInset,
       body: child,
       ),
     );
