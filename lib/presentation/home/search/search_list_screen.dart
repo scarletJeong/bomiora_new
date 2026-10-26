@@ -675,7 +675,9 @@ class _SearchListScreenState extends State<SearchListScreen> {
   String _contentThumb(Map<String, dynamic> item) {
     final raw = item['thumbnail_url']?.toString();
     final full = ContentService.resolveThumbnailUrl(raw, fallback: '');
-    return ImageUrlHelper.contentListThumbUrl(full);
+    // 프록시로 줄이면 서버가 원본(수 MB)을 받은 뒤에야 응답해서 10초 넘게 걸린다.
+    // 브라우저가 카페24에서 바로 받는 편이 훨씬 빠르다.
+    return ImageUrlHelper.browserImageSrc(full);
   }
 }
 
@@ -754,7 +756,10 @@ class _SearchRowImageState extends State<_SearchRowImage> {
   String _pickUrl(String raw, {required bool proxied}) {
     final trimmed = raw.trim();
     if (trimmed.isEmpty) return '';
-    if (proxied || trimmed.contains('/api/proxy/image')) return trimmed;
+    if (proxied) {
+      if (trimmed.contains('/api/proxy/image')) return trimmed;
+      return ImageUrlHelper.contentListThumbUrl(trimmed);
+    }
     final direct = ImageUrlHelper.browserImageSrc(trimmed);
     return direct.isEmpty ? trimmed : direct;
   }
@@ -771,7 +776,7 @@ class _SearchRowImageState extends State<_SearchRowImage> {
       decodeHeightLogical: 72,
       preferHtmlElementOnWeb: true,
       errorBuilder: (_, __, ___) {
-        final proxied = widget.url.trim();
+        final proxied = _pickUrl(widget.url, proxied: true);
         if (!_usedProxy && proxied.isNotEmpty && proxied != _url) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (!mounted) return;
