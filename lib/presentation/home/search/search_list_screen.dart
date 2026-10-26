@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
@@ -13,7 +12,6 @@ import '../../../data/models/product/product_model.dart';
 import '../../../data/services/content_service.dart';
 import '../../../data/services/recent_search_service.dart';
 import '../../../data/services/search_service.dart';
-import 'content_image_load_log.dart';
 import '../../common/widgets/app_network_image.dart';
 import '../../common/widgets/centered_empty_state.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
@@ -429,7 +427,6 @@ class _SearchListScreenState extends State<SearchListScreen> {
     String? subtitle,
     String? imageUrl,
     IconData fallbackIcon = Icons.article_outlined,
-    String? imageLogLabel,
     required VoidCallback onTap,
   }) {
     final imageSize = _rowImageSize(context);
@@ -468,7 +465,6 @@ class _SearchListScreenState extends State<SearchListScreen> {
                           url: imageUrl,
                           size: imageSize,
                           fallback: _imageFallback(context, fallbackIcon),
-                          logLabel: imageLogLabel,
                         ),
                 ),
               ),
@@ -542,7 +538,6 @@ class _SearchListScreenState extends State<SearchListScreen> {
     return _buildThumbListRow(
       title: title,
       imageUrl: _contentThumb(item),
-      imageLogLabel: title.isEmpty ? '콘텐츠' : title,
       onTap: () => _openContent(item),
     );
   }
@@ -674,10 +669,7 @@ class _SearchListScreenState extends State<SearchListScreen> {
 
   String _contentThumb(Map<String, dynamic> item) {
     final raw = item['thumbnail_url']?.toString();
-    final full = ContentService.resolveThumbnailUrl(raw, fallback: '');
-    // 프록시로 줄이면 서버가 원본(수 MB)을 받은 뒤에야 응답해서 10초 넘게 걸린다.
-    // 브라우저가 카페24에서 바로 받는 편이 훨씬 빠르다.
-    return ImageUrlHelper.browserImageSrc(full);
+    return ContentService.resolveThumbnailUrl(raw, fallback: '');
   }
 }
 
@@ -686,15 +678,11 @@ class _SearchRowImage extends StatefulWidget {
     required this.url,
     required this.size,
     required this.fallback,
-    this.logLabel,
   });
 
   final String url;
   final double size;
   final Widget fallback;
-
-  /// 값이 있으면 이 이미지의 로드 시간을 로그로 남긴다.
-  final String? logLabel;
 
   @override
   State<_SearchRowImage> createState() => _SearchRowImageState();
@@ -702,64 +690,33 @@ class _SearchRowImage extends StatefulWidget {
 
 class _SearchRowImageState extends State<_SearchRowImage> {
   late String _url;
-  var _usedProxy = false;
-  void Function()? _stopWatch;
-  Stopwatch? _totalWatch;
+  var _usedOriginal = false;
 
   @override
   void initState() {
     super.initState();
-    _url = _pickUrl(widget.url, proxied: false);
-    _beginImageLog();
+    _url = _thumbUrl(widget.url);
   }
 
   @override
   void didUpdateWidget(covariant _SearchRowImage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.url != widget.url || oldWidget.logLabel != widget.logLabel) {
-      _usedProxy = false;
-      _url = _pickUrl(widget.url, proxied: false);
-      _totalWatch = null;
-      _beginImageLog();
+    if (oldWidget.url != widget.url) {
+      _usedOriginal = false;
+      _url = _thumbUrl(widget.url);
     }
   }
 
-  @override
-  void dispose() {
-    _stopWatch?.call();
-    super.dispose();
-  }
-
-  void _beginImageLog() {
-    _stopWatch?.call();
-    _stopWatch = null;
-    final label = widget.logLabel;
-    if (label == null) return;
-    if (_url.isEmpty) {
-      debugPrint('[검색 콘텐츠 이미지] 썸네일 없음 $label');
-      return;
-    }
-    _totalWatch ??= Stopwatch()..start();
-    debugPrint('[검색 콘텐츠 이미지] 요청 $label $_url');
-    _stopWatch = watchContentImageLoad(
-      url: _url,
-      onDone: (elapsedMs, ok) {
-        final totalMs = _totalWatch?.elapsedMilliseconds ?? elapsedMs;
-        final status = ok ? '완료' : '실패';
-        debugPrint(
-          '[검색 콘텐츠 이미지] $status ${elapsedMs}ms (처음 요청부터 ${totalMs}ms) $label $_url',
-        );
-      },
-    );
-  }
-
-  String _pickUrl(String raw, {required bool proxied}) {
+  /// 목록 칸은 72px. 수 MB 원본 대신 가로 160px만 받는다.
+  String _thumbUrl(String raw) {
     final trimmed = raw.trim();
     if (trimmed.isEmpty) return '';
-    if (proxied) {
-      if (trimmed.contains('/api/proxy/image')) return trimmed;
-      return ImageUrlHelper.contentListThumbUrl(trimmed);
-    }
+    return ImageUrlHelper.contentListThumbUrl(trimmed, width: 160);
+  }
+
+  String _originalUrl(String raw) {
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) return '';
     final direct = ImageUrlHelper.browserImageSrc(trimmed);
     return direct.isEmpty ? trimmed : direct;
   }
@@ -776,22 +733,14 @@ class _SearchRowImageState extends State<_SearchRowImage> {
       decodeHeightLogical: 72,
       preferHtmlElementOnWeb: true,
       errorBuilder: (_, __, ___) {
-        final proxied = _pickUrl(widget.url, proxied: true);
-        if (!_usedProxy && proxied.isNotEmpty && proxied != _url) {
+        final original = _originalUrl(widget.url);
+        if (!_usedOriginal && original.isNotEmpty && original != _url) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (!mounted) return;
             setState(() {
-              _usedProxy = true;
-              _url = proxied;
+              _usedOriginal = true;
+              _url = original;
             });
-            final label = widget.logLabel;
-            if (label != null) {
-              final elapsed = _totalWatch?.elapsedMilliseconds ?? 0;
-              debugPrint(
-                '[검색 콘텐츠 이미지] 직링크 실패 ${elapsed}ms, 프록시로 다시 요청 $label',
-              );
-            }
-            _beginImageLog();
           });
           return const SizedBox.shrink();
         }

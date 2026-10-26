@@ -380,15 +380,20 @@ class ImageUrlHelper {
     return '${ApiClient.baseUrl}/api/proxy/image?url=${Uri.encodeComponent(absolute)}';
   }
 
-  /// 검색 목록용. 원본이 10MB가 넘는 콘텐츠 사진을 가로 160px로 줄여 받는다.
-  static String contentListThumbUrl(String url) {
+  /// 목록 썸네일. 원본이 수 MB여도 가로 [width]px jpeg로 받는다.
+  static String contentListThumbUrl(String url, {int width = 160}) {
     final direct = browserImageSrc(url);
     if (direct.isEmpty) return '';
-    if (direct.contains('/api/proxy/image')) return direct;
-    return '${ApiClient.baseUrl}/api/proxy/image?url=${Uri.encodeComponent(direct)}&w=160';
+    final w = width.clamp(32, 480);
+    if (direct.contains('/api/proxy/image')) {
+      if (direct.contains('w=')) return direct;
+      final join = direct.contains('?') ? '&' : '?';
+      return '$direct${join}w=$w';
+    }
+    return '${ApiClient.baseUrl}/api/proxy/image?url=${Uri.encodeComponent(direct)}&w=$w';
   }
 
-  /// `<img>` 직링크. 웹 검색 썸네일은 프록시를 거치지 않아 원본을 한 번만 받는다.
+  /// 프록시 쿼리를 벗긴 원본 주소.
   static String browserImageSrc(String url) {
     var raw = unwrapProxyImageUrlIfAny(url.trim());
     if (raw.isEmpty) return '';
