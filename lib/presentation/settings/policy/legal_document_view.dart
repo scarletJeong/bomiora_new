@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/constants/app_assets.dart';
+import '../../common/widgets/centered_empty_state.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 
 /// `legal/` 마크다운을 제목·본문·목록으로 표시합니다.
@@ -47,18 +47,12 @@ class _LegalDocumentViewState extends State<LegalDocumentView> {
     final padding = widget.padding ?? EdgeInsets.all(healthDp(context, 20));
 
     if (_failed) {
-      final iconSz = healthDp(context, 40);
       return Padding(
         padding: padding,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            SvgPicture.asset(
-              AppAssets.emptyNoticeIcon,
-              width: iconSz,
-              height: iconSz,
-              fit: BoxFit.contain,
-            ),
+            CenteredEmptyState.assetIcon(context, AppAssets.emptyNoticeIcon),
             SizedBox(height: healthDp(context, 8)),
             Text(
               '등록된 약관이 없습니다.',
