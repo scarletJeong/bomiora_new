@@ -173,6 +173,9 @@ abstract final class AppAssets {
   // 회원 탈퇴 설명 아이콘
   static const String cancelIcon1 = '${_img}cancel_icon1.svg';
   
+  // 내리뷰 카드 감량 아이콘
+  static const String myReviewCardWeightLossIcon = '${_img}myReview_card_weight_loss_icon.svg';
+
 
   /* 6. 결제 */
   // 결제 화면 - 결제수단 아이콘
