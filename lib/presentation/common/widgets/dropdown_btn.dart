@@ -108,6 +108,7 @@ class DropdownBtn extends StatefulWidget {
     int? scrollWhenItemCountExceeds,
     double? maxVisibleItemsWhenScrolling,
     LayerLink? layerLink,
+    bool alignRight = false,
   }) {
     closeMenu();
 
@@ -144,8 +145,10 @@ class DropdownBtn extends StatefulWidget {
     final safeBottom = media.padding.bottom;
     final safeTop = media.padding.top;
 
-    // 650 패널이 넓은 창 가운데에 있을 때도 버튼 왼쪽과 맞춘다.
-    double menuLeft = anchorInOverlay.dx;
+    // 기본은 버튼 왼쪽, alignRight 면 버튼 오른쪽에 맞춘다.
+    double menuLeft = alignRight
+        ? anchorInOverlay.dx + size.width - panelWidth
+        : anchorInOverlay.dx;
     if (menuLeft + panelWidth > boundsW) {
       menuLeft = boundsW - panelWidth;
     }
