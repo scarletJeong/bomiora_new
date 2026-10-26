@@ -1,9 +1,11 @@
 import 'dart:typed_data';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/utils/image_picker_utils.dart';
+import '../../../core/utils/web_horizontal_nav_lock.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../data/models/delivery/delivery_model.dart';
 import '../../../data/models/review/review_model.dart';
@@ -125,6 +127,7 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
   @override
   void initState() {
     super.initState();
+    setBlockBrowserBackSwipe(true);
     _weightFocus.addListener(() {
       if (!_weightFocus.hasFocus && mounted) {
         _commitWeightText(allowBelow: true);
@@ -160,6 +163,7 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
 
   @override
   void dispose() {
+    setBlockBrowserBackSwipe(false);
     _weightController.dispose();
     _weightFocus.dispose();
     _positiveController.dispose();
@@ -900,11 +904,42 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
                 SizedBox(
                   height: thumbR * 2,
                   width: w,
-                  child: GestureDetector(
+                  child: Listener(
+                    onPointerSignal: (event) {
+                      if (event is! PointerScrollEvent) return;
+                      if (event.scrollDelta.dx.abs() <
+                          event.scrollDelta.dy.abs()) {
+                        return;
+                      }
+                      GestureBinding.instance.pointerSignalResolver.register(
+                        event,
+                        (signal) {
+                          if (signal is! PointerScrollEvent) return;
+                          if (signal.scrollDelta.dx.abs() < 1) return;
+                          final step = signal.scrollDelta.dx > 0 ? 1 : -1;
+                          final kg = (_weightLossKg + step).clamp(1, 30);
+                          setState(() => _weightLossKg = kg);
+                          _syncWeightField();
+                        },
+                      );
+                    },
+                    child: RawGestureDetector(
                     behavior: HitTestBehavior.opaque,
-                    onTapDown: (d) => setFromLocalDx(d.localPosition.dx),
-                    onHorizontalDragUpdate: (d) =>
-                        setFromLocalDx(d.localPosition.dx),
+                    gestures: {
+                      _EagerHorizontalDragRecognizer:
+                          GestureRecognizerFactoryWithHandlers<
+                              _EagerHorizontalDragRecognizer>(
+                        () => _EagerHorizontalDragRecognizer(),
+                        (instance) {
+                          instance.onDown = (d) {
+                            setFromLocalDx(d.localPosition.dx);
+                          };
+                          instance.onUpdate = (d) {
+                            setFromLocalDx(d.localPosition.dx);
+                          };
+                        },
+                      ),
+                    },
                     child: Stack(
                       clipBehavior: Clip.none,
                       children: [
@@ -948,6 +983,7 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
                           ),
                         ),
                       ],
+                    ),
                     ),
                   ),
                 ),
@@ -1685,5 +1721,14 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
         });
       }
     }
+  }
+}
+
+/// 감량 막대 드래그가 화면 뒤로가기(가장자리 스와이프)에 지지 않도록 바로 제스처를 가져간다.
+class _EagerHorizontalDragRecognizer extends HorizontalDragGestureRecognizer {
+  @override
+  void addAllowedPointer(PointerDownEvent event) {
+    super.addAllowedPointer(event);
+    resolve(GestureDisposition.accepted);
   }
 }
