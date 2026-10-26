@@ -429,6 +429,9 @@ class OrderDetailModel {
   /// 쿠폰 합계 (장바구니·배송비·주문 쿠폰)
   final int couponDiscount;
 
+  /// 배송비 쿠폰 (`od_send_coupon`). 기본 배송비에서만 빠진다.
+  final int sendCoupon;
+
   /// 포인트 사용액
   final int pointDiscount;
   final int totalPrice;
@@ -488,6 +491,7 @@ class OrderDetailModel {
     required this.deliveryFee,
     required this.discountAmount,
     this.couponDiscount = 0,
+    this.sendCoupon = 0,
     this.pointDiscount = 0,
     required this.totalPrice,
     this.cancelPrice = 0,
@@ -600,6 +604,9 @@ class OrderDetailModel {
       couponDiscount: NodeValueParser.asInt(
               normalized['couponDiscount'] ?? normalized['coupon_discount']) ??
           0,
+      sendCoupon: NodeValueParser.asInt(
+              normalized['sendCoupon'] ?? normalized['od_send_coupon']) ??
+          0,
       pointDiscount: NodeValueParser.asInt(
               normalized['pointDiscount'] ?? normalized['point_discount']) ??
           0,
@@ -671,6 +678,7 @@ class OrderDetailModel {
       'deliveryFee': deliveryFee,
       'discountAmount': discountAmount,
       'couponDiscount': couponDiscount,
+      'sendCoupon': sendCoupon,
       'pointDiscount': pointDiscount,
       'totalPrice': totalPrice,
       'cancelPrice': cancelPrice,

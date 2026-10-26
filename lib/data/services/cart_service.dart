@@ -653,29 +653,56 @@ class CartService {
     required List<int> ctIds,
     String ctStatus = '쇼핑',
   }) async {
-    if (ctIds.isEmpty) return 0;
+    final quote = await getShippingQuote(ctIds: ctIds, ctStatus: ctStatus);
+    return quote?.baseShipping ?? 0;
+  }
+
+  /// 기본 배송비와 우편번호 추가 배송비를 따로 받는다.
+  static Future<CartShippingQuote?> getShippingQuote({
+    required List<int> ctIds,
+    String ctStatus = '쇼핑',
+    String zip = '',
+  }) async {
+    if (ctIds.isEmpty) {
+      return const CartShippingQuote(
+        baseShipping: 0,
+        extraShipping: 0,
+        pointRate: 1,
+      );
+    }
     try {
       final user = await AuthService.getUser();
-      if (user == null) return 0;
+      if (user == null) return null;
 
       final ids = ctIds.where((id) => id > 0).join(',');
-      if (ids.isEmpty) return 0;
+      if (ids.isEmpty) return null;
+      final zipDigits = zip.replaceAll(RegExp(r'[^0-9]'), '');
 
       final response = await ApiClient.get(
         '${ApiEndpoints.getCartShippingCost}?mb_id=${Uri.encodeComponent(user.id)}'
         '&ct_ids=${Uri.encodeComponent(ids)}'
-        '&ct_status=${Uri.encodeComponent(ctStatus)}',
+        '&ct_status=${Uri.encodeComponent(ctStatus)}'
+        '&zip=${Uri.encodeComponent(zipDigits)}',
       );
-      if (response.statusCode != 200) return 0;
+      if (response.statusCode != 200) return null;
 
       final data = json.decode(response.body);
-      if (data is! Map) return 0;
-      if (data['success'] == false) return 0;
-      final raw = data['shipping_cost'];
-      if (raw is int) return raw;
-      return int.tryParse('$raw') ?? 0;
+      if (data is! Map || data['success'] == false) return null;
+      int asInt(dynamic raw) {
+        if (raw is int) return raw;
+        return int.tryParse('$raw') ?? 0;
+      }
+
+      final base = asInt(data['base_shipping_cost'] ?? data['shipping_cost']);
+      final extra = asInt(data['extra_shipping_cost']);
+      final rate = double.tryParse('${data['point_rate'] ?? ''}') ?? 1;
+      return CartShippingQuote(
+        baseShipping: base < 0 ? 0 : base,
+        extraShipping: extra < 0 ? 0 : extra,
+        pointRate: rate > 0 ? rate : 1,
+      );
     } catch (_) {
-      return 0;
+      return null;
     }
   }
 
@@ -913,4 +940,16 @@ class CartService {
       };
     }
   }
+}
+
+class CartShippingQuote {
+  final int baseShipping;
+  final int extraShipping;
+  final double pointRate;
+
+  const CartShippingQuote({
+    required this.baseShipping,
+    required this.extraShipping,
+    required this.pointRate,
+  });
 }

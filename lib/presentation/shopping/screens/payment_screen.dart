@@ -24,6 +24,7 @@ import '../../../data/models/coupon/coupon_model.dart';
 import '../../../data/models/user/user_model.dart';
 import '../../../data/services/address_service.dart';
 import '../../../data/services/auth_service.dart';
+import '../../../data/services/cart_service.dart';
 import '../../../data/services/coupon_service.dart';
 import '../../../data/services/delivery_service.dart';
 import '../../../data/services/point_service.dart';
@@ -124,7 +125,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
   int _myPoint = 0;
   int _usedPoint = 0;
   static const int _minPayableAmount = 3000;
+  int _baseShipping = 0;
+  int _extraShipping = 0;
+  double _pointRate = 1;
 
+  List<Coupon> _loadedCoupons = [];
   List<Coupon> _applicableCoupons = [];
   List<Coupon> _selectedCoupons = [];
   Map<String, dynamic>? _defaultAddress;
@@ -137,6 +142,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
   @override
   void initState() {
     super.initState();
+    _baseShipping = widget.shippingCost < 0 ? 0 : widget.shippingCost;
     _pointController.addListener(_onPointChanged);
     prefetchKcpPayScripts();
     _loadData();
@@ -203,17 +209,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
       setState(() {
         _defaultAddress = defaultAddress.isEmpty ? null : defaultAddress;
         _myPoint = point;
-        _applicableCoupons = _couponPointDisabled
-            ? []
-            : coupons.where(_isCouponApplicable).toList();
-        if (_couponPointDisabled) {
-          _selectedCoupons = [];
-          _usedPoint = 0;
-          _pointController.clear();
-        }
+        _loadedCoupons = coupons;
+        _syncCouponLists();
         _loading = false;
         _applyAddressMode();
       });
+      _loadShippingQuote();
       // 기본 배송지 없으면 회원 성함/연락처 프리필
       if (_defaultAddress == null) {
         setState(() {
@@ -247,17 +248,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
     setState(() {
       _defaultAddress = defaultAddress.isEmpty ? null : defaultAddress;
       _myPoint = prefetch.point;
-      _applicableCoupons = _couponPointDisabled
-          ? []
-          : prefetch.coupons.where(_isCouponApplicable).toList();
-      if (_couponPointDisabled) {
-        _selectedCoupons = [];
-        _usedPoint = 0;
-        _pointController.clear();
-      }
+      _loadedCoupons = prefetch.coupons;
+      _syncCouponLists();
       _loading = false;
       _applyAddressMode();
     });
+    _loadShippingQuote();
     if (_defaultAddress == null) {
       setState(() {
         _saveAsDefault = true;
@@ -287,6 +283,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   bool _isCouponApplicable(Coupon coupon) {
     if (!coupon.isAvailable) return false;
+    if (coupon.method == 3) {
+      if (_baseShipping <= 0) return false;
+      return _shippingCouponGoodsAmount >= coupon.minimum;
+    }
     if (_couponPointDisabled) return false;
     if (_nonInfluencerAmount < coupon.minimum) return false;
     switch (coupon.method) {
@@ -304,15 +304,32 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   .toLowerCase();
           return source.contains(target);
         });
-      case 3:
-        return widget.shippingCost > 0;
       default:
         return true;
     }
   }
 
+  void _syncCouponLists() {
+    _applicableCoupons = _loadedCoupons.where(_isCouponApplicable).toList();
+    _selectedCoupons =
+        _selectedCoupons.where(_isCouponApplicable).toList();
+    if (_couponPointDisabled) {
+      _usedPoint = 0;
+      _pointController.clear();
+    }
+  }
+
   int get _purchaseAmount =>
       widget.cartItems.fold(0, (sum, item) => sum + item.ctPrice);
+
+  /// 배송비 쿠폰 최소 금액. 일반 상품과 처방 상품 합이다.
+  int get _shippingCouponGoodsAmount => widget.cartItems.fold<int>(0, (sum, item) {
+        final kind = item.ctKind.toLowerCase();
+        if (kind.isNotEmpty && kind != 'general' && kind != 'prescription') {
+          return sum;
+        }
+        return sum + item.ctPrice;
+      });
 
   bool _isInfluencerCartItem(CartItem item) => item.ctMbInf.trim().isNotEmpty;
 
@@ -330,7 +347,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   String get _couponPointNotice {
     if (_isInfluencerOnly) {
-      return '인플루언서 상품 주문은 쿠폰/포인트 사용이 불가합니다.';
+      return '인플루언서 상품에는 상품 쿠폰과 포인트를 쓸 수 없습니다.';
     }
     if (_hasInfluencerItems) {
       return '인플루언서 상품에는 쿠폰/포인트가 적용되지 않습니다.';
@@ -338,18 +355,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
     return '';
   }
 
-  List<Map<String, dynamic>> _checkoutCouponPayload() {
-    final items = _selectedCoupons
-        .where((c) => c.id.trim().isNotEmpty)
-        .map<Map<String, dynamic>>(
-          (c) => {
-            'cp_id': c.id.trim(),
-            'discount': _discountForCoupon(c),
-          },
-        )
-        .toList();
+  List<Map<String, dynamic>> _scaleCouponDiscounts(
+    List<Map<String, dynamic>> items,
+    int cap,
+  ) {
     final raw = items.fold<int>(0, (sum, e) => sum + (e['discount'] as int));
-    var remain = _couponDiscount;
+    var remain = cap;
     if (raw <= 0 || raw == remain) return items;
     for (var i = 0; i < items.length; i++) {
       final current = items[i]['discount'] as int;
@@ -364,7 +375,32 @@ class _PaymentScreenState extends State<PaymentScreen> {
     return items;
   }
 
+  List<Map<String, dynamic>> _checkoutCouponPayload() {
+    final product = <Map<String, dynamic>>[];
+    final shipping = <Map<String, dynamic>>[];
+    for (final coupon in _selectedCoupons) {
+      final id = coupon.id.trim();
+      if (id.isEmpty) continue;
+      final row = <String, dynamic>{
+        'cp_id': id,
+        'discount': coupon.method == 3
+            ? _shippingDiscountFor(coupon)
+            : _discountForCoupon(coupon),
+      };
+      if (coupon.method == 3) {
+        shipping.add(row);
+      } else {
+        product.add(row);
+      }
+    }
+    return [
+      ..._scaleCouponDiscounts(product, _productCouponDiscount),
+      ..._scaleCouponDiscounts(shipping, _shippingCouponDiscount),
+    ];
+  }
+
   int _discountForCoupon(Coupon coupon) {
+    if (coupon.method == 3) return _shippingDiscountFor(coupon);
     final base = _baseAmountForCoupon(coupon);
     if (base <= 0 || base < coupon.minimum) return 0;
     if (coupon.maximum > 0) {
@@ -374,15 +410,40 @@ class _PaymentScreenState extends State<PaymentScreen> {
     return coupon.price > base ? base : coupon.price;
   }
 
-  int get _couponDiscountRaw => _couponPointDisabled
-      ? 0
-      : _selectedCoupons.fold(0, (sum, c) => sum + _discountForCoupon(c));
+  /// 배송비 쿠폰은 기본 배송비만 기준으로 깎고, 상품 쿠폰 한도와 더하지 않는다.
+  int _shippingDiscountFor(Coupon coupon) {
+    final base = _baseShipping;
+    if (base <= 0 || _shippingCouponGoodsAmount < coupon.minimum) return 0;
+    var discount = coupon.price;
+    if (coupon.type == 1) {
+      final trunc = coupon.trunc > 0 ? coupon.trunc : 1;
+      discount = ((base * coupon.price / 100) / trunc).floor() * trunc;
+    }
+    if (coupon.maximum > 0 && discount > coupon.maximum) {
+      discount = coupon.maximum;
+    }
+    if (discount > base) discount = base;
+    return discount < 0 ? 0 : discount;
+  }
 
-  int get _couponDiscount {
-    final raw = _couponDiscountRaw;
+  int get _productCouponDiscount {
+    if (_couponPointDisabled) return 0;
+    final raw = _selectedCoupons
+        .where((coupon) => coupon.method != 3)
+        .fold<int>(0, (sum, coupon) => sum + _discountForCoupon(coupon));
     if (raw <= _nonInfluencerAmount) return raw;
     return _nonInfluencerAmount;
   }
+
+  int get _shippingCouponDiscount {
+    final raw = _selectedCoupons
+        .where((coupon) => coupon.method == 3)
+        .fold<int>(0, (sum, coupon) => sum + _shippingDiscountFor(coupon));
+    if (raw <= _baseShipping) return raw < 0 ? 0 : raw;
+    return _baseShipping;
+  }
+
+  int get _couponDiscount => _productCouponDiscount;
 
   int get _pointEligibleBaseAmount {
     final base = _nonInfluencerAmount - _couponDiscount;
@@ -404,8 +465,14 @@ class _PaymentScreenState extends State<PaymentScreen> {
     return total < 0 ? 0 : total;
   }
 
+  int get _shippingNet =>
+      _baseShipping + _extraShipping - _shippingCouponDiscount;
+
   int get _maxPointByMinimumPayable {
-    final maxByMinimum = _purchaseAmount - _couponDiscount - _minPayableAmount;
+    final maxByMinimum = _purchaseAmount +
+        _shippingNet -
+        _productCouponDiscount -
+        _minPayableAmount;
     return maxByMinimum < 0 ? 0 : maxByMinimum;
   }
 
@@ -433,13 +500,24 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   int get _finalAmount {
     final amount = _purchaseAmount +
-        widget.shippingCost -
-        _couponDiscount -
+        _baseShipping +
+        _extraShipping -
+        _productCouponDiscount -
+        _shippingCouponDiscount -
         _pointDiscount;
     return amount < 0 ? 0 : amount;
   }
 
-  int get _expectedPoint => (_finalAmount * 0.01).floor();
+  /// 실결제에서 남은 배송비(기본 + 지역 - 배송비 쿠폰)를 뺀 금액.
+  int get _rewardBase {
+    final raw = _finalAmount - _shippingNet;
+    if (raw <= 0) return 0;
+    final goodsAfterCoupon = _purchaseAmount - _productCouponDiscount;
+    final cap = goodsAfterCoupon < 0 ? 0 : goodsAfterCoupon;
+    return raw > cap ? cap : raw;
+  }
+
+  int get _expectedPoint => (_rewardBase * _pointRate / 100).floor();
 
   void _onPointChanged() {
     if (_syncingPoint) return;
@@ -487,6 +565,23 @@ class _PaymentScreenState extends State<PaymentScreen> {
       _deliveryMemoCustomSelected =
           DeliveryMemoDropdown.isCustomMemo(addressMemo);
     }
+    _loadShippingQuote();
+  }
+
+  Future<CartShippingQuote?> _loadShippingQuote() async {
+    final ids = widget.cartItems.map((item) => item.ctId).where((id) => id > 0);
+    final quote = await CartService.getShippingQuote(
+      ctIds: ids.toList(),
+      zip: _zipController.text,
+    );
+    if (!mounted || quote == null) return quote;
+    setState(() {
+      _baseShipping = quote.baseShipping;
+      _extraShipping = quote.extraShipping;
+      _pointRate = quote.pointRate;
+      _syncCouponLists();
+    });
+    return quote;
   }
 
   Future<void> _openDeliveryAddressChangePopup() async {
@@ -612,11 +707,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   int _pointRateForItem(CartItem item) {
-    final influencer = item.ctMbInf.trim().isNotEmpty;
-    if (influencer) return 0;
-    if (item.ctKind.toLowerCase() == 'prescription') return 100;
+    if (item.ctMbInf.trim().isNotEmpty) return 0;
+    final kind = item.ctKind.toLowerCase();
+    if (kind == 'prescription') return 100;
+    if (kind == 'general') return 10;
     final rate = item.pointUsageRate;
-    if (rate <= 0) return 0;
+    if (rate <= 0) return 100;
     if (rate > 100) return 100;
     return rate;
   }
@@ -644,7 +740,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       case 2:
         return _nonInfluencerAmount;
       case 3:
-        return widget.shippingCost;
+        return _baseShipping;
       default:
         return _purchaseAmount;
     }
@@ -718,6 +814,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
       final useMobilePay = _useMobileKcpPay(context);
       Future<KcpPaySession> bootstrap() async {
         await _maybeSaveDefaultAddress(user.id);
+        final quote = await _loadShippingQuote();
+        final baseShipping = quote?.baseShipping ?? _baseShipping;
+        final extraShipping = quote?.extraShipping ?? _extraShipping;
         final response = await ApiClient.post(
           ApiEndpoints.kcpPayRequest,
           {
@@ -726,8 +825,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
             'payment_method': _paymentMethodLabel,
             'pay_method': _kcpPayMethodBits,
             'escrow_use': _useEscrow,
-            'shipping_cost': widget.shippingCost,
-            'coupon_discount': _couponDiscount,
+            'shipping_cost': baseShipping + extraShipping,
+            'base_shipping_cost': baseShipping,
+            'extra_shipping_cost': extraShipping,
+            'coupon_discount':
+                _productCouponDiscount + _shippingCouponDiscount,
             'cp_ids': _selectedCoupons
                 .map((c) => c.id.trim())
                 .where((id) => id.isNotEmpty)
@@ -1815,12 +1917,21 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   valueColor: _pink,
                 ),
               ],
-              if (widget.shippingCost > 0) ...[
+              if (_baseShipping + _extraShipping > 0) ...[
                 SizedBox(height: healthDp(context, 16)),
                 _paymentAmountRow(
                   context,
                   '배송비',
-                  '${PriceFormatter.format(widget.shippingCost)} 원',
+                  '${PriceFormatter.format(_baseShipping + _extraShipping)} 원',
+                ),
+              ],
+              if (_shippingCouponDiscount > 0) ...[
+                SizedBox(height: healthDp(context, 16)),
+                _paymentAmountRow(
+                  context,
+                  '배송비 쿠폰',
+                  '-${PriceFormatter.format(_shippingCouponDiscount)} 원',
+                  valueColor: _pink,
                 ),
               ],
               SizedBox(height: healthDp(context, 16)),
@@ -1989,23 +2100,22 @@ class _PaymentScreenState extends State<PaymentScreen> {
       _addressController.text = parsed.address;
       _detailAddressController.clear();
     });
+    _loadShippingQuote();
   }
 
-  bool get _hasCategoryCoupon =>
-      _selectedCoupons.any((coupon) => coupon.method == 1);
-  bool get _hasNonCategoryCoupon =>
-      _selectedCoupons.any((coupon) => coupon.method != 1);
-
   bool _isCouponMethodDisabled(int method) {
-    if (method == 1) {
-      return _hasNonCategoryCoupon;
+    if (method == 3) {
+      return _selectedCoupons.any((coupon) => coupon.method == 3);
     }
-    if (_hasCategoryCoupon) return true;
-    return _selectedCoupons.any((coupon) => coupon.method != method);
+    final others = _selectedCoupons.where((coupon) => coupon.method != 3);
+    if (method == 1) {
+      return others.any((coupon) => coupon.method != 1);
+    }
+    if (others.any((coupon) => coupon.method == 1)) return true;
+    return others.any((coupon) => coupon.method != method);
   }
 
   List<Coupon> _availableCouponsForUnifiedPicker() {
-    if (_couponPointDisabled) return const [];
     return _applicableCoupons.where((coupon) {
       if (_selectedCoupons.any((selected) => selected.no == coupon.no)) {
         return false;
@@ -2029,8 +2139,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
     final method = picked.method;
 
     setState(() {
-      if (method == 1) {
-        _selectedCoupons.removeWhere((coupon) => coupon.method != 1);
+      if (method == 3) {
+        _selectedCoupons.removeWhere((coupon) => coupon.method == 3);
+        _selectedCoupons.add(picked);
+      } else if (method == 1) {
+        _selectedCoupons.removeWhere(
+          (coupon) => coupon.method != 1 && coupon.method != 3,
+        );
         final categoryCount =
             _selectedCoupons.where((coupon) => coupon.method == 1).length;
         if (categoryCount < 2) {
@@ -2038,7 +2153,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
         }
       } else {
         _selectedCoupons.removeWhere(
-            (coupon) => coupon.method == 1 || coupon.method != method);
+          (coupon) =>
+              coupon.method != 3 &&
+              (coupon.method == 1 || coupon.method != method),
+        );
         _selectedCoupons.removeWhere((coupon) => coupon.method == method);
         _selectedCoupons.add(picked);
       }
