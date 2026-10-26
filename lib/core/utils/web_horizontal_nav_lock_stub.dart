@@ -1,0 +1,1 @@
+void setBlockBrowserBackSwipe(bool block) {}
