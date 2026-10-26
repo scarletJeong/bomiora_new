@@ -235,7 +235,6 @@ class _ProductListScreenState extends State<ProductListScreen> {
       ),
       drawer: AppBarMenuTapDrawer(
         onHealthDashboardTap: () {
-          Navigator.pop(context);
           Navigator.pushNamed(context, '/health');
         },
       ),

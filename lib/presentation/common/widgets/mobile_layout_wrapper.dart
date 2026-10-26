@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 import '../../health/health_common/health_responsive_scale.dart';
+import '../navigation/app_bar_nav_guard.dart';
 import 'navi_bar.dart';
 
 /// [MobileAppLayoutWrapper] 패널 가로 폭 안에 스낵바를 표시합니다.
@@ -240,18 +242,23 @@ class MobileAppLayoutWrapper extends StatelessWidget {
     required PreferredSizeWidget? appBar,
     required bool hideBottomNav,
   }) {
-    return Scaffold(
+    return DrawerBarrierHost(
+      builder: (allowDismiss) => Scaffold(
       key: scaffoldKey,
       backgroundColor: backgroundColor ?? Colors.white,
       appBar: wrappedAppBar ?? appBar,
       drawer: drawer,
       endDrawer: endDrawer,
+      drawerBarrierDismissible: allowDismiss,
+      drawerEnableOpenDragGesture: !kIsWeb,
+      endDrawerEnableOpenDragGesture: !kIsWeb,
       bottomNavigationBar: hideBottomNav ? null : bottomNavigationBar,
       // 하단 네비가 있으면 키보드가 열려도 바를 위로 밀지 않는다.
       resizeToAvoidBottomInset: hideBottomNav
           ? resizeToAvoidBottomInset
           : bottomNavigationBar == null && resizeToAvoidBottomInset,
       body: child,
+      ),
     );
   }
 

@@ -10,6 +10,7 @@ import '../../settings/settings_screen.dart';
 import '../../shopping/screens/cart_general_screen.dart' as cart_general;
 import '../../shopping/screens/cart_integration_screen.dart';
 import '../../home/search/search_popup.dart';
+import '../navigation/app_bar_nav_guard.dart';
 import 'cart_dropdown_menu.dart';
 
 /// 홈: 검색·알림·장바구니 / 마이페이지: 장바구니·설정
@@ -101,6 +102,7 @@ class _AppBarMenuState extends State<AppBarMenu> {
   Future<void> _onCartIconPressed() async {
     if (_cartNavigating) return;
     _cartNavigating = true;
+    AppBarNavGuard.instance.markOpening();
     try {
       final useIntegrated =
           await PrescriptionPurchaseHistoryService.shouldUseIntegratedCart();
@@ -145,7 +147,10 @@ class _AppBarMenuState extends State<AppBarMenu> {
           Positioned.fill(
             child: GestureDetector(
               behavior: HitTestBehavior.translucent,
-              onTap: _removeCartOverlay,
+              onTap: () {
+                if (!AppBarNavGuard.instance.allowDismiss) return;
+                _removeCartOverlay();
+              },
               child: const SizedBox.expand(),
             ),
           ),
@@ -391,7 +396,10 @@ class _AppBarMenuState extends State<AppBarMenu> {
                           height: menuIconH,
                           iconW: menuIconW,
                           iconH: menuIconH,
-                          onPressed: widget.onMenuPressed,
+                          onPressed: () {
+                            AppBarNavGuard.instance.markOpening();
+                            widget.onMenuPressed();
+                          },
                         ),
                         const Spacer(),
                         Row(
@@ -406,10 +414,12 @@ class _AppBarMenuState extends State<AppBarMenu> {
                       child: GestureDetector(
                         behavior: HitTestBehavior.opaque,
                         onTap: () {
-                          Navigator.of(context).pushNamedAndRemoveUntil(
-                            '/home',
-                            (route) => false,
-                          );
+                          if (!AppBarNavGuard.instance.allowDismiss) return;
+                          final scaffold = Scaffold.maybeOf(context);
+                          if (scaffold?.isDrawerOpen ?? false) {
+                            scaffold!.closeDrawer();
+                          }
+                          Navigator.of(context).popUntil((route) => route.isFirst);
                         },
                         child: SizedBox(
                           width: logoW,

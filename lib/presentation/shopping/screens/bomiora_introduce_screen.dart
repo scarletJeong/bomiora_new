@@ -30,7 +30,6 @@ class _BomioraIntroduceScreenState extends State<BomioraIntroduceScreen> {
       ),
       drawer: AppBarMenuTapDrawer(
         onHealthDashboardTap: () {
-          Navigator.pop(context);
           Navigator.pushNamed(context, '/health');
         },
       ),

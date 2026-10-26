@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 import '../../common/widgets/centered_empty_state.dart';
@@ -13,6 +14,7 @@ import '../../../data/services/banner_service.dart';
 import '../../../data/services/coupon_service.dart';
 import '../../common/widgets/app_clickable.dart';
 import '../../common/widgets/app_footer.dart';
+import '../../common/navigation/app_bar_nav_guard.dart';
 import '../../common/widgets/appbar_menutap.dart';
 import '../../common/widgets/navi_bar.dart';
 import '../../common/widgets/product_card_with_subscription.dart';
@@ -440,11 +442,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return DrawerBarrierHost(
+      builder: (allowDismiss) => Scaffold(
       key: _scaffoldKey,
       backgroundColor: Colors.white,
       resizeToAvoidBottomInset: false,
       extendBodyBehindAppBar: false,
+      drawerBarrierDismissible: allowDismiss,
+      drawerEnableOpenDragGesture: !kIsWeb,
       appBar: HealthAppBar.logo(
         onMenuPressed: () => _scaffoldKey.currentState?.openDrawer(),
         actionsStyle: _currentIndex == 1
@@ -453,12 +458,12 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       drawer: AppBarMenuTapDrawer(
         onHealthDashboardTap: () {
-          Navigator.pop(context);
           Navigator.pushNamed(context, '/health');
         },
       ),
       body: _getCurrentPage(),
       bottomNavigationBar: const FooterBar(),
+      ),
     );
   }
 

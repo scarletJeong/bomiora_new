@@ -367,9 +367,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
     final topInset = healthStatusBarTopInset(context);
     return MobileAppLayoutWrapper(
       drawer: AppBarMenuTapDrawer(
-        onHealthDashboardTap: () {
-          Navigator.pop(context);
-        },
+        onHealthDashboardTap: () {},
       ),
       bottomNavigationBar: const FooterBar(),
       backgroundColor: Colors.white,

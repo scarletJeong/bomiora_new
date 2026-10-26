@@ -15,6 +15,7 @@ import '../../shopping/utils/get_product.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../customer_service/screens/qa_list_screen.dart';
 import 'app_toast_overlay.dart';
+import '../navigation/app_bar_nav_guard.dart';
 import 'cart_dropdown_menu.dart';
 import 'recent_product_card.dart';
 
@@ -105,7 +106,7 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
         .trim()
         .toLowerCase();
 
-    Navigator.pop(context);
+    _closeDrawerOnly(context);
     if (kind == 'general') {
       Navigator.pushNamed(context, '/product-general/$itId');
     } else {
@@ -120,9 +121,16 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
     return n.isEmpty ? '회원' : n;
   }
 
+  void _closeDrawerOnly(BuildContext context) {
+    final scaffold = Scaffold.maybeOf(context);
+    if (scaffold != null && scaffold.isDrawerOpen) {
+      scaffold.closeDrawer();
+    }
+  }
+
   void _popAndPushNamed(BuildContext context, String route,
       {Object? arguments}) {
-    Navigator.pop(context);
+    _closeDrawerOnly(context);
     Navigator.pushNamed(context, route, arguments: arguments);
   }
 
@@ -193,7 +201,7 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
   }
 
   void _openContactList(BuildContext context) {
-    Navigator.pop(context);
+    _closeDrawerOnly(context);
     Navigator.push(
       context,
       MaterialPageRoute<void>(
@@ -244,8 +252,8 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
             iconAsset: AppAssets.menu_home_icon,
             label: '홈',
             onTap: () {
-              Navigator.pop(context);
-              Navigator.pushReplacementNamed(context, '/home');
+              _closeDrawerOnly(context);
+              Navigator.of(context).popUntil((route) => route.isFirst);
             },
           ),
           _DrawerShortcutData(
@@ -264,7 +272,7 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
             onTap: () {},
             onCartPrescriptionTap: () => _popAndPushNamed(context, '/cart'),
             onCartShoppingTap: () {
-              Navigator.pop(context);
+              _closeDrawerOnly(context);
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -290,7 +298,7 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
             iconAsset: AppAssets.menu_mypage_icon,
             label: '마이페이지',
             onTap: () {
-              Navigator.pop(context);
+              _closeDrawerOnly(context);
               Navigator.pushReplacementNamed(context, '/my_page');
             },
           ),
@@ -495,7 +503,7 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                 titleStyle: _mainMenuTitleStyle(context),
                 titlePadding: _mainMenuTitlePadding(context),
                 onTap: () {
-                  Navigator.pop(context);
+                  _closeDrawerOnly(context);
                   widget.onHealthDashboardTap();
                 },
               ),
@@ -565,7 +573,7 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                 height: healthDp(context, 32),
                 child: FilledButton(
                   onPressed: () {
-                    Navigator.pop(context);
+                    _closeDrawerOnly(context);
                     Navigator.pushNamed(context, '/login');
                   },
                   style: FilledButton.styleFrom(
@@ -602,7 +610,7 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                 height: healthDp(context, 32),
                 child: OutlinedButton(
                   onPressed: () {
-                    Navigator.pop(context);
+                    _closeDrawerOnly(context);
                     Navigator.pushNamed(context, '/signup');
                   },
                   style: OutlinedButton.styleFrom(
@@ -689,7 +697,7 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
               height: healthDp(context, 32),
               child: OutlinedButton(
                 onPressed: () {
-                  Navigator.pop(context);
+                  _closeDrawerOnly(context);
                   _openAdminPage();
                 },
                 style: OutlinedButton.styleFrom(
@@ -885,6 +893,7 @@ class _DrawerShortcutState extends State<_DrawerShortcut> {
   }
 
   Future<void> _onCartShortcutPressed() async {
+    AppBarNavGuard.instance.markOpening();
     final navigator = Navigator.of(context);
     final useIntegrated =
         await PrescriptionPurchaseHistoryService.shouldUseIntegratedCart();
@@ -893,7 +902,10 @@ class _DrawerShortcutState extends State<_DrawerShortcut> {
       setState(() => _useIntegratedCart = useIntegrated);
     }
     if (useIntegrated) {
-      navigator.pop();
+      final scaffold = Scaffold.maybeOf(context);
+      if (scaffold != null && scaffold.isDrawerOpen) {
+        scaffold.closeDrawer();
+      }
       navigator.push(
         MaterialPageRoute<void>(
           builder: (_) => const CartIntegrationScreen(),
@@ -906,6 +918,7 @@ class _DrawerShortcutState extends State<_DrawerShortcut> {
 
   void _openCartDropdown() {
     if (_showCartDropdown) return;
+    AppBarNavGuard.instance.markOpening();
 
     final anchorContext = _cartAnchorKey.currentContext;
     final anchorBox = anchorContext?.findRenderObject() as RenderBox?;
@@ -932,7 +945,10 @@ class _DrawerShortcutState extends State<_DrawerShortcut> {
           Positioned.fill(
             child: GestureDetector(
               behavior: HitTestBehavior.translucent,
-              onTap: _closeCartDropdown,
+              onTap: () {
+                if (!AppBarNavGuard.instance.allowDismiss) return;
+                _closeCartDropdown();
+              },
               child: const SizedBox.expand(),
             ),
           ),

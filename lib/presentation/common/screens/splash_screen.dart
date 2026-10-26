@@ -218,7 +218,14 @@ class _SplashScreenState extends State<SplashScreen> {
 
 /// 스플래시 UI — [MobileLayoutWrapper] 패널 폭 + [healthDp] 스케일
 class SplashView extends StatefulWidget {
-  const SplashView({super.key});
+  const SplashView({
+    super.key,
+    this.caption = '건강한 하루의 시작',
+    this.trailing,
+  });
+
+  final String caption;
+  final Widget? trailing;
 
   @override
   State<SplashView> createState() => _SplashViewState();
@@ -301,7 +308,8 @@ class _SplashViewState extends State<SplashView> {
                   ),
                   SizedBox(height: gap),
                   Text(
-                    '건강한 하루의 시작',
+                    widget.caption,
+                    textAlign: TextAlign.center,
                     style: TextStyle(
                       color: const Color(0xFF898686),
                       fontSize: healthSp(context, 12),
@@ -309,6 +317,10 @@ class _SplashViewState extends State<SplashView> {
                       fontWeight: FontWeight.w300,
                     ),
                   ),
+                  if (widget.trailing != null) ...[
+                    SizedBox(height: gap),
+                    widget.trailing!,
+                  ],
                 ],
               ),
             ),
