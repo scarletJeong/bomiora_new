@@ -54,6 +54,7 @@ class _CartScreenState extends State<CartScreen> {
   bool selectAll = false; // 현재 탭의 전체 선택 상태
   final ScrollController _scrollController = ScrollController();
   Timer? _shippingDebounce;
+  final Map<int, int> _qtyEpochById = {};
 
   List<CartLineGroup> get _displayedGroups =>
       cartGroupsForTab(cartItems, prescriptionTab: true);
@@ -243,22 +244,76 @@ class _CartScreenState extends State<CartScreen> {
     }
   }
 
+  CartItem _itemWithQuantity(CartItem old, int quantity) {
+    final unit =
+        old.ctQty > 0 ? old.ctPrice / old.ctQty : old.ctPrice.toDouble();
+    return CartItem(
+      ctId: old.ctId,
+      odId: old.odId,
+      mbId: old.mbId,
+      itId: old.itId,
+      itName: old.itName,
+      itSubject: old.itSubject,
+      ctStatus: old.ctStatus,
+      ctPrice: (unit * quantity).round(),
+      ctOption: old.ctOption,
+      ctQty: quantity,
+      ioId: old.ioId,
+      ioPrice: old.ioPrice,
+      ioType: old.ioType,
+      ctKind: old.ctKind,
+      kind: old.kind,
+      itKind: old.itKind,
+      parentItId: old.parentItId,
+      itSupplyItems: old.itSupplyItems,
+      ctTime: old.ctTime,
+      doctorName: old.doctorName,
+      reservationDate: old.reservationDate,
+      reservationTime: old.reservationTime,
+      imageUrl: old.imageUrl,
+      productType: old.productType,
+      ctMbInf: old.ctMbInf,
+      pointUsageRate: old.pointUsageRate,
+      ctSelect: old.ctSelect,
+      isAvailable: old.isAvailable,
+      unavailableReason: old.unavailableReason,
+    );
+  }
+
   Future<void> _updateQuantity(int ctId, int newQuantity) async {
+    if (newQuantity < 1) return;
     if (!await _ensureLoggedIn(message: '장바구니 수정은 로그인 후 이용할 수 있습니다.')) {
       return;
     }
-    if (newQuantity < 1) return;
+    if (!mounted) return;
 
-    // 백엔드 API 호출로 수량 업데이트
+    final index = cartItems.indexWhere((item) => item.ctId == ctId);
+    if (index < 0) return;
+    final previous = cartItems[index];
+    if (previous.ctQty == newQuantity) return;
+
+    final epoch = (_qtyEpochById[ctId] ?? 0) + 1;
+    _qtyEpochById[ctId] = epoch;
+    setState(() {
+      cartItems[index] = _itemWithQuantity(previous, newQuantity);
+    });
+
     final result = await CartService.updateCartQuantity(
       ctId: ctId,
       quantity: newQuantity,
     );
+    if (!mounted || _qtyEpochById[ctId] != epoch) return;
 
-    if (result['success'] == true) {
-      // 성공 시 장바구니 다시 로드 (캐시된 데이터를 표시하면서 백그라운드 갱신)
-      _loadCart(showCachedData: true);
-    }
+    if (result['success'] == true) return;
+
+    setState(() {
+      final current = cartItems.indexWhere((item) => item.ctId == ctId);
+      if (current >= 0) cartItems[current] = previous;
+    });
+    AppToastOverlay.show(
+      context,
+      result['message']?.toString() ?? '수량 변경에 실패했습니다.',
+    );
   }
 
   Future<void> _deleteCartItem(int ctId) async {

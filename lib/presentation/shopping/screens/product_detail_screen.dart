@@ -1521,14 +1521,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       onNoOptionGeneral: () async {},
       onNoOptionPrescription: _proceedWithReservation,
       onOptionsChanged: (newOptions) {
-        _safeSetState(() {
-          _selectedOptions = newOptions;
-        });
+        // 수량 탭마다 상세 페이지를 다시 그리면 바텀시트가 멈춘 것처럼 보인다.
+        _selectedOptions = newOptions;
       },
       onSupplyLinesChanged: (lines) {
-        _safeSetState(() {
-          _supplyLines = lines;
-        });
+        _supplyLines = lines;
       },
       onAddToCart: () async {
         if (_product == null || _selectedOptions.isEmpty) return;
