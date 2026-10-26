@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
@@ -12,6 +13,7 @@ import '../../../data/models/product/product_model.dart';
 import '../../../data/services/content_service.dart';
 import '../../../data/services/recent_search_service.dart';
 import '../../../data/services/search_service.dart';
+import 'content_image_load_log.dart';
 import '../../common/widgets/app_network_image.dart';
 import '../../common/widgets/centered_empty_state.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
@@ -427,6 +429,7 @@ class _SearchListScreenState extends State<SearchListScreen> {
     String? subtitle,
     String? imageUrl,
     IconData fallbackIcon = Icons.article_outlined,
+    String? imageLogLabel,
     required VoidCallback onTap,
   }) {
     final imageSize = _rowImageSize(context);
@@ -465,6 +468,7 @@ class _SearchListScreenState extends State<SearchListScreen> {
                           url: imageUrl,
                           size: imageSize,
                           fallback: _imageFallback(context, fallbackIcon),
+                          logLabel: imageLogLabel,
                         ),
                 ),
               ),
@@ -538,6 +542,7 @@ class _SearchListScreenState extends State<SearchListScreen> {
     return _buildThumbListRow(
       title: title,
       imageUrl: _contentThumb(item),
+      imageLogLabel: title.isEmpty ? '콘텐츠' : title,
       onTap: () => _openContent(item),
     );
   }
@@ -669,7 +674,8 @@ class _SearchListScreenState extends State<SearchListScreen> {
 
   String _contentThumb(Map<String, dynamic> item) {
     final raw = item['thumbnail_url']?.toString();
-    return ContentService.resolveThumbnailUrl(raw, fallback: '');
+    final full = ContentService.resolveThumbnailUrl(raw, fallback: '');
+    return ImageUrlHelper.contentListThumbUrl(full);
   }
 }
 
@@ -678,11 +684,15 @@ class _SearchRowImage extends StatefulWidget {
     required this.url,
     required this.size,
     required this.fallback,
+    this.logLabel,
   });
 
   final String url;
   final double size;
   final Widget fallback;
+
+  /// 값이 있으면 이 이미지의 로드 시간을 로그로 남긴다.
+  final String? logLabel;
 
   @override
   State<_SearchRowImage> createState() => _SearchRowImageState();
@@ -691,26 +701,60 @@ class _SearchRowImage extends StatefulWidget {
 class _SearchRowImageState extends State<_SearchRowImage> {
   late String _url;
   var _usedProxy = false;
+  void Function()? _stopWatch;
+  Stopwatch? _totalWatch;
 
   @override
   void initState() {
     super.initState();
     _url = _pickUrl(widget.url, proxied: false);
+    _beginImageLog();
   }
 
   @override
   void didUpdateWidget(covariant _SearchRowImage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.url != widget.url) {
+    if (oldWidget.url != widget.url || oldWidget.logLabel != widget.logLabel) {
       _usedProxy = false;
       _url = _pickUrl(widget.url, proxied: false);
+      _totalWatch = null;
+      _beginImageLog();
     }
+  }
+
+  @override
+  void dispose() {
+    _stopWatch?.call();
+    super.dispose();
+  }
+
+  void _beginImageLog() {
+    _stopWatch?.call();
+    _stopWatch = null;
+    final label = widget.logLabel;
+    if (label == null) return;
+    if (_url.isEmpty) {
+      debugPrint('[검색 콘텐츠 이미지] 썸네일 없음 $label');
+      return;
+    }
+    _totalWatch ??= Stopwatch()..start();
+    debugPrint('[검색 콘텐츠 이미지] 요청 $label $_url');
+    _stopWatch = watchContentImageLoad(
+      url: _url,
+      onDone: (elapsedMs, ok) {
+        final totalMs = _totalWatch?.elapsedMilliseconds ?? elapsedMs;
+        final status = ok ? '완료' : '실패';
+        debugPrint(
+          '[검색 콘텐츠 이미지] $status ${elapsedMs}ms (처음 요청부터 ${totalMs}ms) $label $_url',
+        );
+      },
+    );
   }
 
   String _pickUrl(String raw, {required bool proxied}) {
     final trimmed = raw.trim();
     if (trimmed.isEmpty) return '';
-    if (proxied) return trimmed;
+    if (proxied || trimmed.contains('/api/proxy/image')) return trimmed;
     final direct = ImageUrlHelper.browserImageSrc(trimmed);
     return direct.isEmpty ? trimmed : direct;
   }
@@ -735,6 +779,14 @@ class _SearchRowImageState extends State<_SearchRowImage> {
               _usedProxy = true;
               _url = proxied;
             });
+            final label = widget.logLabel;
+            if (label != null) {
+              final elapsed = _totalWatch?.elapsedMilliseconds ?? 0;
+              debugPrint(
+                '[검색 콘텐츠 이미지] 직링크 실패 ${elapsed}ms, 프록시로 다시 요청 $label',
+              );
+            }
+            _beginImageLog();
           });
           return const SizedBox.shrink();
         }

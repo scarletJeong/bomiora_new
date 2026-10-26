@@ -380,6 +380,22 @@ class ImageUrlHelper {
     return '${ApiClient.baseUrl}/api/proxy/image?url=${Uri.encodeComponent(absolute)}';
   }
 
+  /// 검색 목록용. 원본이 10MB가 넘는 콘텐츠 사진을 가로 160px로 줄여 받는다.
+  static String contentListThumbUrl(String url) {
+    final direct = browserImageSrc(url);
+    if (direct.isEmpty) return '';
+    if (direct.contains('/api/proxy/image')) return direct;
+    return '${ApiClient.baseUrl}/api/proxy/image?url=${Uri.encodeComponent(direct)}&w=160';
+  }
+
+  /// `<img>` 직링크. 웹 검색 썸네일은 프록시를 거치지 않아 원본을 한 번만 받는다.
+  static String browserImageSrc(String url) {
+    var raw = unwrapProxyImageUrlIfAny(url.trim());
+    if (raw.isEmpty) return '';
+    if (raw.startsWith('//')) raw = 'https:$raw';
+    return raw;
+  }
+
   /// 웹 CanvasKit은 교차출처 이미지를 XHR로 받아 CORS가 필요함.
   /// Cafe24·외부 CDN은 프록시로 우회.
   static String toWebSafeImageUrl(String url) {
