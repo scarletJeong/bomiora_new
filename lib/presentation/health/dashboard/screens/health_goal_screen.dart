@@ -225,6 +225,7 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
         child: _loading
             ? const Center(child: CircularProgressIndicator())
             : KeyboardAwareFormBody(
+                pinBottom: true,
                 formPadding: EdgeInsets.fromLTRB(
                   healthDp(context, 27),
                   healthDp(context, 5),

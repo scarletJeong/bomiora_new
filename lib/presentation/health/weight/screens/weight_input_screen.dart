@@ -338,6 +338,7 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
             textScaler: TextScaler.linear(textScale),
           ),
           child: KeyboardAwareFormBody(
+            pinBottom: true,
             formPadding: EdgeInsets.fromLTRB(
               healthDp(context, 27),
               healthDp(context, 5),
@@ -373,7 +374,6 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
                   _buildWeightInput(),
                   SizedBox(height: healthDp(context, 20)),
                   _buildBodyImagesSection(),
-                  SizedBox(height: healthDp(context, 80)),
                 ],
               ),
             ),

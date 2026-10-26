@@ -300,6 +300,7 @@ class _BloodSugarInputScreenState extends State<BloodSugarInputScreen> {
             textScaler: TextScaler.linear(textScale),
           ),
           child: KeyboardAwareFormBody(
+            pinBottom: true,
             formPadding: EdgeInsets.symmetric(
               horizontal: healthDp(context, 27),
             ),

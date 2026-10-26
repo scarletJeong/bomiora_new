@@ -501,6 +501,7 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
             textScaler: TextScaler.linear(textScale),
           ),
           child: KeyboardAwareFormBody(
+            pinBottom: true,
             formPadding: EdgeInsets.fromLTRB(
               healthDp(context, 27),
               healthDp(context, 5),
