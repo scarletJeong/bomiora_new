@@ -39,6 +39,9 @@ class _QaWriteScreenState extends State<QaWriteScreen> {
   static const int _maxImageBytes = 5 * 1024 * 1024;
 
   final TextEditingController _contentController = TextEditingController();
+  final FocusNode _contentFocus = FocusNode();
+  final ScrollController _formScrollController = ScrollController();
+  final GlobalKey _contentSectionKey = GlobalKey();
   final List<XFile> _images = [];
 
   String? _selectedInquiryType;
@@ -105,10 +108,35 @@ class _QaWriteScreenState extends State<QaWriteScreen> {
     _contentController.addListener(() {
       if (mounted) setState(() {});
     });
+    _contentFocus.addListener(_onContentFocusChanged);
+  }
+
+  void _onContentFocusChanged() {
+    if (!mounted) return;
+    setState(() {});
+    if (!_contentFocus.hasFocus) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final target = _contentSectionKey.currentContext;
+      if (target == null || !target.mounted) return;
+      Scrollable.ensureVisible(
+        target,
+        alignment: 0.0,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+      );
+    });
+  }
+
+  bool _pinBottomButtons(BuildContext context) {
+    if (_contentFocus.hasFocus) return false;
+    return MediaQuery.viewInsetsOf(context).bottom == 0;
   }
 
   @override
   void dispose() {
+    _contentFocus.removeListener(_onContentFocusChanged);
+    _contentFocus.dispose();
+    _formScrollController.dispose();
     _contentController.dispose();
     super.dispose();
   }
@@ -269,7 +297,7 @@ class _QaWriteScreenState extends State<QaWriteScreen> {
           ),
           child: MobileAppLayoutWrapper(
             backgroundColor: Colors.white,
-            resizeToAvoidBottomInset: true,
+            resizeToAvoidBottomInset: false,
             appBar: HealthAppBar(
               title: '1:1 문의',
               leadingIconSize: healthDp(context, 16),
@@ -308,6 +336,7 @@ class _QaWriteScreenState extends State<QaWriteScreen> {
                     ),
                   Expanded(
                     child: SingleChildScrollView(
+                      controller: _formScrollController,
                       padding: EdgeInsets.all(healthDp(context, 20)),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -448,59 +477,69 @@ class _QaWriteScreenState extends State<QaWriteScreen> {
                           ],
                           if (_showCompose) ...[
                             SizedBox(height: healthDp(context, 24)),
-                            _buildContentSection(context),
+                            KeyedSubtree(
+                              key: _contentSectionKey,
+                              child: _buildContentSection(context),
+                            ),
                             SizedBox(height: healthDp(context, 24)),
                             _buildPhotoSection(context),
+                          ],
+                          if (!_pinBottomButtons(context)) ...[
+                            SizedBox(height: healthDp(context, 24)),
+                            _buildBottomButtons(context),
                           ],
                         ],
                       ),
                     ),
                   ),
-                  SafeArea(
-                    top: false,
-                    child: Padding(
-                      padding: EdgeInsets.fromLTRB(
-                        healthDp(context, 20),
-                        0,
-                        healthDp(context, 20),
-                        healthDp(context, 20),
-                      ),
-                      child: SizedBox(
-                        width: double.infinity,
-                        height: healthDp(context, 40),
-                        child: Row(
-                          children: [
-                            SizedBox(
-                              width: healthDp(context, 130),
-                              child: _BottomButton(
-                                label: '취소',
-                                bg: Colors.white,
-                                fg: const Color(0xFF898686),
-                                borderColor: const Color(0xFFD2D2D2),
-                                onTap: () => Navigator.pop(context),
-                              ),
-                            ),
-                            SizedBox(width: healthDp(context, 8)),
-                            Expanded(
-                              child: _BottomButton(
-                                label: '문의하기',
-                                bg: _canSubmit
-                                    ? _pink
-                                    : const Color(0xFFD2D2D2),
-                                fg: Colors.white,
-                                onTap: _sending ? null : _submit,
-                              ),
-                            ),
-                          ],
+                  if (_pinBottomButtons(context))
+                    SafeArea(
+                      top: false,
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(
+                          healthDp(context, 20),
+                          0,
+                          healthDp(context, 20),
+                          healthDp(context, 20),
                         ),
+                        child: _buildBottomButtons(context),
                       ),
                     ),
-                  ),
                 ],
               ),
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildBottomButtons(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: healthDp(context, 40),
+      child: Row(
+        children: [
+          SizedBox(
+            width: healthDp(context, 130),
+            child: _BottomButton(
+              label: '취소',
+              bg: Colors.white,
+              fg: const Color(0xFF898686),
+              borderColor: const Color(0xFFD2D2D2),
+              onTap: () => Navigator.pop(context),
+            ),
+          ),
+          SizedBox(width: healthDp(context, 8)),
+          Expanded(
+            child: _BottomButton(
+              label: '문의하기',
+              bg: _canSubmit ? _pink : const Color(0xFFD2D2D2),
+              fg: Colors.white,
+              onTap: _sending ? null : _submit,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -532,6 +571,7 @@ class _QaWriteScreenState extends State<QaWriteScreen> {
               Expanded(
                 child: TextField(
                   controller: _contentController,
+                  focusNode: _contentFocus,
                   enabled: !_sending,
                   maxLines: null,
                   expands: true,
