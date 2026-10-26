@@ -129,7 +129,7 @@ class _KcpPayWebViewScreenState extends State<KcpPayWebViewScreen> {
       try {
         if (u != null && u !== '') {
           var s = (typeof u === 'string') ? u : String(u);
-          if (s !== 'about:blank') {
+          if (s !== 'about:blank' && s.indexOf('kcp.co.kr') < 0) {
             window.location.href = s;
             return window;
           }
@@ -479,7 +479,11 @@ class _KcpPayWebViewScreenState extends State<KcpPayWebViewScreen> {
     // 웹 InAppWebView 는 결제 HTML을 data: 주소로 넣는다.
     // 네이버 앱은 그 주소를 결제 모듈이 아니라 다운로드 확인창으로 연다.
     final Widget payView = kIsWeb
-        ? KcpLaunchFrame(key: ValueKey<String>(_launchUrl), url: _launchUrl)
+        ? KcpLaunchFrame(
+            key: ValueKey<String>(_launchUrl),
+            url: _launchUrl,
+            replaceTop: !widget.usePcLayout,
+          )
         : webView;
     final body = waiting
         ? const Center(

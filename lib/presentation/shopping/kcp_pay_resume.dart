@@ -39,6 +39,29 @@ class KcpPayResume {
     }
     if (status == 'failed' || status == 'expired') {
       clearKcpPayToken();
+      if (status == 'failed' && context.mounted) {
+        final message = (data['message'] ?? '').toString().trim();
+        await showDialog<void>(
+          context: context,
+          builder: (context) => AlertDialog(
+            content: Text(
+              message.isEmpty ? '결제가 완료되지 않았습니다.' : message,
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('확인'),
+              ),
+            ],
+          ),
+        );
+      }
+      return;
+    }
+
+    // 모바일은 결제창이 현재 탭을 바꾸므로, 결과 없이 돌아오면 다시 열지 않는다.
+    if (status == 'pending' && MediaQuery.sizeOf(context).width <= 650) {
+      clearKcpPayToken();
       return;
     }
 

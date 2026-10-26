@@ -863,6 +863,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     : 'Android')
                 : 'Windows',
             'is_mobile': useMobilePay,
+            if (kIsWeb) 'return_url': '${Uri.base.origin}/',
           },
           additionalHeaders: <String, String>{
             'User-Agent': _kcpRequestUserAgent(mobile: useMobilePay),
