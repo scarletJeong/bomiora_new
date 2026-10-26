@@ -27,8 +27,8 @@ class _NotificationSettingsScreenState
   static const Color _kPink = Color(0xFFFF5A8D);
 
   bool _loading = true;
-  bool _saving = false;
   bool _requiresLogin = false;
+  Future<void> _saveChain = Future<void>.value();
 
   /// mb_notif_order — UI 미노출, 기존 값 유지
   bool _orderAgree = false;
@@ -88,22 +88,21 @@ class _NotificationSettingsScreenState
         smsAgree: _smsAgree,
       );
 
-  Future<void> _persist() async {
-    if (_saving) return;
-    setState(() => _saving = true);
-    final ok = await NotificationService.saveSettings(_currentSettings);
-    await FCMService().syncTopicsFromSettings();
-    if (!mounted) return;
-    setState(() => _saving = false);
-    if (!ok) {
+  Future<void> _persist() {
+    final snapshot = _currentSettings;
+    _saveChain = _saveChain.then((_) async {
+      final ok = await NotificationService.saveSettings(snapshot);
+      await FCMService().syncTopicsFromSettings();
+      if (!mounted || ok) return;
       AppToastOverlay.show(context, '알림 설정 저장에 실패했습니다.');
-    }
+    });
+    return _saveChain;
   }
 
   Future<void> _onMarketingChanged(bool value) async {
     setState(() {
       _marketingAgree = value;
-      // 마케팅 채널(SMS)도 함께 맞춤
+      // 화면에는 없는 SMS 수신만 마케팅과 같이 저장한다.
       _smsAgree = value;
     });
     await _persist();
@@ -163,7 +162,7 @@ class _NotificationSettingsScreenState
                         description:
                             '이벤트, 할인 쿠폰 등 혜택에 대한 알림 메시지를받습니다. ',
                         value: _marketingAgree,
-                        onChanged: _saving ? null : _onMarketingChanged,
+                        onChanged: _onMarketingChanged,
                       ),
                       SizedBox(height: healthDp(context, 20)),
                       Text(
@@ -182,7 +181,7 @@ class _NotificationSettingsScreenState
                         title: '야간 알림',
                         description: '오후 9시 - 익일 오전 8시에도 알림 수신을 받으실 수 있어요.',
                         value: _nightAgree,
-                        onChanged: _saving ? null : _onNightChanged,
+                        onChanged: _onNightChanged,
                       ),
                     ],
                   ),
@@ -241,7 +240,6 @@ class _NotificationSettingsScreenState
                   onChanged: onChanged ?? (_) {},
                   activeColor: _kPink,
                   inactiveColor: _kBorder,
-                  enabled: onChanged != null,
                 ),
               ],
             ),
@@ -270,24 +268,20 @@ class _TinyToggle extends StatelessWidget {
     required this.onChanged,
     required this.activeColor,
     required this.inactiveColor,
-    this.enabled = true,
   });
 
   final bool value;
   final ValueChanged<bool> onChanged;
   final Color activeColor;
   final Color inactiveColor;
-  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
     final knob = healthDp(context, 12);
-    return Opacity(
-      opacity: enabled ? 1 : 0.55,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(healthDp(context, 12)),
-        onTap: enabled ? () => onChanged(!value) : null,
-        child: AnimatedContainer(
+    return InkWell(
+      borderRadius: BorderRadius.circular(healthDp(context, 12)),
+      onTap: () => onChanged(!value),
+      child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
           width: healthDp(context, 30),
           padding: EdgeInsets.all(healthDp(context, 2)),
@@ -311,7 +305,6 @@ class _TinyToggle extends StatelessWidget {
             ],
           ),
         ),
-      ),
     );
   }
 }
