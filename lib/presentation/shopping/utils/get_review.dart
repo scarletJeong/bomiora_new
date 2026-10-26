@@ -48,7 +48,8 @@ class ProductReviewLoader {
 
     final allReviews = result['reviews'] as List<ReviewModel>;
     final supporter = allReviews.where((r) => r.isSupporterReview).toList();
-    final general = allReviews.where((r) => r.isGeneralReview).toList();
+    // 일반 리뷰 탭은 서포터가 아닌 리뷰. 구매 리뷰(is_rvkind=prescription)도 포함한다.
+    final general = allReviews.where((r) => !r.isSupporterReview).toList();
 
     final stats = _buildStats(allReviews: allReviews, supporter: supporter);
     return ProductReviewLoadResult(
