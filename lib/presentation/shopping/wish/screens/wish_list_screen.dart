@@ -39,6 +39,8 @@ class _WishListScreenState extends State<WishListScreen> {
   /// 콘텐츠 찜 항목 메타 캐시 (bm_content)
   final Map<int, Map<String, dynamic>> _contentCache = {};
   final Set<int> _contentLoadingIds = {};
+  /// 목록·상세 모두 제목이 없는 글. 다시 그리지 않는다.
+  final Set<int> _missingContentIds = {};
 
   /// API `it_kind` 기준 — 비대면: prescription, 스토어: general
   /// 상품은 마스터 `it_kind`를 우선하고, 콘텐츠만 `wi_it_kind`를 본다.
@@ -70,8 +72,19 @@ class _WishListScreenState extends State<WishListScreen> {
       .where((e) => !_isContentWish(e) && _itKindLower(e) != 'prescription')
       .toList();
 
-  List<Map<String, dynamic>> get _contentWishes =>
-      _wishList.where(_isContentWish).toList();
+  List<Map<String, dynamic>> get _contentWishes => _wishList
+      .where(_isContentWish)
+      .where((item) {
+        final id = _contentIdFromWish(item);
+        if (id != null && _missingContentIds.contains(id)) return false;
+        final title = _contentTitleOf(item);
+        if (title.isEmpty && id != null) {
+          _ensureContentLoaded(id);
+          return false;
+        }
+        return title.isNotEmpty;
+      })
+      .toList();
 
   void _openProductDetail(String productId, Map<String, dynamic> item) {
     final route = _itKindLower(item) == 'prescription'
@@ -685,18 +698,45 @@ class _WishListScreenState extends State<WishListScreen> {
     return int.tryParse('${raw ?? ''}');
   }
 
+  String _contentTitleOf(Map<String, dynamic> item) {
+    final cached = _contentIdFromWish(item) == null
+        ? null
+        : _contentCache[_contentIdFromWish(item)!];
+    final fromCache = (cached?['title'] ?? '').toString().trim();
+    if (fromCache.isNotEmpty) return fromCache;
+    return (item['title'] ?? '').toString().trim();
+  }
+
   void _ensureContentLoaded(int contentId) {
     if (_contentCache.containsKey(contentId)) return;
+    if (_missingContentIds.contains(contentId)) return;
     if (_contentLoadingIds.contains(contentId)) return;
     _contentLoadingIds.add(contentId);
     Future.microtask(() async {
+      final beforeCount = _contentWishes.length;
+      final showingAll = _visibleCount >= beforeCount;
       try {
         final r = await ContentService.getContentDetail(contentId);
-        final data = (r['data'] is Map) ? Map<String, dynamic>.from(r['data'] as Map) : <String, dynamic>{};
+        final data = (r['data'] is Map)
+            ? Map<String, dynamic>.from(r['data'] as Map)
+            : <String, dynamic>{};
+        final title = (data['title'] ?? '').toString().trim();
         if (!mounted) return;
         setState(() {
-          _contentCache[contentId] = data;
+          if (title.isEmpty || r['success'] != true) {
+            _missingContentIds.add(contentId);
+            _contentCache.remove(contentId);
+          } else {
+            _contentCache[contentId] = data;
+            _missingContentIds.remove(contentId);
+            if (showingAll && _selectedTabIndex == 2) {
+              _visibleCount = _contentWishes.length;
+            }
+          }
         });
+      } catch (_) {
+        if (!mounted) return;
+        setState(() => _missingContentIds.add(contentId));
       } finally {
         _contentLoadingIds.remove(contentId);
       }
@@ -709,7 +749,7 @@ class _WishListScreenState extends State<WishListScreen> {
     final cached = contentId != null ? _contentCache[contentId] : null;
 
     final category = (cached?['category'] ?? item['category'] ?? '').toString().trim();
-    final title = (cached?['title'] ?? item['title'] ?? '').toString().trim();
+    final title = _contentTitleOf(item);
     final thumbRaw = (item['thumbnail'] ??
             item['thumbnail_url'] ??
             cached?['thumbnail'] ??
@@ -751,7 +791,7 @@ class _WishListScreenState extends State<WishListScreen> {
             textChildren: [
               _wishMetaText(category.isNotEmpty ? category : '콘텐츠'),
               SizedBox(height: healthDp(context, 4)),
-              _wishTitleText(title.isNotEmpty ? title : '제목 없음'),
+              _wishTitleText(title),
             ],
           ),
         ],
