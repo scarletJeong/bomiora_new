@@ -5,6 +5,7 @@ import '../../../data/models/cart/cart_item_model.dart';
 import '../../../data/models/cart/cart_line_group.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import 'get_cartImage.dart';
+import 'quantity_stepper.dart';
 import 'supply_add_expand_block.dart';
 
 const _kGmarketSans = 'Gmarket Sans TTF';
@@ -340,7 +341,7 @@ class _SupplyAddRow extends StatelessWidget {
                 Row(
                   children: [
                     if (canEdit)
-                      _MiniQtyControl(
+                      QuantityStepper(
                         quantity: line.totalQty,
                         onDecrease: canDecrease ? onDecrease : null,
                         onIncrease: onIncrease,
@@ -392,82 +393,3 @@ class _SupplyAddRow extends StatelessWidget {
   }
 }
 
-class _MiniQtyControl extends StatelessWidget {
-  const _MiniQtyControl({
-    required this.quantity,
-    this.onDecrease,
-    this.onIncrease,
-  });
-
-  final int quantity;
-  final VoidCallback? onDecrease;
-  final VoidCallback? onIncrease;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.all(healthDp(context, 4)),
-      decoration: ShapeDecoration(
-        color: const Color(0xFFF6F6F6),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(healthDp(context, 20)),
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _circleBtn(context, Icons.remove, onDecrease),
-          SizedBox(
-            width: healthDp(context, 18),
-            child: Text(
-              '$quantity',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: const Color(0xFF1A1A1A),
-                fontSize: healthSp(context, 12),
-                fontFamily: 'Inter',
-                fontWeight: FontWeight.w600,
-                height: 0.79,
-              ),
-            ),
-          ),
-          _circleBtn(context, Icons.add, onIncrease),
-        ],
-      ),
-    );
-  }
-
-  Widget _circleBtn(
-    BuildContext context,
-    IconData icon,
-    VoidCallback? onTap,
-  ) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(healthDp(context, 10)),
-      child: Container(
-        width: healthDp(context, 20),
-        height: healthDp(context, 20),
-        decoration: ShapeDecoration(
-          color: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(healthDp(context, 10)),
-          ),
-          shadows: [
-            BoxShadow(
-              color: const Color(0x0C000000),
-              blurRadius: healthDp(context, 1.07),
-              offset: Offset(0, healthDp(context, 0.54)),
-              spreadRadius: 0,
-            ),
-          ],
-        ),
-        child: Icon(
-          icon,
-          size: healthDp(context, 14),
-          color: onTap == null ? Colors.grey[300] : const Color(0xFFFF5A8D),
-        ),
-      ),
-    );
-  }
-}

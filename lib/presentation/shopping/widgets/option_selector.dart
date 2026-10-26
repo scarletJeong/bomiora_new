@@ -6,6 +6,7 @@ import '../../../data/repositories/product/product_option_repository.dart';
 import '../../../data/services/cart_service.dart';
 import '../../common/widgets/dropdown_btn.dart';
 import '../../health/health_common/health_responsive_scale.dart';
+import 'quantity_stepper.dart';
 
 class OptionSelectorBottomSheet extends StatefulWidget {
   final List<ProductOption> options;
@@ -1499,9 +1500,8 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
                 SizedBox(height: healthDp(context, 10)),
                 Row(
                   children: [
-                    _buildQuantityControl(
+                    QuantityStepper(
                       quantity: quantity,
-                      compact: true,
                       onDecrease: quantity > 1
                           ? () => _updateMainLineQuantity(line, quantity - 1)
                           : null,
@@ -1583,9 +1583,8 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
                 SizedBox(height: healthDp(context, 10)),
                 Row(
                   children: [
-                    _buildQuantityControl(
+                    QuantityStepper(
                       quantity: quantity,
-                      compact: true,
                       onDecrease: quantity > 1
                           ? () => _updateOptionQuantity(option, quantity - 1)
                           : null,
@@ -1708,9 +1707,8 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
                 SizedBox(height: healthDp(context, 10)),
                 Row(
                   children: [
-                    _buildQuantityControl(
+                    QuantityStepper(
                       quantity: line.quantity,
-                      compact: true,
                       onDecrease: line.quantity > 1
                           ? () => _updateSupplyQty(index, line.quantity - 1)
                           : null,
@@ -1907,96 +1905,6 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
             ],
           );
   }
-
-  Widget _buildQuantityControl({
-    required int quantity,
-    required VoidCallback? onDecrease,
-    required VoidCallback onIncrease,
-    bool compact = false,
-  }) {
-    final outerPadding = healthDp(context, compact ? 3 : 4);
-    final outerRadius = healthDp(context, compact ? 16 : 20);
-    final qtyWidth = healthDp(context, compact ? 14 : 16);
-    final qtyMargin = healthDp(context, compact ? 4 : 5);
-    final qtyFontSize = healthSp(context, compact ? 10 : 12);
-
-    return Container(
-      padding: EdgeInsets.all(outerPadding),
-      decoration: ShapeDecoration(
-        color: const Color(0xFFF6F6F6),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(outerRadius),
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _buildRoundQtyButton(
-            icon: Icons.remove,
-            onTap: onDecrease,
-            compact: compact,
-          ),
-          Container(
-            width: qtyWidth,
-            alignment: Alignment.center,
-            margin: EdgeInsets.symmetric(horizontal: qtyMargin),
-            child: Text(
-              '$quantity',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: const Color(0xFF1A1A1A),
-                fontSize: qtyFontSize,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          _buildRoundQtyButton(
-            icon: Icons.add,
-            onTap: onIncrease,
-            compact: compact,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRoundQtyButton({
-    required IconData icon,
-    required VoidCallback? onTap,
-    bool compact = false,
-  }) {
-    final buttonSize = healthDp(context, compact ? 16 : 20);
-    final buttonRadius = healthDp(context, compact ? 8 : 10);
-    final iconSize = healthDp(context, compact ? 11 : 13);
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(buttonRadius),
-      child: Container(
-        width: buttonSize,
-        height: buttonSize,
-        decoration: ShapeDecoration(
-          color: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(buttonRadius),
-          ),
-          shadows: [
-            BoxShadow(
-              color: const Color(0x0C000000),
-              blurRadius: healthDp(context, 1.07),
-              offset: Offset(0, healthDp(context, 0.54)),
-              spreadRadius: 0,
-            ),
-          ],
-        ),
-        child: Icon(
-          icon,
-          size: iconSize,
-          color: onTap == null ? Colors.grey[300] : const Color(0xFFFF5A8D),
-        ),
-      ),
-    );
-  }
 }
 
 /// 옵션 없는 일반 상품 — 수량만 선택하는 바텀시트 (비대면 옵션 시트와 동일 셸·버튼 스타일).
@@ -2098,7 +2006,7 @@ class _GeneralQuantityBottomSheetState extends State<GeneralQuantityBottomSheet>
                         ),
                       ),
                       SizedBox(width: healthDp(context, 12)),
-                      _GeneralQtyControl(
+                      QuantityStepper(
                         quantity: _quantity,
                         onDecrease: _quantity > 1
                             ? () => setState(() => _quantity--)
@@ -2243,89 +2151,3 @@ class _GeneralQuantityBottomSheetState extends State<GeneralQuantityBottomSheet>
   }
 }
 
-class _GeneralQtyControl extends StatelessWidget {
-  final int quantity;
-  final VoidCallback? onDecrease;
-  final VoidCallback onIncrease;
-
-  const _GeneralQtyControl({
-    required this.quantity,
-    required this.onDecrease,
-    required this.onIncrease,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.all(healthDp(context, 4)),
-      decoration: ShapeDecoration(
-        color: const Color(0xFFF6F6F6),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(healthDp(context, 20)),
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _GeneralQtyButton(icon: Icons.remove, onTap: onDecrease),
-          Container(
-            width: healthDp(context, 22),
-            alignment: Alignment.center,
-            margin: EdgeInsets.symmetric(horizontal: healthDp(context, 6)),
-            child: Text(
-              '$quantity',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: const Color(0xFF1A1A1A),
-                fontSize: healthSp(context, 14),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          _GeneralQtyButton(icon: Icons.add, onTap: onIncrease),
-        ],
-      ),
-    );
-  }
-}
-
-class _GeneralQtyButton extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback? onTap;
-
-  const _GeneralQtyButton({required this.icon, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final buttonSize = healthDp(context, 22);
-    final buttonRadius = healthDp(context, 14);
-    final iconSize = healthDp(context, 16);
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(buttonRadius),
-      child: Container(
-        width: buttonSize,
-        height: buttonSize,
-        decoration: ShapeDecoration(
-          color: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(buttonRadius),
-          ),
-          shadows: [
-            BoxShadow(
-              color: const Color(0x0C000000),
-              blurRadius: healthDp(context, 1.07),
-              offset: Offset(0, healthDp(context, 0.54)),
-            ),
-          ],
-        ),
-        child: Icon(
-          icon,
-          size: iconSize,
-          color: onTap == null ? Colors.grey[300] : const Color(0xFFFF5A8D),
-        ),
-      ),
-    );
-  }
-}

@@ -19,6 +19,7 @@ import 'payment_screen.dart';
 import '../widgets/cart_add_group_card.dart';
 import '../widgets/cart_empty_shop_button.dart';
 import '../widgets/cart_group_general_card.dart';
+import '../widgets/quantity_stepper.dart';
 
 class CartScreen extends StatefulWidget {
   final String? backToProductId;
@@ -55,6 +56,7 @@ class _CartScreenState extends State<CartScreen> {
   bool _checkoutOpening = false;
   final ScrollController _scrollController = ScrollController();
   Timer? _shippingDebounce;
+  final Map<int, int> _qtyEpochById = {};
 
   List<CartLineGroup> get _displayedGroups =>
       cartGroupsForTab(cartItems, prescriptionTab: false);
@@ -242,58 +244,81 @@ class _CartScreenState extends State<CartScreen> {
     }
   }
 
+  CartItem _itemWithQuantity(CartItem old, int quantity) {
+    final unit =
+        old.ctQty > 0 ? old.ctPrice / old.ctQty : old.ctPrice.toDouble();
+    return CartItem(
+      ctId: old.ctId,
+      odId: old.odId,
+      mbId: old.mbId,
+      itId: old.itId,
+      itName: old.itName,
+      itSubject: old.itSubject,
+      ctStatus: old.ctStatus,
+      ctPrice: (unit * quantity).round(),
+      ctOption: old.ctOption,
+      ctQty: quantity,
+      ioId: old.ioId,
+      ioPrice: old.ioPrice,
+      ioType: old.ioType,
+      ctKind: old.ctKind,
+      kind: old.kind,
+      itKind: old.itKind,
+      parentItId: old.parentItId,
+      itSupplyItems: old.itSupplyItems,
+      ctTime: old.ctTime,
+      doctorName: old.doctorName,
+      reservationDate: old.reservationDate,
+      reservationTime: old.reservationTime,
+      imageUrl: old.imageUrl,
+      productType: old.productType,
+      ctMbInf: old.ctMbInf,
+      pointUsageRate: old.pointUsageRate,
+      ctSelect: old.ctSelect,
+      isAvailable: old.isAvailable,
+      unavailableReason: old.unavailableReason,
+    );
+  }
+
   Future<void> _updateQuantity(int ctId, int newQuantity) async {
+    if (newQuantity < 1) return;
     if (!await _ensureLoggedIn(message: '장바구니 수정은 로그인 후 이용할 수 있습니다.')) {
       return;
     }
-    if (newQuantity < 1) return;
+    if (!mounted) return;
+
+    final index = cartItems.indexWhere((item) => item.ctId == ctId);
+    if (index < 0) return;
+    final previous = cartItems[index];
+    if (previous.ctQty == newQuantity) return;
+
+    final epoch = (_qtyEpochById[ctId] ?? 0) + 1;
+    _qtyEpochById[ctId] = epoch;
+    setState(() {
+      cartItems[index] = _itemWithQuantity(previous, newQuantity);
+      totalPrice = cartItems.fold<int>(0, (sum, item) => sum + item.lineAmount);
+    });
 
     final result = await CartService.updateCartQuantity(
       ctId: ctId,
       quantity: newQuantity,
     );
+    if (!mounted || _qtyEpochById[ctId] != epoch) return;
 
-    if (!mounted || result['success'] != true) return;
+    if (result['success'] == true) {
+      _scheduleShippingRefresh();
+      return;
+    }
 
     setState(() {
-      final index = cartItems.indexWhere((item) => item.ctId == ctId);
-      if (index < 0) return;
-
-      final data = result['data'];
-      if (data is Map) {
-        cartItems[index] = CartItem.fromJson(Map<String, dynamic>.from(data));
-      } else {
-        final old = cartItems[index];
-        final unitPrice =
-            old.ctQty > 0 ? old.ctPrice / old.ctQty : old.ctPrice.toDouble();
-        cartItems[index] = CartItem(
-          ctId: old.ctId,
-          odId: old.odId,
-          mbId: old.mbId,
-          itId: old.itId,
-          itName: old.itName,
-          itSubject: old.itSubject,
-          ctStatus: old.ctStatus,
-          ctPrice: (unitPrice * newQuantity).round(),
-          ctOption: old.ctOption,
-          ctQty: newQuantity,
-          ioId: old.ioId,
-          ioPrice: old.ioPrice,
-          ctKind: old.ctKind,
-          ctTime: old.ctTime,
-          doctorName: old.doctorName,
-          reservationDate: old.reservationDate,
-          reservationTime: old.reservationTime,
-          imageUrl: old.imageUrl,
-          productType: old.productType,
-          ctMbInf: old.ctMbInf,
-          pointUsageRate: old.pointUsageRate,
-          ctSelect: old.ctSelect,
-        );
-      }
-
+      final current = cartItems.indexWhere((item) => item.ctId == ctId);
+      if (current >= 0) cartItems[current] = previous;
       totalPrice = cartItems.fold<int>(0, (sum, item) => sum + item.lineAmount);
     });
+    AppToastOverlay.show(
+      context,
+      result['message']?.toString() ?? '수량 변경에 실패했습니다.',
+    );
   }
 
   Future<void> _deleteCartItem(int ctId) async {
@@ -563,7 +588,7 @@ class _CartScreenState extends State<CartScreen> {
                                   required onDecrease,
                                   required onIncrease,
                                 }) =>
-                                    _buildFigmaQtyControl(
+                                    QuantityStepper(
                                   quantity: quantity,
                                   onDecrease: onDecrease,
                                   onIncrease: onIncrease,
@@ -975,75 +1000,4 @@ class _CartScreenState extends State<CartScreen> {
     Navigator.pushNamed(context, '/product-general/$productId');
   }
 
-  Widget _buildFigmaQtyControl({
-    required int quantity,
-    required VoidCallback? onDecrease,
-    required VoidCallback onIncrease,
-  }) {
-    return Container(
-      padding: EdgeInsets.all(healthDp(context, 4)),
-      decoration: ShapeDecoration(
-        color: const Color(0xFFF6F6F6),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(healthDp(context, 20)),
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _buildFigmaQtyButton(icon: Icons.remove, onTap: onDecrease),
-          SizedBox(
-            width: healthDp(context, 18),
-            child: Text(
-              '$quantity',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: const Color(0xFF1A1A1A),
-                fontSize: healthSp(context, 12),
-                fontFamily: 'Inter',
-                fontWeight: FontWeight.w600,
-                height: 0.79,
-              ),
-            ),
-          ),
-          _buildFigmaQtyButton(icon: Icons.add, onTap: onIncrease),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFigmaQtyButton({
-    required IconData icon,
-    required VoidCallback? onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(healthDp(context, 10)),
-      child: Container(
-        width: healthDp(context, 20),
-        height: healthDp(context, 20),
-        decoration: ShapeDecoration(
-          color: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(healthDp(context, 10)),
-          ),
-          shadows: [
-            BoxShadow(
-              color: const Color(0x0C000000),
-              blurRadius: healthDp(context, 1.07),
-              offset: Offset(0, healthDp(context, 0.54)),
-              spreadRadius: 0,
-            ),
-          ],
-        ),
-        child: Icon(
-          icon,
-          size: healthDp(context, 14),
-          color: onTap == null ? Colors.grey[300] : const Color(0xFFFF5A8D),
-        ),
-      ),
-    );
-  }
-
-  // 탭 UI 제거: 처방상품 장바구니 단일 화면
 }

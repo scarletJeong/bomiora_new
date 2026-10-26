@@ -9,6 +9,7 @@ import '../../../../data/models/delivery/delivery_model.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/services/delivery_service.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
+import '../../../shopping/widgets/quantity_stepper.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
 import 'step2_refund_reason_status.dart';
 
@@ -477,64 +478,10 @@ class _RefundApplyGeneralScreenState extends State<RefundApplyGeneralScreen> {
     required int max,
     required ValueChanged<int> onChanged,
   }) {
-    return Container(
-      padding: EdgeInsets.all(healthDp(context, 4)),
-      decoration: BoxDecoration(
-        color: RefundReasonStatus.stepperBg,
-        borderRadius: BorderRadius.circular(healthDp(context, 20)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _qtyStepperBtn(
-            icon: Icons.remove,
-            enabled: value > min,
-            onTap: () => onChanged(value - 1),
-          ),
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: healthDp(context, 8)),
-            child: Text(
-              '$value',
-              style: TextStyle(
-                color: const Color(0xFF191C1D),
-                fontSize: healthSp(context, 16),
-                fontFamily: 'Inter',
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          _qtyStepperBtn(
-            icon: Icons.add,
-            enabled: value < max,
-            onTap: () => onChanged(value + 1),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _qtyStepperBtn({
-    required IconData icon,
-    required bool enabled,
-    required VoidCallback onTap,
-  }) {
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(healthDp(context, 10)),
-      elevation: 0.5,
-      child: InkWell(
-        onTap: enabled ? onTap : null,
-        borderRadius: BorderRadius.circular(healthDp(context, 10)),
-        child: SizedBox(
-          width: healthDp(context, 20),
-          height: healthDp(context, 20),
-          child: Icon(
-            icon,
-            size: healthDp(context, 14),
-            color: enabled ? RefundReasonStatus.pink : RefundReasonStatus.pink.withValues(alpha: 0.35),
-          ),
-        ),
-      ),
+    return QuantityStepper(
+      quantity: value,
+      onDecrease: value > min ? () => onChanged(value - 1) : null,
+      onIncrease: value < max ? () => onChanged(value + 1) : null,
     );
   }
 

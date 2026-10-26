@@ -17,6 +17,7 @@ import '../../../data/services/auth_service.dart';
 import '../../../core/utils/price_formatter.dart';
 import 'prescription_booking/prescription_profile_screen.dart';
 import '../widgets/get_cartImage.dart';
+import '../widgets/quantity_stepper.dart';
 import '../widgets/cart_add_group_card.dart';
 import '../widgets/cart_empty_shop_button.dart';
 
@@ -1286,7 +1287,7 @@ class _CartScreenState extends State<CartScreen> {
                             ),
                           ),
                           SizedBox(width: healthDp(context, 10)),
-                          _buildFigmaQtyControl(
+                          QuantityStepper(
                             quantity: item.ctQty,
                             onDecrease: item.ctQty > 1
                                 ? () => _updateQuantity(
@@ -1307,7 +1308,7 @@ class _CartScreenState extends State<CartScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           if (isPrescription)
-                            _buildFigmaQtyControl(
+                            QuantityStepper(
                               quantity: item.ctQty,
                               onDecrease: item.ctQty > 1
                                   ? () => _updateQuantity(
@@ -1343,75 +1344,6 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
-  Widget _buildFigmaQtyControl({
-    required int quantity,
-    required VoidCallback? onDecrease,
-    required VoidCallback onIncrease,
-  }) {
-    return Container(
-      padding: EdgeInsets.all(healthDp(context, 4)),
-      decoration: ShapeDecoration(
-        color: const Color(0xFFF6F6F6),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(healthDp(context, 20)),
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _buildFigmaQtyButton(icon: Icons.remove, onTap: onDecrease),
-          SizedBox(
-            width: healthDp(context, 18),
-            child: Text(
-              '$quantity',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: const Color(0xFF1A1A1A),
-                fontSize: healthSp(context, 12),
-                fontFamily: 'Inter',
-                fontWeight: FontWeight.w600,
-                height: 0.79,
-              ),
-            ),
-          ),
-          _buildFigmaQtyButton(icon: Icons.add, onTap: onIncrease),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFigmaQtyButton({
-    required IconData icon,
-    required VoidCallback? onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(healthDp(context, 10)),
-      child: Container(
-        width: healthDp(context, 20),
-        height: healthDp(context, 20),
-        decoration: ShapeDecoration(
-          color: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(healthDp(context, 10)),
-          ),
-          shadows: [
-            BoxShadow(
-              color: const Color(0x0C000000),
-              blurRadius: healthDp(context, 1.07),
-              offset: Offset(0, healthDp(context, 0.54)),
-              spreadRadius: 0,
-            ),
-          ],
-        ),
-        child: Icon(
-          icon,
-          size: healthDp(context, 14),
-          color: onTap == null ? Colors.grey[300] : const Color(0xFFFF5A8D),
-        ),
-      ),
-    );
-  }
 
   // 탭 UI 제거: 처방상품 장바구니 단일 화면
 
