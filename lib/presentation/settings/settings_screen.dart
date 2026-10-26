@@ -17,23 +17,26 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   static const String _appVersion = '26.01.0';
+  static const String _font = 'Gmarket Sans TTF';
   static const Color _kBorder = Color(0xFFD2D2D2);
-  static const Color _kText = Color(0xFF1A1A1A);
+  static const Color _kText = Color(0xFF1A1A1E);
   static const Color _kMuted = Color(0xFF898686);
   static const Color _kPink = Color(0xFFFF5A8D);
 
   @override
   Widget build(BuildContext context) {
-    return MobileAppLayoutWrapper(
+    return DefaultTextStyle.merge(
+      style: const TextStyle(fontFamily: _font),
+      child: MobileAppLayoutWrapper(
       appBar: const HealthAppBar(
         title: '설정',
       ),
       child: ListView(
         padding: EdgeInsets.fromLTRB(
-          healthDp(context, 27),
           healthDp(context, 20),
-          healthDp(context, 27),
           healthDp(context, 20),
+          healthDp(context, 20),
+          healthDp(context, 48),
         ),
         children: [
           _buildCard(
@@ -49,7 +52,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     builder: (context) => const NotificationSettingsScreen(),
                   ),
                 ),
-                isLast: true,
               ),
             ],
           ),
@@ -68,7 +70,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 title: '이벤트',
                 icon: Icons.local_activity_outlined,
                 onTap: () => Navigator.pushNamed(context, '/event'),
-                isLast: true,
               ),
             ],
           ),
@@ -94,7 +95,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   MaterialPageRoute(
                       builder: (_) => const PrivacyPolicyScreen()),
                 ),
-                isLast: true,
               ),
             ],
           ),
@@ -107,7 +107,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 title: '앱정보',
                 icon: Icons.info_outline_rounded,
                 onTap: _showAppInfoDialog,
-                isLast: true,
                 trailing: Container(
                   padding: EdgeInsets.symmetric(
                     horizontal: healthDp(context, 5),
@@ -126,6 +125,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     style: TextStyle(
                       color: _kMuted,
                       fontSize: healthSp(context, 12),
+                      fontFamily: _font,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -135,6 +135,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ],
       ),
+    ),
     );
   }
 
@@ -152,7 +153,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
           borderRadius: BorderRadius.circular(healthDp(context, 10)),
         ),
       ),
-      child: Column(children: children),
+      child: Padding(
+        padding: EdgeInsets.all(healthDp(context, 10)),
+        child: Column(
+          spacing: healthDp(context, 14),
+          children: children,
+        ),
+      ),
     );
   }
 
@@ -161,28 +168,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required String title,
     required IconData icon,
     required VoidCallback onTap,
-    bool isLast = false,
     Widget? trailing,
   }) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(healthDp(context, 10)),
-      child: Container(
-        width: double.infinity,
-        padding: EdgeInsets.symmetric(
-          vertical: healthDp(context, 14),
-          horizontal: healthDp(context, 10),
-        ),
-        decoration: BoxDecoration(
-          border: isLast
-              ? null
-              : Border(
-                  bottom: BorderSide(
-                    width: healthDp(context, 0.5),
-                    color: _kBorder,
-                  ),
-                ),
-        ),
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: healthDp(context, 10)),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -195,6 +187,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   style: TextStyle(
                     color: _kText,
                     fontSize: healthSp(context, 14),
+                    fontFamily: _font,
                     fontWeight: FontWeight.w300,
                     letterSpacing: -1.26,
                   ),
@@ -205,7 +198,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Icon(
                   Icons.chevron_right_rounded,
                   color: _kMuted,
-                  size: healthDp(context, 18),
+                  size: healthDp(context, 16),
                 ),
           ],
         ),
