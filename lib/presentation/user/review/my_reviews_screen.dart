@@ -805,10 +805,11 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
-                          Icons.south,
-                          size: healthDp(context, 13),
-                          color: _kPink,
+                        SvgPicture.asset(
+                          AppAssets.myReviewCardWeightLossIcon,
+                          width: healthDp(context, 13),
+                          height: healthDp(context, 13),
+                          fit: BoxFit.contain,
                         ),
                         SizedBox(width: healthDp(context, 4)),
                         Text(
