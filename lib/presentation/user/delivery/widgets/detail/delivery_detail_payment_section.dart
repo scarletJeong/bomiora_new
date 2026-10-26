@@ -58,7 +58,12 @@ class _DeliveryDetailPaymentSectionState
     return widget.order.discountAmount;
   }
 
-  int get _expectedPoint => (widget.order.totalPrice * 0.01).floor();
+  int get _expectedPoint {
+    final shippingNet = widget.order.deliveryFee - widget.order.sendCoupon;
+    final base = widget.order.totalPrice - shippingNet;
+    if (base <= 0) return 0;
+    return (base * 0.01).floor();
+  }
 
   /// `2026.01.01 10:16:00` (초 포함, 콜론 뒤 공백 없음)
   String get _paymentDateLabel {
