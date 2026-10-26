@@ -160,11 +160,13 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
   bool get _isFormComplete {
     final height = double.tryParse(_heightController.text.trim());
     final weight = double.tryParse(_weightController.text.trim());
+    // 정면·측면 사진은 선택이므로 저장 조건에 넣지 않는다.
     return height != null &&
         height > 0 &&
         height <= 250 &&
         weight != null &&
-        weight > 0;
+        weight > 0 &&
+        weight <= 300;
   }
 
   Future<void> _save() async {
@@ -516,7 +518,7 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionLabel('눈바디'),
+        _buildSectionLabel('눈바디 (선택)'),
         SizedBox(height: healthDp(context, 10)),
         LayoutBuilder(
           builder: (context, constraints) {
