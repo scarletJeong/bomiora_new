@@ -12,6 +12,7 @@ import '../../../data/models/product/product_model.dart';
 import '../../../data/services/content_service.dart';
 import '../../../data/services/recent_search_service.dart';
 import '../../../data/services/search_service.dart';
+import '../../common/widgets/app_network_image.dart';
 import '../../common/widgets/centered_empty_state.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/product_card.dart';
@@ -328,6 +329,18 @@ class _SearchListScreenState extends State<SearchListScreen> {
 
   double _rowImageSize(BuildContext context) => healthDp(context, 72);
 
+  Widget _imageFallback(BuildContext context, IconData icon) {
+    return Container(
+      color: _rowBorder,
+      alignment: Alignment.center,
+      child: Icon(
+        icon,
+        color: Colors.grey.shade400,
+        size: healthDp(context, 28),
+      ),
+    );
+  }
+
   Widget _buildProductListRow(Product product, {required bool general}) {
     final title = stripProductCatalogHtml(product.name);
     final imageSize = _rowImageSize(context);
@@ -360,18 +373,10 @@ class _SearchListScreenState extends State<SearchListScreen> {
                 child: SizedBox(
                   width: imageSize,
                   height: imageSize,
-                  child: Image.network(
-                    product.displayImageUrl,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
-                      color: _rowBorder,
-                      alignment: Alignment.center,
-                      child: Icon(
-                        Icons.image_not_supported,
-                        color: Colors.grey.shade400,
-                        size: healthDp(context, 28),
-                      ),
-                    ),
+                  child: _SearchRowImage(
+                    url: product.displayImageUrl,
+                    size: imageSize,
+                    fallback: _imageFallback(context, Icons.image_not_supported),
                   ),
                 ),
               ),
@@ -455,27 +460,11 @@ class _SearchListScreenState extends State<SearchListScreen> {
                   width: imageSize,
                   height: imageSize,
                   child: imageUrl == null || imageUrl.isEmpty
-                      ? Container(
-                          color: _rowBorder,
-                          alignment: Alignment.center,
-                          child: Icon(
-                            fallbackIcon,
-                            color: Colors.grey.shade400,
-                            size: healthDp(context, 28),
-                          ),
-                        )
-                      : Image.network(
-                          imageUrl,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(
-                            color: _rowBorder,
-                            alignment: Alignment.center,
-                            child: Icon(
-                              fallbackIcon,
-                              color: Colors.grey.shade400,
-                              size: healthDp(context, 28),
-                            ),
-                          ),
+                      ? _imageFallback(context, fallbackIcon)
+                      : _SearchRowImage(
+                          url: imageUrl,
+                          size: imageSize,
+                          fallback: _imageFallback(context, fallbackIcon),
                         ),
                 ),
               ),
@@ -680,12 +669,77 @@ class _SearchListScreenState extends State<SearchListScreen> {
 
   String _contentThumb(Map<String, dynamic> item) {
     final raw = item['thumbnail_url']?.toString();
-    final thumb = ContentService.resolveThumbnailUrl(raw, fallback: '');
-    if (thumb.isNotEmpty) return thumb;
-    return ContentService.resolveDisplayImageUrl(
-      thumbnail: raw,
-      contentHtml: item['content_html']?.toString(),
-      fallback: '${ImageUrlHelper.imageBaseUrl}/data/item/no_img.png',
+    return ContentService.resolveThumbnailUrl(raw, fallback: '');
+  }
+}
+
+class _SearchRowImage extends StatefulWidget {
+  const _SearchRowImage({
+    required this.url,
+    required this.size,
+    required this.fallback,
+  });
+
+  final String url;
+  final double size;
+  final Widget fallback;
+
+  @override
+  State<_SearchRowImage> createState() => _SearchRowImageState();
+}
+
+class _SearchRowImageState extends State<_SearchRowImage> {
+  late String _url;
+  var _usedProxy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _url = _pickUrl(widget.url, proxied: false);
+  }
+
+  @override
+  void didUpdateWidget(covariant _SearchRowImage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.url != widget.url) {
+      _usedProxy = false;
+      _url = _pickUrl(widget.url, proxied: false);
+    }
+  }
+
+  String _pickUrl(String raw, {required bool proxied}) {
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) return '';
+    if (proxied) return trimmed;
+    final direct = ImageUrlHelper.browserImageSrc(trimmed);
+    return direct.isEmpty ? trimmed : direct;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_url.isEmpty) return widget.fallback;
+    return AppNetworkImage(
+      url: _url,
+      width: widget.size,
+      height: widget.size,
+      fit: BoxFit.cover,
+      decodeWidthLogical: 72,
+      decodeHeightLogical: 72,
+      preferHtmlElementOnWeb: true,
+      errorBuilder: (_, __, ___) {
+        final proxied = widget.url.trim();
+        if (!_usedProxy && proxied.isNotEmpty && proxied != _url) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            setState(() {
+              _usedProxy = true;
+              _url = proxied;
+            });
+          });
+          return const SizedBox.shrink();
+        }
+        return widget.fallback;
+      },
     );
   }
 }
