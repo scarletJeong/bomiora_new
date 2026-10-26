@@ -4,6 +4,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../core/navigation/app_action_gate.dart';
 import '../../../core/utils/image_picker_utils.dart';
 import '../../../core/utils/web_horizontal_nav_lock.dart';
 import '../../../core/utils/image_url_helper.dart';
@@ -1503,7 +1504,7 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
                           if (_isMulti && !isLast) {
                             _onNextProduct();
                           } else {
-                            _submitReview();
+                            AppActionGate.protect(_submitReview);
                           }
                         },
                   child: _isLoading

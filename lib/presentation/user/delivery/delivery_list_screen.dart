@@ -11,6 +11,7 @@ import '../../../data/services/delivery_service.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/cart_service.dart';
 import '../../../data/services/review_service.dart';
+import '../../../core/navigation/app_action_gate.dart';
 import '../../../data/models/delivery/delivery_model.dart';
 import '../../../data/models/product/product_option_model.dart';
 import '../../../utils/delivery_tracker.dart';
@@ -481,7 +482,9 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
                 ),
               ),
               InkWell(
-                onTap: () => _navigateToOrderDetail(order),
+                onTap: () => AppActionGate.protect(
+                  () => _navigateToOrderDetail(order),
+                ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -783,7 +786,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
     String? moreHint,
   }) {
     return InkWell(
-      onTap: () => _navigateToOrderDetail(order),
+      onTap: () => AppActionGate.protect(() => _navigateToOrderDetail(order)),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -938,7 +941,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
     }
 
     if (_isCompletedStage(order)) {
-      final actions = <({String label, VoidCallback? onTap, _CardActionStyle style})>[
+      final actions = <({String label, Future<void> Function()? onTap, _CardActionStyle style})>[
         (
           label: '1:1 문의',
           onTap: () => _openInquiry(order),
@@ -998,7 +1001,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
     }
 
     if (_isPaidStage(order)) {
-      final specs = <({String label, VoidCallback? onTap, _CardActionStyle style})>[
+      final specs = <({String label, Future<void> Function()? onTap, _CardActionStyle style})>[
         (
           label: '주문취소',
           onTap: () => _cancelOrder(order.odId),
@@ -1055,7 +1058,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
   }
 
   Widget _buildActionRow(
-    List<({String label, VoidCallback? onTap, _CardActionStyle style})> specs,
+    List<({String label, Future<void> Function()? onTap, _CardActionStyle style})> specs,
   ) {
     if (specs.isEmpty) return const SizedBox.shrink();
     final gap = healthDp(context, 10);
@@ -1105,7 +1108,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
   Widget _cardActionButton({
     required String label,
     required _CardActionStyle style,
-    VoidCallback? onTap,
+    Future<void> Function()? onTap,
   }) {
     final enabled = onTap != null;
     final colors = _colorsForStyle(style);
@@ -1127,7 +1130,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
       borderRadius: radius,
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: onTap,
+        onTap: onTap == null ? null : () => AppActionGate.protect(onTap),
         borderRadius: radius,
         child: Container(
           width: double.infinity,

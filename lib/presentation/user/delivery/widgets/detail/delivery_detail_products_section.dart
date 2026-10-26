@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../../core/navigation/app_action_gate.dart';
 import '../../../../../core/utils/image_url_helper.dart';
 import '../../../../../core/utils/price_formatter.dart';
 import '../../../../../data/models/cart/cart_item_model.dart';
@@ -26,7 +27,7 @@ class DeliveryDetailProductsSection extends StatelessWidget {
   final List<
       ({
         String label,
-        VoidCallback? onTap,
+        Future<void> Function()? onTap,
         DeliveryDetailProductActionStyle style,
       })> actions;
 
@@ -213,7 +214,9 @@ class DeliveryDetailProductsSection extends StatelessWidget {
     if (actions.length == 1 &&
         actions.first.style == DeliveryDetailProductActionStyle.outlineGray) {
       return InkWell(
-        onTap: actions.first.onTap,
+        onTap: actions.first.onTap == null
+            ? null
+            : () => AppActionGate.protect(actions.first.onTap!),
         borderRadius: BorderRadius.circular(healthDp(context, 9999)),
         child: Container(
           width: double.infinity,
@@ -255,7 +258,7 @@ class DeliveryDetailProductsSection extends StatelessWidget {
     BuildContext context,
     ({
       String label,
-      VoidCallback? onTap,
+      Future<void> Function()? onTap,
       DeliveryDetailProductActionStyle style,
     }) spec,
   ) {
@@ -279,7 +282,7 @@ class DeliveryDetailProductsSection extends StatelessWidget {
     }
 
     return InkWell(
-      onTap: spec.onTap,
+      onTap: spec.onTap == null ? null : () => AppActionGate.protect(spec.onTap!),
       borderRadius: BorderRadius.circular(healthDp(context, 50)),
       child: Container(
         padding: EdgeInsets.symmetric(vertical: healthDp(context, 10)),

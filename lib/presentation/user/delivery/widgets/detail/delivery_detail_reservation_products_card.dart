@@ -25,7 +25,7 @@ class DeliveryDetailReservationProductsCard extends StatelessWidget {
   final List<
       ({
         String label,
-        VoidCallback? onTap,
+        Future<void> Function()? onTap,
         DeliveryDetailProductActionStyle style,
       })> actions;
 

@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../core/navigation/app_action_gate.dart';
 import '../../../core/utils/image_picker_utils.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../data/models/delivery/delivery_model.dart';
@@ -777,7 +778,7 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
                           if (_isMulti && !isLast) {
                             _onNextProduct();
                           } else {
-                            _submit();
+                            AppActionGate.protect(_submit);
                           }
                         },
                   style: ElevatedButton.styleFrom(

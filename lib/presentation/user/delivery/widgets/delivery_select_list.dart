@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/navigation/app_action_gate.dart';
 import '../../../../core/utils/image_url_helper.dart';
 import '../../../../core/utils/price_formatter.dart';
 import '../../../../data/models/delivery/delivery_model.dart';
@@ -411,7 +412,9 @@ class _DeliverySelectListState extends State<DeliverySelectList> {
           color: enabled ? _kPink : const Color(0xFFF0F0F0),
           borderRadius: BorderRadius.circular(healthDp(context, 10)),
           child: InkWell(
-            onTap: enabled ? _onConfirm : null,
+            onTap: enabled
+                ? () => AppActionGate.protect(_onConfirm)
+                : null,
             borderRadius: BorderRadius.circular(healthDp(context, 10)),
             child: SizedBox(
               height: healthDp(context, 49),

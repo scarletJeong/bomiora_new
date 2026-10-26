@@ -12,6 +12,7 @@ import 'presentation/auth/screens/find_account_main_screen.dart';
 import 'presentation/auth/screens/find_account_not_found_screen.dart';
 import 'presentation/auth/screens/find_account_result_screen.dart';
 import 'presentation/auth/screens/find_password_reset_screen.dart';
+import 'core/navigation/app_action_gate.dart';
 import 'core/navigation/app_navigator_key.dart';
 import 'presentation/auth/widgets/kcp_cert.dart';
 import 'presentation/auth/screens/signup_screen.dart';
@@ -100,6 +101,7 @@ class BomioraApp extends StatefulWidget {
 }
 
 class _BomioraAppState extends State<BomioraApp> {
+  final _singlePagePushObserver = SinglePagePushObserver();
   @override
   void reassemble() {
     super.reassemble();
@@ -114,6 +116,7 @@ class _BomioraAppState extends State<BomioraApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       navigatorKey: appNavigatorKey,
+      navigatorObservers: [_singlePagePushObserver],
       title: '보미오라',
       builder: (context, child) {
         final media = MediaQuery.of(context);
@@ -122,7 +125,28 @@ class _BomioraAppState extends State<BomioraApp> {
         return MediaQuery(
           data: media.copyWith(viewInsets: EdgeInsets.zero),
           child: LayoutScaffoldMessenger(
-            child: child ?? const SizedBox.shrink(),
+            child: ValueListenableBuilder<bool>(
+              valueListenable: AppActionGate.splash,
+              builder: (context, show, _) {
+                return Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    child ?? const SizedBox.shrink(),
+                    if (show) ...[
+                      const ModalBarrier(
+                        dismissible: false,
+                        color: Color(0x33000000),
+                      ),
+                      const Center(
+                        child: CircularProgressIndicator(
+                          color: Color(0xFFFF5A8D),
+                        ),
+                      ),
+                    ],
+                  ],
+                );
+              },
+            ),
           ),
         );
       },

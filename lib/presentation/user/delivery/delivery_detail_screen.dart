@@ -467,10 +467,10 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
   Widget _buildProductsSection(OrderDetailModel order) {
     final actions = _productActions(order);
     if (!order.isPrescriptionOrder) {
-      VoidCallback? onCancel;
+      Future<void> Function()? onCancel;
       final rest = <({
         String label,
-        VoidCallback? onTap,
+        Future<void> Function()? onTap,
         DeliveryDetailProductActionStyle style,
       })>[];
       for (final a in actions) {
@@ -495,7 +495,7 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
   List<
       ({
         String label,
-        VoidCallback? onTap,
+        Future<void> Function()? onTap,
         DeliveryDetailProductActionStyle style,
       })> _productActions(OrderDetailModel order) {
     if (_isCancelledStage(order)) {
@@ -525,7 +525,7 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
     if (_isCompletedStage(order)) {
       final actions = <({
         String label,
-        VoidCallback? onTap,
+        Future<void> Function()? onTap,
         DeliveryDetailProductActionStyle style
       })>[
         (
