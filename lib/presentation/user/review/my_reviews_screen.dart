@@ -39,8 +39,6 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
 
   ReviewModel? _activeReview;
 
-  /// 방금 접힌 리뷰는 '이전 리뷰 내역' 맨 위로
-  int? _historyHeadId;
   String _productNameQuery = '';
   final TextEditingController _productNameFilterController =
       TextEditingController();
@@ -194,34 +192,26 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
     }
     if (fresh == null) {
       _activeReview = visible.first;
-      _historyHeadId = null;
     } else {
       // 새로고침 후 동일 리뷰면 펼침 카드가 예전 객체를 물고 있지 않도록 최신 인스턴스로 교체
       _activeReview = fresh;
     }
   }
 
+  int _compareReviewNewestFirst(ReviewModel a, ReviewModel b) {
+    final ta = a.isTime ?? DateTime.fromMillisecondsSinceEpoch(0);
+    final tb = b.isTime ?? DateTime.fromMillisecondsSinceEpoch(0);
+    final byTime = tb.compareTo(ta);
+    if (byTime != 0) return byTime;
+    return (b.isId ?? 0).compareTo(a.isId ?? 0);
+  }
+
+  /// 펼친 리뷰를 뺀 나머지. 작성일 최신순이며, 항목을 골라도 순서는 바뀌지 않는다.
   List<ReviewModel> _collapsedOrdered() {
     final visible = _visibleReviews();
     final activeId = _activeReview?.isId;
-    var others = visible.where((r) => r.isId != activeId).toList();
-
-    if (_historyHeadId != null) {
-      final head = others.where((r) => r.isId == _historyHeadId).toList();
-      final tail = others.where((r) => r.isId != _historyHeadId).toList();
-      tail.sort((a, b) {
-        final ta = a.isTime ?? DateTime.fromMillisecondsSinceEpoch(0);
-        final tb = b.isTime ?? DateTime.fromMillisecondsSinceEpoch(0);
-        return tb.compareTo(ta);
-      });
-      return [...head, ...tail];
-    }
-
-    others.sort((a, b) {
-      final ta = a.isTime ?? DateTime.fromMillisecondsSinceEpoch(0);
-      final tb = b.isTime ?? DateTime.fromMillisecondsSinceEpoch(0);
-      return tb.compareTo(ta);
-    });
+    final others = visible.where((r) => r.isId != activeId).toList();
+    others.sort(_compareReviewNewestFirst);
     return others;
   }
 
@@ -286,8 +276,13 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
   void _selectReview(ReviewModel tapped) {
     if (tapped.isId == _activeReview?.isId) return;
     setState(() {
-      _historyHeadId = _activeReview?.isId;
+      final before = _collapsedOrdered();
+      final showingAll =
+          before.isNotEmpty && _historyVisibleCount >= before.length;
       _activeReview = tapped;
+      if (showingAll) {
+        _historyVisibleCount = _collapsedOrdered().length;
+      }
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_scrollController.hasClients) return;
@@ -331,7 +326,6 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
           if (refresh) {
             _reviews = newReviews;
             _currentPage = 1;
-            _historyHeadId = null;
             _historyVisibleCount = _historyPageSize;
           } else {
             _reviews.addAll(newReviews);
@@ -1187,7 +1181,6 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
       if (!mounted) return;
       if (result['success'] == true) {
         setState(() {
-          _historyHeadId = null;
           if (_activeReview?.isId == review.isId) _activeReview = null;
         });
         _loadReviews(refresh: true);
