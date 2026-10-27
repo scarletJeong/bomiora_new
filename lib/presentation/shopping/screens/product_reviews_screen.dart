@@ -146,25 +146,33 @@ class _PrescriptionReviewGuestLock extends StatelessWidget {
               ),
             ),
             SizedBox(height: healthDp(context, 20)),
-            Material(
-              color: _kPink,
-              borderRadius: BorderRadius.circular(healthDp(context, 50)),
-              child: InkWell(
-                onTap: onLogin,
+            Align(
+              alignment: Alignment.center,
+              child: Material(
+                color: _kPink,
                 borderRadius: BorderRadius.circular(healthDp(context, 50)),
-                child: Container(
-                  height: healthDp(context, 40),
-                  padding: EdgeInsets.symmetric(
-                    horizontal: healthDp(context, 18),
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    '로그인하기',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: healthSp(context, 16),
-                      fontFamily: _kGmarket,
-                      fontWeight: FontWeight.w500,
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
+                  onTap: onLogin,
+                  child: SizedBox(
+                    height: healthDp(context, 40),
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: healthDp(context, 18),
+                      ),
+                      child: Center(
+                        widthFactor: 1,
+                        child: Text(
+                          '로그인하기',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: healthSp(context, 16),
+                            fontFamily: _kGmarket,
+                            fontWeight: FontWeight.w500,
+                            height: 1,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),

@@ -1423,67 +1423,40 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
 
   Widget _buildBottomActionBar() {
     return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: healthDp(context, 16),
-        vertical: healthDp(context, 12),
-      ),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.2),
-            spreadRadius: healthDp(context, 1),
-            blurRadius: healthDp(context, 4),
-            offset: Offset(0, -healthDp(context, 2)),
-          ),
-        ],
+        color: Colors.white.withValues(alpha: 0.80),
       ),
       child: SafeArea(
-        child: Row(
-          children: [
-            Container(
-              width: healthDp(context, 40),
-              height: healthDp(context, 40),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey[300]!),
-                borderRadius: BorderRadius.circular(healthDp(context, 8)),
-              ),
-              child: IconButton(
-                iconSize: healthDp(context, 22),
-                padding: EdgeInsets.zero,
-                icon: Icon(
-                  _isFavorite ? Icons.favorite : Icons.favorite_border,
-                  size: healthDp(context, 22),
-                  color:
-                      _isFavorite ? const Color(0xFFFF4081) : Colors.grey[600],
-                ),
-                onPressed: () => _toggleFavorite(),
-              ),
-            ),
-            SizedBox(width: healthDp(context, 10)),
-            Expanded(
-              child: ElevatedButton(
-                onPressed: _showOptionSelectionDialog,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFF4081),
-                  foregroundColor: Colors.white,
-                  padding:
-                      EdgeInsets.symmetric(vertical: healthDp(context, 10)),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(healthDp(context, 10)),
-                  ),
-                ),
-                child: Text(
-                  '처방 예약 하기',
-                  style: TextStyle(
-                    fontSize: healthSp(context, 16),
-                    fontWeight: FontWeight.w500,
-                    fontFamily: _kGmarketSans,
+        top: false,
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: healthDp(context, 20),
+            vertical: healthDp(context, 10),
+          ),
+          child: SizedBox(
+            width: double.infinity,
+            height: healthDp(context, 40),
+            child: Material(
+              color: const Color(0xFFFF5A8D),
+              borderRadius: BorderRadius.circular(healthDp(context, 10)),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: _showOptionSelectionDialog,
+                child: Center(
+                  child: Text(
+                    '처방 예약하기',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: healthSp(context, 16),
+                      fontFamily: _kGmarketSans,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
               ),
             ),
-          ],
+          ),
         ),
       ),
     );

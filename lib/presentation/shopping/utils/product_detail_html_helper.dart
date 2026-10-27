@@ -387,41 +387,78 @@ class ProductDetailCollapsedPreview extends StatelessWidget {
           if (!expanded) ...[
             if (expandButtonGap > 0)
               SizedBox(height: healthDp(context, expandButtonGap)),
-            SizedBox(
-              height: expandButtonHug ? null : healthDp(context, 24),
-              child: OutlinedButton(
-                onPressed: onExpand,
-                style: OutlinedButton.styleFrom(
-                  minimumSize: expandButtonHug ? Size.zero : null,
-                  tapTargetSize: expandButtonHug
-                      ? MaterialTapTargetSize.shrinkWrap
-                      : null,
-                  side: BorderSide(
-                    color: expandButtonColor,
-                    width: healthDp(context, 1),
+            expandButtonHug
+                ? Center(child: _hugExpandButton(context, fontFamily))
+                : SizedBox(
+                    height: healthDp(context, 24),
+                    child: _stretchExpandButton(context, fontFamily),
                   ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(healthDp(context, 14)),
-                  ),
-                  padding: EdgeInsets.symmetric(
-                    horizontal:
-                        healthDp(context, expandButtonHorizontalPadding),
-                    vertical: healthDp(context, 5),
-                  ),
-                  foregroundColor: expandButtonColor,
-                ),
-                child: Text(
-                  '+ 자세히 보기',
-                  style: TextStyle(
-                    fontSize: healthSp(context, 12),
-                    fontWeight: FontWeight.w500,
-                    fontFamily: fontFamily,
-                  ),
-                ),
-              ),
-            ),
           ],
         ],
+      ),
+    );
+  }
+
+  /// 비대면 상세. 글자+좌우 24 여백만큼만 넓어지고, 144 고정 폭은 쓰지 않는다.
+  Widget _hugExpandButton(BuildContext context, String fontFamily) {
+    final radius = healthDp(context, 14);
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onExpand,
+        borderRadius: BorderRadius.circular(radius),
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: healthDp(context, expandButtonHorizontalPadding),
+            vertical: healthDp(context, 5),
+          ),
+          decoration: ShapeDecoration(
+            shape: RoundedRectangleBorder(
+              side: BorderSide(
+                width: healthDp(context, 1),
+                color: expandButtonColor,
+              ),
+              borderRadius: BorderRadius.circular(radius),
+            ),
+          ),
+          child: Text(
+            '+ 자세히 보기',
+            style: TextStyle(
+              color: expandButtonColor,
+              fontSize: healthSp(context, 12),
+              fontFamily: fontFamily,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _stretchExpandButton(BuildContext context, String fontFamily) {
+    return OutlinedButton(
+      onPressed: onExpand,
+      style: OutlinedButton.styleFrom(
+        side: BorderSide(
+          color: expandButtonColor,
+          width: healthDp(context, 1),
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(healthDp(context, 14)),
+        ),
+        padding: EdgeInsets.symmetric(
+          horizontal: healthDp(context, expandButtonHorizontalPadding),
+          vertical: healthDp(context, 5),
+        ),
+        foregroundColor: expandButtonColor,
+      ),
+      child: Text(
+        '+ 자세히 보기',
+        style: TextStyle(
+          fontSize: healthSp(context, 12),
+          fontWeight: FontWeight.w500,
+          fontFamily: fontFamily,
+        ),
       ),
     );
   }
