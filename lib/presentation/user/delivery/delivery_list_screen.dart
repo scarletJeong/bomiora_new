@@ -154,12 +154,17 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
         allOrders.sort((a, b) => b.orderDateTime.compareTo(a.orderDateTime));
 
         if (!mounted || gen != _ordersLoadGen) return;
+        final reviewed = await _reviewedItIdsBeforePaint(
+          userId,
+          allOrders,
+          result['reviewedByOrder'],
+        );
+        if (!mounted || gen != _ordersLoadGen) return;
         setState(() {
           _allOrders = allOrders;
+          _reviewedItIdsByOd = reviewed;
           _applyFilter();
         });
-
-        _applyReviewedItIdsFromList(result['reviewedByOrder'], allOrders);
       }
     } catch (e) {
     } finally {
@@ -171,31 +176,83 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
     }
   }
 
-  void _applyReviewedItIdsFromList(
-    dynamic raw,
-    List<OrderListModel> orders,
-  ) {
+  List<String> _stringIds(dynamic value) {
+    final list = <String>[];
+    if (value is List) {
+      for (final id in value) {
+        final s = id?.toString().trim() ?? '';
+        if (s.isNotEmpty) list.add(s);
+      }
+    }
+    return list;
+  }
+
+  Map<String, List<String>> _reviewedMapFromRaw(dynamic raw) {
     final map = <String, List<String>>{};
     if (raw is Map) {
       raw.forEach((key, value) {
-        final odId = key.toString();
-        final list = <String>[];
-        if (value is List) {
-          for (final id in value) {
-            final s = id?.toString().trim() ?? '';
-            if (s.isNotEmpty) list.add(s);
-          }
-        }
-        map[odId] = list;
+        final odId = key.toString().trim();
+        if (odId.isEmpty) return;
+        map[odId] = _stringIds(value);
       });
     }
-    if (map.isEmpty) {
-      for (final order in orders) {
-        if (!_isCompletedStage(order)) continue;
-        map[order.odId] = const [];
+    return map;
+  }
+
+  /// 카드를 그리기 전에 완료 주문의 리뷰 작성 it_id를 확정한다.
+  /// 목록 응답만 보면 리뷰가 있는 주문도 리뷰쓰기로 먼저 그려진다.
+  Future<Map<String, List<String>>> _reviewedItIdsBeforePaint(
+    String mbId,
+    List<OrderListModel> orders,
+    dynamic rawFromList,
+  ) async {
+    final completedIds = orders
+        .where(_isCompletedStage)
+        .map((order) => order.odId.trim())
+        .where((id) => id.isNotEmpty)
+        .toSet()
+        .toList();
+    final fromList = _reviewedMapFromRaw(rawFromList);
+    final merged = <String, List<String>>{
+      for (final id in completedIds)
+        id: List<String>.from(fromList[id] ?? const <String>[]),
+    };
+    if (completedIds.isEmpty) return merged;
+
+    final requested = completedIds.toSet();
+    final fetched = await ReviewService.getReviewedItIdsByOrders(
+      mbId: mbId,
+      odIds: completedIds,
+    );
+    final coversAll = completedIds.every(fetched.containsKey);
+    final strayKey = fetched.keys.any((key) => !requested.contains(key));
+    if (coversAll && !strayKey) {
+      for (final id in completedIds) {
+        merged[id] = _unionIds(merged[id], fetched[id]);
       }
+      return merged;
     }
-    if (mounted) setState(() => _reviewedItIdsByOd = map);
+
+    final checks = await Future.wait(completedIds.map((odId) async {
+      final check = await ReviewService.checkReviewExists(
+        mbId: mbId,
+        odId: odId,
+      );
+      return MapEntry(odId, _stringIds(check['reviewedItIds']));
+    }));
+    for (final entry in checks) {
+      merged[entry.key] = _unionIds(merged[entry.key], entry.value);
+    }
+    return merged;
+  }
+
+  List<String> _unionIds(List<String>? a, List<String>? b) {
+    final out = <String>[];
+    for (final id in [...?a, ...?b]) {
+      final s = id.trim();
+      if (s.isNotEmpty && !out.contains(s)) out.add(s);
+    }
+    return out;
   }
 
   bool _listItemIsReviewable(OrderItem item) {
