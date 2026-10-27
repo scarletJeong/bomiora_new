@@ -928,11 +928,6 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
     if (_isPreparingStage(order)) {
       return _buildActionRow([
         (
-          label: '주문취소',
-          onTap: () => _cancelOrder(order.odId),
-          style: _CardActionStyle.outlineGray,
-        ),
-        (
           label: '배송지변경',
           onTap: () => _changeDeliveryAddress(order),
           style: _CardActionStyle.primary,
@@ -984,14 +979,9 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
       ]);
     }
 
-    // 결제대기중: 예약시간 변경은 숨긴다.
+    // 결제대기중: 예약시간 변경과 주문취소 버튼은 숨긴다.
     if (_isPaymentWaitingStage(order)) {
       return _buildActionRow([
-        (
-          label: '주문취소',
-          onTap: () => _cancelOrder(order.odId),
-          style: _CardActionStyle.outlineGray,
-        ),
         (
           label: '배송지변경',
           onTap: () => _changeDeliveryAddress(order),
@@ -1001,13 +991,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
     }
 
     if (_isPaidStage(order)) {
-      final specs = <({String label, Future<void> Function()? onTap, _CardActionStyle style})>[
-        (
-          label: '주문취소',
-          onTap: () => _cancelOrder(order.odId),
-          style: _CardActionStyle.outlineGray,
-        ),
-      ];
+      final specs = <({String label, Future<void> Function()? onTap, _CardActionStyle style})>[];
       if (isPrescription) {
         specs.add((
           label: '예약시간변경',
@@ -1257,7 +1241,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
   }
 
   String _reservationLine(OrderListModel order) {
-    if (_isCancelledStage(order) || !order.isPrescriptionOrder) return '';
+    if (_isCancelledStage(order)) return '';
     final dateLabel = _formatReservationDate(order.reservationDate);
     final timeLabel = _formatReservationTimeRange(
       order.reservationTime,
@@ -1467,18 +1451,6 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
   }
 
   /// 주문 취소
-  Future<void> _cancelOrder(String odId) async {
-    final user = await AuthService.getUser();
-    if (user == null) return;
-
-    final ok = await OrderFlowDialogs.runOrderCancelFlow(
-      context,
-      odId: odId,
-      mbId: user.id,
-    );
-    if (ok && mounted) await _goToCancelledOrder(odId);
-  }
-
   /// 배송 조회
   Future<void> _trackDelivery(String odId) async {
     try {

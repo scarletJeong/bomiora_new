@@ -30,6 +30,36 @@ class DeliveryDetailStatusCard extends StatelessWidget {
     );
   }
 
+  /// 비대면 주문의 예약일·시간. 없으면 null.
+  static String? _reservationLine(OrderDetailModel order) {
+    final dateLabel = _formatReservationDate(order.reservationDate);
+    final timeLabel = _formatReservationTimeRange(
+      order.reservationTime,
+      order.reservationEndTime,
+    );
+    if (dateLabel.isEmpty && timeLabel.isEmpty) return null;
+    if (dateLabel.isEmpty) return timeLabel;
+    if (timeLabel.isEmpty) return dateLabel;
+    return '$dateLabel $timeLabel';
+  }
+
+  static String _formatReservationDate(String? raw) {
+    final d = DateDisplayFormatter.tryParseYmdFlexible(raw);
+    if (d == null) return '';
+    const weekdays = ['월', '화', '수', '목', '금', '토', '일'];
+    final mm = d.month.toString().padLeft(2, '0');
+    final dd = d.day.toString().padLeft(2, '0');
+    return '$mm.$dd(${weekdays[d.weekday - 1]})';
+  }
+
+  static String _formatReservationTimeRange(String? start, String? end) {
+    final st = start?.trim() ?? '';
+    final et = end?.trim() ?? '';
+    if (st.isNotEmpty && et.isNotEmpty) return '$st-$et';
+    if (st.isNotEmpty) return st;
+    return et;
+  }
+
   @override
   Widget build(BuildContext context) {
     final statusTitle = isCancelled
@@ -104,6 +134,19 @@ class DeliveryDetailStatusCard extends StatelessWidget {
                       ),
                     ),
                   ),
+                  if (!isCancelled && _reservationLine(order) != null) ...[
+                    SizedBox(height: healthDp(context, 4)),
+                    Text(
+                      '예약시간: ${_reservationLine(order)}',
+                      textAlign: TextAlign.right,
+                      style: TextStyle(
+                        color: DeliveryDetailSectionStyle.pink,
+                        fontSize: healthSp(context, 10),
+                        fontFamily: DeliveryDetailSectionStyle.font,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ],

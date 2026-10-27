@@ -116,7 +116,7 @@ class _BomioraAppState extends State<BomioraApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       navigatorKey: appNavigatorKey,
-      navigatorObservers: [_singlePagePushObserver],
+      navigatorObservers: [_singlePagePushObserver, appRouteObserver],
       title: '보미오라',
       builder: (context, child) {
         final media = MediaQuery.of(context);
