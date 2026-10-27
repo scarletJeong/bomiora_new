@@ -35,6 +35,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _autoLogin = false;
   String? _loginErrorText;
   String? _returnTo;
+  bool _popOnSuccess = false;
   bool _didApplyPrefillEmail = false;
   bool _naverWebResumeStarted = false;
   bool _kakaoWebResumeStarted = false;
@@ -74,6 +75,9 @@ class _LoginScreenState extends State<LoginScreen> {
       if (v != null && v.isNotEmpty && v != '/login') {
         _returnTo = v;
       }
+      if (args['popOnSuccess'] == true) {
+        _popOnSuccess = true;
+      }
       final prefill = args['prefillEmail']?.toString().trim();
       if (!_didApplyPrefillEmail &&
           prefill != null &&
@@ -92,6 +96,15 @@ class _LoginScreenState extends State<LoginScreen> {
         _returnTo = queryReturnTo;
       }
     }
+  }
+
+  /// 상품 상세에서 연 로그인은 메인으로 바꾸지 않고 그 페이지로 돌아간다.
+  bool _popBackToCaller() {
+    if (!_popOnSuccess || !mounted) return false;
+    final navigator = Navigator.of(context);
+    if (!navigator.canPop()) return false;
+    navigator.pop(true);
+    return true;
   }
 
   @override
@@ -377,6 +390,7 @@ class _LoginScreenState extends State<LoginScreen> {
         Future.microtask(() {
           if (!mounted) return;
           if (PendingProductCheckout.navigateAfterAuth(context)) return;
+          if (_popBackToCaller()) return;
           try {
             final navigator = Navigator.of(context);
             navigator.pushReplacementNamed(_returnTo ?? '/enter-home');
@@ -797,6 +811,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
 
     if (PendingProductCheckout.navigateAfterAuth(context)) return;
+    if (_popBackToCaller()) return;
     Navigator.of(context).pushReplacementNamed(_returnTo ?? '/enter-home');
   }
 
