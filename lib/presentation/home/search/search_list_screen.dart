@@ -166,7 +166,14 @@ class _SearchListScreenState extends State<SearchListScreen> {
   }
 
   void _openProduct(Product p, {required bool general}) {
-    final route = general ? '/product-general/${p.id}' : '/product/${p.id}';
+    final kind = (p.productKind ?? '').trim().toLowerCase();
+    final useGeneral = kind == 'general'
+        ? true
+        : kind == 'prescription'
+            ? false
+            : general;
+    final route =
+        useGeneral ? '/product-general/${p.id}' : '/product/${p.id}';
     Navigator.pushNamed(context, route);
   }
 
