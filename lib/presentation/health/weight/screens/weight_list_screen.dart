@@ -1068,7 +1068,7 @@ class _WeightListScreenState extends State<WeightListScreen>
   }
 
   Widget _buildBmiSummaryCard() {
-    final bmi = selectedRecord?.bmi ?? 0.0;
+    final bmi = selectedRecord?.resolvedBmi ?? 0.0;
     final bmiStatus = selectedRecord?.bmiStatus ?? '';
     final Color statusAccent =
         bmi > 0 ? _getBmiStatusColor(bmi) : const Color(0xFF9C9393);
@@ -1224,7 +1224,7 @@ class _WeightListScreenState extends State<WeightListScreen>
   // 2. 키 / BMI
   Widget _buildHeightBmiRow() {
     final height = selectedRecord?.height ?? 0.0;
-    final bmi = selectedRecord?.bmi ?? 0.0;
+    final bmi = selectedRecord?.resolvedBmi ?? 0.0;
     final bmiStatus = selectedRecord?.bmiStatus ?? '';
 
     return Row(
@@ -1303,7 +1303,7 @@ class _WeightListScreenState extends State<WeightListScreen>
 
   // 3. BMI 컬러 바
   Widget _buildBmiColorBar() {
-    final bmi = selectedRecord?.bmi ?? 0.0;
+    final bmi = selectedRecord?.resolvedBmi ?? 0.0;
 
     if (bmi <= 0) {
       return const SizedBox.shrink();

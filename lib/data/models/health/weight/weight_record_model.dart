@@ -29,20 +29,24 @@ class WeightRecord {
 
   // BMI 계산 (키가 있을 때만)
   static double? calculateBMI(double weight, double? height) {
-    if (height == null || height <= 0) return null;
+    if (height == null || height <= 0 || weight <= 0) return null;
     final heightInMeters = height / 100; // cm → m
     final bmi = weight / (heightInMeters * heightInMeters);
     return double.parse(bmi.toStringAsFixed(1)); // 소수점 1자리
   }
 
+  /// 화면 표시용 BMI. 지금 체중·키로 다시 계산하고, 키가 없을 때만 저장된 값을 쓴다.
+  double? get resolvedBmi => calculateBMI(weight, height) ?? bmi;
+
   // BMI 상태 텍스트 (아시아 기준 구간, 표시명: 구 비만→과체중, 구 경도비만→비만, 구 고도비만→과체중)
   String get bmiStatus {
-    if (bmi == null) return '';
-    if (bmi! < 18.5) return '저체중';
-    if (bmi! < 23) return '정상';
-    if (bmi! < 25) return '과체중';
-    if (bmi! < 30) return '과체중';
-    if (bmi! < 35) return '비만';
+    final value = resolvedBmi;
+    if (value == null) return '';
+    if (value < 18.5) return '저체중';
+    if (value < 23) return '정상';
+    if (value < 25) return '과체중';
+    if (value < 30) return '과체중';
+    if (value < 35) return '비만';
     return '과체중';
   }
 
