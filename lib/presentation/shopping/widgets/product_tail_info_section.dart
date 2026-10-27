@@ -115,9 +115,11 @@ Widget _tailExpandableSectionShell({
       width: double.infinity,
       padding: EdgeInsets.symmetric(vertical: healthDp(context, 10)),
       decoration: BoxDecoration(
-        border: Border.all(
-          color: const Color(0xFF1A1A1E),
-          width: healthDp(context, 0.5),
+        border: Border(
+          bottom: BorderSide(
+            color: const Color(0xFF1A1A1E),
+            width: healthDp(context, 0.5),
+          ),
         ),
       ),
       child: Column(

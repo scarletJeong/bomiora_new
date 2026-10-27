@@ -693,10 +693,22 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
             SizedBox(height: healthDp(context, 20)),
             _buildPriceSection(),
             SizedBox(height: healthDp(context, 20)),
+            _detailGrayLine(),
+            SizedBox(height: healthDp(context, 20)),
             _buildProductSpecs(),
+            SizedBox(height: healthDp(context, 20)),
+            _detailGrayLine(),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _detailGrayLine() {
+    return Divider(
+      height: healthDp(context, 1),
+      thickness: healthDp(context, 1),
+      color: Colors.grey.shade300,
     );
   }
 
@@ -764,14 +776,29 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '추가 상품 구매하기',
-            style: TextStyle(
-              color: const Color(0xFF1A1A1E),
-              fontSize: healthSp(context, 16),
-              fontFamily: _kGmarketSans,
-              fontWeight: FontWeight.w500,
-            ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text(
+                '|',
+                style: TextStyle(
+                  color: const Color(0xFF1A1A1E),
+                  fontSize: healthSp(context, 16),
+                  fontFamily: _kGmarketSans,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              SizedBox(width: healthDp(context, 6)),
+              Text(
+                '추가 상품 구매하기',
+                style: TextStyle(
+                  color: const Color(0xFF1A1A1E),
+                  fontSize: healthSp(context, 16),
+                  fontFamily: _kGmarketSans,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
           ),
           SizedBox(height: healthDp(context, 20)),
           RecommendProductSquareRow(
