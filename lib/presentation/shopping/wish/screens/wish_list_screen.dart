@@ -6,6 +6,7 @@ import '../../../../core/utils/node_value_parser.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/services/wish_service.dart';
 import '../../../../data/services/content_service.dart';
+import '../../../common/widgets/app_network_image.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/centered_empty_state.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
@@ -780,9 +781,8 @@ class _WishListScreenState extends State<WishListScreen> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _wishCardImage(
+          _ContentWishImage(
             imageUrl: imageUrl,
-            fit: BoxFit.cover,
             onTap: openDetail,
           ),
           _wishCardBody(
@@ -837,6 +837,122 @@ class _WishListScreenState extends State<WishListScreen> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 찜 콘텐츠 카드. 원본 대신 가로 480px 썸네일을 받고, 실패하면 원본을 한 번 시도한다.
+class _ContentWishImage extends StatefulWidget {
+  const _ContentWishImage({
+    required this.imageUrl,
+    this.onTap,
+  });
+
+  final String imageUrl;
+  final VoidCallback? onTap;
+
+  @override
+  State<_ContentWishImage> createState() => _ContentWishImageState();
+}
+
+class _ContentWishImageState extends State<_ContentWishImage> {
+  late String _url;
+  var _usedOriginal = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _url = _thumbUrl(widget.imageUrl);
+  }
+
+  @override
+  void didUpdateWidget(covariant _ContentWishImage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.imageUrl != widget.imageUrl) {
+      _usedOriginal = false;
+      _url = _thumbUrl(widget.imageUrl);
+    }
+  }
+
+  String _thumbUrl(String raw) {
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) return '';
+    return ImageUrlHelper.contentListThumbUrl(trimmed, width: 480);
+  }
+
+  String _originalUrl(String raw) {
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) return '';
+    final direct = ImageUrlHelper.browserImageSrc(trimmed);
+    return direct.isEmpty ? trimmed : direct;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final radius = healthDp(context, 10);
+    final height = healthDp(context, 200);
+    return GestureDetector(
+      onTap: widget.onTap,
+      behavior: HitTestBehavior.opaque,
+      child: ClipRRect(
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(radius),
+          topRight: Radius.circular(radius),
+        ),
+        child: SizedBox(
+          width: double.infinity,
+          height: height,
+          child: _url.isEmpty
+              ? const ColoredBox(color: Color(0xFFF5F5F5))
+              : AppNetworkImage(
+                  url: _url,
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  height: height,
+                  decodeWidthLogical: 480,
+                  decodeHeightLogical: 200,
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return ColoredBox(
+                      color: const Color(0xFFF5F5F5),
+                      child: Center(
+                        child: SizedBox(
+                          width: healthDp(context, 28),
+                          height: healthDp(context, 28),
+                          child: CircularProgressIndicator(
+                            strokeWidth: healthDp(context, 2),
+                            color: const Color(0xFFFF5A8D),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                  errorBuilder: (_, __, ___) {
+                    final original = _originalUrl(widget.imageUrl);
+                    if (!_usedOriginal &&
+                        original.isNotEmpty &&
+                        original != _url) {
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (!mounted) return;
+                        setState(() {
+                          _usedOriginal = true;
+                          _url = original;
+                        });
+                      });
+                      return const ColoredBox(color: Color(0xFFF5F5F5));
+                    }
+                    return ColoredBox(
+                      color: const Color(0xFFF0F0F0),
+                      child: Icon(
+                        Icons.image_not_supported,
+                        size: healthDp(context, 48),
+                        color: Colors.grey,
+                      ),
+                    );
+                  },
+                ),
         ),
       ),
     );
