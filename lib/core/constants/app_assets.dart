@@ -121,6 +121,9 @@ abstract final class AppAssets {
   static const String myReviewCouponIcon = '${_img}myReview_couponCard_icon.svg';
   static const String myReviewCouponCardDownload = '${_img}myReview_couponCard_download.svg';
 
+  // 서포터 리뷰 카드 - 서포터 리뷰어 배지 
+  static const String myReviewSupporterBadgeIcon = '${_img}myReview_supporter_badge_icon.svg';
+
 
   /* 4. 건강대시보드 */
   // 건강대시보드 연동 아이콘

@@ -202,12 +202,13 @@ class _ProductReviewListCardState extends State<ProductReviewListCard> {
     );
   }
 
-  /// 서포터는 이름 전체, 비대면 일반 리뷰는 첫 글자만.
+  /// 서포터는 `| 이름`, 비대면 일반 리뷰는 첫 글자 + `**`.
   String _reviewerName(ReviewModel review, bool showCategoryScores) {
     final raw = (review.isName ?? '').trim();
     if (raw.isEmpty) return '익명';
-    if (showCategoryScores && !review.isSupporterReview) {
-      return String.fromCharCode(raw.runes.first);
+    if (review.isSupporterReview) return '| $raw';
+    if (showCategoryScores) {
+      return '${String.fromCharCode(raw.runes.first)}**';
     }
     return raw;
   }
@@ -325,14 +326,25 @@ class _SupporterBadge extends StatelessWidget {
           borderRadius: BorderRadius.circular(healthDp(context, 50)),
         ),
       ),
-      child: Text(
-        '서포터 리뷰어',
-        style: TextStyle(
-          color: _kPink,
-          fontSize: healthSp(context, 10),
-          fontFamily: _kGmarket,
-          fontWeight: FontWeight.w700,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SvgPicture.asset(
+            AppAssets.myReviewSupporterBadgeIcon,
+            width: healthDp(context, 14),
+            height: healthDp(context, 14),
+          ),
+          SizedBox(width: healthDp(context, 2)),
+          Text(
+            '서포터 리뷰어',
+            style: TextStyle(
+              color: _kPink,
+              fontSize: healthSp(context, 10),
+              fontFamily: _kGmarket,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -476,7 +488,9 @@ class _RatingScorePanel extends StatelessWidget {
         vertical: healthDp(context, 8),
       ),
       decoration: BoxDecoration(
-        border: Border.fromBorderSide(border),
+        border: showCategoryScores
+            ? Border(top: border, bottom: border)
+            : Border.fromBorderSide(border),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -559,6 +573,8 @@ class _ScoreChip extends StatelessWidget {
             fontWeight: FontWeight.w300,
           ),
         ),
+        SizedBox(width: healthDp(context, 3)),
+        AppStarIcon(size: healthDp(context, 10)),
         SizedBox(width: healthDp(context, 3)),
         Text(
           value.round().clamp(0, 5).toString(),

@@ -196,7 +196,7 @@ class PrescriptionReviewStatsCard extends StatelessWidget {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: healthDp(context, 20)),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Column(
             mainAxisSize: MainAxisSize.min,
@@ -215,7 +215,7 @@ class PrescriptionReviewStatsCard extends StatelessWidget {
               SizedBox(height: healthDp(context, 10)),
               AppStarRating(
                 rating: stats.average,
-                starSize: healthDp(context, 12),
+                starSize: healthDp(context, 16),
                 gap: healthDp(context, 4),
                 alignment: MainAxisAlignment.end,
               ),
@@ -223,15 +223,9 @@ class PrescriptionReviewStatsCard extends StatelessWidget {
           ),
           Padding(
             padding: EdgeInsets.symmetric(horizontal: healthDp(context, 12)),
-            child: Text(
-              '|',
-              style: TextStyle(
-                fontSize: healthSp(context, 16),
-                fontFamily: _kGmarket,
-                fontWeight: FontWeight.w500,
-                color: const Color(0xFF1A1A1E),
-                height: 1,
-              ),
+            child: ColoredBox(
+              color: const Color(0xFF666666),
+              child: SizedBox(width: healthDp(context, 1)),
             ),
           ),
           Expanded(

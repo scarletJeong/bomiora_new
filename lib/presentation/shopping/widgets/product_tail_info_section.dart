@@ -665,7 +665,7 @@ class _CertificationSectionState extends State<_CertificationSection> {
                     : MediaQuery.sizeOf(context).width -
                         _tailHorizontalPad(context, framed: widget.framed) * 2;
                 const certAspect = 670 / 252;
-                final cap = healthDp(context, 280);
+                final cap = healthDp(context, 220);
                 final targetW = widget.framed
                     ? (w < cap ? w : cap)
                     : (w * 0.20).clamp(70.0, 160.0);
