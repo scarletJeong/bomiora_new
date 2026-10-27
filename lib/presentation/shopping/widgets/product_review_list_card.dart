@@ -689,7 +689,7 @@ class _RatingScorePanel extends StatelessWidget {
               '|',
               style: TextStyle(
                 color: const Color(0xFF999999),
-                fontSize: healthSp(context, 14),
+                fontSize: healthSp(context, 8),
                 fontFamily: _kGmarket,
                 fontWeight: FontWeight.w300,
                 height: 1,
@@ -702,16 +702,16 @@ class _RatingScorePanel extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     _ScoreChip(label: '효과', value: score1),
-                    SizedBox(width: healthDp(context, 6)),
+                    SizedBox(width: healthDp(context, 3)),
                     _ScoreChip(label: '가성비', value: score2),
                   ],
                 ),
-                SizedBox(width: healthDp(context, 6)),
+                SizedBox(width: healthDp(context, 3)),
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     _ScoreChip(label: '맛/향', value: score3),
-                    SizedBox(width: healthDp(context, 6)),
+                    SizedBox(width: healthDp(context, 3)),
                     _ScoreChip(label: '편리함', value: score4),
                   ],
                 ),

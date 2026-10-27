@@ -194,7 +194,7 @@ class PrescriptionReviewStatsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dividerHeight =
-        healthDp(context, 50) + healthDp(context, 10) + healthDp(context, 25);
+        healthDp(context, 50) + healthDp(context, 10) + healthDp(context, 15);
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: healthDp(context, 20)),
       child: Row(
@@ -237,11 +237,11 @@ class PrescriptionReviewStatsCard extends StatelessWidget {
             child: Column(
               children: [
                 _ratingBar(context, '효과', stats.score1Percent),
-                SizedBox(height: healthDp(context, 8)),
+                SizedBox(height: healthDp(context, 5)),
                 _ratingBar(context, '가성비', stats.score2Percent),
-                SizedBox(height: healthDp(context, 8)),
+                SizedBox(height: healthDp(context, 5)),
                 _ratingBar(context, '맛/향', stats.score3Percent),
-                SizedBox(height: healthDp(context, 8)),
+                SizedBox(height: healthDp(context, 5)),
                 _ratingBar(context, '편리함', stats.score4Percent),
               ],
             ),
@@ -273,7 +273,7 @@ class PrescriptionReviewStatsCard extends StatelessWidget {
           child: Stack(
             children: [
               Container(
-                height: healthDp(context, 4),
+                height: healthDp(context, 3),
                 decoration: BoxDecoration(
                   color: Colors.grey[300],
                   borderRadius: BorderRadius.circular(healthDp(context, 2)),
@@ -282,7 +282,7 @@ class PrescriptionReviewStatsCard extends StatelessWidget {
               FractionallySizedBox(
                 widthFactor: (percentage.clamp(0, 100)) / 100,
                 child: Container(
-                  height: healthDp(context, 4),
+                  height: healthDp(context, 3),
                   decoration: BoxDecoration(
                     color: _kPink,
                     borderRadius: BorderRadius.circular(healthDp(context, 2)),
