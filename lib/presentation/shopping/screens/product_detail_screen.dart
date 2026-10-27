@@ -95,8 +95,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
         _safeSetState(() {});
       }
     });
-    _loadProductDetail();
+    final cachedReviews = ProductReviewLoader.cached(widget.productId);
+    if (cachedReviews != null) {
+      _supporterReviews = cachedReviews.supporterReviews;
+      _generalReviews = cachedReviews.generalReviews;
+    }
     _loadReviews();
+    _loadProductDetail();
     _loadAuthUser();
     _loadConfig();
     _loadProductOptions();
@@ -212,9 +217,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   Future<void> _loadReviews() async {
     if (widget.productId.isEmpty) return;
 
-    _safeSetState(() {
-      _isLoadingReviews = true;
-    });
+    final hadCache = ProductReviewLoader.cached(widget.productId) != null;
+    if (!hadCache) {
+      _safeSetState(() {
+        _isLoadingReviews = true;
+      });
+    }
 
     try {
       final loaded = await ProductReviewLoader.load(
@@ -774,7 +782,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       _product?.additionalInfo?['it_precautions']?.toString(),
     );
     return Padding(
-      padding: EdgeInsets.only(bottom: healthDp(context, 60)),
+      padding: EdgeInsets.only(bottom: healthDp(context, 20)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,

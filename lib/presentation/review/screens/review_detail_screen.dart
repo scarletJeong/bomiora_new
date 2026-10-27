@@ -683,7 +683,11 @@ class _ReviewDetailScreenState extends State<ReviewDetailScreen> {
         );
       } else {
         final msg = result['message']?.toString() ?? '쿠폰 발급에 실패했습니다.';
-        AppToastOverlay.show(context, msg);
+        if (msg.contains('이미 다운로드')) {
+          AppToastOverlay.showAlert(context, msg);
+        } else {
+          AppToastOverlay.show(context, msg);
+        }
       }
     } catch (_) {
       if (mounted) {

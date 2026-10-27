@@ -18,11 +18,42 @@ class ProductReviewLoadResult {
 }
 
 class ProductReviewLoader {
+  static final Map<String, ProductReviewLoadResult> _memory = {};
+  static final Map<String, Future<ProductReviewLoadResult?>> _inflight = {};
+
+  /// 같은 상품을 다시 열면 네트워크 전에 바로 그릴 수 있게 한다.
+  static ProductReviewLoadResult? cached(String productId) {
+    final id = productId.trim();
+    if (id.isEmpty) return null;
+    return _memory[id];
+  }
+
   static Future<ProductReviewLoadResult?> load({
     required String productId,
     Product? product,
+  }) {
+    final id = productId.trim();
+    if (id.isEmpty) return Future.value(null);
+    final pending = _inflight[id];
+    if (pending != null) return pending;
+
+    late final Future<ProductReviewLoadResult?> future;
+    future = _fetch(productId: id, product: product).then((result) {
+      if (result != null) _memory[id] = result;
+      return result;
+    }).whenComplete(() {
+      if (identical(_inflight[id], future)) {
+        _inflight.remove(id);
+      }
+    });
+    _inflight[id] = future;
+    return future;
+  }
+
+  static Future<ProductReviewLoadResult?> _fetch({
+    required String productId,
+    Product? product,
   }) async {
-    if (productId.isEmpty) return null;
 
     String reviewProductId = productId;
     if (product?.additionalInfo != null) {

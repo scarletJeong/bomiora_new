@@ -3,7 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 /// 리뷰 별점 공통 색 (노랑)
-const Color kAppStarYellow = Color(0xFFFFCC00);
+const Color kAppStarYellow = Color(0xFFFFDA00);
 
 enum AppStarSnapMode {
   /// 0.5 단위
@@ -198,10 +198,23 @@ class AppStarRating extends StatelessWidget {
                         ? 0.5
                         : 0,
               );
-        if (gap <= 0 || i == 4) return star;
-        return Padding(
-          padding: EdgeInsets.only(right: gap),
-          child: star,
+        if (i == 4 || gap == 0) return star;
+        if (gap > 0) {
+          return Padding(
+            padding: EdgeInsets.only(right: gap),
+            child: star,
+          );
+        }
+        return SizedBox(
+          width: math.max(0, starSize + gap),
+          child: OverflowBox(
+            alignment: Alignment.centerLeft,
+            minWidth: starSize,
+            maxWidth: starSize,
+            minHeight: starSize,
+            maxHeight: starSize,
+            child: star,
+          ),
         );
       }),
     );

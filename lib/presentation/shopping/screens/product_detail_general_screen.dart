@@ -70,8 +70,8 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
   bool _isLoadingReviews = false;
   int? _userPoint; // 현재 사용자 보유 포인트
   bool? _usePointConfig; // cf_use_point 설정값
-  int _visibleSupporterReviewCount = 4;
-  int _visibleNormalReviewCount = 4;
+  int _visibleSupporterReviewCount = 3;
+  int _visibleNormalReviewCount = 3;
   UserModel? _loggedInUser;
 
   // 옵션 관련 상태
@@ -96,8 +96,13 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
         _safeSetState(() {});
       }
     });
-    _loadProductDetail();
+    final cachedReviews = ProductReviewLoader.cached(widget.productId);
+    if (cachedReviews != null) {
+      _supporterReviews = cachedReviews.supporterReviews;
+      _generalReviews = cachedReviews.generalReviews;
+    }
     _loadReviews();
+    _loadProductDetail();
     _loadAuthUser();
     _loadConfig();
     _loadProductOptions();
@@ -216,7 +221,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
         healthDp(context, 27),
         healthDp(context, 20),
         healthDp(context, 27),
-        healthDp(context, 40),
+        0,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -258,9 +263,12 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
   Future<void> _loadReviews() async {
     if (widget.productId.isEmpty) return;
 
-    _safeSetState(() {
-      _isLoadingReviews = true;
-    });
+    final hadCache = ProductReviewLoader.cached(widget.productId) != null;
+    if (!hadCache) {
+      _safeSetState(() {
+        _isLoadingReviews = true;
+      });
+    }
 
     try {
       final loaded = await ProductReviewLoader.load(
@@ -272,8 +280,8 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
         _safeSetState(() {
           _supporterReviews = loaded.supporterReviews;
           _generalReviews = loaded.generalReviews;
-          _visibleSupporterReviewCount = 4;
-          _visibleNormalReviewCount = 4;
+          _visibleSupporterReviewCount = 3;
+          _visibleNormalReviewCount = 3;
           _isLoadingReviews = false;
         });
       } else {
@@ -532,12 +540,14 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
   double _productTabBarPaddingTop(BuildContext context) =>
       healthDp(context, 20);
 
-  double _productTabBarPaddingBottom(BuildContext context) =>
-      healthDp(context, 10);
+  double _productTabBarPaddingBottom(BuildContext context) => 0;
+
+  double _detailTopChromeHeight(BuildContext context) =>
+      healthDp(context, 20) + healthDp(context, 5) * 2 + healthDp(context, 20);
 
   double _productTabBarContentHeight(BuildContext context) {
     final gap = healthDp(context, 5);
-    final indicatorH = healthDp(context, 1.5);
+    final indicatorH = healthDp(context, 1);
     final labelStyle = TextStyle(
       fontSize: healthSp(context, 12),
       fontFamily: _kGmarketSans,
@@ -545,7 +555,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       height: 1.0,
     );
     final textPainter = TextPainter(
-      text: TextSpan(text: '서포터리뷰 (999)', style: labelStyle),
+      text: TextSpan(text: '서포터 리뷰(+999)', style: labelStyle),
       textDirection: Directionality.of(context),
       maxLines: 1,
     )..layout();
@@ -574,7 +584,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
     const pink = Color(0xFFFF5A8D);
     const gray = Color(0xFF898383);
     final gap = healthDp(context, 5);
-    final indicatorH = healthDp(context, 1.5);
+    final indicatorH = healthDp(context, 1);
     final labelStyle = TextStyle(
       fontSize: healthSp(context, 12),
       fontFamily: _kGmarketSans,
@@ -589,7 +599,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       height: 1.0,
     );
     final textPainter = TextPainter(
-      text: TextSpan(text: '서포터리뷰 (999)', style: labelStyle),
+      text: TextSpan(text: '서포터 리뷰(+999)', style: labelStyle),
       textDirection: Directionality.of(context),
       maxLines: 1,
     )..layout();
@@ -632,10 +642,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
             Container(
               height: indicatorH,
               width: selected ? labelWidth : 0,
-              decoration: BoxDecoration(
-                color: pink,
-                borderRadius: BorderRadius.circular(healthDp(context, 22)),
-              ),
+              color: selected ? pink : null,
             ),
           ],
         ),
@@ -647,9 +654,9 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       builder: (context, _) {
         return Padding(
           padding: EdgeInsets.fromLTRB(
-            healthDp(context, 34),
+            healthDp(context, 20),
             _productTabBarPaddingTop(context),
-            healthDp(context, 34),
+            healthDp(context, 20),
             _productTabBarPaddingBottom(context),
           ),
           child: SizedBox(
@@ -659,26 +666,32 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                buildTabItem(
-                  0,
-                  '상품 소개',
-                  indicatorAlign: Alignment.centerLeft,
-                  textAlign: TextAlign.left,
+                Padding(
+                  padding: EdgeInsets.only(left: healthDp(context, 10)),
+                  child: buildTabItem(
+                    0,
+                    '상품 소개',
+                    indicatorAlign: Alignment.centerLeft,
+                    textAlign: TextAlign.left,
+                  ),
                 ),
                 Padding(
                   padding: EdgeInsets.only(top: dividerTop),
                   child: _buildTabDivider(context),
                 ),
-                buildTabItem(1, '서포터리뷰 ($supporterReviewCount)'),
+                buildTabItem(1, '서포터 리뷰(+$supporterReviewCount)'),
                 Padding(
                   padding: EdgeInsets.only(top: dividerTop),
                   child: _buildTabDivider(context),
                 ),
-                buildTabItem(
-                  2,
-                  '일반 리뷰 ($generalReviewCount)',
-                  indicatorAlign: Alignment.centerRight,
-                  textAlign: TextAlign.right,
+                Padding(
+                  padding: EdgeInsets.only(right: healthDp(context, 10)),
+                  child: buildTabItem(
+                    2,
+                    '일반 리뷰(+$generalReviewCount)',
+                    indicatorAlign: Alignment.centerRight,
+                    textAlign: TextAlign.right,
+                  ),
                 ),
               ],
             ),
@@ -704,7 +717,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
               _product?.additionalInfo?['it_change_content']?.toString(),
         ),
         _buildRecommendedSection(),
-        SizedBox(height: healthDp(context, 40)),
+        SizedBox(height: healthDp(context, 20)),
       ],
     );
   }
@@ -722,7 +735,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       fallbackImageUrl: _reviewFallbackImageUrl,
       onLoadMore: () {
         _safeSetState(() {
-          _visibleSupporterReviewCount += 8;
+          _visibleSupporterReviewCount += 3;
         });
       },
       onReviewTap: _openReviewDetail,
@@ -735,27 +748,28 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
     return Container(
       color: Colors.white,
       child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: healthDp(context, 27)),
+        padding: EdgeInsets.symmetric(horizontal: healthDp(context, 20)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SizedBox(
-              height: topInset + healthAppBarTotalHeight(context),
+              height: topInset + _detailTopChromeHeight(context),
             ),
+            SizedBox(height: healthDp(context, 5)),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Padding(
-                  padding: EdgeInsets.only(
-                    top: healthDp(context, 3),
-                    right: healthDp(context, 8),
-                  ),
-                  child: Container(
-                    width: healthDp(context, 1),
-                    height: healthDp(context, 20),
+                Text(
+                  '|',
+                  style: TextStyle(
                     color: const Color(0xFF1A1A1E),
+                    fontSize: healthSp(context, 24),
+                    fontFamily: _kGmarketSans,
+                    fontWeight: FontWeight.w200,
+                    height: 1.1,
                   ),
                 ),
+                SizedBox(width: healthDp(context, 6)),
                 Expanded(
                   child: Text(
                     _product!.name,
@@ -772,20 +786,27 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
             ),
             SizedBox(height: healthDp(context, 10)),
             _buildBasicDescription(),
-            SizedBox(height: healthDp(context, 10)),
+            SizedBox(height: healthDp(context, 20)),
             _buildImageCarousel(_getProductImages()),
-            SizedBox(height: healthDp(context, 10)),
+            SizedBox(height: healthDp(context, 20)),
             _buildPriceSection(),
-            SizedBox(height: healthDp(context, 10)),
-            Divider(
-              height: healthDp(context, 1),
-              thickness: healthDp(context, 1),
-              color: Colors.grey.shade300,
-            ),
+            SizedBox(height: healthDp(context, 20)),
+            _detailGrayLine(),
+            SizedBox(height: healthDp(context, 20)),
             _buildProductSpecs(),
+            SizedBox(height: healthDp(context, 20)),
+            _detailGrayLine(),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _detailGrayLine() {
+    return Divider(
+      height: healthDp(context, 1),
+      thickness: healthDp(context, 1),
+      color: Colors.grey.shade300,
     );
   }
 
@@ -801,7 +822,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       fallbackImageUrl: _reviewFallbackImageUrl,
       onLoadMore: () {
         _safeSetState(() {
-          _visibleNormalReviewCount += 8;
+          _visibleNormalReviewCount += 3;
         });
       },
       onReviewTap: _openReviewDetail,
@@ -822,7 +843,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
 
   Widget _buildImageCarousel(List<String> images) {
     final screenWidth = MediaQuery.of(context).size.width;
-    final imageHeight = healthDp(context, 240);
+    final imageHeight = healthDp(context, 230);
     final maxWidth = screenWidth.clamp(
       healthDp(context, 200),
       healthDp(context, 600),
@@ -830,7 +851,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
 
     if (images.isEmpty) {
       final emptyContainer = ClipRRect(
-          borderRadius: BorderRadius.circular(healthDp(context, 12)),
+          borderRadius: BorderRadius.circular(healthDp(context, 10)),
           child: Container(
             height: imageHeight,
             margin: kIsWeb
@@ -876,7 +897,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
 
     // 웹에서는 Center로 감싸고, 앱에서는 원래 구조 유지
     final stackWidget = ClipRRect(
-        borderRadius: BorderRadius.circular(healthDp(context, 12)),
+        borderRadius: BorderRadius.circular(healthDp(context, 10)),
         child: Stack(
           children: [
             PageView.builder(
@@ -1056,13 +1077,16 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
     final itBasic = _product!.additionalInfo!['it_basic']?.toString();
     if (itBasic == null || itBasic.isEmpty) return const SizedBox.shrink();
 
-    return Text(
-      itBasic,
-      style: TextStyle(
-        color: const Color(0xFF808080),
-        fontSize: healthSp(context, 10),
-        fontFamily: _kGmarketSans,
-        fontWeight: FontWeight.w300,
+    return Padding(
+      padding: EdgeInsets.only(left: healthDp(context, 8)),
+      child: Text(
+        itBasic,
+        style: TextStyle(
+          color: const Color(0xFF767676),
+          fontSize: healthSp(context, 12),
+          fontFamily: _kGmarketSans,
+          fontWeight: FontWeight.w300,
+        ),
       ),
     );
   }
@@ -1075,23 +1099,10 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       isInfluencerProduct: _product?.isInfluencerProduct == true,
     );
 
-    if (mainSpecs.isEmpty) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SizedBox(height: healthDp(context, 20)),
-          Divider(
-            height: healthDp(context, 1),
-            thickness: healthDp(context, 1),
-            color: Colors.grey.shade300,
-          ),
-          SizedBox(height: healthDp(context, 10)),
-        ],
-      );
-    }
+    if (mainSpecs.isEmpty) return const SizedBox.shrink();
 
     final specTextStyle = TextStyle(
-      fontSize: healthSp(context, 12),
+      fontSize: healthSp(context, 14),
       color: const Color(0xFF1A1A1E),
       fontWeight: FontWeight.w300,
       fontFamily: _kGmarketSans,
@@ -1103,12 +1114,15 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: healthDp(context, 78),
+            width: healthDp(context, 68),
             child: Text(
               spec['label']!,
+              softWrap: false,
+              overflow: TextOverflow.visible,
               style: specTextStyle,
             ),
           ),
+          SizedBox(width: healthDp(context, 20)),
           Expanded(
             child: Text(
               spec['value']!,
@@ -1119,16 +1133,8 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       );
     }
 
-    Widget specDivider() => Divider(
-          height: healthDp(context, 1),
-          thickness: healthDp(context, 1),
-          color: Colors.grey.shade300,
-        );
-
-    final itemGap = healthDp(context, 10);
-    final children = <Widget>[
-      SizedBox(height: healthDp(context, 20)),
-    ];
+    final itemGap = healthDp(context, 8);
+    final children = <Widget>[];
 
     for (var i = 0; i < mainSpecs.length; i++) {
       if (i > 0) {
@@ -1136,10 +1142,6 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       }
       children.add(buildSpecRow(mainSpecs[i]));
     }
-
-    children.add(SizedBox(height: healthDp(context, 20)));
-    children.add(specDivider());
-    children.add(SizedBox(height: healthDp(context, 10)));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1149,12 +1151,11 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
 
   Widget _buildPriceSection() {
     final discountRate = _product!.discountRate;
-    const originalPriceColor = Color(0xFFB3B3B3);
     final hasOriginalPrice = _product!.originalPrice != null &&
         _product!.originalPrice! > _product!.price;
 
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
           child: Column(
@@ -1165,58 +1166,51 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
                 Text(
                   _product!.formattedOriginalPrice ?? '',
                   style: TextStyle(
-                    color: originalPriceColor,
-                    fontSize: healthSp(context, 12),
+                    color: const Color(0xFF898686),
+                    fontSize: healthSp(context, 14),
                     fontFamily: _kGmarketSans,
                     fontWeight: FontWeight.w300,
-                    height: 1.0,
                     decoration: TextDecoration.lineThrough,
-                    decorationColor: originalPriceColor,
+                    decorationColor: const Color(0xFF898686),
                   ),
                 ),
-              if (hasOriginalPrice) SizedBox(height: healthDp(context, 5)),
+              if (hasOriginalPrice) SizedBox(height: healthDp(context, 4)),
               Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
+                  if (discountRate != null && discountRate > 0) ...[
+                    Text(
+                      '${discountRate.toStringAsFixed(0)}%',
+                      style: TextStyle(
+                        fontSize: healthSp(context, 20),
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFFFF5A8D),
+                        fontFamily: _kGmarketSans,
+                      ),
+                    ),
+                    SizedBox(width: healthDp(context, 2)),
+                  ],
                   Text(
                     _product!.formattedPrice,
                     style: TextStyle(
                       fontSize: healthSp(context, 20),
                       fontWeight: FontWeight.w700,
-                      color: Colors.black87,
+                      color: const Color(0xFF1A1A1E),
                       fontFamily: _kGmarketSans,
                     ),
                   ),
-                  if (discountRate != null && discountRate > 0) ...[
-                    SizedBox(width: healthDp(context, 8)),
-                    Text(
-                      '${discountRate.toStringAsFixed(0)}%',
-                      style: TextStyle(
-                        fontSize: healthSp(context, 20),
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFFFF4081),
-                        fontFamily: _kGmarketSans,
-                      ),
-                    ),
-                  ],
                 ],
               ),
             ],
           ),
         ),
-        Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            _buildShareButton(),
-          ],
-        ),
+        _buildShareButton(),
       ],
     );
   }
 
   Widget _buildShareButton() {
-    final iconSz = healthDp(context, 20);
+    final iconSz = healthDp(context, 24);
     final tapSize = healthDp(context, 32);
 
     return Builder(
@@ -1363,10 +1357,6 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
 
   Widget _buildBottomActionBar() {
     return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: healthDp(context, 27),
-        vertical: healthDp(context, 12),
-      ),
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
@@ -1379,51 +1369,62 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
         ],
       ),
       child: SafeArea(
-        child: Row(
-          children: [
-            Container(
-              width: healthDp(context, 40),
-              height: healthDp(context, 40),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey[300]!),
-                borderRadius: BorderRadius.circular(healthDp(context, 8)),
-              ),
-              child: IconButton(
-                iconSize: healthDp(context, 22),
-                padding: EdgeInsets.zero,
-                icon: Icon(
-                  _isFavorite ? Icons.favorite : Icons.favorite_border,
-                  size: healthDp(context, 22),
-                  color:
-                      _isFavorite ? const Color(0xFFFF4081) : Colors.grey[600],
+        top: false,
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: healthDp(context, 20),
+            vertical: healthDp(context, 10),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: healthDp(context, 40),
+                height: healthDp(context, 40),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey[300]!),
+                  borderRadius: BorderRadius.circular(healthDp(context, 8)),
                 ),
-                onPressed: () => _toggleFavorite(),
+                child: IconButton(
+                  iconSize: healthDp(context, 22),
+                  padding: EdgeInsets.zero,
+                  icon: Icon(
+                    _isFavorite ? Icons.favorite : Icons.favorite_border,
+                    size: healthDp(context, 22),
+                    color: _isFavorite
+                        ? const Color(0xFFFF4081)
+                        : Colors.grey[600],
+                  ),
+                  onPressed: () => _toggleFavorite(),
+                ),
               ),
-            ),
-            SizedBox(width: healthDp(context, 10)),
-            Expanded(
-              child: ElevatedButton(
-                onPressed: _showOptionSelectionDialog,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFF4081),
-                  foregroundColor: Colors.white,
-                  padding:
-                      EdgeInsets.symmetric(vertical: healthDp(context, 10)),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(healthDp(context, 10)),
+              SizedBox(width: healthDp(context, 10)),
+              Expanded(
+                child: SizedBox(
+                  height: healthDp(context, 40),
+                  child: ElevatedButton(
+                    onPressed: _showOptionSelectionDialog,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFFF4081),
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.zero,
+                      shape: RoundedRectangleBorder(
+                        borderRadius:
+                            BorderRadius.circular(healthDp(context, 10)),
+                      ),
+                    ),
+                    child: Text(
+                      '구매하기',
+                      style: TextStyle(
+                        fontSize: healthSp(context, 16),
+                        fontWeight: FontWeight.w500,
+                        fontFamily: _kGmarketSans,
+                      ),
+                    ),
                   ),
                 ),
-                child: Text(
-                  '구매하기',
-                  style: TextStyle(
-                    fontSize: healthSp(context, 16),
-                    fontWeight: FontWeight.w500,
-                    fontFamily: _kGmarketSans,
-                  ),
-                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

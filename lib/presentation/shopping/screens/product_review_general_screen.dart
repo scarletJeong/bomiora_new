@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
-import '../../../core/constants/app_assets.dart';
 import '../../common/widgets/app_star_rating.dart';
-import '../../common/widgets/centered_empty_state.dart';
+import '../../../core/constants/app_assets.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../../data/models/review/review_model.dart';
 import '../widgets/product_review_list_card.dart';
@@ -44,13 +44,13 @@ class GeneralReviewTabPanel extends StatelessWidget {
     final capped =
         visibleCount > sorted.length ? sorted.length : visibleCount;
     final visible = sorted.take(capped).toList();
-    final hPad = healthDp(context, 27);
+    final hPad = healthDp(context, 20);
 
     final content = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        SizedBox(height: healthDp(context, 16)),
+        SizedBox(height: healthDp(context, 20)),
         if (isLoading)
           Padding(
             padding: EdgeInsets.all(healthDp(context, 32)),
@@ -60,16 +60,7 @@ class GeneralReviewTabPanel extends StatelessWidget {
           GeneralReviewStatsCard(average: average),
           SizedBox(height: healthDp(context, 14)),
           if (visible.isEmpty)
-            Padding(
-              padding: EdgeInsets.symmetric(vertical: healthDp(context, 24)),
-              child: CenteredEmptyState(
-                iconWidget: CenteredEmptyState.assetIcon(
-                  context,
-                  AppAssets.emptyProductReviewIcon,
-                ),
-                message: '등록된 리뷰가 없습니다.',
-              ),
-            )
+            const _GeneralReviewEmpty()
           else
             Padding(
               padding: EdgeInsets.symmetric(horizontal: hPad),
@@ -86,7 +77,10 @@ class GeneralReviewTabPanel extends StatelessWidget {
           if (!guestLoginLocked && capped < sorted.length)
             Padding(
               padding: EdgeInsets.fromLTRB(hPad, healthDp(context, 48), hPad, 0),
-              child: ProductReviewLoadMoreButton(onPressed: onLoadMore),
+              child: ProductReviewLoadMoreButton(
+                onPressed: onLoadMore,
+                neutral: true,
+              ),
             ),
         ],
         SizedBox(height: healthDp(context, embedInParentScroll ? 20 : 56)),
@@ -109,40 +103,31 @@ class GeneralReviewStatsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return SizedBox(
       width: double.infinity,
-      margin: EdgeInsets.symmetric(horizontal: healthDp(context, 16)),
-      padding: EdgeInsets.symmetric(
-        horizontal: healthDp(context, 16),
-        vertical: healthDp(context, 20),
-      ),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(healthDp(context, 8)),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            average.toStringAsFixed(1),
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: _kPink,
-              fontSize: healthSp(context, 50),
-              fontFamily: _kGmarket,
-              fontWeight: FontWeight.w700,
-              height: 1.0,
-            ),
+        Text(
+          average.toStringAsFixed(1),
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: _kPink,
+            fontSize: healthSp(context, 50),
+            fontFamily: _kGmarket,
+            fontWeight: FontWeight.w700,
+            height: 1,
           ),
-          SizedBox(height: healthDp(context, 8)),
-          AppStarRating(
-            rating: average,
-            starSize: healthDp(context, 18),
-            gap: healthDp(context, 2),
-            alignment: MainAxisAlignment.center,
-          ),
-        ],
+        ),
+        SizedBox(height: healthDp(context, 10)),
+        AppStarRating(
+          rating: average,
+          starSize: healthDp(context, 20),
+          gap: healthDp(context, 0),
+          alignment: MainAxisAlignment.center,
+        ),
+      ],
       ),
     );
   }
@@ -172,4 +157,43 @@ List<ReviewModel> _sortPhotoFirst(List<ReviewModel> reviews) {
       return 0;
     });
   return sorted;
+}
+
+class _GeneralReviewEmpty extends StatelessWidget {
+  const _GeneralReviewEmpty();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: healthDp(context, 30)),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+          SizedBox(
+            width: healthDp(context, 80),
+            height: healthDp(context, 80),
+            child: SvgPicture.asset(
+              AppAssets.emptyProductReviewIcon,
+              fit: BoxFit.contain,
+            ),
+          ),
+          SizedBox(height: healthDp(context, 10)),
+          Text(
+            '등록된 리뷰가 없습니다.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: const Color(0xFFC0C0C0),
+              fontSize: healthSp(context, 14),
+              fontFamily: _kGmarket,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+        ),
+      ),
+    );
+  }
 }

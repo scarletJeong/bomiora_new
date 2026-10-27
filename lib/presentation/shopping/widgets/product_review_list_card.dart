@@ -146,7 +146,7 @@ class _ProductReviewListCardState extends State<ProductReviewListCard> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SizedBox(height: healthDp(context, 10)),
-              _reviewerNameLine(context, review, showCategoryScores),
+              _reviewerNameLine(context, review),
               if ((review.isPositiveReviewText ?? '').trim().isNotEmpty) ...[
                 SizedBox(height: healthDp(context, 10)),
                 _ReviewLabeledText(
@@ -210,12 +210,8 @@ class _ProductReviewListCardState extends State<ProductReviewListCard> {
     );
   }
 
-  /// 서포터는 `| 이름`, 비대면 일반 리뷰는 `|` + 첫 글자 + 아래로 내린 `**`.
-  Widget _reviewerNameLine(
-    BuildContext context,
-    ReviewModel review,
-    bool showCategoryScores,
-  ) {
+  /// 서포터는 `| 이름`, 일반 리뷰는 `|` + 첫 글자 + 아래로 내린 `**`.
+  Widget _reviewerNameLine(BuildContext context, ReviewModel review) {
     final style = TextStyle(
       color: _kTextDark,
       fontSize: healthSp(context, 16),
@@ -245,32 +241,29 @@ class _ProductReviewListCardState extends State<ProductReviewListCard> {
         ],
       );
     }
-    if (showCategoryScores) {
-      final first = String.fromCharCode(raw.runes.first);
-      return Row(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              pipe,
-              SizedBox(width: healthDp(context, 4)),
-              Text(first, style: style),
-            ],
+    final first = String.fromCharCode(raw.runes.first);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            pipe,
+            SizedBox(width: healthDp(context, 4)),
+            Text(first, style: style),
+          ],
+        ),
+        Padding(
+          padding: EdgeInsets.only(top: healthDp(context, 6)),
+          child: Text(
+            '**',
+            style: style.copyWith(fontSize: healthSp(context, 12)),
           ),
-          Padding(
-            padding: EdgeInsets.only(top: healthDp(context, 6)),
-            child: Text(
-              '**',
-              style: style.copyWith(fontSize: healthSp(context, 12)),
-            ),
-          ),
-        ],
-      );
-    }
-    return Text(raw, style: style);
+        ),
+      ],
+    );
   }
 
   List<String> _usableReviewImages(ReviewModel review) {
@@ -319,10 +312,11 @@ class _ProductReviewListCardState extends State<ProductReviewListCard> {
     }();
 
     String resolve(String raw) {
-      if (useProductThumb) {
-        return _resolveProductThumbUrl(review, raw);
-      }
-      return ImageUrlHelper.getReviewImageUrl(raw);
+      final url = useProductThumb
+          ? _resolveProductThumbUrl(review, raw)
+          : ImageUrlHelper.getReviewImageUrl(raw);
+      // 카드는 화면 너비 정도만 필요해서 원본(수 MB) 대신 축소본을 받는다.
+      return ImageUrlHelper.contentListThumbUrl(url, width: 480);
     }
 
     Widget image(String url) {
@@ -660,9 +654,7 @@ class _RatingScorePanel extends StatelessWidget {
         vertical: healthDp(context, 8),
       ),
       decoration: BoxDecoration(
-        border: showCategoryScores
-            ? Border(top: border, bottom: border)
-            : Border.fromBorderSide(border),
+        border: Border(top: border, bottom: border),
       ),
       child: Row(
         mainAxisAlignment: showCategoryScores
@@ -718,10 +710,10 @@ class _RatingScorePanel extends StatelessWidget {
               ],
             ),
           ] else ...[
-            SizedBox(width: healthDp(context, 8)),
+            SizedBox(width: healthDp(context, 25)),
             AppStarRating(
               rating: total,
-              starSize: healthDp(context, 16),
+              starSize: healthDp(context, 20),
               gap: healthDp(context, 2),
             ),
           ],
@@ -842,7 +834,11 @@ class _CouponHelpSectionState extends State<_CouponHelpSection> {
       } else {
         final message =
             result['message'] as String? ?? '쿠폰 발급에 실패했습니다.';
-        AppToastOverlay.show(context, message);
+        if (message.contains('이미 다운로드')) {
+          AppToastOverlay.showAlert(context, message);
+        } else {
+          AppToastOverlay.show(context, message);
+        }
       }
     } catch (_) {
       if (mounted) {
