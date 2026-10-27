@@ -873,15 +873,21 @@ class _StaggeredBottomGrid extends StatelessWidget {
         final st = stagger * scale;
 
         Widget cell(String asset) {
+          final radius = BorderRadius.circular(healthDp(context, 8));
           return ClipRRect(
-            borderRadius: BorderRadius.circular(healthDp(context, 8)),
+            borderRadius: radius,
             child: AspectRatio(
               aspectRatio: leftW / h,
-              child: Image.asset(
-                asset,
-                fit: BoxFit.contain,
-                errorBuilder: (_, __, ___) =>
-                    ColoredBox(color: Colors.grey[200]!),
+              child: Transform.scale(
+                scale: 1.02,
+                child: Image.asset(
+                  asset,
+                  fit: BoxFit.cover,
+                  alignment: Alignment.center,
+                  filterQuality: FilterQuality.medium,
+                  errorBuilder: (_, __, ___) =>
+                      const ColoredBox(color: Color(0xFFEEEEEE)),
+                ),
               ),
             ),
           );
