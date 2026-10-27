@@ -475,6 +475,10 @@ class CartItem {
   bool get isPrescription {
     if (isSupplyAdd) return false;
 
+    final ik = _normalizeKind(itKind ?? '');
+    if (ik == 'prescription') return true;
+    if (ik == 'general') return false;
+
     final ck = _normalizeKind(ctKind);
     if (ck == 'general') return false;
     if (ck == 'prescription') return true;
@@ -482,10 +486,6 @@ class CartItem {
     final k = _normalizeKind(kind);
     if (k == 'general') return false;
     if (k == 'prescription') return true;
-
-    final ik = _normalizeKind(itKind ?? '');
-    if (ik == 'general') return false;
-    if (ik == 'prescription') return true;
 
     if (doctorName != null && doctorName!.trim().isNotEmpty) return true;
     if (hasReservationSchedule) return true;

@@ -508,9 +508,11 @@ class _ProductListScreenState extends State<ProductListScreen> {
     return ProductCatalogCard(
       product: product,
       onTap: () {
-        final detailRoute = widget.productKind == 'general'
-            ? '/product-general/${product.id}'
-            : '/product/${product.id}';
+        final kind =
+            (product.productKind ?? widget.productKind).trim().toLowerCase();
+        final detailRoute = kind == 'prescription'
+            ? '/product/${product.id}'
+            : '/product-general/${product.id}';
         Navigator.pushNamed(context, detailRoute);
       },
     );

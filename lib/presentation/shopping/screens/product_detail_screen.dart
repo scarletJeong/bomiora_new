@@ -1341,7 +1341,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
               ),
               _detailAppBarIconButton(
                 onPressed: () {
-                  CartNavigation.openCart(context, prescriptionTab: true);
+                  CartNavigation.openCart(
+                    context,
+                    prescriptionTab: _product?.ctKind != 'general',
+                  );
                 },
                 child: _detailAppBarSvgIcon(
                   AppAssets.appbarCartIcon,
@@ -1690,6 +1693,23 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     return allItems.where((item) => addedIdSet.contains(item.ctId)).toList();
   }
 
+  Future<void> _openMatchingCart(
+    Future<Map<String, dynamic>>? cartAddFuture,
+  ) async {
+    final result = cartAddFuture != null ? await cartAddFuture : null;
+    if (!mounted) return;
+    final items = result == null
+        ? const <CartItem>[]
+        : CartService.addedItemsFromAddOptionsResult(result);
+    await CartNavigation.openCart(
+      context,
+      prescriptionTab: CartNavigation.prescriptionTabFor(
+        product: _product,
+        addedItems: items,
+      ),
+    );
+  }
+
   Future<void> _showRecommendProductBottomup({
     Future<Map<String, dynamic>>? cartAddFuture,
   }) async {
@@ -1715,7 +1735,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
         _openRecommendProduct(product);
       },
       onGoToCart: () {
-        CartNavigation.openCart(context, prescriptionTab: true);
+        _openMatchingCart(cartAddFuture);
       },
       onPrimaryAction: () async {
         await _navigateToPrescriptionBooking(cartAddFuture: cartAddFuture);
@@ -1852,7 +1872,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
         _supplyLines.clear();
       });
       if (navigateToCart && mounted) {
-        await CartNavigation.openCart(context, prescriptionTab: true);
+        await CartNavigation.openCart(
+          context,
+          prescriptionTab: CartNavigation.prescriptionTabFor(product: _product),
+        );
       }
       return cartIds;
     }

@@ -1279,7 +1279,10 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
               ),
               _detailAppBarIconButton(
                 onPressed: () {
-                  CartNavigation.openCart(context, prescriptionTab: false);
+                  CartNavigation.openCart(
+                    context,
+                    prescriptionTab: _product?.ctKind == 'prescription',
+                  );
                 },
                 child: _detailAppBarSvgIcon(
                   AppAssets.appbarCartIcon,
@@ -1720,6 +1723,24 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
     );
   }
 
+  Future<void> _openMatchingCart({
+    List<CartItem>? addedItems,
+    Future<List<CartItem>>? addedItemsFuture,
+  }) async {
+    final items = addedItems ??
+        (addedItemsFuture != null
+            ? await addedItemsFuture
+            : const <CartItem>[]);
+    if (!mounted) return;
+    await CartNavigation.openCart(
+      context,
+      prescriptionTab: CartNavigation.prescriptionTabFor(
+        product: _product,
+        addedItems: items,
+      ),
+    );
+  }
+
   Future<void> _showRecommendProductBottomup({
     List<CartItem>? addedItems,
     Future<List<CartItem>>? addedItemsFuture,
@@ -1760,8 +1781,10 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
         _openRecommendProduct(product);
       },
       onGoToCart: () {
-        if (!mounted) return;
-        CartNavigation.openCart(context, prescriptionTab: false);
+        _openMatchingCart(
+          addedItems: addedItems,
+          addedItemsFuture: addedItemsFuture,
+        );
       },
       onPrimaryAction: () async {
         if (!mounted) return;

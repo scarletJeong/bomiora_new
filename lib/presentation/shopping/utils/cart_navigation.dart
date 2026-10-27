@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../data/models/cart/cart_item_model.dart';
+import '../../../data/models/product/product_model.dart';
 import '../../../data/services/cart_service.dart';
 import '../../../data/services/prescription_purchase_history_service.dart';
 import '../screens/cart_general_screen.dart' as cart_general;
@@ -8,6 +10,26 @@ import '../screens/cart_integration_screen.dart';
 /// 장바구니 담기 후 바로가기 등 — 구매 이력에 따라 통합/분리 장바구니로 이동.
 class CartNavigation {
   CartNavigation._();
+
+  /// 담은 줄의 상품 종류가 있으면 그 값을, 없으면 상품 마스터 종류를 쓴다.
+  /// 인플루언서 상품도 같은 규칙이다.
+  static bool prescriptionTabFor({
+    Product? product,
+    List<CartItem> addedItems = const [],
+  }) {
+    for (final item in addedItems) {
+      if (item.isSupplyAdd) continue;
+      final itemKind = (item.itKind ?? '').trim().toLowerCase();
+      if (itemKind == 'prescription' || itemKind == 'general') {
+        return itemKind == 'prescription';
+      }
+      final cartKind = item.ctKind.trim().toLowerCase();
+      if (cartKind == 'prescription' || cartKind == 'general') {
+        return cartKind == 'prescription';
+      }
+    }
+    return product?.ctKind == 'prescription';
+  }
 
   /// [prescriptionTab] true: 비대면 탭(또는 처방 전용 장바구니), false: 일반상품 탭(또는 일반 장바구니)
   /// [clearStack] true: 루트(홈)만 남기고 장바구니로 교체 (결제 완료 뒤로가기 등)
