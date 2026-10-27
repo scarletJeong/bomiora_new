@@ -59,7 +59,9 @@ class PrescriptionReviewTabPanel extends StatelessWidget {
         else ...[
           PrescriptionReviewStatsCard(stats: stats),
           SizedBox(height: healthDp(context, 14)),
-          if (visible.isEmpty)
+          if (guestLoginLocked && visible.isNotEmpty)
+            _PrescriptionReviewGuestLock(onLogin: onGuestLoginTap)
+          else if (visible.isEmpty)
             Padding(
               padding: EdgeInsets.symmetric(vertical: healthDp(context, 24)),
               child: CenteredEmptyState(
@@ -78,8 +80,6 @@ class PrescriptionReviewTabPanel extends StatelessWidget {
                 // 비대면 상세: 서포터/일반(비서포터) 모두 효과·가성비·맛향·편리함 표시
                 showCategoryScores: true,
                 showCouponSection: showCouponSection,
-                guestLoginLocked: guestLoginLocked,
-                onGuestLoginTap: onGuestLoginTap,
                 onReviewTap: onReviewTap,
                 fallbackImageUrl: fallbackImageUrl,
               ),
@@ -98,6 +98,78 @@ class PrescriptionReviewTabPanel extends StatelessWidget {
     return SingleChildScrollView(
       key: const PageStorageKey<String>('prescription_review_tab'),
       child: content,
+    );
+  }
+}
+
+/// 비로그인 의약품 후기 안내. 322×524 프레임 크기는 빼고, 안쪽 여백·글자·버튼만 맞춘다.
+class _PrescriptionReviewGuestLock extends StatelessWidget {
+  final VoidCallback? onLogin;
+
+  const _PrescriptionReviewGuestLock({this.onLogin});
+
+  @override
+  Widget build(BuildContext context) {
+    const dark = Color(0xFF1A1A1E);
+    return ColoredBox(
+      color: Colors.white,
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: healthDp(context, 10),
+          vertical: healthDp(context, 113),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '의료법에 의거하여 의약품 후기는',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: dark,
+                fontSize: healthSp(context, 16),
+                fontFamily: _kGmarket,
+                fontWeight: FontWeight.w300,
+              ),
+            ),
+            SizedBox(height: healthDp(context, 8)),
+            Text(
+              '로그인 후 확인이 가능합니다.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: dark,
+                fontSize: healthSp(context, 16),
+                fontFamily: _kGmarket,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            SizedBox(height: healthDp(context, 20)),
+            Material(
+              color: _kPink,
+              borderRadius: BorderRadius.circular(healthDp(context, 50)),
+              child: InkWell(
+                onTap: onLogin,
+                borderRadius: BorderRadius.circular(healthDp(context, 50)),
+                child: Container(
+                  height: healthDp(context, 40),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: healthDp(context, 18),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    '로그인하기',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: healthSp(context, 16),
+                      fontFamily: _kGmarket,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
