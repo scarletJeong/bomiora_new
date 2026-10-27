@@ -128,6 +128,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
   int _baseShipping = 0;
   int _extraShipping = 0;
   double _pointRate = 1;
+  int _shippingQuoteGen = 0;
+  bool _shippingCouponDismissed = false;
 
   List<Coupon> _loadedCoupons = [];
   List<Coupon> _applicableCoupons = [];
@@ -186,7 +188,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       }
 
       if (widget.prefetch != null) {
-        _applyPrefetch(user, widget.prefetch!);
+        await _applyPrefetch(user, widget.prefetch!);
         return;
       }
 
@@ -206,30 +208,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
       );
 
       if (!mounted) return;
-      setState(() {
-        _defaultAddress = defaultAddress.isEmpty ? null : defaultAddress;
-        _myPoint = point;
-        _loadedCoupons = coupons;
-        _syncCouponLists();
-        _loading = false;
-        _applyAddressMode();
-      });
-      _loadShippingQuote();
-      // 기본 배송지 없으면 회원 성함/연락처 프리필
-      if (_defaultAddress == null) {
-        setState(() {
-          _saveAsDefault = true;
-          if (_receiverController.text.trim().isEmpty) {
-            _receiverController.text = user.name;
-          }
-          if (_phoneController.text.trim().isEmpty &&
-              (user.phone ?? '').trim().isNotEmpty) {
-            _phoneController.text =
-                (user.phone ?? '').replaceAll(RegExp(r'[^0-9]'), '');
-          }
-          _addressNameController.text = _addressLabelChip;
-        });
-      }
+      await _finishCheckoutLoad(
+        user: user,
+        address: defaultAddress.isEmpty ? null : defaultAddress,
+        point: point,
+        coupons: coupons,
+      );
     } catch (_) {
       if (!mounted) return;
       setState(() => _loading = false);
@@ -237,7 +221,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
     }
   }
 
-  void _applyPrefetch(UserModel user, PaymentPrefetchData prefetch) {
+  Future<void> _applyPrefetch(UserModel user, PaymentPrefetchData prefetch) async {
     if (!mounted) return;
     final defaultAddress = prefetch.addresses.firstWhere(
       (e) => e['adDefault'] == 1,
@@ -245,17 +229,29 @@ class _PaymentScreenState extends State<PaymentScreen> {
           ? prefetch.addresses.first
           : <String, dynamic>{},
     );
+    await _finishCheckoutLoad(
+      user: user,
+      address: defaultAddress.isEmpty ? null : defaultAddress,
+      point: prefetch.point,
+      coupons: prefetch.coupons,
+    );
+  }
+
+  /// 배송비 견적이 끝난 뒤에 쿠폰 목록과 총액을 연다.
+  /// 견적 전에 화면을 열면 3만원 이하 배송비·배송비 쿠폰이 빠진다.
+  Future<void> _finishCheckoutLoad({
+    required UserModel user,
+    required Map<String, dynamic>? address,
+    required int point,
+    required List<Coupon> coupons,
+  }) async {
+    if (!mounted) return;
     setState(() {
-      _defaultAddress = defaultAddress.isEmpty ? null : defaultAddress;
-      _myPoint = prefetch.point;
-      _loadedCoupons = prefetch.coupons;
-      _syncCouponLists();
-      _loading = false;
-      _applyAddressMode();
-    });
-    _loadShippingQuote();
-    if (_defaultAddress == null) {
-      setState(() {
+      _defaultAddress = address;
+      _myPoint = point;
+      _loadedCoupons = coupons;
+      _applyAddressMode(refreshShipping: false);
+      if (address == null) {
         _saveAsDefault = true;
         if (_receiverController.text.trim().isEmpty) {
           _receiverController.text = user.name;
@@ -266,8 +262,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
               (user.phone ?? '').replaceAll(RegExp(r'[^0-9]'), '');
         }
         _addressNameController.text = _addressLabelChip;
-      });
-    }
+      }
+    });
+    await _loadShippingQuote(retryIfZero: true);
+    if (!mounted) return;
+    setState(() => _loading = false);
   }
 
   bool get _hasSavedAddress {
@@ -319,16 +318,36 @@ class _PaymentScreenState extends State<PaymentScreen> {
     }
   }
 
+  /// 배송비가 생기면 배송비 쿠폰을 총액에 바로 붙인다.
+  /// 사용자가 삭제한 뒤에는 다시 넣지 않는다.
+  void _maybeAutoSelectShippingCoupon() {
+    if (_shippingCouponDismissed) return;
+    if (_baseShipping <= 0) return;
+    if (_selectedCoupons.any((coupon) => coupon.method == 3)) return;
+    Coupon? best;
+    var bestDiscount = 0;
+    for (final coupon in _applicableCoupons) {
+      if (coupon.method != 3) continue;
+      final discount = _shippingDiscountFor(coupon);
+      if (discount > bestDiscount) {
+        best = coupon;
+        bestDiscount = discount;
+      }
+    }
+    if (best == null || bestDiscount <= 0) return;
+    _selectedCoupons.add(best);
+  }
+
   int get _purchaseAmount =>
       widget.cartItems.fold(0, (sum, item) => sum + item.ctPrice);
 
-  /// 배송비 쿠폰 최소 금액. 일반 상품과 처방 상품 합이다.
+  /// 배송비 쿠폰 최소 금액. 일반 상품과 처방 상품의 라인 금액 합이다.
   int get _shippingCouponGoodsAmount => widget.cartItems.fold<int>(0, (sum, item) {
         final kind = item.ctKind.toLowerCase();
         if (kind.isNotEmpty && kind != 'general' && kind != 'prescription') {
           return sum;
         }
-        return sum + item.ctPrice;
+        return sum + item.lineAmount;
       });
 
   bool _isInfluencerCartItem(CartItem item) => item.ctMbInf.trim().isNotEmpty;
@@ -547,7 +566,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   /// [preserveDeliveryMemo]: 배송지 변경 시 주소북 adMemo가 비어 있으면
   /// 결제 화면에서 고른 배송요청사항(드롭다운)을 유지한다.
-  void _applyAddressMode({bool preserveDeliveryMemo = false}) {
+  void _applyAddressMode({
+    bool preserveDeliveryMemo = false,
+    bool refreshShipping = true,
+  }) {
     final ad = _defaultAddress;
     _addressNameController.text = _safe(ad?['adSubject']);
     _receiverController.text = _safe(ad?['adName']);
@@ -565,21 +587,37 @@ class _PaymentScreenState extends State<PaymentScreen> {
       _deliveryMemoCustomSelected =
           DeliveryMemoDropdown.isCustomMemo(addressMemo);
     }
-    _loadShippingQuote();
+    if (refreshShipping) {
+      _loadShippingQuote();
+    }
   }
 
-  Future<CartShippingQuote?> _loadShippingQuote() async {
-    final ids = widget.cartItems.map((item) => item.ctId).where((id) => id > 0);
+  Future<CartShippingQuote?> _loadShippingQuote({bool retryIfZero = false}) async {
+    final quote = await _fetchShippingQuote();
+    final missingFee = quote == null || quote.baseShipping <= 0;
+    if (!retryIfZero || !missingFee || widget.cartItems.isEmpty) {
+      return quote;
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 400));
+    if (!mounted) return quote;
+    return _fetchShippingQuote();
+  }
+
+  Future<CartShippingQuote?> _fetchShippingQuote() async {
+    final gen = ++_shippingQuoteGen;
+    final ids = widget.cartItems.map((item) => item.ctId).where((id) => id > 0).toList();
+    if (ids.isEmpty) return null;
     final quote = await CartService.getShippingQuote(
-      ctIds: ids.toList(),
+      ctIds: ids,
       zip: _zipController.text,
     );
-    if (!mounted || quote == null) return quote;
+    if (!mounted || gen != _shippingQuoteGen || quote == null) return quote;
     setState(() {
       _baseShipping = quote.baseShipping;
       _extraShipping = quote.extraShipping;
       _pointRate = quote.pointRate;
       _syncCouponLists();
+      _maybeAutoSelectShippingCoupon();
     });
     return quote;
   }
@@ -2141,6 +2179,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
     setState(() {
       if (method == 3) {
+        _shippingCouponDismissed = false;
         _selectedCoupons.removeWhere((coupon) => coupon.method == 3);
         _selectedCoupons.add(picked);
       } else if (method == 1) {
@@ -2232,6 +2271,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
           InkWell(
             onTap: () {
               setState(() {
+                if (coupon.method == 3) _shippingCouponDismissed = true;
                 _selectedCoupons.removeWhere((c) => c.no == coupon.no);
                 if (_usedPoint > _maxUsablePointHundreds) {
                   _usedPoint = _maxUsablePointHundreds;

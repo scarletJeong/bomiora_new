@@ -45,7 +45,13 @@ class NodeValueParser {
     if (normalized == null) return null;
     if (normalized is int) return normalized;
     if (normalized is num) return normalized.toInt();
-    return int.tryParse(normalized.toString());
+    final text = normalized.toString().trim().replaceAll(',', '');
+    if (text.isEmpty) return null;
+    final parsed = int.tryParse(text);
+    if (parsed != null) return parsed;
+    final asDouble = double.tryParse(text);
+    if (asDouble == null || !asDouble.isFinite) return null;
+    return asDouble.toInt();
   }
 
   static double? asDouble(dynamic value) {

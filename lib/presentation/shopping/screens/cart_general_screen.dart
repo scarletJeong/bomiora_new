@@ -56,6 +56,7 @@ class _CartScreenState extends State<CartScreen> {
   bool _checkoutOpening = false;
   final ScrollController _scrollController = ScrollController();
   Timer? _shippingDebounce;
+  Future<void>? _pendingQtyUpdate;
   final Map<int, int> _qtyEpochById = {};
 
   List<CartLineGroup> get _displayedGroups =>
@@ -299,10 +300,12 @@ class _CartScreenState extends State<CartScreen> {
       totalPrice = cartItems.fold<int>(0, (sum, item) => sum + item.lineAmount);
     });
 
-    final result = await CartService.updateCartQuantity(
+    final resultFuture = CartService.updateCartQuantity(
       ctId: ctId,
       quantity: newQuantity,
     );
+    _pendingQtyUpdate = resultFuture.then((_) {});
+    final result = await resultFuture;
     if (!mounted || _qtyEpochById[ctId] != epoch) return;
 
     if (result['success'] == true) {
@@ -438,6 +441,10 @@ class _CartScreenState extends State<CartScreen> {
       if (!await _ensureLoggedIn(message: '상품 구매는 로그인 후 이용할 수 있습니다.')) {
         return;
       }
+      final pendingQty = _pendingQtyUpdate;
+      if (pendingQty != null) await pendingQty;
+      if (!mounted) return;
+      await _refreshSelectedShipping();
       if (!mounted) return;
 
       final navigator = Navigator.of(context, rootNavigator: true);
@@ -647,8 +654,7 @@ class _CartScreenState extends State<CartScreen> {
                                 onQuantityChanged: (item, qty) =>
                                     _updateQuantity(item.ctId, qty),
                                 onDelete: (item) => _deleteCartItem(item.ctId),
-                                onOpenDetail: (item) =>
-                                    _openGeneralProductDetail(item.itId),
+                                onOpenDetail: _openCartProductDetail,
                               ),
                               SizedBox(height: healthDp(context, 12)),
                             ],
@@ -996,8 +1002,12 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
-  void _openGeneralProductDetail(String productId) {
-    Navigator.pushNamed(context, '/product-general/$productId');
+  void _openCartProductDetail(CartItem item) {
+    final kind = (item.itKind ?? item.ctKind).trim().toLowerCase();
+    final route = kind == 'prescription'
+        ? '/product/${item.itId}'
+        : '/product-general/${item.itId}';
+    Navigator.pushNamed(context, route);
   }
 
 }

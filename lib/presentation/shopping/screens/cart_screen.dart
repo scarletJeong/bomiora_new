@@ -55,6 +55,7 @@ class _CartScreenState extends State<CartScreen> {
   bool selectAll = false; // 현재 탭의 전체 선택 상태
   final ScrollController _scrollController = ScrollController();
   Timer? _shippingDebounce;
+  Future<void>? _pendingQtyUpdate;
   final Map<int, int> _qtyEpochById = {};
 
   List<CartLineGroup> get _displayedGroups =>
@@ -299,13 +300,18 @@ class _CartScreenState extends State<CartScreen> {
       cartItems[index] = _itemWithQuantity(previous, newQuantity);
     });
 
-    final result = await CartService.updateCartQuantity(
+    final resultFuture = CartService.updateCartQuantity(
       ctId: ctId,
       quantity: newQuantity,
     );
+    _pendingQtyUpdate = resultFuture.then((_) {});
+    final result = await resultFuture;
     if (!mounted || _qtyEpochById[ctId] != epoch) return;
 
-    if (result['success'] == true) return;
+    if (result['success'] == true) {
+      _scheduleShippingRefresh();
+      return;
+    }
 
     setState(() {
       final current = cartItems.indexWhere((item) => item.ctId == ctId);
@@ -443,6 +449,11 @@ class _CartScreenState extends State<CartScreen> {
       return;
     }
     if (_selectedDisplayedItemIds.isEmpty) return;
+    final pendingQty = _pendingQtyUpdate;
+    if (pendingQty != null) await pendingQty;
+    if (!mounted) return;
+    await _refreshSelectedShipping();
+    if (!mounted) return;
 
     final selectedCartItems = _displayedCartItems
         .where((item) =>
@@ -489,6 +500,14 @@ class _CartScreenState extends State<CartScreen> {
     } else {
       Navigator.of(context).pushReplacementNamed('/home');
     }
+  }
+
+  void _openCartProductDetail(CartItem item) {
+    final kind = (item.itKind ?? item.ctKind).trim().toLowerCase();
+    final route = kind == 'general'
+        ? '/product-general/${item.itId}'
+        : '/product/${item.itId}';
+    Navigator.pushNamed(context, route);
   }
 
   Widget _buildPageCenteredEmpty(Widget empty) {
@@ -620,12 +639,7 @@ class _CartScreenState extends State<CartScreen> {
                                             onChildDelete: (item) {
                                               _deleteCartItem(item.ctId);
                                             },
-                                            onChildOpenDetail: (item) {
-                                              Navigator.pushNamed(
-                                                context,
-                                                '/product/${item.itId}',
-                                              );
-                                            },
+                                            onChildOpenDetail: _openCartProductDetail,
                                           ),
                                           SizedBox(
                                               height: healthDp(context, 12)),
@@ -1197,10 +1211,7 @@ class _CartScreenState extends State<CartScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         GestureDetector(
-                          onTap: () => Navigator.pushNamed(
-                            context,
-                            '/product/${item.itId}',
-                          ),
+                          onTap: () => _openCartProductDetail(item),
                           child: _cartItemThumbnail(item),
                         ),
                         SizedBox(width: healthDp(context, 8)),

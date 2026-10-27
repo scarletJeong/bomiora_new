@@ -236,6 +236,10 @@ class CartService {
   }
 
   static String normalizeCartKind({String? ctKind, Product? product}) {
+    final fromProduct = (product?.productKind ?? '').trim().toLowerCase();
+    if (fromProduct == 'prescription' || fromProduct == 'general') {
+      return fromProduct;
+    }
     final raw = (ctKind ?? product?.ctKind ?? '').trim().toLowerCase();
     if (raw == 'prescription') return 'prescription';
     return 'general';
@@ -690,11 +694,19 @@ class CartService {
       if (data is! Map || data['success'] == false) return null;
       int asInt(dynamic raw) {
         if (raw is int) return raw;
-        return int.tryParse('$raw') ?? 0;
+        if (raw is num) return raw.toInt();
+        final text = '$raw'.trim().replaceAll(',', '');
+        return int.tryParse(text) ?? double.tryParse(text)?.toInt() ?? 0;
       }
 
-      final base = asInt(data['base_shipping_cost'] ?? data['shipping_cost']);
+      final quotedBase = data['base_shipping_cost'];
+      final quotedTotal = data['shipping_cost'];
+      var base = asInt(quotedBase ?? quotedTotal);
       final extra = asInt(data['extra_shipping_cost']);
+      if (base == 0 && extra == 0) {
+        final total = asInt(quotedTotal);
+        if (total > 0) base = total;
+      }
       final rate = double.tryParse('${data['point_rate'] ?? ''}') ?? 1;
       return CartShippingQuote(
         baseShipping: base < 0 ? 0 : base,
