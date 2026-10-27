@@ -605,48 +605,52 @@ class _ContentListScreenState extends State<ContentListScreen> {
         );
       },
       behavior: HitTestBehavior.opaque,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(healthDp(context, 10)),
-            child: SizedBox(
-              height: healthDp(context, 200),
-              width: double.infinity,
-              child: AppNetworkImage(
-                url: imageUrl,
-                fit: BoxFit.cover,
-                width: double.infinity,
-                height: healthDp(context, 200),
-                decodeWidthLogical: MobileAppLayoutWrapper.contentWidthOf(
-                  context,
-                ),
-                errorBuilder: (_, __, ___) => Container(
-                  color: const Color(0xFFF2F2F2),
-                  alignment: Alignment.center,
-                  child: Icon(
-                    Icons.broken_image_outlined,
-                    size: healthDp(context, 40),
-                    color: const Color(0xFFBDBDBD),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: SizedBox(
+          width: healthDp(context, 321),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(healthDp(context, 10)),
+                child: SizedBox(
+                  height: healthDp(context, 200),
+                  width: healthDp(context, 321),
+                  child: AppNetworkImage(
+                    url: imageUrl,
+                    fit: BoxFit.cover,
+                    width: healthDp(context, 321),
+                    height: healthDp(context, 200),
+                    decodeWidthLogical: healthDp(context, 321),
+                    errorBuilder: (_, __, ___) => Container(
+                      color: const Color(0xFFF2F2F2),
+                      alignment: Alignment.center,
+                      child: Icon(
+                        Icons.broken_image_outlined,
+                        size: healthDp(context, 40),
+                        color: const Color(0xFFBDBDBD),
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
+              SizedBox(height: healthDp(context, 12)),
+              Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: _textDark,
+                  fontSize: healthSp(context, 14),
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: healthSp(context, -1.26),
+                ),
+              ),
+            ],
           ),
-          SizedBox(height: healthDp(context, 12)),
-          Text(
-            title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: _textDark,
-              fontSize: healthSp(context, 14),
-              fontFamily: 'Gmarket Sans TTF',
-              fontWeight: FontWeight.w500,
-              letterSpacing: healthSp(context, -1.26),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

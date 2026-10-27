@@ -483,14 +483,14 @@ class _WishListScreenState extends State<WishListScreen> {
           topRight: Radius.circular(radius),
         ),
         child: SizedBox(
-          width: double.infinity,
+          width: healthDp(context, 321),
           height: healthDp(context, 200),
           child: imageUrl.isEmpty
               ? const ColoredBox(color: Color(0xFFF5F5F5))
               : Image.network(
             imageUrl,
             fit: fit,
-            width: double.infinity,
+            width: healthDp(context, 321),
             height: healthDp(context, 200),
             loadingBuilder: (context, child, loadingProgress) {
               if (loadingProgress == null) return child;
@@ -652,8 +652,10 @@ class _WishListScreenState extends State<WishListScreen> {
     final openDetail =
         productId.isEmpty ? null : () => _openProductDetail(productId, item);
 
-    return SizedBox(
-      width: double.infinity,
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: SizedBox(
+      width: healthDp(context, 321),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -689,6 +691,7 @@ class _WishListScreenState extends State<WishListScreen> {
             ],
           ),
         ],
+      ),
       ),
     );
   }
@@ -775,8 +778,10 @@ class _WishListScreenState extends State<WishListScreen> {
             );
           };
 
-    return SizedBox(
-      width: double.infinity,
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: SizedBox(
+      width: healthDp(context, 321),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -795,6 +800,7 @@ class _WishListScreenState extends State<WishListScreen> {
             ],
           ),
         ],
+      ),
       ),
     );
   }
@@ -902,17 +908,17 @@ class _ContentWishImageState extends State<_ContentWishImage> {
           topRight: Radius.circular(radius),
         ),
         child: SizedBox(
-          width: double.infinity,
+          width: healthDp(context, 321),
           height: height,
           child: _url.isEmpty
               ? const ColoredBox(color: Color(0xFFF5F5F5))
               : AppNetworkImage(
                   url: _url,
                   fit: BoxFit.cover,
-                  width: double.infinity,
+                  width: healthDp(context, 321),
                   height: height,
-                  decodeWidthLogical: 480,
-                  decodeHeightLogical: 200,
+                  decodeWidthLogical: healthDp(context, 321),
+                  decodeHeightLogical: healthDp(context, 200),
                   loadingBuilder: (context, child, loadingProgress) {
                     if (loadingProgress == null) return child;
                     return ColoredBox(

@@ -559,19 +559,25 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
       padding: EdgeInsets.only(bottom: healthDp(context, 24)),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final width = constraints.maxWidth;
+          final targetWidth = healthDp(context, 335);
+          final width = constraints.maxWidth < targetWidth
+              ? constraints.maxWidth
+              : targetWidth;
           final height = healthDp(context, 200);
-          return ClipRRect(
-            borderRadius: BorderRadius.circular(healthDp(context, 10)),
-            child: AppNetworkImage(
-              url: url,
-              width: width,
-              height: height,
-              fit: BoxFit.cover,
-              alignment: Alignment.center,
-              decodeWidthLogical: width,
-              preferHtmlElementOnWeb: false,
-              errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+          return Align(
+            alignment: Alignment.centerLeft,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(healthDp(context, 10)),
+              child: AppNetworkImage(
+                url: url,
+                width: width,
+                height: height,
+                fit: BoxFit.cover,
+                alignment: Alignment.center,
+                decodeWidthLogical: width,
+                preferHtmlElementOnWeb: false,
+                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+              ),
             ),
           );
         },
