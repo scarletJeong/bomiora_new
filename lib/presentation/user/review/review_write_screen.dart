@@ -10,6 +10,7 @@ import '../../../core/utils/web_horizontal_nav_lock.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../data/models/delivery/delivery_model.dart';
 import '../../../data/models/review/review_model.dart';
+import 'review_write_finish.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/review_service.dart';
 import '../../common/widgets/app_star_rating.dart';
@@ -1625,6 +1626,7 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
         return;
       }
 
+      int? createdId;
       for (var i = 0; i < _targetProducts.length; i++) {
         late final double s1, s2, s3, s4;
         late final int weight;
@@ -1691,6 +1693,10 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
           isOutageNum: weight,
         );
         final result = await ReviewService.createReview(review);
+        final created = result['review'];
+        if (created is ReviewModel && created.isId != null) {
+          createdId = created.isId;
+        }
         if (result['success'] != true) {
           if (mounted) {
             final message = (result['message'] as String?)?.trim();
@@ -1707,7 +1713,7 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
 
       if (!mounted) return;
       AppToastOverlay.show(context, '리뷰가 작성되었습니다.');
-      Navigator.pop(context, true);
+      openMyReviewsAfterWrite(context, focusIsId: createdId);
     } catch (_) {
       if (mounted) {
         AppToastOverlay.show(

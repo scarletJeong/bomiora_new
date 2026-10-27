@@ -22,7 +22,10 @@ import 'review_write_screen.dart';
 
 /// 내 리뷰 — 상단 1건 펼침 + 이전 리뷰 내역(탭 시 교체)
 class MyReviewsScreen extends StatefulWidget {
-  const MyReviewsScreen({super.key});
+  const MyReviewsScreen({super.key, this.focusIsId});
+
+  /// 방금 작성한 리뷰를 펼친 카드로 연다.
+  final int? focusIsId;
 
   @override
   State<MyReviewsScreen> createState() => _MyReviewsScreenState();
@@ -38,6 +41,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
   int _historyVisibleCount = _historyPageSize;
 
   ReviewModel? _activeReview;
+  bool _appliedFocus = false;
 
   String _productNameQuery = '';
   final TextEditingController _productNameFilterController =
@@ -56,7 +60,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
   void initState() {
     super.initState();
     _productNameFilterController.addListener(_onProductNameFilterChanged);
-    _loadReviews();
+    _loadReviews(refresh: widget.focusIsId != null);
   }
 
   @override
@@ -334,6 +338,15 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
           _hasMore = result['hasNext'] ?? false;
           final vis = _visibleReviews();
           _ensureActiveInVisible(vis);
+          if (!_appliedFocus && widget.focusIsId != null) {
+            _appliedFocus = true;
+            for (final review in vis) {
+              if (review.isId == widget.focusIsId) {
+                _activeReview = review;
+                break;
+              }
+            }
+          }
         });
       }
     } catch (e) {

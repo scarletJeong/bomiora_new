@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 
+/// 리뷰 작성 직후 뒤로가기처럼, 화면이 다시 보일 때를 받기 위한 옵저버.
+final RouteObserver<PageRoute<dynamic>> appRouteObserver =
+    RouteObserver<PageRoute<dynamic>>();
+
 /// 화면 이동·제출처럼 한 번만 실행해야 하는 동작.
 /// 진행 중에는 다른 터치를 막고, 새 화면이 열리면 그 화면은 다시 누를 수 있다.
 class AppActionGate {
