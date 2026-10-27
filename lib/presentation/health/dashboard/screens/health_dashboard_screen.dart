@@ -235,7 +235,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
         if (weightRecord != null) {
           currentWeight = weightRecord.weight;
           height = weightRecord.height ?? 170.0;
-          bmi = weightRecord.bmi ?? 0.0;
+          bmi = weightRecord.resolvedBmi ?? 0.0;
         } else {
           currentWeight = 0.0;
           height = 170.0;
@@ -310,7 +310,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
       if (weightRecord != null) {
         currentWeight = weightRecord.weight;
         height = weightRecord.height ?? 170.0;
-        bmi = weightRecord.bmi ?? 0.0;
+        bmi = weightRecord.resolvedBmi ?? 0.0;
       } else {
         currentWeight = 0.0;
         height = 170.0;

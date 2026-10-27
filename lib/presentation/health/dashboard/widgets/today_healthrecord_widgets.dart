@@ -311,15 +311,31 @@ String _periodText(
     return '입력하세요.';
   }
 
-  final int dday = latestMenstrualCycleRecord.nextPeriodStart
-      .difference(selectedDate)
-      .inDays;
-  final DateTime lastPeriodEnd = latestMenstrualCycleRecord.lastPeriodStart
-      .add(Duration(days: latestMenstrualCycleRecord.periodLength - 1));
+  final DateTime selected = DateTime(
+    selectedDate.year,
+    selectedDate.month,
+    selectedDate.day,
+  );
+  final DateTime start = DateTime(
+    latestMenstrualCycleRecord.displayPeriodStart.year,
+    latestMenstrualCycleRecord.displayPeriodStart.month,
+    latestMenstrualCycleRecord.displayPeriodStart.day,
+  );
+  final DateTime end = DateTime(
+    latestMenstrualCycleRecord.displayPeriodEnd.year,
+    latestMenstrualCycleRecord.displayPeriodEnd.month,
+    latestMenstrualCycleRecord.displayPeriodEnd.day,
+  );
+  final int daysFromStart = selected.difference(start).inDays;
+  final String when = daysFromStart > 0
+      ? '$daysFromStart일 전'
+      : daysFromStart < 0
+          ? '${daysFromStart.abs()}일 후'
+          : '당일';
   final String cycleRange =
-      '${DateFormat('M/d').format(latestMenstrualCycleRecord.lastPeriodStart)}-${DateFormat('M/d').format(lastPeriodEnd)}';
+      '${DateFormat('M/d').format(start)}-${DateFormat('M/d').format(end)}';
 
-  return '${dday.abs()}일전($cycleRange)';
+  return '$when($cycleRange)';
 }
 
 String _bloodPressureStatusLabel(
