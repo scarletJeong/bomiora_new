@@ -153,7 +153,7 @@ class _CartScreenState extends State<CartScreen> {
   @override
   void initState() {
     super.initState();
-    _loadCart();
+    _loadCart(forceRefresh: true);
   }
 
   @override
