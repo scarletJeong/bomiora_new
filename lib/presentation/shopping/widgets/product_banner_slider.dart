@@ -70,7 +70,6 @@ class ProductBannerSlider extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bannerH = healthDp(context, heightBase);
-    final borderW = healthDp(context, 3);
     final color = resolveProductListBannerColor(
       productKind: productKind,
       categoryId: categoryId,
@@ -80,15 +79,7 @@ class ProductBannerSlider extends StatelessWidget {
     return Container(
       height: bannerH,
       width: double.infinity,
-      decoration: BoxDecoration(
-        color: color,
-        border: Border(
-          bottom: BorderSide(
-            color: const Color(0xFFFF5A8D),
-            width: borderW,
-          ),
-        ),
-      ),
+      color: color,
     );
   }
 }

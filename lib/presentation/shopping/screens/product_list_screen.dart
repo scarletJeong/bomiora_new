@@ -67,7 +67,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
   static const Color _tabPink = Color(0xFFFF5B8C);
   static const Color _tabMuted = Color(0xFF898686);
 
-  double _pageHPad(BuildContext context) => healthDp(context, 27);
+  double _pageHPad(BuildContext context) => healthDp(context, 20);
 
   @override
   void initState() {
@@ -273,7 +273,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
       children: [
         ScrollRevealTopOverlay(
       controller: _scrollController,
-      revealAfterOffset: healthDp(context, 230),
+      revealAfterOffset: healthDp(context, 240.46),
       barPadding: EdgeInsets.fromLTRB(
         _pageHPad(context),
         healthDp(context, 8),
@@ -288,6 +288,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
           slivers: [
             SliverToBoxAdapter(
               child: ProductBannerSlider(
+                heightBase: 190.46,
                 productKind: widget.productKind,
                 categoryId: _activeCategoryId,
                 categoryIndex: _baseTabOrder
@@ -321,7 +322,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                     crossAxisCount: 2,
                     mainAxisExtent:
                         ProductCatalogCard.preferredMainAxisExtent(context),
-                    crossAxisSpacing: healthDp(context, 9),
+                    crossAxisSpacing: healthDp(context, 15),
                     mainAxisSpacing: healthDp(context, 20),
                   ),
                   delegate: SliverChildBuilderDelegate(
@@ -346,7 +347,6 @@ class _ProductListScreenState extends State<ProductListScreen> {
                   ),
                 ),
               ),
-              SliverToBoxAdapter(child: SizedBox(height: healthDp(context, 32))),
               const SliverToBoxAdapter(child: AppFooter()),
             ],
           ],
@@ -401,13 +401,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             for (var i = 0; i < _baseTabOrder.length; i++) ...[
-              if (i > 0)
-                SizedBox(
-                  width: healthDp(
-                    context,
-                    _baseTabOrder[i - 1].id == _activeCategoryId ? 10 : 14,
-                  ),
-                ),
+              if (i > 0) SizedBox(width: healthDp(context, 10)),
               _buildCategoryTabChip(_baseTabOrder[i], tabKeys[i]),
             ],
           ],

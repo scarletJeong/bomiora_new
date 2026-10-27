@@ -52,29 +52,25 @@ class ProductCatalogCard extends StatelessWidget {
     this.onImageSettled,
   });
 
-  /// 텍스트 `height: 1.2` 한 줄 높이 (레이아웃·extent 계산 공통)
+  /// 한 줄 높이. 시안 텍스트 박스(74)는 글꼴 기본 줄간격보다 짧아 가격이 잘린다.
   static double _textLineH(BuildContext context, double baseFont) {
     return (healthSp(context, baseFont) * 1.2).ceilToDouble();
   }
 
-  /// 그리드 [mainAxisExtent] — 이미지 185 + 텍스트 영역 (375 기준, 제목 2줄 고정)
+  /// 브랜드 10 + 간격 4 + 제목 2줄 14 + 간격 10 + 가격 14
+  static double textBlockHeight(BuildContext context) {
+    return _textLineH(context, 10) +
+        healthDp(context, 4) +
+        _textLineH(context, 14) * 2 +
+        healthDp(context, 10) +
+        _textLineH(context, 14);
+  }
+
+  /// 그리드 [mainAxisExtent] — 이미지 180 + 간격 10 + 텍스트 영역 (375 기준)
   static double preferredMainAxisExtent(BuildContext context) {
-    final imageH = healthDp(context, 185);
-    final imageGap = healthDp(context, 8);
-    final catH = _textLineH(context, 8);
-    final titleGap = healthDp(context, 2);
-    final titleH = _textLineH(context, 12) * 2;
-    final blockGap = healthDp(context, 8);
-    final priceH = _textLineH(context, 10);
-    // 폰트 메트릭·스케일 반올림으로 인한 미세 overflow 방지
-    return imageH +
-        imageGap +
-        catH +
-        titleGap +
-        titleH +
-        blockGap +
-        priceH +
-        1;
+    return healthDp(context, 180) +
+        healthDp(context, 10) +
+        textBlockHeight(context);
   }
 
   static double preferredAspectRatio(BuildContext context, double cellWidth) {
@@ -110,18 +106,16 @@ class ProductCatalogCard extends StatelessWidget {
     final title = stripProductCatalogHtml(product.name);
     final category = _categoryLabel();
 
-    final imageH = healthDp(context, 185);
+    final imageH = healthDp(context, 180);
     final imageRadius = healthDp(context, 10);
-    final imageGap = healthDp(context, 8);
-    final catTitleGap = healthDp(context, 2);
-    final blockGap = healthDp(context, 8);
+    final imageGap = healthDp(context, 10);
+    final catTitleGap = healthDp(context, 4);
     final priceGap = healthDp(context, 4);
+    final textBlockH = textBlockHeight(context);
 
-    final fsCategory = healthSp(context, 8);
-    final fsTitle = healthSp(context, 12);
-    final fsPrice = healthSp(context, 10);
-    final titleLetterSpacing = healthSp(context, -1.08);
-    final titleAreaH = _textLineH(context, 12) * 2;
+    final fsCategory = healthSp(context, 10);
+    final fsTitle = healthSp(context, 14);
+    final fsPrice = healthSp(context, 14);
 
     final categoryStyle = TextStyle(
       color: _categoryMuted,
@@ -136,7 +130,7 @@ class ProductCatalogCard extends StatelessWidget {
       fontSize: fsTitle,
       fontFamily: _gmarket,
       fontWeight: FontWeight.w500,
-      letterSpacing: titleLetterSpacing,
+      letterSpacing: healthSp(context, -0.28),
       height: 1.2,
     );
 
@@ -197,51 +191,53 @@ class ProductCatalogCard extends StatelessWidget {
             ),
           ),
           SizedBox(height: imageGap),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    category,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: categoryStyle,
-                  ),
-                  SizedBox(height: catTitleGap),
-                  SizedBox(
-                    height: titleAreaH,
-                    child: Text(
+          SizedBox(
+            height: textBlockH,
+            width: double.infinity,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      category,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: categoryStyle,
+                    ),
+                    SizedBox(height: catTitleGap),
+                    Text(
                       title,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: titleStyle,
                     ),
-                  ),
-                ],
-              ),
-              SizedBox(height: healthDp(context, 1)),
-              Row(
-                children: [
-                  if ((product.discountRate ?? 0) > 0) ...[
-                    Text(
-                      '${product.discountRate!.round()}%',
-                      style: pricePinkStyle,
-                    ),
-                    SizedBox(width: priceGap),
                   ],
-                  Expanded(
-                    child: Text(
-                      product.formattedPrice,
-                      style: priceDarkStyle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                ),
+                Row(
+                  children: [
+                    if ((product.discountRate ?? 0) > 0) ...[
+                      Text(
+                        '${product.discountRate!.round()}%',
+                        style: pricePinkStyle,
+                      ),
+                      SizedBox(width: priceGap),
+                    ],
+                    Expanded(
+                      child: Text(
+                        product.formattedPrice,
+                        style: priceDarkStyle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+              ],
+            ),
           ),
         ],
       ),
