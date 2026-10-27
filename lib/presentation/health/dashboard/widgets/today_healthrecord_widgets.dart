@@ -326,11 +326,17 @@ String _periodText(
     latestMenstrualCycleRecord.displayPeriodEnd.month,
     latestMenstrualCycleRecord.displayPeriodEnd.day,
   );
-  final int daysFromStart = selected.difference(start).inDays;
-  final String when = daysFromStart > 0
-      ? '$daysFromStart일 전'
-      : daysFromStart < 0
-          ? '${daysFromStart.abs()}일 후'
+  final DateTime next = DateTime(
+    latestMenstrualCycleRecord.nextPeriodStart.year,
+    latestMenstrualCycleRecord.nextPeriodStart.month,
+    latestMenstrualCycleRecord.nextPeriodStart.day,
+  );
+  // 다음 생리 예정일 기준. 예정일보다 앞이면 N일 전, 당일이면 당일, 지났으면 N일 후.
+  final int daysUntilNext = next.difference(selected).inDays;
+  final String when = daysUntilNext > 0
+      ? '$daysUntilNext일 전'
+      : daysUntilNext < 0
+          ? '${daysUntilNext.abs()}일 후'
           : '당일';
   final String cycleRange =
       '${DateFormat('M/d').format(start)}-${DateFormat('M/d').format(end)}';
