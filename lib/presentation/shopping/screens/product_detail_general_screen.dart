@@ -679,7 +679,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
                   padding: EdgeInsets.only(top: dividerTop),
                   child: _buildTabDivider(context),
                 ),
-                buildTabItem(1, '서포터 리뷰(+$supporterReviewCount)'),
+                buildTabItem(1, '서포터 리뷰${supporterReviewCount == 0 ? '(0)' : '(+$supporterReviewCount)'}'),
                 Padding(
                   padding: EdgeInsets.only(top: dividerTop),
                   child: _buildTabDivider(context),
@@ -688,7 +688,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
                   padding: EdgeInsets.only(right: healthDp(context, 10)),
                   child: buildTabItem(
                     2,
-                    '일반 리뷰(+$generalReviewCount)',
+                    '일반 리뷰${generalReviewCount == 0 ? '(0)' : '(+$generalReviewCount)'}',
                     indicatorAlign: Alignment.centerRight,
                     textAlign: TextAlign.right,
                   ),
@@ -1241,49 +1241,63 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
     );
   }
 
+  /// 배경·블러 없이 투명 — 뒤로가기 / 홈 / 장바구니.
+  /// 높이는 메인·마이페이지 로고 앱바(60)와 같고, 아이콘은 그 높이의 세로 가운데.
   Widget _buildFloatingTransparentAppBar() {
-    const iconColor = Color(0xFF1A1A1A);
+    final topInset = healthStatusBarTopInset(context);
+    final barH = healthAppBarTotalHeight(context);
     return Positioned(
       top: 0,
       left: 0,
       right: 0,
-      child: SafeArea(
-        bottom: false,
-        child: SizedBox(
-          height: healthAppBarTotalHeight(context),
-          child: Row(
-            children: [
-              _detailAppBarIconButton(
-                onPressed: _handleGeneralDetailBack,
-                child: Icon(
-                  Icons.chevron_left,
-                  color: iconColor,
-                  size: healthDp(context, 28),
+      child: SizedBox(
+        height: topInset + barH,
+        child: Padding(
+          padding: EdgeInsets.only(
+            top: topInset,
+            left: healthDp(context, 20),
+            right: healthDp(context, 20),
+          ),
+          child: SizedBox(
+            height: barH,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                _detailAppBarIconButton(
+                  onPressed: _handleGeneralDetailBack,
+                  child: _detailAppBarSvgIcon(
+                    AppAssets.appbarBackIcon,
+                    size: 16,
+                  ),
                 ),
-              ),
-              const Spacer(),
-              _detailAppBarIconButton(
-                onPressed: () {
-                  Navigator.of(context).pushNamedAndRemoveUntil(
-                    '/home',
-                    (route) => false,
-                  );
-                },
-                child: _detailAppBarSvgIcon(AppAssets.menu_home_icon),
-              ),
-              _detailAppBarIconButton(
-                onPressed: () {
-                  CartNavigation.openCart(
-                    context,
-                    prescriptionTab: _product?.ctKind == 'prescription',
-                  );
-                },
-                child: _detailAppBarSvgIcon(
-                  AppAssets.appbarCartIcon,
-                  size: 22,
+                const Spacer(),
+                _detailAppBarIconButton(
+                  onPressed: () {
+                    Navigator.of(context).pushNamedAndRemoveUntil(
+                      '/home',
+                      (route) => false,
+                    );
+                  },
+                  child: _detailAppBarSvgIcon(
+                    AppAssets.appbarHomeIcon,
+                    size: 20,
+                  ),
                 ),
-              ),
-            ],
+                SizedBox(width: healthDp(context, 8)),
+                _detailAppBarIconButton(
+                  onPressed: () {
+                    CartNavigation.openCart(
+                      context,
+                      prescriptionTab: _product?.ctKind == 'prescription',
+                    );
+                  },
+                  child: _detailAppBarSvgIcon(
+                    AppAssets.appbarCartIcon,
+                    size: 20,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -1308,7 +1322,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
     required Widget child,
     required VoidCallback onPressed,
   }) {
-    final tap = healthDp(context, 40);
+    final tap = healthDp(context, 20);
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       child: GestureDetector(

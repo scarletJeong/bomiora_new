@@ -648,7 +648,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                   padding: EdgeInsets.only(top: dividerTop),
                   child: _buildTabDivider(context),
                 ),
-                buildTabItem(1, '서포터 리뷰(+$supporterReviewCount)'),
+                buildTabItem(1, '서포터 리뷰${supporterReviewCount == 0 ? '(0)' : '(+$supporterReviewCount)'}'),
                 Padding(
                   padding: EdgeInsets.only(top: dividerTop),
                   child: _buildTabDivider(context),
@@ -657,7 +657,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                   padding: EdgeInsets.only(right: healthDp(context, 10)),
                   child: buildTabItem(
                     2,
-                    '일반 리뷰(+$generalReviewCount)',
+                    '일반 리뷰${generalReviewCount == 0 ? '(0)' : '(+$generalReviewCount)'}',
                     indicatorAlign: Alignment.centerRight,
                     textAlign: TextAlign.right,
                   ),

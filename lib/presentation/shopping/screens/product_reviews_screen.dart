@@ -67,7 +67,7 @@ class PrescriptionReviewTabPanel extends StatelessWidget {
               child: CenteredEmptyState(
                 iconWidget: CenteredEmptyState.assetIcon(
                   context,
-                  AppAssets.emptyProductReviewIcon,
+                  AppAssets.emptyReviewIcon,
                 ),
                 message: '등록된 리뷰가 없습니다.',
               ),

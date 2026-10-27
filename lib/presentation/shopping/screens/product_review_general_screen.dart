@@ -167,7 +167,7 @@ class _GeneralReviewEmpty extends StatelessWidget {
     return SizedBox(
       width: double.infinity,
       child: Padding(
-        padding: EdgeInsets.symmetric(vertical: healthDp(context, 30)),
+        padding: EdgeInsets.symmetric(vertical: healthDp(context, 50)),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
@@ -176,7 +176,7 @@ class _GeneralReviewEmpty extends StatelessWidget {
             width: healthDp(context, 80),
             height: healthDp(context, 80),
             child: SvgPicture.asset(
-              AppAssets.emptyProductReviewIcon,
+              AppAssets.emptyReviewIcon,
               fit: BoxFit.contain,
             ),
           ),
