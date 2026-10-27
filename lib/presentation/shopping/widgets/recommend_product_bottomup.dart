@@ -52,6 +52,7 @@ Widget _buildFixedRecommendRow({
   required List<Product> products,
   required ValueChanged<Product> onProductTap,
   required double innerWidth,
+  bool detailDesign = false,
 }) {
   if (products.isEmpty) return const SizedBox.shrink();
 
@@ -60,25 +61,40 @@ Widget _buildFixedRecommendRow({
     innerWidth,
     itemCount: kRecommendBottomSheetVisibleCount,
   );
+  final imageHeight =
+      detailDesign ? healthDp(context, 118) : layout.imageSize;
+  final textBlockHeight = detailDesign
+      ? _detailRecommendTextBlockHeight(context)
+      : layout.textBlockHeight;
+  final imageGap = detailDesign
+      ? healthDp(context, 10)
+      : layout.listHeight - layout.imageSize - layout.textBlockHeight;
+  final listHeight = imageHeight + imageGap + textBlockHeight;
+
+  Widget card(Product product) {
+    return SizedBox(
+      width: layout.cardWidth,
+      child: RecommendSquareProductCard(
+        product: product,
+        imageSize: layout.imageSize,
+        imageHeight: imageHeight,
+        textBlockHeight: textBlockHeight,
+        detailDesign: detailDesign,
+        onTap: () => onProductTap(product),
+      ),
+    );
+  }
 
   // 3개 이하면 스크롤 없이 전부 표시
   if (products.length <= kRecommendBottomSheetVisibleCount) {
     return SizedBox(
-      height: layout.listHeight,
+      height: listHeight,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           for (var i = 0; i < products.length; i++) ...[
             if (i > 0) SizedBox(width: layout.crossGap),
-            SizedBox(
-              width: layout.cardWidth,
-              child: RecommendSquareProductCard(
-                product: products[i],
-                imageSize: layout.imageSize,
-                textBlockHeight: layout.textBlockHeight,
-                onTap: () => onProductTap(products[i]),
-              ),
-            ),
+            card(products[i]),
           ],
         ],
       ),
@@ -87,25 +103,20 @@ Widget _buildFixedRecommendRow({
 
   // 인플루언서 등 3개 초과: 같은 카드 크기로 가로 스크롤
   return SizedBox(
-    height: layout.listHeight,
+    height: listHeight,
     child: ListView.separated(
       scrollDirection: Axis.horizontal,
       physics: const BouncingScrollPhysics(),
       itemCount: products.length,
       separatorBuilder: (_, __) => SizedBox(width: layout.crossGap),
-      itemBuilder: (context, index) {
-        return SizedBox(
-          width: layout.cardWidth,
-          child: RecommendSquareProductCard(
-            product: products[index],
-            imageSize: layout.imageSize,
-            textBlockHeight: layout.textBlockHeight,
-            onTap: () => onProductTap(products[index]),
-          ),
-        );
-      },
+      itemBuilder: (context, index) => card(products[index]),
     ),
   );
+}
+
+double _detailRecommendTextBlockHeight(BuildContext context) {
+  final line = (healthSp(context, 12) * 1.2).ceilToDouble();
+  return line * 2 + healthDp(context, 8) + line;
 }
 
 Widget _dismissibleBottomSheetShell({
@@ -498,11 +509,13 @@ class _RecommendProductBottomSheetState extends State<RecommendProductBottomShee
 class RecommendProductSquareRow extends StatelessWidget {
   final List<Product> products;
   final ValueChanged<Product> onProductTap;
+  final bool detailDesign;
 
   const RecommendProductSquareRow({
     super.key,
     required this.products,
     required this.onProductTap,
+    this.detailDesign = false,
   });
 
   @override
@@ -517,6 +530,7 @@ class RecommendProductSquareRow extends StatelessWidget {
           products: products,
           onProductTap: onProductTap,
           innerWidth: innerWidth,
+          detailDesign: detailDesign,
         );
       },
     );
@@ -530,20 +544,29 @@ class RecommendSquareProductCard extends StatelessWidget {
 
   final Product product;
   final double imageSize;
+  final double? imageHeight;
   final double textBlockHeight;
+  final bool detailDesign;
   final VoidCallback onTap;
 
   const RecommendSquareProductCard({
     required this.product,
     required this.imageSize,
+    this.imageHeight,
     required this.textBlockHeight,
+    this.detailDesign = false,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final title = stripProductCatalogHtml(product.name);
-    final imageRadius = healthDp(context, 8);
+    final imageRadius =
+        healthDp(context, detailDesign ? 11.54 : 8);
+    final pictureHeight = imageHeight ?? imageSize;
+    final titleSize = healthSp(context, detailDesign ? 12 : 11);
+    final priceSize = healthSp(context, detailDesign ? 12 : 12);
+    final discountSize = healthSp(context, detailDesign ? 12 : 11);
 
     return GestureDetector(
       onTap: onTap,
@@ -554,14 +577,14 @@ class RecommendSquareProductCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(imageRadius),
             child: SizedBox(
               width: imageSize,
-              height: imageSize,
+              height: pictureHeight,
               child: ColoredBox(
                 color: const Color(0xFFF3F3F3),
                 child: product.displayImageUrl.isNotEmpty
                     ? Image.network(
                         product.displayImageUrl,
                         width: imageSize,
-                        height: imageSize,
+                        height: pictureHeight,
                         fit: BoxFit.cover,
                         errorBuilder: (_, __, ___) => Icon(
                           Icons.image_not_supported,
@@ -577,13 +600,15 @@ class RecommendSquareProductCard extends StatelessWidget {
               ),
             ),
           ),
-          SizedBox(height: healthDp(context, 6)),
+          SizedBox(height: healthDp(context, detailDesign ? 10 : 6)),
           SizedBox(
             height: textBlockHeight,
             width: imageSize,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              mainAxisAlignment: detailDesign
+                  ? MainAxisAlignment.start
+                  : MainAxisAlignment.spaceBetween,
               children: [
                 Flexible(
                   child: Text(
@@ -592,13 +617,17 @@ class RecommendSquareProductCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: _textDark,
-                      fontSize: healthSp(context, 11),
+                      fontSize: titleSize,
                       fontFamily: _gmarket,
                       fontWeight: FontWeight.w500,
                       height: 1.2,
+                      letterSpacing: detailDesign
+                          ? healthSp(context, -0.48)
+                          : null,
                     ),
                   ),
                 ),
+                if (detailDesign) SizedBox(height: healthDp(context, 8)),
                 Row(
                   children: [
                     if ((product.discountRate ?? 0) > 0) ...[
@@ -606,12 +635,14 @@ class RecommendSquareProductCard extends StatelessWidget {
                         '${product.discountRate!.round()}%',
                         style: TextStyle(
                           color: _brandPink,
-                          fontSize: healthSp(context, 11),
+                          fontSize: discountSize,
                           fontFamily: _gmarket,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      SizedBox(width: healthDp(context, 3)),
+                      SizedBox(
+                        width: healthDp(context, detailDesign ? 4 : 3),
+                      ),
                     ],
                     Expanded(
                       child: Text(
@@ -620,7 +651,7 @@ class RecommendSquareProductCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: _textDark,
-                          fontSize: healthSp(context, 12),
+                          fontSize: priceSize,
                           fontFamily: _gmarket,
                           fontWeight: FontWeight.w700,
                         ),

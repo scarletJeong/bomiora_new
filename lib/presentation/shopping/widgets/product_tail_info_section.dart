@@ -36,7 +36,33 @@ TextStyle _tailPStyle(BuildContext context) => TextStyle(
 
 const double _kTailSectionContentIndent = 10;
 
-double _tailHorizontalPad(BuildContext context) => healthDp(context, 27);
+double _tailHorizontalPad(BuildContext context, {bool framed = false}) =>
+    healthDp(context, framed ? 20 : 27);
+
+TextStyle _framedSectionTitleStyle(BuildContext context) => TextStyle(
+      color: const Color(0xFF1A1A1E),
+      fontSize: healthSp(context, 16),
+      fontFamily: 'Gmarket Sans TTF',
+      fontWeight: FontWeight.w500,
+      letterSpacing: healthSp(context, -1.44),
+    );
+
+TextStyle _framedBodyStyle(BuildContext context) => TextStyle(
+      color: const Color(0xFF1A1A1E),
+      fontSize: healthSp(context, 12),
+      fontFamily: 'Gmarket Sans TTF',
+      fontWeight: FontWeight.w300,
+      height: 1.50,
+      letterSpacing: healthSp(context, -0.84),
+    );
+
+TextStyle _framedSubheadStyle(BuildContext context) => TextStyle(
+      color: const Color(0xFF1A1A1E),
+      fontSize: healthSp(context, 14),
+      fontFamily: 'Gmarket Sans TTF',
+      fontWeight: FontWeight.w500,
+      letterSpacing: healthSp(context, -1.26),
+    );
 
 Widget _tailSectionDivider(BuildContext context) => Divider(
       height: healthDp(context, 1),
@@ -45,7 +71,19 @@ Widget _tailSectionDivider(BuildContext context) => Divider(
     );
 
 /// 접이식 섹션 제목 앞 세로 구분 표시 (`| 배송` 형태)
-Widget _expandableSectionTitle(BuildContext context, String title) {
+Widget _expandableSectionTitle(
+  BuildContext context,
+  String title, {
+  bool framed = false,
+}) {
+  if (framed) {
+    return Text(
+      title,
+      style: _framedSectionTitleStyle(context),
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+    );
+  }
   final style = _tailSectionTitleStyle(context);
   return Row(
     children: [
@@ -70,7 +108,49 @@ Widget _tailExpandableSectionShell({
   required Widget title,
   required Widget expandedChild,
   bool showTrailingDivider = true,
+  bool framed = false,
 }) {
+  if (framed) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(vertical: healthDp(context, 10)),
+      decoration: BoxDecoration(
+        border: Border.all(
+          color: const Color(0xFF1A1A1E),
+          width: healthDp(context, 0.5),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          InkWell(
+            splashColor: Colors.transparent,
+            highlightColor: Colors.transparent,
+            hoverColor: Colors.transparent,
+            focusColor: Colors.transparent,
+            onTap: onToggle,
+            child: Row(
+              children: [
+                Expanded(child: title),
+                Transform.rotate(
+                  angle: isExpanded ? 1.5707963267948966 : 0,
+                  child: Icon(
+                    Icons.chevron_right,
+                    size: healthDp(context, 16),
+                    color: const Color(0xFF1A1A1E),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (isExpanded) ...[
+            SizedBox(height: healthDp(context, 20)),
+            expandedChild,
+          ],
+        ],
+      ),
+    );
+  }
   final gap = healthDp(context, 10);
   return Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -116,6 +196,7 @@ class ProductTailInfoSection extends StatelessWidget {
   final String? deliveryText;
   final String? prescriptionProcessText;
   final String? changeContentText;
+  final bool framed;
 
   const ProductTailInfoSection({
     super.key,
@@ -127,19 +208,28 @@ class ProductTailInfoSection extends StatelessWidget {
     this.deliveryText,
     this.prescriptionProcessText,
     this.changeContentText,
+    this.framed = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final sections = <Widget>[
+      _buildDeliverySection(),
+      if (showCertification) _buildCertificationSection(),
+      if (showWarning) _buildWarningSection(context),
+      if (showPrescriptionProcess) _buildPrescriptionProcessSection(),
+      _buildExchangeRefundSection(),
+    ];
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: _tailHorizontalPad(context)),
+      padding: EdgeInsets.symmetric(
+        horizontal: _tailHorizontalPad(context, framed: framed),
+      ),
       child: Column(
         children: [
-          _buildDeliverySection(),
-          if (showCertification) _buildCertificationSection(),
-          if (showWarning) _buildWarningSection(context),
-          if (showPrescriptionProcess) _buildPrescriptionProcessSection(),
-          _buildExchangeRefundSection(),
+          for (var i = 0; i < sections.length; i++) ...[
+            if (framed && i > 0) SizedBox(height: healthDp(context, 10)),
+            sections[i],
+          ],
         ],
       ),
     );
@@ -150,6 +240,7 @@ class ProductTailInfoSection extends StatelessWidget {
     return _DeliverySection(
       initialExpanded: initialExpanded,
       deliveryText: deliveryText,
+      framed: framed,
     );
   }
 
@@ -158,18 +249,23 @@ class ProductTailInfoSection extends StatelessWidget {
     return _PrescriptionProcessSection(
       initialExpanded: initialExpanded,
       processText: prescriptionProcessText,
+      framed: framed,
     );
   }
 
   /// 기관인증 섹션
   Widget _buildCertificationSection() {
-    return _CertificationSection(initialExpanded: initialExpanded);
+    return _CertificationSection(
+      initialExpanded: initialExpanded,
+      framed: framed,
+    );
   }
 
   /// 주의사항 섹션
   Widget _buildWarningSection(BuildContext context) {
     return _SimpleExpandableSection(
-      title: '주의사항',
+      title: framed ? '주의 사항' : '주의사항',
+      framed: framed,
       rows: [
         _SimpleInfoRow(
           label: '',
@@ -177,12 +273,14 @@ class ProductTailInfoSection extends StatelessWidget {
         ),
       ],
       initialExpanded: initialExpanded,
-      customBodyBuilder: () => _buildNoticeList(
-        context,
-        warningText,
-        pipeAsNewlineFallback: false,
-        fontWeight: FontWeight.w300,
-      ),
+      customBodyBuilder: () => framed
+          ? _buildFramedWarnings(context, warningText)
+          : _buildNoticeList(
+              context,
+              warningText,
+              pipeAsNewlineFallback: false,
+              fontWeight: FontWeight.w300,
+            ),
     );
   }
 
@@ -191,6 +289,40 @@ class ProductTailInfoSection extends StatelessWidget {
     return _ExchangeRefundSection(
       initialExpanded: initialExpanded,
       changeContentText: changeContentText,
+      framed: framed,
+    );
+  }
+
+  Widget _buildFramedWarnings(BuildContext context, String? raw) {
+    final parts = _precautionParts(raw);
+    if (parts.length < 2) {
+      return _buildNoticeList(
+        context,
+        raw,
+        pipeAsNewlineFallback: false,
+        framed: true,
+      );
+    }
+    final style = _framedBodyStyle(context);
+    final gap = healthDp(context, 10);
+    return Padding(
+      padding: EdgeInsets.only(left: healthDp(context, 10)),
+      child: Wrap(
+        spacing: gap,
+        runSpacing: healthDp(context, 5),
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          for (var i = 0; i < parts.length; i++) ...[
+            Text(parts[i], style: style),
+            if (i != parts.length - 1)
+              Container(
+                width: healthDp(context, 1),
+                height: healthDp(context, 11),
+                color: const Color(0xFFD9D9D9),
+              ),
+          ],
+        ],
+      ),
     );
   }
 
@@ -241,13 +373,30 @@ class ProductTailInfoSection extends StatelessWidget {
 }
 
 /// 배송 섹션을 위한 StatefulWidget
+List<String> _precautionParts(String? raw) {
+  if (raw == null) return const [];
+  var s = raw.trim();
+  if (s.isEmpty) return const [];
+  s = s
+      .replaceAll(RegExp(r'<br\s*/?>', caseSensitive: false), '')
+      .replaceAll('&nbsp;', ' ')
+      .replaceAll(RegExp(r'<[^>]+>'), ' ');
+  return s
+      .split('|')
+      .map((e) => e.replaceAll(RegExp(r'\s+'), ' ').trim())
+      .where((e) => e.isNotEmpty)
+      .toList();
+}
+
 class _DeliverySection extends StatefulWidget {
   final bool initialExpanded;
   final String? deliveryText;
+  final bool framed;
 
   const _DeliverySection({
     this.initialExpanded = false,
     this.deliveryText,
+    this.framed = false,
   });
 
   @override
@@ -269,12 +418,14 @@ class _DeliverySectionState extends State<_DeliverySection> {
       context: context,
       isExpanded: _isExpanded,
       onToggle: () => setState(() => _isExpanded = !_isExpanded),
-      title: _expandableSectionTitle(context, '배송'),
+      title: _expandableSectionTitle(context, '배송', framed: widget.framed),
+      framed: widget.framed,
       expandedChild: _buildNoticeList(
         context,
         widget.deliveryText,
         pipeAsNewlineFallback: true,
         fontWeight: FontWeight.w300,
+        framed: widget.framed,
       ),
     );
   }
@@ -385,22 +536,35 @@ Widget _buildNoticeList(
   String? raw, {
   bool pipeAsNewlineFallback = true,
   FontWeight? fontWeight,
+  bool framed = false,
 }) {
-  final bodyStyle = fontWeight != null
-      ? _tailBodyStyle(context).copyWith(fontWeight: fontWeight)
-      : _tailBodyStyle(context);
-  final h2Style = fontWeight != null
-      ? _tailH2Style(context).copyWith(fontWeight: fontWeight)
-      : _tailH2Style(context);
-  final pStyle = fontWeight != null
-      ? _tailPStyle(context).copyWith(fontWeight: fontWeight)
-      : _tailPStyle(context);
+  final bodyStyle = framed
+      ? _framedBodyStyle(context)
+      : fontWeight != null
+          ? _tailBodyStyle(context).copyWith(fontWeight: fontWeight)
+          : _tailBodyStyle(context);
+  final h2Style = framed
+      ? _framedSubheadStyle(context)
+      : fontWeight != null
+          ? _tailH2Style(context).copyWith(fontWeight: fontWeight)
+          : _tailH2Style(context);
+  final pStyle = framed
+      ? _framedBodyStyle(context)
+      : fontWeight != null
+          ? _tailPStyle(context).copyWith(fontWeight: fontWeight)
+          : _tailPStyle(context);
+  final indent = framed
+      ? healthDp(context, 10)
+      : _kTailSectionContentIndent;
+  final afterTitle = framed ? healthDp(context, 10) : 6.0;
+  final betweenLines = framed ? healthDp(context, 5) : 6.0;
+  final betweenBlocks = framed ? healthDp(context, 20) : 14.0;
 
   final blocks = _parseNoticeHtml(raw);
   if (blocks.isEmpty) {
     final text = _normalizeCmsText(raw, pipeAsNewline: pipeAsNewlineFallback);
     return Padding(
-      padding: const EdgeInsets.only(left: _kTailSectionContentIndent),
+      padding: EdgeInsets.only(left: indent),
       child: Text(
         text.isEmpty ? '-' : text,
         textAlign: TextAlign.start,
@@ -415,24 +579,24 @@ Widget _buildNoticeList(
       for (final b in blocks) ...[
         if (b.title.trim().isNotEmpty)
           Padding(
-            padding: const EdgeInsets.only(left: _kTailSectionContentIndent),
+            padding: EdgeInsets.only(left: indent),
             child: Text(
               b.title.trim(),
               style: h2Style,
             ),
           ),
-        if (b.paragraphs.isNotEmpty) const SizedBox(height: 6),
+        if (b.paragraphs.isNotEmpty) SizedBox(height: afterTitle),
         for (final p in b.paragraphs) ...[
           Padding(
-            padding: const EdgeInsets.only(left: _kTailSectionContentIndent),
+            padding: EdgeInsets.only(left: indent),
             child: Text(
               p,
               style: pStyle,
             ),
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: betweenLines),
         ],
-        const SizedBox(height: 14),
+        SizedBox(height: betweenBlocks),
       ],
     ],
   );
@@ -441,8 +605,12 @@ Widget _buildNoticeList(
 /// 기관인증 섹션 (아이콘 1장 표시)
 class _CertificationSection extends StatefulWidget {
   final bool initialExpanded;
+  final bool framed;
 
-  const _CertificationSection({this.initialExpanded = false});
+  const _CertificationSection({
+    this.initialExpanded = false,
+    this.framed = false,
+  });
 
   @override
   State<_CertificationSection> createState() => _CertificationSectionState();
@@ -474,9 +642,16 @@ class _CertificationSectionState extends State<_CertificationSection> {
       context: context,
       isExpanded: _isExpanded,
       onToggle: () => setState(() => _isExpanded = !_isExpanded),
-      title: _expandableSectionTitle(context, '기관인증'),
+      title: _expandableSectionTitle(
+        context,
+        '기관인증',
+        framed: widget.framed,
+      ),
+      framed: widget.framed,
       expandedChild: ClipRRect(
-        borderRadius: BorderRadius.circular(healthDp(context, 8)),
+        borderRadius: BorderRadius.circular(
+          widget.framed ? 0 : healthDp(context, 8),
+        ),
         child: ColoredBox(
           color: Colors.white,
           child: Padding(
@@ -486,9 +661,13 @@ class _CertificationSectionState extends State<_CertificationSection> {
                 final w = constraints.maxWidth.isFinite
                     ? constraints.maxWidth
                     : MediaQuery.sizeOf(context).width -
-                        _tailHorizontalPad(context) * 2;
-                final targetW = (w * 0.20).clamp(70.0, 160.0);
-                final h = (targetW * 0.55).clamp(35.0, 80.0);
+                        _tailHorizontalPad(context, framed: widget.framed) * 2;
+                final targetW = widget.framed
+                    ? healthDp(context, 140)
+                    : (w * 0.20).clamp(70.0, 160.0);
+                final h = widget.framed
+                    ? healthDp(context, 53)
+                    : (targetW * 0.55).clamp(35.0, 80.0);
 
                 _embeddedPngFuture ??= _loadEmbeddedPngFromSvgAsset();
 
@@ -504,12 +683,12 @@ class _CertificationSectionState extends State<_CertificationSection> {
                         if (bytes != null && bytes.isNotEmpty) {
                           return Image.memory(
                             bytes,
-                            fit: BoxFit.contain,
+                            fit: widget.framed ? BoxFit.cover : BoxFit.contain,
                           );
                         }
                         return SvgPicture.asset(
                           AppAssets.productDetailCertification,
-                          fit: BoxFit.contain,
+                          fit: widget.framed ? BoxFit.cover : BoxFit.contain,
                         );
                       },
                     ),
@@ -526,6 +705,7 @@ class _CertificationSectionState extends State<_CertificationSection> {
 
 class _SimpleExpandableSection extends StatefulWidget {
   final bool initialExpanded;
+  final bool framed;
   final String title;
   final List<_SimpleInfoRow> rows;
   final Widget Function()? customBodyBuilder;
@@ -534,6 +714,7 @@ class _SimpleExpandableSection extends StatefulWidget {
     required this.title,
     required this.rows,
     this.initialExpanded = false,
+    this.framed = false,
     this.customBodyBuilder,
   });
 
@@ -557,7 +738,12 @@ class _SimpleExpandableSectionState extends State<_SimpleExpandableSection> {
       context: context,
       isExpanded: _isExpanded,
       onToggle: () => setState(() => _isExpanded = !_isExpanded),
-      title: _expandableSectionTitle(context, widget.title),
+      title: _expandableSectionTitle(
+        context,
+        widget.title,
+        framed: widget.framed,
+      ),
+      framed: widget.framed,
       expandedChild: widget.customBodyBuilder?.call() ??
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -611,10 +797,12 @@ class _SimpleExpandableSectionState extends State<_SimpleExpandableSection> {
 class _PrescriptionProcessSection extends StatefulWidget {
   final bool initialExpanded;
   final String? processText;
+  final bool framed;
 
   const _PrescriptionProcessSection({
     this.initialExpanded = false,
     this.processText,
+    this.framed = false,
   });
 
   @override
@@ -638,8 +826,17 @@ class _PrescriptionProcessSectionState
       context: context,
       isExpanded: _isExpanded,
       onToggle: () => setState(() => _isExpanded = !_isExpanded),
-      title: _expandableSectionTitle(context, '처방 프로세스'),
-      expandedChild: _buildNoticeList(context, widget.processText),
+      title: _expandableSectionTitle(
+        context,
+        '처방 프로세스',
+        framed: widget.framed,
+      ),
+      framed: widget.framed,
+      expandedChild: _buildNoticeList(
+        context,
+        widget.processText,
+        framed: widget.framed,
+      ),
     );
   }
 }
@@ -648,10 +845,12 @@ class _PrescriptionProcessSectionState
 class _ExchangeRefundSection extends StatefulWidget {
   final bool initialExpanded;
   final String? changeContentText;
+  final bool framed;
 
   const _ExchangeRefundSection({
     this.initialExpanded = false,
     this.changeContentText,
+    this.framed = false,
   });
 
   @override
@@ -673,8 +872,17 @@ class _ExchangeRefundSectionState extends State<_ExchangeRefundSection> {
       context: context,
       isExpanded: _isExpanded,
       onToggle: () => setState(() => _isExpanded = !_isExpanded),
-      title: _expandableSectionTitle(context, '교환/환불'),
-      expandedChild: _buildNoticeList(context, widget.changeContentText),
+      title: _expandableSectionTitle(
+        context,
+        '교환/환불',
+        framed: widget.framed,
+      ),
+      framed: widget.framed,
+      expandedChild: _buildNoticeList(
+        context,
+        widget.changeContentText,
+        framed: widget.framed,
+      ),
     );
   }
 }

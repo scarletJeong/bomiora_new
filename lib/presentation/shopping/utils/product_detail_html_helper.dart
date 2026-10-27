@@ -319,6 +319,10 @@ class ProductDetailCollapsedPreview extends StatelessWidget {
     this.expanded = false,
     this.margin,
     this.fontFamily = 'Gmarket Sans TTF',
+    this.expandButtonColor = const Color(0xFFFF4081),
+    this.expandButtonHorizontalPadding = 40,
+    this.expandButtonGap = 0,
+    this.expandButtonHug = false,
   });
 
   final String html;
@@ -327,6 +331,10 @@ class ProductDetailCollapsedPreview extends StatelessWidget {
   final bool expanded;
   final EdgeInsetsGeometry? margin;
   final String fontFamily;
+  final Color expandButtonColor;
+  final double expandButtonHorizontalPadding;
+  final double expandButtonGap;
+  final bool expandButtonHug;
 
   @override
   Widget build(BuildContext context) {
@@ -376,24 +384,31 @@ class ProductDetailCollapsedPreview extends StatelessWidget {
                 ),
             ],
           ),
-          if (!expanded)
+          if (!expanded) ...[
+            if (expandButtonGap > 0)
+              SizedBox(height: healthDp(context, expandButtonGap)),
             SizedBox(
-              height: healthDp(context, 24),
+              height: expandButtonHug ? null : healthDp(context, 24),
               child: OutlinedButton(
                 onPressed: onExpand,
                 style: OutlinedButton.styleFrom(
+                  minimumSize: expandButtonHug ? Size.zero : null,
+                  tapTargetSize: expandButtonHug
+                      ? MaterialTapTargetSize.shrinkWrap
+                      : null,
                   side: BorderSide(
-                    color: const Color(0xFFFF4081),
+                    color: expandButtonColor,
                     width: healthDp(context, 1),
                   ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(healthDp(context, 14)),
                   ),
                   padding: EdgeInsets.symmetric(
-                    horizontal: healthDp(context, 40),
+                    horizontal:
+                        healthDp(context, expandButtonHorizontalPadding),
                     vertical: healthDp(context, 5),
                   ),
-                  foregroundColor: const Color(0xFFFF4081),
+                  foregroundColor: expandButtonColor,
                 ),
                 child: Text(
                   '+ 자세히 보기',
@@ -405,6 +420,7 @@ class ProductDetailCollapsedPreview extends StatelessWidget {
                 ),
               ),
             ),
+          ],
         ],
       ),
     );
