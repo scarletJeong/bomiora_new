@@ -1954,195 +1954,202 @@ class _GeneralQuantityBottomSheetState extends State<GeneralQuantityBottomSheet>
 
   @override
   Widget build(BuildContext context) {
-    final sheetPadding = healthDp(context, 30);
+    final countStyle = TextStyle(
+      color: const Color(0xFF1A1A1A),
+      fontSize: healthSp(context, 16),
+      fontFamily: _kGmarketSans,
+      fontWeight: FontWeight.w500,
+    );
 
-    return SizedBox(
-      width: double.infinity,
-      child: ClipRRect(
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(healthDp(context, 30)),
-          topRight: Radius.circular(healthDp(context, 30)),
-        ),
-        child: Container(
-          color: Colors.white,
-          child: SafeArea(
-            top: false,
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(
-                sheetPadding,
-                healthDp(context, 10),
-                sheetPadding,
-                sheetPadding,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Center(
-                    child: Container(
-                      width: healthDp(context, 40),
-                      height: healthDp(context, 4),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[300],
-                        borderRadius:
-                            BorderRadius.circular(healthDp(context, 2)),
+    return ClipRRect(
+      borderRadius: BorderRadius.vertical(
+        top: Radius.circular(healthDp(context, 50)),
+      ),
+      child: Container(
+        color: Colors.white,
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: EdgeInsets.only(
+              top: healthDp(context, 14),
+              left: healthDp(context, 20),
+              right: healthDp(context, 20),
+              bottom: healthDp(context, 20),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: healthDp(context, 45),
+                  height: healthDp(context, 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD2D2D2),
+                    borderRadius: BorderRadius.circular(healthDp(context, 10)),
+                  ),
+                ),
+                SizedBox(height: healthDp(context, 20)),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        widget.productName,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: const Color(0xFF1A1A1E),
+                          fontSize: healthSp(context, 16),
+                          fontFamily: _kGmarketSans,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
-                  ),
-                  SizedBox(height: healthDp(context, 20)),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          widget.productName,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: const Color(0xFF1A1A1E),
-                            fontSize: healthSp(context, 16),
-                            fontFamily: _kGmarketSans,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                      SizedBox(width: healthDp(context, 12)),
-                      QuantityStepper(
-                        quantity: _quantity,
-                        onDecrease: _quantity > 1
-                            ? () => setState(() => _quantity--)
-                            : null,
-                        onIncrease: () => setState(() => _quantity++),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: healthDp(context, 20)),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        '총 구매 금액',
-                        style: TextStyle(
-                          fontSize: healthSp(context, 14),
-                          fontFamily: _kGmarketSans,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      Text(
-                        '${_formatPrice(_totalPrice)}원',
-                        style: TextStyle(
-                          fontSize: healthSp(context, 18),
-                          fontFamily: _kGmarketSans,
-                          fontWeight: FontWeight.w500,
-                          color: const Color(0xFFFF5A8D),
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (widget.userPoint != null) ...[
-                    SizedBox(height: healthDp(context, 5)),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Text(
-                          '보유 포인트 ${_formatPrice(widget.userPoint!)}P',
-                          style: TextStyle(
-                            fontSize: healthSp(context, 12),
-                            fontFamily: _kGmarketSans,
-                            color: Colors.black,
-                            fontWeight: FontWeight.w300,
-                            letterSpacing: healthSp(context, -1.08),
-                          ),
-                        ),
-                      ],
+                    SizedBox(width: healthDp(context, 14)),
+                    QuantityStepper(
+                      quantity: _quantity,
+                      onDecrease: _quantity > 1
+                          ? () => setState(() => _quantity--)
+                          : null,
+                      onIncrease: () => setState(() => _quantity++),
                     ),
                   ],
-                  SizedBox(height: healthDp(context, 10)),
-                  Row(
+                ),
+                SizedBox(height: healthDp(context, 20)),
+                Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: healthDp(context, 10),
+                    vertical: healthDp(context, 14),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      if (widget.onToggleFavorite != null) ...[
-                        Container(
-                          width: healthDp(context, 40),
-                          height: healthDp(context, 40),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey[300]!),
-                            borderRadius:
-                                BorderRadius.circular(healthDp(context, 8)),
-                          ),
-                          child: IconButton(
-                            padding: EdgeInsets.zero,
-                            icon: Icon(
-                              _isFavorite
-                                  ? Icons.favorite
-                                  : Icons.favorite_border,
-                              size: healthDp(context, 22),
-                              color: _isFavorite
-                                  ? const Color(0xFFFF4081)
-                                  : Colors.grey[600],
+                      Text.rich(
+                        TextSpan(
+                          children: [
+                            TextSpan(text: '총', style: countStyle),
+                            TextSpan(
+                              text: ' $_quantity',
+                              style: countStyle.copyWith(
+                                color: const Color(0xFFFF5A8D),
+                              ),
                             ),
-                            onPressed: () {
-                              setState(() => _isFavorite = !_isFavorite);
-                              widget.onToggleFavorite?.call();
-                            },
-                          ),
+                            TextSpan(text: '개', style: countStyle),
+                          ],
                         ),
-                        SizedBox(width: healthDp(context, 10)),
-                      ],
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () => widget.onAddToCart(_quantity),
-                          style: OutlinedButton.styleFrom(
-                            padding: EdgeInsets.symmetric(
-                              vertical: healthDp(context, 10),
-                              horizontal: healthDp(context, 10),
-                            ),
-                            foregroundColor: const Color(0xFFFF5A8D),
-                            shape: RoundedRectangleBorder(
-                              borderRadius:
-                                  BorderRadius.circular(healthDp(context, 10)),
-                            ),
-                            side: const BorderSide(color: Color(0xFFFF5A8D)),
-                          ),
-                          child: Text(
-                            '장바구니',
+                      ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            '총 금액',
                             style: TextStyle(
+                              color: const Color(0xFF1A1A1E),
                               fontSize: healthSp(context, 16),
-                              fontWeight: FontWeight.w500,
                               fontFamily: _kGmarketSans,
-                              color: const Color(0xFFFF5A8D),
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
+                          SizedBox(width: healthDp(context, 10)),
+                          Text(
+                            '${_formatPrice(_totalPrice)}원',
+                            style: TextStyle(
+                              color: const Color(0xFFFF5A8D),
+                              fontSize: healthSp(context, 20),
+                              fontFamily: _kGmarketSans,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(height: healthDp(context, 14)),
+                Row(
+                  children: [
+                    if (widget.onToggleFavorite != null) ...[
+                      Container(
+                        width: healthDp(context, 40),
+                        height: healthDp(context, 40),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey[300]!),
+                          borderRadius:
+                              BorderRadius.circular(healthDp(context, 8)),
+                        ),
+                        child: IconButton(
+                          padding: EdgeInsets.zero,
+                          icon: Icon(
+                            _isFavorite
+                                ? Icons.favorite
+                                : Icons.favorite_border,
+                            size: healthDp(context, 22),
+                            color: _isFavorite
+                                ? const Color(0xFFFF4081)
+                                : Colors.grey[600],
+                          ),
+                          onPressed: () {
+                            setState(() => _isFavorite = !_isFavorite);
+                            widget.onToggleFavorite?.call();
+                          },
                         ),
                       ),
                       SizedBox(width: healthDp(context, 10)),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () => widget.onBuyNow(_quantity),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFFF4081),
-                            foregroundColor: Colors.white,
-                            padding: EdgeInsets.symmetric(
-                              vertical: healthDp(context, 10),
-                              horizontal: healthDp(context, 10),
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius:
-                                  BorderRadius.circular(healthDp(context, 10)),
-                            ),
+                    ],
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => widget.onAddToCart(_quantity),
+                        style: OutlinedButton.styleFrom(
+                          padding: EdgeInsets.symmetric(
+                            vertical: healthDp(context, 10),
+                            horizontal: healthDp(context, 10),
                           ),
-                          child: Text(
-                            '구매하기',
-                            style: TextStyle(
-                              fontSize: healthSp(context, 16),
-                              fontWeight: FontWeight.w500,
-                              fontFamily: _kGmarketSans,
-                            ),
+                          foregroundColor: const Color(0xFFFF5A8D),
+                          shape: RoundedRectangleBorder(
+                            borderRadius:
+                                BorderRadius.circular(healthDp(context, 10)),
+                          ),
+                          side: const BorderSide(color: Color(0xFFFF5A8D)),
+                        ),
+                        child: Text(
+                          '장바구니',
+                          style: TextStyle(
+                            fontSize: healthSp(context, 16),
+                            fontWeight: FontWeight.w500,
+                            fontFamily: _kGmarketSans,
+                            color: const Color(0xFFFF5A8D),
                           ),
                         ),
                       ),
-                    ],
-                  ),
-                ],
-              ),
+                    ),
+                    SizedBox(width: healthDp(context, 10)),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () => widget.onBuyNow(_quantity),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFFF4081),
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(
+                            vertical: healthDp(context, 10),
+                            horizontal: healthDp(context, 10),
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius:
+                                BorderRadius.circular(healthDp(context, 10)),
+                          ),
+                        ),
+                        child: Text(
+                          '구매하기',
+                          style: TextStyle(
+                            fontSize: healthSp(context, 16),
+                            fontWeight: FontWeight.w500,
+                            fontFamily: _kGmarketSans,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
         ),

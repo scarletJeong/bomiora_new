@@ -4,7 +4,7 @@ import '../../health/health_common/health_responsive_scale.dart';
 
 /// 수량 조절. 바텀시트·장바구니에서 같은 크기를 쓴다.
 ///
-/// 375 기준: 바깥 여백 4, 모서리 20, 버튼 간격 5, 버튼 28, 테두리 0.5, 숫자 14.
+/// 375 기준: 바깥 여백 4, 모서리 20, 버튼 간격 10, 버튼 28, 테두리 0.5, 숫자 14.
 class QuantityStepper extends StatelessWidget {
   const QuantityStepper({
     super.key,
@@ -33,7 +33,7 @@ class QuantityStepper extends StatelessWidget {
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
-        spacing: healthDp(context, 5),
+        spacing: healthDp(context, 10),
         children: [
           _roundButton(context, Icons.remove, onDecrease),
           Text(
