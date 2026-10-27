@@ -153,6 +153,8 @@ class _AppNetworkImageState extends State<AppNetworkImage> {
 
     return Image.network(
       widget.url,
+      // 웹 <img>는 생성 때 src만 넣고, 같은 칸에서 주소가 바뀌어도 갱신하지 않는다.
+      key: ValueKey(widget.url),
       width: widget.width,
       height: widget.height,
       fit: widget.fit,

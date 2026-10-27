@@ -500,6 +500,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
 
   Widget _buildProductCard(Product product) {
     return ProductCatalogCard(
+      key: ValueKey(product.id),
       product: product,
       onTap: () {
         final kind = (product.productKind ?? widget.productKind ?? '')
