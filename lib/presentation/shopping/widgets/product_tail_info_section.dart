@@ -664,11 +664,13 @@ class _CertificationSectionState extends State<_CertificationSection> {
                     ? constraints.maxWidth
                     : MediaQuery.sizeOf(context).width -
                         _tailHorizontalPad(context, framed: widget.framed) * 2;
+                const certAspect = 670 / 252;
+                final cap = healthDp(context, 280);
                 final targetW = widget.framed
-                    ? healthDp(context, 140)
+                    ? (w < cap ? w : cap)
                     : (w * 0.20).clamp(70.0, 160.0);
                 final h = widget.framed
-                    ? healthDp(context, 53)
+                    ? targetW / certAspect
                     : (targetW * 0.55).clamp(35.0, 80.0);
 
                 _embeddedPngFuture ??= _loadEmbeddedPngFromSvgAsset();
@@ -685,12 +687,14 @@ class _CertificationSectionState extends State<_CertificationSection> {
                         if (bytes != null && bytes.isNotEmpty) {
                           return Image.memory(
                             bytes,
-                            fit: widget.framed ? BoxFit.cover : BoxFit.contain,
+                            fit: BoxFit.contain,
+                            filterQuality: FilterQuality.medium,
+                            gaplessPlayback: true,
                           );
                         }
                         return SvgPicture.asset(
                           AppAssets.productDetailCertification,
-                          fit: widget.framed ? BoxFit.cover : BoxFit.contain,
+                          fit: BoxFit.contain,
                         );
                       },
                     ),

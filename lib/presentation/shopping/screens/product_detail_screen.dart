@@ -111,7 +111,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       _loggedInUser != null && _loggedInUser!.id.trim().isNotEmpty;
 
   Future<void> _onGuestReviewLoginTap() async {
-    await Navigator.pushNamed(context, '/login');
+    final productId = widget.productId.trim();
+    await Navigator.pushNamed(
+      context,
+      '/login',
+      arguments: {
+        if (productId.isNotEmpty) 'returnTo': '/product/$productId',
+        'popOnSuccess': true,
+      },
+    );
     if (!mounted) return;
     await _loadAuthUser();
   }
@@ -618,11 +626,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                buildTabItem(
-                  0,
-                  '처방약 소개',
-                  indicatorAlign: Alignment.centerLeft,
-                  textAlign: TextAlign.left,
+                Padding(
+                  padding: EdgeInsets.only(left: healthDp(context, 10)),
+                  child: buildTabItem(
+                    0,
+                    '처방약 소개',
+                    indicatorAlign: Alignment.centerLeft,
+                    textAlign: TextAlign.left,
+                  ),
                 ),
                 Padding(
                   padding: EdgeInsets.only(top: dividerTop),
@@ -633,11 +644,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                   padding: EdgeInsets.only(top: dividerTop),
                   child: _buildTabDivider(context),
                 ),
-                buildTabItem(
-                  2,
-                  '일반 리뷰(+$generalReviewCount)',
-                  indicatorAlign: Alignment.centerRight,
-                  textAlign: TextAlign.right,
+                Padding(
+                  padding: EdgeInsets.only(right: healthDp(context, 10)),
+                  child: buildTabItem(
+                    2,
+                    '일반 리뷰(+$generalReviewCount)',
+                    indicatorAlign: Alignment.centerRight,
+                    textAlign: TextAlign.right,
+                  ),
                 ),
               ],
             ),
@@ -1310,7 +1324,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                     );
                   },
                   child: _detailAppBarSvgIcon(
-                    AppAssets.menu_home_icon,
+                    AppAssets.appbarHomeIcon,
                     size: 20,
                   ),
                 ),
@@ -1434,28 +1448,59 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
             horizontal: healthDp(context, 20),
             vertical: healthDp(context, 10),
           ),
-          child: SizedBox(
-            width: double.infinity,
-            height: healthDp(context, 40),
-            child: Material(
-              color: const Color(0xFFFF5A8D),
-              borderRadius: BorderRadius.circular(healthDp(context, 10)),
-              clipBehavior: Clip.antiAlias,
-              child: InkWell(
-                onTap: _showOptionSelectionDialog,
-                child: Center(
-                  child: Text(
-                    '처방 예약하기',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: healthSp(context, 16),
-                      fontFamily: _kGmarketSans,
-                      fontWeight: FontWeight.w500,
+          child: Row(
+            children: [
+              Material(
+                color: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(healthDp(context, 10)),
+                  side: BorderSide(
+                    color: const Color(0xFFD2D2D2),
+                    width: healthDp(context, 0.5),
+                  ),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
+                  onTap: _toggleFavorite,
+                  child: SizedBox(
+                    width: healthDp(context, 40),
+                    height: healthDp(context, 40),
+                    child: Icon(
+                      _isFavorite ? Icons.favorite : Icons.favorite_border,
+                      size: healthDp(context, 22),
+                      color: _isFavorite
+                          ? const Color(0xFFFF5A8D)
+                          : const Color(0xFF898686),
                     ),
                   ),
                 ),
               ),
-            ),
+              SizedBox(width: healthDp(context, 10)),
+              Expanded(
+                child: SizedBox(
+                  height: healthDp(context, 40),
+                  child: Material(
+                    color: const Color(0xFFFF5A8D),
+                    borderRadius: BorderRadius.circular(healthDp(context, 10)),
+                    clipBehavior: Clip.antiAlias,
+                    child: InkWell(
+                      onTap: _showOptionSelectionDialog,
+                      child: Center(
+                        child: Text(
+                          '처방 예약하기',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: healthSp(context, 16),
+                            fontFamily: _kGmarketSans,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),

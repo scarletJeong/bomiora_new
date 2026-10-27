@@ -221,7 +221,19 @@ class PrescriptionReviewStatsCard extends StatelessWidget {
               ),
             ],
           ),
-          SizedBox(width: healthDp(context, 16)),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: healthDp(context, 12)),
+            child: Text(
+              '|',
+              style: TextStyle(
+                fontSize: healthSp(context, 16),
+                fontFamily: _kGmarket,
+                fontWeight: FontWeight.w500,
+                color: const Color(0xFF1A1A1E),
+                height: 1,
+              ),
+            ),
+          ),
           Expanded(
             child: Column(
               children: [
