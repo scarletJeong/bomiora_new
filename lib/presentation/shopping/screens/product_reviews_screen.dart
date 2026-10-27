@@ -196,7 +196,10 @@ class PrescriptionReviewStatsCard extends StatelessWidget {
     final dividerHeight =
         healthDp(context, 50) + healthDp(context, 10) + healthDp(context, 15);
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: healthDp(context, 20)),
+      padding: EdgeInsets.only(
+        left: healthDp(context, 30),
+        right: healthDp(context, 20),
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [

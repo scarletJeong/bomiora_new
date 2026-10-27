@@ -689,7 +689,7 @@ class _RatingScorePanel extends StatelessWidget {
               '|',
               style: TextStyle(
                 color: const Color(0xFF999999),
-                fontSize: healthSp(context, 8),
+                fontSize: healthSp(context, 18),
                 fontFamily: _kGmarket,
                 fontWeight: FontWeight.w300,
                 height: 1,
