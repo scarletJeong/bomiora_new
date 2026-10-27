@@ -472,6 +472,7 @@ Widget buildProductCarouselImage({
   required Widget Function(BuildContext, Object, StackTrace?) errorBuilder,
   required Widget Function(BuildContext, Widget, ImageChunkEvent?)
       loadingBuilder,
+  BoxFit fit = BoxFit.cover,
 }) {
   return SizedBox(
     width: width,
@@ -482,7 +483,7 @@ Widget buildProductCarouselImage({
         url: ImageUrlHelper.toWebSafeImageUrl(imageUrl),
         width: width,
         height: height,
-        fit: BoxFit.cover,
+        fit: fit,
         alignment: Alignment.center,
         decodeWidthLogical: width,
         decodeHeightLogical: height,

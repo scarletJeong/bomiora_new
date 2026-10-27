@@ -67,8 +67,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   bool _isLoadingReviews = false;
   int? _userPoint; // 현재 사용자 보유 포인트
   bool? _usePointConfig; // cf_use_point 설정값
-  int _visibleSupporterReviewCount = 4;
-  int _visibleNormalReviewCount = 4;
+  int _visibleSupporterReviewCount = 3;
+  int _visibleNormalReviewCount = 3;
   UserModel? _loggedInUser;
 
   // 옵션 관련 상태
@@ -225,8 +225,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
         _safeSetState(() {
           _supporterReviews = loaded.supporterReviews;
           _generalReviews = loaded.generalReviews;
-          _visibleSupporterReviewCount = 4;
-          _visibleNormalReviewCount = 4;
+          _visibleSupporterReviewCount = 3;
+          _visibleNormalReviewCount = 3;
           _isLoadingReviews = false;
         });
       } else {
@@ -674,16 +674,34 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
             SizedBox(
               height: topInset + _detailTopChromeHeight(context),
             ),
-            SizedBox(height: healthDp(context, 20)),
-            Text(
-              _displayProductName(),
-              style: TextStyle(
-                color: const Color(0xFF1A1A1E),
-                fontSize: healthSp(context, 20),
-                fontFamily: _kGmarketSans,
-                fontWeight: FontWeight.w700,
-                letterSpacing: healthSp(context, -0.80),
-              ),
+            SizedBox(height: healthDp(context, 5)), // 상품이름 위 여백
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '|',
+                  style: TextStyle(
+                    color: const Color(0xFF1A1A1E),
+                    fontSize: healthSp(context, 24),
+                    fontFamily: _kGmarketSans,
+                    fontWeight: FontWeight.w200,
+                    height: 1.1,
+                  ),
+                ),
+                SizedBox(width: healthDp(context, 6)),
+                Expanded(
+                  child: Text(
+                    _displayProductName(),
+                    style: TextStyle(
+                      color: const Color(0xFF1A1A1E),
+                      fontSize: healthSp(context, 20),
+                      fontFamily: _kGmarketSans,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: healthSp(context, -0.80),
+                    ),
+                  ),
+                ),
+              ],
             ),
             if (_influencerHandleLine() != null) ...[
               SizedBox(height: healthDp(context, 10)),
@@ -856,7 +874,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       fallbackImageUrl: _reviewFallbackImageUrl,
       onLoadMore: () {
         _safeSetState(() {
-          _visibleSupporterReviewCount += 8;
+          _visibleSupporterReviewCount += 3;
         });
       },
       onReviewTap: _openReviewDetail,
@@ -875,7 +893,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       fallbackImageUrl: _reviewFallbackImageUrl,
       onLoadMore: () {
         _safeSetState(() {
-          _visibleNormalReviewCount += 8;
+          _visibleNormalReviewCount += 3;
         });
       },
       onReviewTap: _openReviewDetail,
@@ -950,6 +968,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                   imageUrl: imageUrl,
                   width: double.infinity,
                   height: imageHeight,
+                  fit: BoxFit.cover,
                   errorBuilder: (context, error, stackTrace) {
                     return Container(
                       color: Colors.grey[200],
@@ -1281,25 +1300,28 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     );
   }
 
-  /// 배경·블러 없이 투명 — 뒤로가기 / 홈 / 장바구니
+  /// 배경·블러 없이 투명 — 뒤로가기 / 홈 / 장바구니.
+  /// 높이는 메인·마이페이지 로고 앱바(60)와 같고, 아이콘은 그 높이의 세로 가운데.
   Widget _buildFloatingTransparentAppBar() {
     const iconColor = Color(0xFF1A1A1A);
+    final topInset = healthStatusBarTopInset(context);
+    final barH = healthAppBarTotalHeight(context);
     return Positioned(
       top: 0,
       left: 0,
       right: 0,
-      child: SafeArea(
-        bottom: false,
+      child: SizedBox(
+        height: topInset + barH,
         child: Padding(
-          padding: EdgeInsets.fromLTRB(
-            healthDp(context, 20),
-            healthDp(context, 20),
-            healthDp(context, 20),
-            0,
+          padding: EdgeInsets.only(
+            top: topInset,
+            left: healthDp(context, 20),
+            right: healthDp(context, 20),
           ),
-          child: Padding(
-            padding: EdgeInsets.symmetric(vertical: healthDp(context, 5)),
+          child: SizedBox(
+            height: barH,
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 _detailAppBarIconButton(
                   onPressed: () {

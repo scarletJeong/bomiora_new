@@ -146,21 +146,29 @@ class _ProductReviewListCardState extends State<ProductReviewListCard> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SizedBox(height: healthDp(context, 10)),
-              Text(
-                _reviewerName(review, showCategoryScores),
-                style: TextStyle(
-                  color: _kTextDark,
-                  fontSize: healthSp(context, 16),
-                  fontFamily: _kGmarket,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
+              _reviewerNameLine(context, review, showCategoryScores),
               if ((review.isPositiveReviewText ?? '').trim().isNotEmpty) ...[
                 SizedBox(height: healthDp(context, 10)),
                 _ReviewLabeledText(
                   label: '좋았던 점',
                   text: review.isPositiveReviewText!,
                   maxLines: _expanded ? null : 2,
+                  forceDots: !_expanded &&
+                      (((review.isNegativeReviewText ?? '').trim().isNotEmpty) ||
+                          ((review.isMoreReviewText ?? '').trim().isNotEmpty)),
+                ),
+              ] else if (!_expanded &&
+                  (((review.isNegativeReviewText ?? '').trim().isNotEmpty) ||
+                      ((review.isMoreReviewText ?? '').trim().isNotEmpty))) ...[
+                SizedBox(height: healthDp(context, 10)),
+                _RaisedDots(
+                  style: TextStyle(
+                    color: _kTextDark,
+                    fontSize: healthSp(context, 12),
+                    fontFamily: _kGmarket,
+                    fontWeight: FontWeight.w500,
+                    height: 1.5,
+                  ),
                 ),
               ],
               if (_expanded) ...[
@@ -202,15 +210,67 @@ class _ProductReviewListCardState extends State<ProductReviewListCard> {
     );
   }
 
-  /// 서포터는 `| 이름`, 비대면 일반 리뷰는 첫 글자 + `**`.
-  String _reviewerName(ReviewModel review, bool showCategoryScores) {
+  /// 서포터는 `| 이름`, 비대면 일반 리뷰는 `|` + 첫 글자 + 아래로 내린 `**`.
+  Widget _reviewerNameLine(
+    BuildContext context,
+    ReviewModel review,
+    bool showCategoryScores,
+  ) {
+    final style = TextStyle(
+      color: _kTextDark,
+      fontSize: healthSp(context, 16),
+      fontFamily: _kGmarket,
+      fontWeight: FontWeight.w700,
+    );
     final raw = (review.isName ?? '').trim();
-    if (raw.isEmpty) return '익명';
-    if (review.isSupporterReview) return '| $raw';
-    if (showCategoryScores) {
-      return '${String.fromCharCode(raw.runes.first)}**';
+    if (raw.isEmpty) return Text('익명', style: style);
+    final pipe = Text(
+      '|',
+      style: TextStyle(
+        color: _kTextDark,
+        fontSize: healthSp(context, 16),
+        fontFamily: _kGmarket,
+        fontWeight: FontWeight.w400,
+        height: 1.5,
+      ),
+    );
+    if (review.isSupporterReview) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          pipe,
+          SizedBox(width: healthDp(context, 4)),
+          Text(raw, style: style),
+        ],
+      );
     }
-    return raw;
+    if (showCategoryScores) {
+      final first = String.fromCharCode(raw.runes.first);
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              pipe,
+              SizedBox(width: healthDp(context, 4)),
+              Text(first, style: style),
+            ],
+          ),
+          Padding(
+            padding: EdgeInsets.only(top: healthDp(context, 6)),
+            child: Text(
+              '**',
+              style: style.copyWith(fontSize: healthSp(context, 12)),
+            ),
+          ),
+        ],
+      );
+    }
+    return Text(raw, style: style);
   }
 
   List<String> _usableReviewImages(ReviewModel review) {
@@ -416,15 +476,25 @@ class _ReviewLabeledText extends StatelessWidget {
   final String label;
   final String text;
   final int? maxLines;
+  /// 접힌 상태에서 뒤에 더 있는 내용이 있으면 두 줄 안에도 `..`를 붙인다.
+  final bool forceDots;
 
   const _ReviewLabeledText({
     required this.label,
     required this.text,
     this.maxLines,
+    this.forceDots = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final bodyStyle = TextStyle(
+      color: _kTextDark,
+      fontSize: healthSp(context, 12),
+      fontFamily: _kGmarket,
+      fontWeight: FontWeight.w500,
+      height: 1.5,
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -438,22 +508,124 @@ class _ReviewLabeledText extends StatelessWidget {
           ),
         ),
         SizedBox(height: healthDp(context, 5)),
-        Text(
-          text.trim(),
-          maxLines: maxLines,
-          overflow: maxLines == null
-              ? TextOverflow.visible
-              : TextOverflow.ellipsis,
-          style: TextStyle(
-            color: _kTextDark,
-            fontSize: healthSp(context, 12),
-            fontFamily: _kGmarket,
-            fontWeight: FontWeight.w500,
-            height: 1.5,
+        if (maxLines == null)
+          Text(text.trim(), style: bodyStyle)
+        else
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final width = constraints.maxWidth.isFinite
+                  ? constraints.maxWidth
+                  : MediaQuery.sizeOf(context).width;
+              return _TextWithRaisedDots(
+                text: _clipWithDots(
+                  text.trim(),
+                  maxWidth: width,
+                  style: bodyStyle,
+                  maxLines: maxLines!,
+                  forceDots: forceDots,
+                ),
+                style: bodyStyle,
+                maxLines: maxLines,
+              );
+            },
           ),
-        ),
       ],
     );
+  }
+}
+
+/// `..`만 글줄 기준선보다 조금 위에 둔다.
+class _TextWithRaisedDots extends StatelessWidget {
+  final String text;
+  final TextStyle style;
+  final int? maxLines;
+
+  const _TextWithRaisedDots({
+    required this.text,
+    required this.style,
+    this.maxLines,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    const dots = '..';
+    if (!text.endsWith(dots)) {
+      return Text(text, maxLines: maxLines, style: style);
+    }
+    final body = text.substring(0, text.length - dots.length);
+    return Text.rich(
+      TextSpan(
+        style: style,
+        children: [
+          if (body.isNotEmpty) TextSpan(text: body),
+          WidgetSpan(
+            alignment: PlaceholderAlignment.baseline,
+            baseline: TextBaseline.alphabetic,
+            child: _RaisedDots(style: style),
+          ),
+        ],
+      ),
+      maxLines: maxLines,
+    );
+  }
+}
+
+class _RaisedDots extends StatelessWidget {
+  final TextStyle style;
+
+  const _RaisedDots({required this.style});
+
+  @override
+  Widget build(BuildContext context) {
+    return Transform.translate(
+      offset: Offset(0, -healthDp(context, 4)),
+      child: Text('..', style: style.copyWith(height: 1)),
+    );
+  }
+}
+
+/// 두 줄을 넘기거나 [forceDots]이면 끝에 `..`를 붙여 자른다.
+String _clipWithDots(
+  String text, {
+  required double maxWidth,
+  required TextStyle style,
+  required int maxLines,
+  required bool forceDots,
+}) {
+  const dots = '..';
+  final painter = TextPainter(
+    textDirection: TextDirection.ltr,
+    maxLines: maxLines,
+  );
+  bool fits(String value) {
+    painter.text = TextSpan(text: value, style: style);
+    painter.layout(maxWidth: maxWidth);
+    return !painter.didExceedMaxLines;
+  }
+
+  try {
+    if (fits(text)) {
+      if (!forceDots) return text;
+      if (fits('$text$dots')) return '$text$dots';
+    }
+    final units = text.runes.toList();
+    var low = 0;
+    var high = units.length;
+    var best = dots;
+    while (low <= high) {
+      final mid = (low + high) >> 1;
+      final candidate =
+          '${String.fromCharCodes(units.take(mid)).trimRight()}$dots';
+      if (fits(candidate)) {
+        best = candidate;
+        low = mid + 1;
+      } else {
+        high = mid - 1;
+      }
+    }
+    return best;
+  } finally {
+    painter.dispose();
   }
 }
 
@@ -493,6 +665,9 @@ class _RatingScorePanel extends StatelessWidget {
             : Border.fromBorderSide(border),
       ),
       child: Row(
+        mainAxisAlignment: showCategoryScores
+            ? MainAxisAlignment.spaceBetween
+            : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Text(
@@ -506,37 +681,41 @@ class _RatingScorePanel extends StatelessWidget {
               fontSize: healthSp(context, 20),
               fontFamily: _kGmarket,
               fontWeight: FontWeight.w700,
+              height: 1,
             ),
           ),
           if (showCategoryScores) ...[
-            SizedBox(width: healthDp(context, 10)),
-            Expanded(
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerRight,
-                child: Row(
+            Text(
+              '|',
+              style: TextStyle(
+                color: const Color(0xFF999999),
+                fontSize: healthSp(context, 14),
+                fontFamily: _kGmarket,
+                fontWeight: FontWeight.w300,
+                height: 1,
+              ),
+            ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _ScoreChip(label: '효과', value: score1),
-                        SizedBox(width: healthDp(context, 10)),
-                        _ScoreChip(label: '가성비', value: score2),
-                      ],
-                    ),
+                    _ScoreChip(label: '효과', value: score1),
                     SizedBox(width: healthDp(context, 10)),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _ScoreChip(label: '맛/향', value: score3),
-                        SizedBox(width: healthDp(context, 10)),
-                        _ScoreChip(label: '편리함', value: score4),
-                      ],
-                    ),
+                    _ScoreChip(label: '가성비', value: score2),
                   ],
                 ),
-              ),
+                SizedBox(width: healthDp(context, 10)),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _ScoreChip(label: '맛/향', value: score3),
+                    SizedBox(width: healthDp(context, 10)),
+                    _ScoreChip(label: '편리함', value: score4),
+                  ],
+                ),
+              ],
             ),
           ] else ...[
             SizedBox(width: healthDp(context, 8)),
@@ -573,9 +752,9 @@ class _ScoreChip extends StatelessWidget {
             fontWeight: FontWeight.w300,
           ),
         ),
-        SizedBox(width: healthDp(context, 3)),
-        AppStarIcon(size: healthDp(context, 10)),
-        SizedBox(width: healthDp(context, 3)),
+        SizedBox(width: healthDp(context, 1)),
+        AppStarIcon(size: healthDp(context, 12)),
+        SizedBox(width: healthDp(context, 1)),
         Text(
           value.round().clamp(0, 5).toString(),
           style: TextStyle(
