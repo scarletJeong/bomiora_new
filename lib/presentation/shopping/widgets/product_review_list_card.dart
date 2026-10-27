@@ -702,16 +702,16 @@ class _RatingScorePanel extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     _ScoreChip(label: '효과', value: score1),
-                    SizedBox(width: healthDp(context, 10)),
+                    SizedBox(width: healthDp(context, 6)),
                     _ScoreChip(label: '가성비', value: score2),
                   ],
                 ),
-                SizedBox(width: healthDp(context, 10)),
+                SizedBox(width: healthDp(context, 6)),
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     _ScoreChip(label: '맛/향', value: score3),
-                    SizedBox(width: healthDp(context, 10)),
+                    SizedBox(width: healthDp(context, 6)),
                     _ScoreChip(label: '편리함', value: score4),
                   ],
                 ),

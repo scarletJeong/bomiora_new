@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../../core/constants/app_assets.dart';
 import '../../common/widgets/centered_empty_state.dart';
+import '../../common/widgets/web_dragscroll.dart';
 import '../../../data/models/cart/cart_item_model.dart';
 import '../../../data/models/product/product_model.dart';
 import '../../../data/repositories/product/product_repository.dart';
@@ -815,9 +816,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                 '|',
                 style: TextStyle(
                   color: const Color(0xFF1A1A1E),
-                  fontSize: healthSp(context, 16),
+                  fontSize: healthSp(context, 22),
                   fontFamily: _kGmarketSans,
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w300,
+                  height: 1,
                 ),
               ),
               SizedBox(width: healthDp(context, 6)),
@@ -953,8 +955,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
         borderRadius: BorderRadius.circular(healthDp(context, 10)),
         child: Stack(
           children: [
-            PageView.builder(
+            WebDragScrollConfiguration(
+              child: PageView.builder(
               controller: _pageController,
+              physics: const PageScrollPhysics(),
               itemCount: images.length,
               onPageChanged: (index) {
                 _safeSetState(() {
@@ -964,7 +968,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
               itemBuilder: (context, index) {
                 final imageUrl = images[index];
 
-                return buildProductCarouselImage(
+                return ColoredBox(
+                  color: const Color(0xFFF8F8F8),
+                  child: buildProductCarouselImage(
                   imageUrl: imageUrl,
                   width: double.infinity,
                   height: imageHeight,
@@ -1016,8 +1022,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                       child: CircularProgressIndicator(),
                     );
                   },
+                ),
                 );
               },
+              ),
             ),
             // 이전/다음 버튼
             if (images.length > 1) ...[
@@ -1303,7 +1311,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   /// 배경·블러 없이 투명 — 뒤로가기 / 홈 / 장바구니.
   /// 높이는 메인·마이페이지 로고 앱바(60)와 같고, 아이콘은 그 높이의 세로 가운데.
   Widget _buildFloatingTransparentAppBar() {
-    const iconColor = Color(0xFF1A1A1A);
     final topInset = healthStatusBarTopInset(context);
     final barH = healthAppBarTotalHeight(context);
     return Positioned(
@@ -1331,10 +1338,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                       Navigator.of(context).pushReplacementNamed('/home');
                     }
                   },
-                  child: Icon(
-                    Icons.chevron_left,
-                    color: iconColor,
-                    size: healthDp(context, 16),
+                  child: _detailAppBarSvgIcon(
+                    AppAssets.appbarBackIcon,
+                    size: 16,
                   ),
                 ),
                 const Spacer(),

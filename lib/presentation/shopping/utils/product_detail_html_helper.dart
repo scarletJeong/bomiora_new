@@ -399,7 +399,7 @@ class ProductDetailCollapsedPreview extends StatelessWidget {
     );
   }
 
-  /// 비대면 상세. 글자+좌우 24 여백만큼만 넓어지고, 144 고정 폭은 쓰지 않는다.
+  /// 비대면 상세. 너비 144, 좌우 24·상하 5, 테두리 1, 모서리 14.
   Widget _hugExpandButton(BuildContext context, String fontFamily) {
     final radius = healthDp(context, 14);
     return Material(
@@ -408,10 +408,12 @@ class ProductDetailCollapsedPreview extends StatelessWidget {
         onTap: onExpand,
         borderRadius: BorderRadius.circular(radius),
         child: Container(
+          width: healthDp(context, 144),
           padding: EdgeInsets.symmetric(
-            horizontal: healthDp(context, expandButtonHorizontalPadding),
+            horizontal: healthDp(context, 24),
             vertical: healthDp(context, 5),
           ),
+          alignment: Alignment.center,
           decoration: ShapeDecoration(
             shape: RoundedRectangleBorder(
               side: BorderSide(
