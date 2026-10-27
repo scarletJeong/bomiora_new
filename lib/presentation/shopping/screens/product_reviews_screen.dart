@@ -44,13 +44,13 @@ class PrescriptionReviewTabPanel extends StatelessWidget {
     final capped =
         visibleCount > sorted.length ? sorted.length : visibleCount;
     final visible = sorted.take(capped).toList();
-    final hPad = healthDp(context, 27);
+    final hPad = healthDp(context, 20);
 
     final content = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        SizedBox(height: healthDp(context, 16)),
+        SizedBox(height: healthDp(context, 20)),
         if (isLoading)
           Padding(
             padding: EdgeInsets.all(healthDp(context, 32)),
@@ -58,7 +58,7 @@ class PrescriptionReviewTabPanel extends StatelessWidget {
           )
         else ...[
           PrescriptionReviewStatsCard(stats: stats),
-          SizedBox(height: healthDp(context, 14)),
+          SizedBox(height: healthDp(context, 20)),
           if (guestLoginLocked && visible.isNotEmpty)
             _PrescriptionReviewGuestLock(onLogin: onGuestLoginTap)
           else if (visible.isEmpty)
@@ -87,10 +87,13 @@ class PrescriptionReviewTabPanel extends StatelessWidget {
           if (!guestLoginLocked && capped < sorted.length)
             Padding(
               padding: EdgeInsets.fromLTRB(hPad, healthDp(context, 48), hPad, 0),
-              child: ProductReviewLoadMoreButton(onPressed: onLoadMore),
+              child: ProductReviewLoadMoreButton(
+                onPressed: onLoadMore,
+                neutral: true,
+              ),
             ),
         ],
-        SizedBox(height: healthDp(context, embedInParentScroll ? 20 : 56)),
+        SizedBox(height: healthDp(context, embedInParentScroll ? 48 : 56)),
       ],
     );
 
@@ -182,52 +185,35 @@ class PrescriptionReviewStatsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: EdgeInsets.symmetric(horizontal: healthDp(context, 16)),
-      padding: EdgeInsets.all(healthDp(context, 16)),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(healthDp(context, 8)),
-      ),
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: healthDp(context, 20)),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          SizedBox(
-            width: healthDp(context, 96),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Text(
-                  stats.average.toStringAsFixed(1),
-                  style: TextStyle(
-                    fontSize: healthSp(context, 48.73),
-                    fontFamily: _kGmarket,
-                    fontWeight: FontWeight.w700,
-                    color: _kPink,
-                    height: 0.95,
-                  ),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                stats.average.toStringAsFixed(1),
+                style: TextStyle(
+                  fontSize: healthSp(context, 50),
+                  fontFamily: _kGmarket,
+                  fontWeight: FontWeight.w700,
+                  color: _kPink,
+                  height: 1,
                 ),
-                SizedBox(height: healthDp(context, 4)),
-                SizedBox(
-                  width: double.infinity,
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: AppStarRating(
-                      rating: stats.average,
-                      starSize: healthDp(context, 20),
-                      alignment: MainAxisAlignment.center,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+              ),
+              SizedBox(height: healthDp(context, 10)),
+              AppStarRating(
+                rating: stats.average,
+                starSize: healthDp(context, 12),
+                gap: healthDp(context, 4),
+                alignment: MainAxisAlignment.end,
+              ),
+            ],
           ),
-          Container(
-            width: 1,
-            height: healthDp(context, 84),
-            color: Colors.grey[300],
-            margin: EdgeInsets.symmetric(horizontal: healthDp(context, 12)),
-          ),
+          SizedBox(width: healthDp(context, 16)),
           Expanded(
             child: Column(
               children: [
@@ -250,14 +236,15 @@ class PrescriptionReviewStatsCard extends StatelessWidget {
     return Row(
       children: [
         SizedBox(
-          width: healthDp(context, 34),
+          width: healthDp(context, 42),
           child: Text(
             label,
+            maxLines: 1,
             style: TextStyle(
-              fontSize: healthSp(context, 11),
+              fontSize: healthSp(context, 12),
               fontFamily: _kGmarket,
               fontWeight: FontWeight.w300,
-              color: Colors.black,
+              color: const Color(0xFF1A1A1E),
             ),
           ),
         ),
@@ -277,7 +264,7 @@ class PrescriptionReviewStatsCard extends StatelessWidget {
                 child: Container(
                   height: healthDp(context, 4),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFF5A95),
+                    color: _kPink,
                     borderRadius: BorderRadius.circular(healthDp(context, 2)),
                   ),
                 ),
@@ -289,10 +276,10 @@ class PrescriptionReviewStatsCard extends StatelessWidget {
         Text(
           '$percentage%',
           style: TextStyle(
-            fontSize: healthSp(context, 11),
+            fontSize: healthSp(context, 12),
             fontFamily: _kGmarket,
             fontWeight: FontWeight.w300,
-            color: Colors.black,
+            color: const Color(0xFF1A1A1E),
           ),
         ),
       ],

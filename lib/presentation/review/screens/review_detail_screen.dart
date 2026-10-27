@@ -6,6 +6,7 @@ import '../../../core/utils/image_url_helper.dart';
 import '../../../data/models/review/review_model.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/coupon_service.dart';
+import '../../common/widgets/app_alert_dialog.dart';
 import '../../common/widgets/app_star_rating.dart';
 import '../../common/widgets/app_toast_overlay.dart';
 import '../../common/widgets/login_required_dialog.dart';
@@ -675,7 +676,11 @@ class _ReviewDetailScreenState extends State<ReviewDetailScreen> {
             odId: _review.odId,
           );
         });
-        AppToastOverlay.show(context, '쿠폰 발급이 완료되었습니다.');
+        await AppAlertDialog.show(
+          context,
+          title: '쿠폰발급',
+          message: '쿠폰 발급이 완료되었습니다.\nMypage>내 쿠폰에서 확인가능합니다.',
+        );
       } else {
         final msg = result['message']?.toString() ?? '쿠폰 발급에 실패했습니다.';
         AppToastOverlay.show(context, msg);

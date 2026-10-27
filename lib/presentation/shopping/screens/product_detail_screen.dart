@@ -662,7 +662,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
             ),
             SizedBox(height: healthDp(context, 20)),
             Text(
-              _product!.name,
+              _displayProductName(),
               style: TextStyle(
                 color: const Color(0xFF1A1A1E),
                 fontSize: healthSp(context, 20),
@@ -671,6 +671,21 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                 letterSpacing: healthSp(context, -0.80),
               ),
             ),
+            if (_influencerHandleLine() != null) ...[
+              SizedBox(height: healthDp(context, 10)),
+              Padding(
+                padding: EdgeInsets.only(left: healthDp(context, 8)),
+                child: Text(
+                  _influencerHandleLine()!,
+                  style: TextStyle(
+                    color: const Color(0xFF1A1A1E),
+                    fontSize: healthSp(context, 16),
+                    fontFamily: _kGmarketSans,
+                    fontWeight: FontWeight.w300,
+                  ),
+                ),
+              ),
+            ],
             SizedBox(height: healthDp(context, 10)),
             _buildBasicDescription(),
             SizedBox(height: healthDp(context, 20)),
@@ -1034,7 +1049,22 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     );
   }
 
-  /// 제목 밑밑 설명 (it_basic) 표시
+  /// 상품명에 들어 있는 `(@아이디)`만 따로 뺀다. 없으면 줄을 만들지 않는다.
+  String _displayProductName() {
+    final name = _product?.name ?? '';
+    final stripped = name
+        .replaceAll(RegExp(r'\s*\(@[^)]+\)'), '')
+        .replaceAll(RegExp(r'[ \t]{2,}'), ' ')
+        .trim();
+    return stripped.isEmpty ? name : stripped;
+  }
+
+  String? _influencerHandleLine() {
+    final name = _product?.name ?? '';
+    return RegExp(r'\(@[^)]+\)').firstMatch(name)?.group(0);
+  }
+
+  /// 제목 밑 설명 (it_basic) 표시
   Widget _buildBasicDescription() {
     if (_product?.additionalInfo == null) return const SizedBox.shrink();
 

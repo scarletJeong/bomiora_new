@@ -3,6 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/constants/app_assets.dart';
 import '../../../core/utils/image_url_helper.dart';
+import '../../common/widgets/app_alert_dialog.dart';
 import '../../common/widgets/app_network_image.dart';
 import '../../common/widgets/app_toast_overlay.dart';
 import '../../../data/models/review/review_model.dart';
@@ -91,8 +92,8 @@ class _ProductReviewListCardState extends State<ProductReviewListCard> {
               if (review.isSupporterReview)
                 Positioned(
                   left: healthDp(context, 8),
-                  top: healthDp(context, 8),
-                  child: _SupporterBadge(),
+                  top: healthDp(context, 7),
+                  child: const _SupporterBadge(),
                 ),
               if (imageCount > 1) ...[
                 Positioned(
@@ -136,7 +137,7 @@ class _ProductReviewListCardState extends State<ProductReviewListCard> {
             ),
           ],
         ] else if (review.isSupporterReview) ...[
-          _SupporterBadge(),
+          const _SupporterBadge(),
         ],
         GestureDetector(
           onTap: () => setState(() => _expanded = !_expanded),
@@ -145,50 +146,23 @@ class _ProductReviewListCardState extends State<ProductReviewListCard> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SizedBox(height: healthDp(context, 10)),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    '|',
-                    style: TextStyle(
-                      color: _kTextDark,
-                      fontSize: healthSp(context, 16),
-                      fontFamily: _kGmarket,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  SizedBox(width: healthDp(context, 6)),
-                  Flexible(
-                    child: Text(
-                      review.isName ?? '익명',
-                      style: TextStyle(
-                        color: _kTextDark,
-                        fontSize: healthSp(context, 16),
-                        fontFamily: _kGmarket,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ],
+              Text(
+                _reviewerName(review, showCategoryScores),
+                style: TextStyle(
+                  color: _kTextDark,
+                  fontSize: healthSp(context, 16),
+                  fontFamily: _kGmarket,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
-              if (_prescriptionMetaLine(review) != null) ...[
-                SizedBox(height: healthDp(context, 4)),
-                Text(
-                  _prescriptionMetaLine(review)!,
-                  style: TextStyle(
-                    color: _kMuted,
-                    fontSize: healthSp(context, 11),
-                    fontFamily: _kGmarket,
-                    fontWeight: FontWeight.w300,
-                  ),
+              if ((review.isPositiveReviewText ?? '').trim().isNotEmpty) ...[
+                SizedBox(height: healthDp(context, 10)),
+                _ReviewLabeledText(
+                  label: '좋았던 점',
+                  text: review.isPositiveReviewText!,
+                  maxLines: _expanded ? null : 2,
                 ),
               ],
-              SizedBox(height: healthDp(context, 10)),
-              _ReviewTextBlock(
-                text: review.isPositiveReviewText,
-                expanded: _expanded,
-                collapsedMaxLines: 2,
-              ),
               if (_expanded) ...[
                 if ((review.isNegativeReviewText ?? '').trim().isNotEmpty) ...[
                   SizedBox(height: healthDp(context, 10)),
@@ -217,6 +191,7 @@ class _ProductReviewListCardState extends State<ProductReviewListCard> {
               if (widget.showCouponSection) ...[
                 _CouponHelpSection(
                   review: review,
+                  compact: !_expanded,
                   onGuestLoginTap: widget.onGuestLoginTap,
                 ),
               ],
@@ -227,20 +202,14 @@ class _ProductReviewListCardState extends State<ProductReviewListCard> {
     );
   }
 
-  String? _prescriptionMetaLine(ReviewModel review) {
-    if (!review.isPrescriptionProduct) return null;
-    final parts = <String>[];
-    if (review.isHeight != null && review.isHeight! > 0) {
-      parts.add('${review.isHeight}cm');
+  /// 서포터는 이름 전체, 비대면 일반 리뷰는 첫 글자만.
+  String _reviewerName(ReviewModel review, bool showCategoryScores) {
+    final raw = (review.isName ?? '').trim();
+    if (raw.isEmpty) return '익명';
+    if (showCategoryScores && !review.isSupporterReview) {
+      return String.fromCharCode(raw.runes.first);
     }
-    if (review.isOutageNum != null && review.isOutageNum! > 0) {
-      parts.add('${review.isOutageNum}kg 감량');
-    }
-    if (review.isPayMthod == 'solo') {
-      parts.add('내돈내산');
-    }
-    if (parts.isEmpty) return null;
-    return parts.join('  ');
+    return raw;
   }
 
   List<String> _usableReviewImages(ReviewModel review) {
@@ -298,7 +267,7 @@ class _ProductReviewListCardState extends State<ProductReviewListCard> {
     Widget image(String url) {
       return AppNetworkImage(
         url: url,
-        fit: BoxFit.cover,
+        fit: BoxFit.fill,
         width: double.infinity,
         height: imageH,
         decodeWidthLogical: 420,
@@ -307,13 +276,13 @@ class _ProductReviewListCardState extends State<ProductReviewListCard> {
           if (!useProductThumb && productThumbUrl.isNotEmpty) {
             return AppNetworkImage(
               url: productThumbUrl,
-              fit: BoxFit.cover,
+              fit: BoxFit.fill,
               width: double.infinity,
               height: imageH,
               decodeWidthLogical: 420,
               decodeHeightLogical: imageH,
-              errorBuilder: (_, __, ___) => ColoredBox(
-                color: const Color(0xFFF3F3F3),
+              errorBuilder: (_, __, ___) => const ColoredBox(
+                color: Color(0xFFF3F3F3),
               ),
             );
           }
@@ -341,41 +310,29 @@ class _ProductReviewListCardState extends State<ProductReviewListCard> {
 }
 
 class _SupporterBadge extends StatelessWidget {
+  const _SupporterBadge();
+
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: healthDp(context, 6),
-        vertical: healthDp(context, 4),
+        horizontal: healthDp(context, 4),
+        vertical: healthDp(context, 3),
       ),
-      decoration: BoxDecoration(
-        color: _kPink,
-        borderRadius: BorderRadius.circular(healthDp(context, 4)),
+      decoration: ShapeDecoration(
+        color: Colors.white.withValues(alpha: 0.85),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(healthDp(context, 50)),
+        ),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            '서포터',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: healthSp(context, 8),
-              fontFamily: _kGmarket,
-              fontWeight: FontWeight.w700,
-              height: 1.1,
-            ),
-          ),
-          Text(
-            '리뷰어',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: healthSp(context, 8),
-              fontFamily: _kGmarket,
-              fontWeight: FontWeight.w700,
-              height: 1.1,
-            ),
-          ),
-        ],
+      child: Text(
+        '서포터 리뷰어',
+        style: TextStyle(
+          color: _kPink,
+          fontSize: healthSp(context, 10),
+          fontFamily: _kGmarket,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }
@@ -430,8 +387,8 @@ class _ImageDots extends StatelessWidget {
       children: List.generate(count, (i) {
         final active = i == index;
         return Container(
-          width: healthDp(context, active ? 10 : 5),
-          height: healthDp(context, active ? 3 : 5),
+          width: healthDp(context, 5),
+          height: healthDp(context, 5),
           margin: EdgeInsets.symmetric(horizontal: healthDp(context, 2.5)),
           decoration: BoxDecoration(
             color: active ? _kPink : const Color(0xFFD2D2D2),
@@ -446,10 +403,12 @@ class _ImageDots extends StatelessWidget {
 class _ReviewLabeledText extends StatelessWidget {
   final String label;
   final String text;
+  final int? maxLines;
 
   const _ReviewLabeledText({
     required this.label,
     required this.text,
+    this.maxLines,
   });
 
   @override
@@ -461,14 +420,18 @@ class _ReviewLabeledText extends StatelessWidget {
           label,
           style: TextStyle(
             color: _kMuted,
-            fontSize: healthSp(context, 11),
+            fontSize: healthSp(context, 10),
             fontFamily: _kGmarket,
-            fontWeight: FontWeight.w500,
+            fontWeight: FontWeight.w300,
           ),
         ),
-        SizedBox(height: healthDp(context, 4)),
+        SizedBox(height: healthDp(context, 5)),
         Text(
           text.trim(),
+          maxLines: maxLines,
+          overflow: maxLines == null
+              ? TextOverflow.visible
+              : TextOverflow.ellipsis,
           style: TextStyle(
             color: _kTextDark,
             fontSize: healthSp(context, 12),
@@ -478,37 +441,6 @@ class _ReviewLabeledText extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _ReviewTextBlock extends StatelessWidget {
-  final String? text;
-  final bool expanded;
-  final int collapsedMaxLines;
-
-  const _ReviewTextBlock({
-    required this.text,
-    required this.expanded,
-    this.collapsedMaxLines = 2,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final value = text?.trim() ?? '';
-    if (value.isEmpty) return const SizedBox.shrink();
-
-    return Text(
-      value,
-      style: TextStyle(
-        color: _kTextDark,
-        fontSize: healthSp(context, 12),
-        fontFamily: _kGmarket,
-        fontWeight: FontWeight.w500,
-        height: 1.5,
-      ),
-      maxLines: expanded ? null : collapsedMaxLines,
-      overflow: expanded ? TextOverflow.visible : TextOverflow.ellipsis,
     );
   }
 }
@@ -544,10 +476,7 @@ class _RatingScorePanel extends StatelessWidget {
         vertical: healthDp(context, 8),
       ),
       decoration: BoxDecoration(
-        border: Border(
-          top: border,
-          bottom: border,
-        ),
+        border: Border.fromBorderSide(border),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -566,19 +495,7 @@ class _RatingScorePanel extends StatelessWidget {
             ),
           ),
           if (showCategoryScores) ...[
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
-              child: Text(
-                '|',
-                style: TextStyle(
-                  color: const Color(0xFF666666),
-                  fontSize: healthSp(context, 18),
-                  fontFamily: _kGmarket,
-                  fontWeight: FontWeight.w300,
-                  height: 1,
-                ),
-              ),
-            ),
+            SizedBox(width: healthDp(context, 10)),
             Expanded(
               child: FittedBox(
                 fit: BoxFit.scaleDown,
@@ -643,8 +560,6 @@ class _ScoreChip extends StatelessWidget {
           ),
         ),
         SizedBox(width: healthDp(context, 3)),
-        AppStarIcon(size: healthDp(context, 10)),
-        SizedBox(width: healthDp(context, 1)),
         Text(
           value.round().clamp(0, 5).toString(),
           style: TextStyle(
@@ -661,10 +576,12 @@ class _ScoreChip extends StatelessWidget {
 
 class _CouponHelpSection extends StatefulWidget {
   final ReviewModel review;
+  final bool compact;
   final VoidCallback? onGuestLoginTap;
 
   const _CouponHelpSection({
     required this.review,
+    this.compact = false,
     this.onGuestLoginTap,
   });
 
@@ -722,7 +639,11 @@ class _CouponHelpSectionState extends State<_CouponHelpSection> {
             _downloadCount += 1;
           }
         });
-        AppToastOverlay.show(context, '쿠폰 발급이 완료되었습니다.');
+        await AppAlertDialog.show(
+          context,
+          title: '쿠폰발급',
+          message: '쿠폰 발급이 완료되었습니다.\nMypage>내 쿠폰에서 확인가능합니다.',
+        );
       } else {
         final message =
             result['message'] as String? ?? '쿠폰 발급에 실패했습니다.';
@@ -767,7 +688,7 @@ class _CouponHelpSectionState extends State<_CouponHelpSection> {
                       height: healthDp(context, 20),
                       fit: BoxFit.contain,
                     ),
-                    SizedBox(width: healthDp(context, 5)),
+                    SizedBox(width: healthDp(context, 2)),
                     Text(
                       '5% 할인 도움 쿠폰',
                       style: TextStyle(
@@ -775,10 +696,9 @@ class _CouponHelpSectionState extends State<_CouponHelpSection> {
                         fontSize: healthSp(context, 14),
                         fontFamily: _kGmarket,
                         fontWeight: FontWeight.w700,
-                        letterSpacing: healthSp(context, -0.42),
                       ),
                     ),
-                    SizedBox(width: healthDp(context, 10)),
+                    SizedBox(width: healthDp(context, 5)),
                     Flexible(
                       child: Text.rich(
                         maxLines: 1,
@@ -801,7 +721,6 @@ class _CouponHelpSectionState extends State<_CouponHelpSection> {
                                 fontSize: healthSp(context, 12),
                                 fontFamily: _kGmarket,
                                 fontWeight: FontWeight.w500,
-                                letterSpacing: healthSp(context, -0.36),
                               ),
                             ),
                           ],
@@ -810,7 +729,7 @@ class _CouponHelpSectionState extends State<_CouponHelpSection> {
                     ),
                   ],
                 ),
-                SizedBox(height: healthDp(context, 4)),
+                SizedBox(height: healthDp(context, 8)),
                 Text(
                   '유효기간 : 발급일로부터 7일',
                   style: TextStyle(
@@ -830,11 +749,11 @@ class _CouponHelpSectionState extends State<_CouponHelpSection> {
               onTap: _isDownloading ? null : _onDownloadTap,
               customBorder: const CircleBorder(),
               child: SizedBox(
-                width: healthDp(context, 40),
-                height: healthDp(context, 40),
+                width: healthDp(context, widget.compact ? 30 : 40),
+                height: healthDp(context, widget.compact ? 30 : 40),
                 child: _isDownloading
                     ? Padding(
-                        padding: EdgeInsets.all(healthDp(context, 10)),
+                        padding: EdgeInsets.all(healthDp(context, 8)),
                         child: const CircularProgressIndicator(
                           strokeWidth: 2,
                           color: _kPink,
@@ -842,8 +761,6 @@ class _CouponHelpSectionState extends State<_CouponHelpSection> {
                       )
                     : SvgPicture.asset(
                         AppAssets.myReviewCouponCardDownload,
-                        width: healthDp(context, 40),
-                        height: healthDp(context, 40),
                         fit: BoxFit.contain,
                       ),
               ),
@@ -855,11 +772,16 @@ class _CouponHelpSectionState extends State<_CouponHelpSection> {
   }
 }
 
-/// + 더보기 버튼
+/// 리뷰 더보기. [neutral]이면 비대면 상세의 흰 테두리 버튼.
 class ProductReviewLoadMoreButton extends StatelessWidget {
   final VoidCallback onPressed;
+  final bool neutral;
 
-  const ProductReviewLoadMoreButton({super.key, required this.onPressed});
+  const ProductReviewLoadMoreButton({
+    super.key,
+    required this.onPressed,
+    this.neutral = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -869,18 +791,24 @@ class ProductReviewLoadMoreButton extends StatelessWidget {
       child: ElevatedButton(
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
-          backgroundColor: _kPink,
-          foregroundColor: Colors.white,
+          backgroundColor: neutral ? Colors.white : _kPink,
+          foregroundColor: neutral ? _kMuted : Colors.white,
           elevation: 0,
           padding: EdgeInsets.all(healthDp(context, 10)),
+          side: neutral
+              ? BorderSide(
+                  width: healthDp(context, 0.5),
+                  color: const Color(0xFFD2D2D2),
+                )
+              : BorderSide.none,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(healthDp(context, 10)),
           ),
         ),
         child: Text(
-          '+ 더보기',
+          neutral ? '더보기' : '+ 더보기',
           style: TextStyle(
-            fontSize: healthSp(context, 16),
+            fontSize: healthSp(context, neutral ? 14 : 16),
             fontFamily: _kGmarket,
             fontWeight: FontWeight.w500,
           ),
