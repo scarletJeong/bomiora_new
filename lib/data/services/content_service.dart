@@ -198,6 +198,29 @@ class ContentService {
     return fallback;
   }
 
+  static Future<Map<String, dynamic>>? _homePreviewInflight;
+  static Map<String, dynamic>? _homePreviewCache;
+
+  /// 메인 「건강 컨텐츠」 3건. 스플래시와 홈이 같은 요청을 나눠 쓰지 않도록 묶는다.
+  static Future<Map<String, dynamic>> getHomePreviewList() {
+    final cached = _homePreviewCache;
+    if (cached != null) return Future.value(cached);
+    final inflight = _homePreviewInflight;
+    if (inflight != null) return inflight;
+    late final Future<Map<String, dynamic>> future;
+    future = getContentList(page: 1, size: 3).then((result) {
+      if (identical(_homePreviewInflight, future)) {
+        _homePreviewInflight = null;
+      }
+      if (result['success'] == true) {
+        _homePreviewCache = result;
+      }
+      return result;
+    });
+    _homePreviewInflight = future;
+    return future;
+  }
+
   static Future<Map<String, dynamic>> getContentList({
     int page = 1,
     int size = 20,

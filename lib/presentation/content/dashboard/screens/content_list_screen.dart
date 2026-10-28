@@ -45,6 +45,9 @@ class _ContentListScreenState extends State<ContentListScreen> {
   static const int _pageSize = 5;
   bool _isLoading = true;
   bool _isLoadingMore = false;
+  int _imageWaitId = 0;
+  int _pendingImages = 0;
+  int _settledImages = 0;
 
   @override
   void initState() {
@@ -90,10 +93,13 @@ class _ContentListScreenState extends State<ContentListScreen> {
   }
 
   Future<void> _loadPosts({bool reset = true}) async {
+    final waitId = reset ? ++_imageWaitId : _imageWaitId;
     if (reset) {
       setState(() {
         _isLoading = true;
         _page = 1;
+        _pendingImages = 0;
+        _settledImages = 0;
       });
     } else {
       if (_isLoadingMore || _posts.length >= _totalCount) return;
@@ -111,7 +117,7 @@ class _ContentListScreenState extends State<ContentListScreen> {
       category: selectedCategory,
       query: _searchController.text,
     );
-    if (!mounted) return;
+    if (!mounted || waitId != _imageWaitId) return;
     final data =
         (result['data'] as List?)?.whereType<Map<String, dynamic>>().toList() ??
             const <Map<String, dynamic>>[];
@@ -120,17 +126,40 @@ class _ContentListScreenState extends State<ContentListScreen> {
     final total = pagination['total'] is num
         ? (pagination['total'] as num).toInt()
         : data.length;
+    final imageCount = reset
+        ? data.where((item) => _imageUrlOf(item).isNotEmpty).length
+        : 0;
     setState(() {
       if (reset) {
         _posts = data;
         _page = 1;
+        _pendingImages = imageCount;
+        _settledImages = 0;
+        _isLoading = imageCount > 0;
       } else {
         _posts = [..._posts, ...data];
         _page = nextPage;
+        _isLoading = false;
       }
       _totalCount = total;
-      _isLoading = false;
       _isLoadingMore = false;
+    });
+    if (reset && imageCount > 0) {
+      Future<void>.delayed(const Duration(seconds: 20), () {
+        if (!mounted || waitId != _imageWaitId || !_isLoading) return;
+        setState(() => _isLoading = false);
+      });
+    }
+  }
+
+  void _onListImageSettled(int waitId) {
+    if (waitId != _imageWaitId) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || waitId != _imageWaitId || !_isLoading) return;
+      _settledImages += 1;
+      if (_settledImages >= _pendingImages) {
+        setState(() => _isLoading = false);
+      }
     });
   }
 
@@ -186,6 +215,25 @@ class _ContentListScreenState extends State<ContentListScreen> {
                       topBar: _buildTopControls(),
                       scrollChild: _buildContentScroll(),
                     ),
+                    if (_isLoading && _posts.isNotEmpty)
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        top: _topControlsExtent(context),
+                        bottom: 0,
+                        child: const ColoredBox(
+                          color: Colors.white,
+                          child: Center(
+                            child: SizedBox(
+                              width: 36,
+                              height: 36,
+                              child: CircularProgressIndicator(
+                                color: Color(0xFFFF5B8C),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                     if (!_isLoading && _posts.isEmpty)
                       Positioned(
                         left: 0,
@@ -236,9 +284,10 @@ class _ContentListScreenState extends State<ContentListScreen> {
   Widget _buildContentScroll() {
     return CustomScrollView(
       controller: _scrollController,
+      cacheExtent: _isLoading ? 8000 : null,
       slivers: [
         SliverToBoxAdapter(child: _buildTopControls()),
-        if (_isLoading)
+        if (_isLoading && _posts.isEmpty)
           const SliverFillRemaining(
             hasScrollBody: false,
             child: Center(
@@ -251,7 +300,7 @@ class _ContentListScreenState extends State<ContentListScreen> {
               ),
             ),
           )
-        else if (_posts.isEmpty)
+        else if (_posts.isEmpty && !_isLoading)
           const SliverFillRemaining(
             hasScrollBody: false,
             child: SizedBox.shrink(),
@@ -265,7 +314,11 @@ class _ContentListScreenState extends State<ContentListScreen> {
               delegate: SliverChildBuilderDelegate(
                 (context, index) => Padding(
                   padding: EdgeInsets.only(bottom: healthDp(context, 32)),
-                  child: _buildListCard(context, _posts[index]),
+                  child: _buildListCard(
+                    context,
+                    _posts[index],
+                    waitForImage: _isLoading,
+                  ),
                 ),
                 childCount: _posts.length,
               ),
@@ -583,14 +636,16 @@ class _ContentListScreenState extends State<ContentListScreen> {
     );
   }
 
-  Widget _buildListCard(BuildContext context, Map<String, dynamic> item) {
+  Widget _buildListCard(
+    BuildContext context,
+    Map<String, dynamic> item, {
+    bool waitForImage = false,
+  }) {
     final idRaw = item['id'];
     final contentId = idRaw is num ? idRaw.toInt() : int.tryParse('$idRaw');
     final title = item['title']?.toString().trim() ?? '';
-    final imageUrl = _resolveContentImageUrl(
-      thumbnail: item['thumbnail_url'],
-      contentHtml: item['content_html'],
-    );
+    final imageUrl = _imageUrlOf(item);
+    final waitId = _imageWaitId;
     return GestureDetector(
       onTap: () {
         if (contentId == null) return;
@@ -605,53 +660,72 @@ class _ContentListScreenState extends State<ContentListScreen> {
         );
       },
       behavior: HitTestBehavior.opaque,
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: SizedBox(
-          width: healthDp(context, 321),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(healthDp(context, 10)),
-                child: SizedBox(
-                  height: healthDp(context, 200),
-                  width: healthDp(context, 321),
-                  child: AppNetworkImage(
-                    url: imageUrl,
-                    fit: BoxFit.cover,
-                    width: healthDp(context, 321),
-                    height: healthDp(context, 200),
-                    decodeWidthLogical: healthDp(context, 321),
-                    errorBuilder: (_, __, ___) => Container(
-                      color: const Color(0xFFF2F2F2),
-                      alignment: Alignment.center,
-                      child: Icon(
-                        Icons.broken_image_outlined,
-                        size: healthDp(context, 40),
-                        color: const Color(0xFFBDBDBD),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // 375에서 좌우 여백 20을 뺀 335 중 이미지는 321.
+          // 화면이 넓어지면 그 비율 그대로 커진다.
+          final available = constraints.maxWidth;
+          final imageW = available * (321 / 335);
+          final imageH = imageW * (200 / 321);
+          return Align(
+            alignment: Alignment.center,
+            child: SizedBox(
+              width: imageW,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(healthDp(context, 10)),
+                    child: SizedBox(
+                      height: imageH,
+                      width: imageW,
+                      child: AppNetworkImage(
+                        url: imageUrl,
+                        fit: BoxFit.cover,
+                        width: imageW,
+                        height: imageH,
+                        decodeWidthLogical: imageW,
+                        onSettled: waitForImage && imageUrl.isNotEmpty
+                            ? () => _onListImageSettled(waitId)
+                            : null,
+                        errorBuilder: (_, __, ___) => Container(
+                          color: const Color(0xFFF2F2F2),
+                          alignment: Alignment.center,
+                          child: Icon(
+                            Icons.broken_image_outlined,
+                            size: healthDp(context, 40),
+                            color: const Color(0xFFBDBDBD),
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                ),
+                  SizedBox(height: healthDp(context, 12)),
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: _textDark,
+                      fontSize: healthSp(context, 14),
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: healthSp(context, -1.26),
+                    ),
+                  ),
+                ],
               ),
-              SizedBox(height: healthDp(context, 12)),
-              Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: _textDark,
-                  fontSize: healthSp(context, 14),
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w500,
-                  letterSpacing: healthSp(context, -1.26),
-                ),
-              ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
+    );
+  }
+
+  String _imageUrlOf(Map<String, dynamic> item) {
+    return _resolveContentImageUrl(
+      thumbnail: item['thumbnail_url'],
+      contentHtml: item['content_html'],
     );
   }
 

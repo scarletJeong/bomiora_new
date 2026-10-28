@@ -11,6 +11,7 @@ import '../../../data/repositories/product/product_repository.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/banner_service.dart';
 import '../../../data/services/community_prefetch.dart';
+import '../../../data/services/content_service.dart';
 import '../../../data/services/fcm_service_stub.dart'
     if (dart.library.io) '../../../data/services/fcm_service.dart';
 import '../../home/screens/home_screen.dart';
@@ -142,6 +143,7 @@ class _SplashScreenState extends State<SplashScreen> {
     Future<List<Product>> productsFuture,
   ) async {
     if (!mounted) return;
+    unawaited(ContentService.getHomePreviewList());
 
     final results = await Future.wait<Object>([
       bannersFuture,
