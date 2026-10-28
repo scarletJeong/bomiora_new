@@ -36,21 +36,17 @@ class _KeyboardFieldLiftState extends State<KeyboardFieldLift>
   Timer? _releaseTimer;
   ScrollPosition? _lastPosition;
   double _latchedKeyboard = 0;
-  double _placedForKeyboard = 0;
   double? _pinnedPixels;
   bool _restoringPin = false;
-  bool _correctAfterType = false;
-  BuildContext? _lastFieldContext;
   late final void Function() _unsubscribeWebKeyboard;
-  late final void Function() _unsubscribeFirstInput;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     FocusManager.instance.addListener(_onFocusChanged);
+    ensureWebKeyboardOverlayMode();
     _unsubscribeWebKeyboard = subscribeWebKeyboardOverlap(_scheduleLift);
-    _unsubscribeFirstInput = subscribeWebFirstInput(_onFirstWebInput);
   }
 
   @override
@@ -58,23 +54,9 @@ class _KeyboardFieldLiftState extends State<KeyboardFieldLift>
     _releaseTimer?.cancel();
     _detachPinnedPosition();
     _unsubscribeWebKeyboard();
-    _unsubscribeFirstInput();
     FocusManager.instance.removeListener(_onFocusChanged);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
-  }
-
-  void _onFirstWebInput() {
-    if (!_extra.hold) return;
-    _correctAfterType = true;
-    _placedForKeyboard = 0;
-    for (final delay in const [50, 180]) {
-      Future<void>.delayed(Duration(milliseconds: delay), () {
-        if (!mounted || !_extra.hold) return;
-        _placedForKeyboard = 0;
-        _liftFocusedField();
-      });
-    }
   }
 
   @override
@@ -86,11 +68,6 @@ class _KeyboardFieldLiftState extends State<KeyboardFieldLift>
     final field = _editableContext(FocusManager.instance.primaryFocus?.context);
     if (field != null || webEditingElementFocused()) {
       _extra.hold = true;
-      if (field != null && !identical(field, _lastFieldContext)) {
-        _lastFieldContext = field;
-        _correctAfterType = false;
-        resetWebFirstInput();
-      }
       setWebInputScrollLock(true);
     }
     final generation = ++_focusGeneration;
@@ -135,10 +112,7 @@ class _KeyboardFieldLiftState extends State<KeyboardFieldLift>
             webEditingElementFocused();
         if (stillEditing) return;
         _latchedKeyboard = 0;
-        _placedForKeyboard = 0;
         _pinnedPixels = null;
-        _correctAfterType = false;
-        _lastFieldContext = null;
         _extra
           ..hold = false
           ..bottom = 0;
@@ -180,8 +154,8 @@ class _KeyboardFieldLiftState extends State<KeyboardFieldLift>
     const accessory = kIsWeb ? _kWebAccessoryBar : 0.0;
     final visibleTop = view.padding.top / dpr + gap;
     final overlap = currentWebKeyboardOverlap();
-    // 글자를 칠 때 iOS가 화면을 밀면 Flutter Transform으로 그 밀림을 되돌린다.
-    // 칸 위치는 밀리기 전 좌표 기준으로 잡는다.
+    // Flutter 좌표는 레이아웃 화면. 브라우저가 민 화면(visibleTop)과 섞지 않는다.
+    // 글자 입력 때 칸을 키보드에 붙이는 쪽은 web_keyboard_inset_web 에서 되돌린다.
     final viewBottom = overlap.visibleHeight > 1
         ? overlap.visibleHeight
         : screenHeight - keyboard;
@@ -201,15 +175,7 @@ class _KeyboardFieldLiftState extends State<KeyboardFieldLift>
     final position = scrollable.position;
     _attachPinnedPosition(position);
 
-    // 한 번 올려 둔 뒤에는 글자마다 다시 맞추지 않는다.
-    // 첫 글자를 칠 때 칸이 내려간 경우만 한 번 더 올린다.
-    final keyboardGrew = keyboard - _placedForKeyboard >= 24;
-    if (_placedForKeyboard > 0 && !keyboardGrew && !_correctAfterType) {
-      return;
-    }
-    _correctAfterType = false;
-    if (delta < 12) {
-      _placedForKeyboard = keyboard;
+    if (delta < 16) {
       _pinnedPixels = position.pixels;
       return;
     }
@@ -220,13 +186,11 @@ class _KeyboardFieldLiftState extends State<KeyboardFieldLift>
     final max = position.maxScrollExtent + slack;
     final target =
         (position.pixels + delta).clamp(position.minScrollExtent, max);
-    if ((target - position.pixels).abs() < 12) {
-      _placedForKeyboard = keyboard;
+    if ((target - position.pixels).abs() < 16) {
       _pinnedPixels = position.pixels;
       return;
     }
     position.jumpTo(target);
-    _placedForKeyboard = keyboard;
     _pinnedPixels = target;
   }
 
@@ -463,8 +427,9 @@ void liftContextAboveKeyboard(BuildContext context) {
 
   const gap = 16.0;
   const accessory = kIsWeb ? _kWebAccessoryBar : 0.0;
-  final viewBottom =
-      web.visibleHeight > 1 ? web.visibleHeight : screenHeight - keyboard;
+  final viewBottom = web.visibleHeight > 1
+      ? web.visibleHeight
+      : screenHeight - keyboard;
   final visibleBottom = viewBottom - gap - accessory;
   final fieldBottom = box.localToGlobal(Offset.zero).dy + box.size.height;
   if (fieldBottom <= visibleBottom + 1) return;

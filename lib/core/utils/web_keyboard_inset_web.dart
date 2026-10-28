@@ -1,19 +1,27 @@
 import 'dart:html' as html;
+import 'dart:js_util' as js_util;
 
 import 'package:bomiora_app/core/utils/web_keyboard_overlap.dart';
 
 export 'package:bomiora_app/core/utils/web_keyboard_overlap.dart';
 
+const _kOverlayToken = 'interactive-widget=overlays-content';
+const _kGap = 16.0;
+const _kAccessory = 56.0;
+const _kCoverSlop = 8.0;
+const _kMaxShift = 240.0;
+
 void Function()? _onChange;
-void Function()? _onFirstInput;
 html.EventListener? _resizeListener;
 html.EventListener? _scrollListener;
 html.EventListener? _inputListener;
+html.MutationObserver? _viewportObserver;
 bool _listening = false;
 bool _pinning = false;
 bool _scrollLocked = false;
-bool _firstInputFired = false;
+bool _compensateQueued = false;
 double _lastNotifiedBottom = 0;
+double _appliedShift = 0;
 
 WebKeyboardOverlap currentWebKeyboardOverlap() {
   try {
@@ -42,24 +50,18 @@ void Function() subscribeWebKeyboardOverlap(void Function() onChange) {
   _onChange = onChange;
   try {
     _ensureListening();
+    ensureWebKeyboardOverlayMode();
   } catch (_) {}
   return () {
     if (_onChange == onChange) _onChange = null;
   };
 }
 
-void resetWebFirstInput() {
-  _firstInputFired = false;
-}
-
-void Function() subscribeWebFirstInput(void Function() onFirstInput) {
-  _onFirstInput = onFirstInput;
-  try {
-    _ensureListening();
-  } catch (_) {}
-  return () {
-    if (_onFirstInput == onFirstInput) _onFirstInput = null;
-  };
+/// 키보드가 페이지를 줄이거나 밀어 올리지 않고 위에 겹치게 한다.
+void ensureWebKeyboardOverlayMode() {
+  _setVirtualKeyboardOverlays(true);
+  _ensureOverlayViewport();
+  _observeViewportMeta();
 }
 
 void pinWebDocumentScroll() {
@@ -78,9 +80,12 @@ void pinWebDocumentScroll() {
 void stickWebVisualViewport() {
   if (!_scrollLocked) return;
   pinWebDocumentScroll();
+  _queueCompensate();
 }
 
-void clearWebVisualViewportStick() {}
+void clearWebVisualViewportStick() {
+  _applyShift(0);
+}
 
 bool webEditingElementFocused() {
   try {
@@ -97,40 +102,15 @@ bool webEditingElementFocused() {
 
 void setWebInputScrollLock(bool lock) {
   if (lock) {
-    if (_scrollLocked) {
-      pinWebDocumentScroll();
-      return;
-    }
+    ensureWebKeyboardOverlayMode();
     _scrollLocked = true;
-    _firstInputFired = false;
-    _bindFirstInput();
     pinWebDocumentScroll();
+    _queueCompensate();
     return;
   }
   if (!_scrollLocked) return;
   _scrollLocked = false;
-  _firstInputFired = false;
-  _unbindFirstInput();
   clearWebVisualViewportStick();
-}
-
-void _bindFirstInput() {
-  if (_inputListener != null) return;
-  _inputListener = (_) {
-    if (!_scrollLocked || _firstInputFired) return;
-    _firstInputFired = true;
-    try {
-      _onFirstInput?.call();
-    } catch (_) {}
-  };
-  html.document.addEventListener('input', _inputListener, true);
-}
-
-void _unbindFirstInput() {
-  final listener = _inputListener;
-  if (listener == null) return;
-  html.document.removeEventListener('input', listener, true);
-  _inputListener = null;
 }
 
 void _ensureListening() {
@@ -140,10 +120,15 @@ void _ensureListening() {
   _resizeListener = (_) {
     try {
       stickWebVisualViewport();
-      _notifyKeyboardGeometryChange();
+      _notifyKeyboardHeightChange();
     } catch (_) {}
   };
   _scrollListener = (_) {
+    try {
+      stickWebVisualViewport();
+    } catch (_) {}
+  };
+  _inputListener = (_) {
     try {
       stickWebVisualViewport();
     } catch (_) {}
@@ -153,16 +138,141 @@ void _ensureListening() {
   viewport?.addEventListener('scroll', _scrollListener);
   html.window.addEventListener('resize', _resizeListener);
   html.window.addEventListener('scroll', _scrollListener);
+  html.document.addEventListener('input', _inputListener, true);
 }
 
-void _notifyKeyboardGeometryChange() {
+void _notifyKeyboardHeightChange() {
   final bottom = currentWebKeyboardOverlap().bottom;
   final openedOrClosed = (bottom > 1) != (_lastNotifiedBottom > 1);
-  final heightChanged = (bottom - _lastNotifiedBottom).abs() >= 24;
+  final heightChanged = (bottom - _lastNotifiedBottom).abs() >= 16;
   if (!openedOrClosed && !heightChanged) return;
   _lastNotifiedBottom = bottom;
   try {
     _onChange?.call();
+  } catch (_) {}
+}
+
+void _queueCompensate() {
+  if (_compensateQueued || !_scrollLocked) return;
+  _compensateQueued = true;
+  html.window.requestAnimationFrame((_) {
+    _compensateQueued = false;
+    if (!_scrollLocked) return;
+    _compensateFocusedInput();
+  });
+}
+
+/// 브라우저가 실제 &lt;input&gt;을 키보드에 붙였으면, 그림과 입력창만 같이 올린다.
+/// flutter-view / body 는 건드리지 않는다.
+void _compensateFocusedInput() {
+  final input = _focusedInput();
+  final viewport = html.window.visualViewport;
+  if (input == null || viewport == null) {
+    _applyShift(0);
+    return;
+  }
+
+  final rect = input.getBoundingClientRect();
+  final visibleHeight = _px(viewport.height);
+  if (visibleHeight < 1) return;
+
+  final distLayout = (_px(viewport.offsetTop) + visibleHeight) - rect.bottom;
+  final distVisual = visibleHeight - rect.bottom;
+  final dist = distLayout < distVisual ? distLayout : distVisual;
+  final overflow = (_kGap + _kAccessory) - dist;
+  if (overflow <= _kCoverSlop) return;
+
+  _applyShift(_appliedShift + overflow);
+}
+
+void _applyShift(double shift) {
+  if (shift < 0) shift = 0;
+  if (shift > _kMaxShift) shift = _kMaxShift;
+  if ((shift - _appliedShift).abs() < 1) {
+    _appliedShift = shift;
+    return;
+  }
+  _appliedShift = shift;
+  final value = shift > 0 ? 'translate3d(0px, ${-shift}px, 0px)' : '';
+  _setPaneTransform('flt-glass-pane', value);
+  _setPaneTransform('flt-text-editing-host', value);
+}
+
+void _setPaneTransform(String tag, String value) {
+  try {
+    final nodes = html.document.getElementsByTagName(tag);
+    for (var i = 0; i < nodes.length; i++) {
+      final node = nodes[i];
+      if (node is! html.Element) continue;
+      if (value.isEmpty) {
+        node.style.removeProperty('transform');
+      } else {
+        node.style.setProperty('transform', value);
+      }
+    }
+  } catch (_) {}
+}
+
+html.Element? _focusedInput() {
+  try {
+    final active = html.document.activeElement;
+    if (active == null) return null;
+    final tag = active.tagName.toLowerCase();
+    if (tag == 'input' || tag == 'textarea') return active;
+    return null;
+  } catch (_) {
+    return null;
+  }
+}
+
+void _setVirtualKeyboardOverlays(bool overlays) {
+  try {
+    final keyboard =
+        js_util.getProperty(html.window.navigator, 'virtualKeyboard');
+    if (keyboard != null) {
+      js_util.setProperty(keyboard, 'overlaysContent', overlays);
+    }
+  } catch (_) {}
+}
+
+void _ensureOverlayViewport() {
+  try {
+    final head = html.document.head;
+    if (head == null) return;
+    final metas = head.querySelectorAll('meta[name="viewport"]');
+    if (metas.isEmpty) return;
+    for (final node in metas) {
+      if (node is! html.MetaElement) continue;
+      final content = node.content;
+      if (content.contains(_kOverlayToken)) return;
+      if (content.contains('interactive-widget=')) {
+        node.content = content.replaceFirst(
+          RegExp(r'interactive-widget\s*=\s*[^,]+'),
+          _kOverlayToken,
+        );
+        return;
+      }
+      node.content = '$content, $_kOverlayToken';
+      return;
+    }
+  } catch (_) {}
+}
+
+void _observeViewportMeta() {
+  if (_viewportObserver != null) return;
+  final head = html.document.head;
+  if (head == null) return;
+  try {
+    _viewportObserver = html.MutationObserver((mutations, observer) {
+      _ensureOverlayViewport();
+    });
+    _viewportObserver!.observe(
+      head,
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['content'],
+    );
   } catch (_) {}
 }
 
