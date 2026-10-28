@@ -28,15 +28,15 @@ class _ReviewBestScreenState extends State<ReviewBestScreen> {
   static const Color _muted = Color(0xFF898686);
   static const Color _border = Color(0x7FD2D2D2);
   static const String _font = 'Gmarket Sans TTF';
-  static const int _pageSize = 5;
+  static const int _pageSize = 4;
 
   final ScrollController _scrollController = ScrollController();
   final Map<int, GlobalKey> _itemKeys = {};
 
   int _page = 0;
-  int _totalPages = 0;
-  int _totalElements = 0;
+  bool _hasNext = false;
   bool _loading = true;
+  bool _loadingMore = false;
   List<MainHomeReviewModel> _reviews = [];
   MainReviewStats _stats = const MainReviewStats();
   int? _expandedMrNo;
@@ -48,7 +48,7 @@ class _ReviewBestScreenState extends State<ReviewBestScreen> {
     super.initState();
     _expandedMrNo = widget.initialMrNo;
     _loadAuth();
-    _load(page: 0, focusMrNo: widget.initialMrNo);
+    _load(focusMrNo: widget.initialMrNo);
   }
 
   Future<void> _loadAuth() async {
@@ -73,43 +73,86 @@ class _ReviewBestScreenState extends State<ReviewBestScreen> {
 
   GlobalKey _keyFor(int mrNo) => _itemKeys.putIfAbsent(mrNo, () => GlobalKey());
 
-  Future<void> _load({required int page, int? focusMrNo}) async {
+  Future<void> _load({int? focusMrNo}) async {
     setState(() {
       _loading = true;
-      _page = page;
+      _loadingMore = false;
+      _page = 0;
+      _hasNext = false;
       _didScrollToInitial = false;
     });
-    final result = await ReviewService.getMainHomeReviewsBest(
-      page: page,
-      size: _pageSize,
-      mrNo: focusMrNo,
-    );
+    final ok = await _fetchPage(page: 0, append: false);
     if (!mounted) return;
-    setState(() {
-      _loading = false;
-      if (result['success'] == true) {
-        _reviews = List<MainHomeReviewModel>.from(
-          result['reviews'] as List<MainHomeReviewModel>? ?? const [],
-        );
-        _totalPages = _asInt(result['totalPages']);
-        _totalElements = _asInt(result['totalElements']);
-        _page = _asInt(result['currentPage'], fallback: page);
-        _stats = result['stats'] is MainReviewStats
-            ? result['stats'] as MainReviewStats
-            : const MainReviewStats();
-      } else {
-        _reviews = [];
-        _totalPages = 0;
-        _totalElements = 0;
-      }
-    });
 
     final target = focusMrNo ?? widget.initialMrNo;
+    if (ok && target != null && target > 0) {
+      var guard = 0;
+      while (mounted &&
+          _hasNext &&
+          !_reviews.any((review) => review.mrNo == target) &&
+          guard < 30) {
+        guard += 1;
+        final more = await _fetchPage(page: _page + 1, append: true);
+        if (!more) break;
+      }
+    }
+    if (!mounted) return;
+    setState(() => _loading = false);
+
     if (target != null && target > 0) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _scrollToMrNo(target);
       });
     }
+  }
+
+  Future<void> _loadMore() async {
+    if (_loading || _loadingMore || !_hasNext) return;
+    setState(() => _loadingMore = true);
+    await _fetchPage(page: _page + 1, append: true);
+    if (!mounted) return;
+    setState(() => _loadingMore = false);
+  }
+
+  Future<bool> _fetchPage({required int page, required bool append}) async {
+    final result = await ReviewService.getMainHomeReviewsBest(
+      page: page,
+      size: _pageSize,
+    );
+    if (!mounted) return false;
+    if (result['success'] != true) {
+      if (!append) {
+        setState(() {
+          _reviews = [];
+          _hasNext = false;
+          _page = 0;
+          _stats = const MainReviewStats();
+        });
+      }
+      return false;
+    }
+
+    final incoming = List<MainHomeReviewModel>.from(
+      result['reviews'] as List<MainHomeReviewModel>? ?? const [],
+    );
+    final stats = result['stats'] is MainReviewStats
+        ? result['stats'] as MainReviewStats
+        : const MainReviewStats();
+    setState(() {
+      if (append) {
+        final seen = _reviews.map((review) => review.mrNo).toSet();
+        _reviews = [
+          ..._reviews,
+          ...incoming.where((review) => seen.add(review.mrNo)),
+        ];
+      } else {
+        _reviews = incoming;
+      }
+      _page = _asInt(result['currentPage'], fallback: page);
+      _hasNext = result['hasNext'] == true;
+      _stats = stats;
+    });
+    return true;
   }
 
   /// 헤더(카운트+통계) + 카드(이미지 320 등) 대략 높이 — healthDp 기준
@@ -278,7 +321,7 @@ class _ReviewBestScreenState extends State<ReviewBestScreen> {
             children: [
               RefreshIndicator(
             color: _pink,
-            onRefresh: () => _load(page: _page),
+            onRefresh: _load,
             child: CustomScrollView(
               controller: _scrollController,
               cacheExtent: 5000,
@@ -320,9 +363,9 @@ class _ReviewBestScreenState extends State<ReviewBestScreen> {
                     sliver: SliverList(
                       delegate: SliverChildListDelegate([
                         ..._buildReviewItems(context),
-                        if (_totalPages > 1) ...[
+                        if (_hasNext) ...[
                           SizedBox(height: healthDp(context, 24)),
-                          _buildPagination(context),
+                          _buildLoadMoreButton(context),
                         ],
                       ]),
                     ),
@@ -367,7 +410,7 @@ class _ReviewBestScreenState extends State<ReviewBestScreen> {
                 ),
               ),
               TextSpan(
-                text: '$_totalElements ',
+                text: '${_stats.totalCount} ',
                 style: TextStyle(
                   color: _pink,
                   fontSize: healthSp(context, 12),
@@ -524,89 +567,41 @@ class _ReviewBestScreenState extends State<ReviewBestScreen> {
     return widgets;
   }
 
-  Widget _buildPagination(BuildContext context) {
-    const maxShow = 5;
-    var start = (_page - (maxShow ~/ 2))
-        .clamp(0, (_totalPages - maxShow).clamp(0, _totalPages));
-    var end = (start + maxShow).clamp(0, _totalPages);
-    if (end - start < maxShow && _totalPages >= maxShow) {
-      start = (end - maxShow).clamp(0, _totalPages);
-    }
-
-    return Column(
-      children: [
-        Container(
-          width: double.infinity,
-          height: healthDp(context, 1),
-          color: _border,
-        ),
-        SizedBox(height: healthDp(context, 5)),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _pageIconBtn(
-              context,
-              icon: Icons.chevron_left,
-              enabled: _page > 0,
-              onTap: () => _load(page: _page - 1),
-            ),
-            for (var p = start; p < end; p++)
-              _pageNumBtn(context, p, selected: p == _page),
-            _pageIconBtn(
-              context,
-              icon: Icons.chevron_right,
-              enabled: _page < _totalPages - 1,
-              onTap: () => _load(page: _page + 1),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _pageIconBtn(
-    BuildContext context, {
-    required IconData icon,
-    required bool enabled,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: enabled ? onTap : null,
-      child: SizedBox(
-        width: healthDp(context, 30),
-        height: healthDp(context, 30),
-        child: Icon(
-          icon,
-          size: healthDp(context, 20),
-          color: enabled ? _ink : _muted.withValues(alpha: 0.5),
-        ),
-      ),
-    );
-  }
-
-  Widget _pageNumBtn(BuildContext context, int page, {required bool selected}) {
-    return GestureDetector(
-      onTap: selected ? null : () => _load(page: page),
-      child: Container(
-        width: healthDp(context, 30),
-        height: healthDp(context, 30),
-        margin: EdgeInsets.symmetric(horizontal: healthDp(context, 2)),
-        alignment: Alignment.center,
-        decoration: ShapeDecoration(
-          color: selected ? const Color(0xCCFF5A8D) : Colors.transparent,
+  Widget _buildLoadMoreButton(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: healthDp(context, 40),
+      child: OutlinedButton(
+        onPressed: _loadingMore ? null : _loadMore,
+        style: OutlinedButton.styleFrom(
+          side: BorderSide(
+            width: healthDp(context, 0.5),
+            color: _border,
+          ),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(healthDp(context, 7)),
+            borderRadius: BorderRadius.circular(healthDp(context, 10)),
           ),
+          backgroundColor: Colors.white,
         ),
-        child: Text(
-          '${page + 1}',
-          style: TextStyle(
-            color: selected ? Colors.white : const Color(0x7F898686),
-            fontSize: healthSp(context, 14),
-            fontFamily: _font,
-            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-          ),
-        ),
+        child: _loadingMore
+            ? SizedBox(
+                width: healthDp(context, 20),
+                height: healthDp(context, 20),
+                child: const CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: _pink,
+                ),
+              )
+            : Text(
+                '더보기',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: _muted,
+                  fontSize: healthSp(context, 16),
+                  fontFamily: _font,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
       ),
     );
   }
