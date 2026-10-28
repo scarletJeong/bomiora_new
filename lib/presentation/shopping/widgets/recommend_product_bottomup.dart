@@ -8,7 +8,6 @@ import '../../common/widgets/centered_empty_state.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/product_card.dart';
 import '../../health/health_common/health_responsive_scale.dart';
-import 'recommend_product.dart';
 
 /// 한 화면에 모두 보이는 추천 카드 수 (스크롤 없음)
 const int kRecommendBottomSheetVisibleCount = 3;
@@ -61,8 +60,9 @@ Widget _buildFixedRecommendRow({
     innerWidth,
     itemCount: kRecommendBottomSheetVisibleCount,
   );
-  final imageHeight =
-      detailDesign ? healthDp(context, 118) : layout.imageSize;
+  final imageHeight = detailDesign
+      ? layout.cardWidth * 118 / 105
+      : layout.imageSize;
   final textBlockHeight = detailDesign
       ? _detailRecommendTextBlockHeight(context)
       : layout.textBlockHeight;
@@ -163,10 +163,10 @@ Future<void> showRecommendProductBottomup({
     backgroundColor: Colors.transparent,
     barrierColor: Colors.black.withValues(alpha: 0.45),
     constraints: BoxConstraints(maxWidth: contentW),
-    shape: const RoundedRectangleBorder(
+    shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.only(
-        topLeft: Radius.circular(50),
-        topRight: Radius.circular(50),
+        topLeft: Radius.circular(healthDp(context, 50)),
+        topRight: Radius.circular(healthDp(context, 50)),
       ),
     ),
     builder: (context) {
@@ -259,7 +259,8 @@ class _RecommendProductBottomSheetState extends State<RecommendProductBottomShee
 
   @override
   Widget build(BuildContext context) {
-    final sheetPadding = healthDp(context, 30);
+    final sheetPadding = healthDp(context, 20);
+    final topRadius = healthDp(context, 50);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -267,8 +268,8 @@ class _RecommendProductBottomSheetState extends State<RecommendProductBottomShee
 
         return ClipRRect(
           borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(healthDp(context, 30)),
-            topRight: Radius.circular(healthDp(context, 30)),
+            topLeft: Radius.circular(topRadius),
+            topRight: Radius.circular(topRadius),
           ),
           child: Container(
             width: double.infinity,
@@ -276,28 +277,23 @@ class _RecommendProductBottomSheetState extends State<RecommendProductBottomShee
             child: SafeArea(
               top: false,
               child: Padding(
-                padding: EdgeInsets.fromLTRB(
-                  sheetPadding,
-                  healthDp(context, 10),
-                  sheetPadding,
-                  sheetPadding,
-                ),
+                padding: EdgeInsets.all(sheetPadding),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Center(
-                      child: Container(
-                        width: healthDp(context, 40),
-                        height: healthDp(context, 4),
-                        decoration: BoxDecoration(
-                          color: Colors.grey[300],
+                    Container(
+                      width: healthDp(context, 45),
+                      height: healthDp(context, 4),
+                      decoration: ShapeDecoration(
+                        color: const Color(0xFFD2D2D2),
+                        shape: RoundedRectangleBorder(
                           borderRadius:
-                              BorderRadius.circular(healthDp(context, 2)),
+                              BorderRadius.circular(healthDp(context, 10)),
                         ),
                       ),
                     ),
-                    SizedBox(height: healthDp(context, 16)),
+                    SizedBox(height: healthDp(context, 20)),
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
@@ -308,7 +304,7 @@ class _RecommendProductBottomSheetState extends State<RecommendProductBottomShee
                               color: const Color(0xFF1A1A1E),
                               fontSize: healthSp(context, 16),
                               fontFamily: 'Gmarket Sans TTF',
-                              fontWeight: FontWeight.w500,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
                         ),
@@ -319,52 +315,43 @@ class _RecommendProductBottomSheetState extends State<RecommendProductBottomShee
                               widget.onGoToCart!();
                             },
                             behavior: HitTestBehavior.opaque,
-                            child: Padding(
-                              padding: EdgeInsets.only(
-                                left: healthDp(context, 8),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    '바로가기',
-                                    style: TextStyle(
-                                      color: const Color(0xFF898686),
-                                      fontSize: healthSp(context, 11),
-                                      fontFamily: 'Gmarket Sans TTF',
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                  Icon(
-                                    Icons.chevron_right,
-                                    size: healthDp(context, 15),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  '바로가기',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
                                     color: const Color(0xFF898686),
+                                    fontSize: healthSp(context, 13),
+                                    fontFamily: 'Gmarket Sans TTF',
+                                    fontWeight: FontWeight.w500,
                                   ),
-                                ],
-                              ),
+                                ),
+                                Icon(
+                                  Icons.chevron_right,
+                                  size: healthDp(context, 12),
+                                  color: const Color(0xFF898686),
+                                ),
+                              ],
                             ),
                           ),
                       ],
                     ),
-                    SizedBox(height: healthDp(context, 10)),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Container(
-                          width: healthDp(context, 1),
-                          height: healthDp(context, 14),
-                          margin: EdgeInsets.only(right: healthDp(context, 6)),
-                          color: const Color(0xFF1A1A1A),
+                    SizedBox(height: healthDp(context, 20)),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        widget.title,
+                        style: TextStyle(
+                          color: const Color(0xFF1A1A1E),
+                          fontSize: healthSp(context, 16),
+                          fontFamily: 'Gmarket Sans TTF',
+                          fontWeight: FontWeight.w500,
                         ),
-                        Expanded(
-                          child: Text(
-                            widget.title,
-                            style: shoppingSectionTitleStyle(context),
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
-                    SizedBox(height: healthDp(context, 12)),
+                    SizedBox(height: healthDp(context, 14)),
                     _buildRecommendSection(context, innerWidth),
                     if (_primaryTap != null) ...[
                       SizedBox(height: healthDp(context, 20)),
@@ -396,13 +383,13 @@ class _RecommendProductBottomSheetState extends State<RecommendProductBottomShee
                                 )
                               : Text(
                                   widget.primaryButtonLabel,
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: healthSp(context, 16),
-                              fontFamily: 'Gmarket Sans TTF',
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: healthSp(context, 16),
+                                    fontFamily: 'Gmarket Sans TTF',
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
                         ),
                       ),
                     ],
@@ -423,13 +410,14 @@ class _RecommendProductBottomSheetState extends State<RecommendProductBottomShee
         products: widget.products,
         onProductTap: widget.onProductTap,
         innerWidth: innerWidth,
+        detailDesign: true,
       );
     }
 
     final loader = widget.productsLoader;
     if (loader == null) {
       return SizedBox(
-        height: healthDp(context, 120),
+        height: healthDp(context, 174),
         child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -456,7 +444,7 @@ class _RecommendProductBottomSheetState extends State<RecommendProductBottomShee
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
           return SizedBox(
-            height: healthDp(context, 120),
+            height: healthDp(context, 174),
             child: const Center(
               child: CircularProgressIndicator(
                 color: Color(0xFFFF5A8D),
@@ -469,7 +457,7 @@ class _RecommendProductBottomSheetState extends State<RecommendProductBottomShee
         final loaded = snapshot.data ?? const <Product>[];
         if (loaded.isEmpty) {
           return SizedBox(
-            height: healthDp(context, 120),
+            height: healthDp(context, 174),
             child: Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -499,6 +487,7 @@ class _RecommendProductBottomSheetState extends State<RecommendProductBottomShee
           products: loaded,
           onProductTap: widget.onProductTap,
           innerWidth: innerWidth,
+          detailDesign: true,
         );
       },
     );
