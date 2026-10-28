@@ -6,7 +6,15 @@ WebKeyboardOverlap currentWebKeyboardOverlap() => WebKeyboardOverlap.none;
 
 void Function() subscribeWebKeyboardOverlap(void Function() onChange) => () {};
 
+void resetWebFirstInput() {}
+
+void Function() subscribeWebFirstInput(void Function() onFirstInput) => () {};
+
 void pinWebDocumentScroll() {}
+
+void stickWebVisualViewport() {}
+
+void clearWebVisualViewportStick() {}
 
 bool webEditingElementFocused() => false;
 

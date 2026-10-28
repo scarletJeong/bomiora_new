@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../data/services/health_profile_service.dart';
 import '../../../common/widgets/app_toast_overlay.dart';
+import '../../../common/widgets/keyboard_field_lift.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
@@ -1055,7 +1056,8 @@ class HealthProfileOtherExerciseCard extends StatelessWidget {
     return SizedBox(
       width: double.infinity,
       height: healthDp(context, 45),
-      child: TextField(
+      child: KeyboardLiftOnFocus(
+        child: TextField(
         controller: session.exerciseOtherDraftCtrl,
         focusNode: session.exerciseOtherDraftFocus,
         textInputAction: TextInputAction.done,
@@ -1100,6 +1102,7 @@ class HealthProfileOtherExerciseCard extends StatelessWidget {
                 width: healthDp(context, 1), color: const Color(0xFFFF5A8D)),
           ),
         ),
+      ),
       ),
     );
   }
@@ -1255,7 +1258,8 @@ class HealthProfileOtherMedicationCard extends StatelessWidget {
     return SizedBox(
       width: double.infinity,
       height: healthDp(context, 45),
-      child: TextField(
+      child: KeyboardLiftOnFocus(
+        child: TextField(
         controller: session.medicationOtherDraftCtrl,
         focusNode: session.medicationOtherDraftFocus,
         textInputAction: TextInputAction.done,
@@ -1303,6 +1307,7 @@ class HealthProfileOtherMedicationCard extends StatelessWidget {
                 width: healthDp(context, 1), color: const Color(0xFFFF5A8D)),
           ),
         ),
+      ),
       ),
     );
   }

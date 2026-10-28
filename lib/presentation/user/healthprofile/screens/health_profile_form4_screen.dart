@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../common/widgets/keyboard_field_lift.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 import '../widgets/health_profile_common.dart';
 import '../widgets/health_profile_form_session.dart';
@@ -355,7 +356,8 @@ class _HealthProfileForm4State extends State<HealthProfileForm4Screen> {
         SizedBox(height: healthDp(context, 10)),
         SizedBox(
           height: healthDp(context, 45),
-          child: TextFormField(
+          child: KeyboardLiftOnFocus(
+            child: TextFormField(
             key: ValueKey<String>('diet_$id:$session.dietDetailResetTick'),
             initialValue: session.formData[id]?.toString() ?? '',
             textAlignVertical: TextAlignVertical.center,
@@ -403,6 +405,7 @@ class _HealthProfileForm4State extends State<HealthProfileForm4Screen> {
               setState(() {});
             },
             onSaved: (v) => session.formData[id] = v ?? '',
+          ),
           ),
         ),
       ],

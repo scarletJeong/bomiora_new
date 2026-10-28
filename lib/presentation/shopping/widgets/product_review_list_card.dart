@@ -12,6 +12,25 @@ import '../../../data/services/coupon_service.dart';
 import '../../common/widgets/app_star_rating.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 
+/// 상세 리뷰 잠금. 분홍 원 안에 자물쇠, 여백은 375 기준.
+Widget productDetailReviewLockBadge(BuildContext context) {
+  return Container(
+    padding: EdgeInsets.all(healthDp(context, 10)),
+    decoration: ShapeDecoration(
+      color: const Color(0xFFFCF3F6),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(healthDp(context, 100)),
+      ),
+    ),
+    child: SvgPicture.asset(
+      AppAssets.productDetailReviewLockIcon,
+      width: healthDp(context, 18),
+      height: healthDp(context, 20),
+      fit: BoxFit.contain,
+    ),
+  );
+}
+
 const _kGmarket = 'Gmarket Sans TTF';
 const _kPink = Color(0xFFFF5A8D);
 const _kTextDark = Color(0xFF1A1A1E);
@@ -1076,6 +1095,8 @@ class ProductReviewListSection extends StatelessWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    productDetailReviewLockBadge(context),
+                    SizedBox(height: healthDp(context, 14)),
                     Text(
                       '의료법에 의거하여 의약품 후기는',
                       textAlign: TextAlign.center,

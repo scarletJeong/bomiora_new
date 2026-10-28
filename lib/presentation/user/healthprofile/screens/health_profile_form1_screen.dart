@@ -6,6 +6,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../../core/constants/app_assets.dart';
 import '../../../common/widgets/app_toast_overlay.dart';
+import '../../../common/widgets/keyboard_field_lift.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 import '../widgets/health_profile_common.dart';
@@ -340,7 +341,8 @@ class _HealthProfileForm1State extends State<HealthProfileForm1Screen> {
                           BorderRadius.circular(healthDp(context, 15)),
                     ),
                   ),
-                  child: TextFormField(
+                  child: KeyboardLiftOnFocus(
+                    child: TextFormField(
                     key: ValueKey<int>(session.wizardBirthFieldKeySeed),
                     initialValue: session.birthYyyymmddDisplay(),
                     keyboardType: TextInputType.number,
@@ -411,6 +413,7 @@ class _HealthProfileForm1State extends State<HealthProfileForm1Screen> {
                         session.formData['birth_day'] = s.substring(6, 8);
                       }
                     },
+                  ),
                   ),
                 ),
               ),
@@ -846,7 +849,8 @@ class _HealthProfileForm1State extends State<HealthProfileForm1Screen> {
                           child: Row(
                             children: [
                               Expanded(
-                                child: TextFormField(
+                                child: KeyboardLiftOnFocus(
+                                  child: TextFormField(
                                   initialValue: state.value,
                                   textAlignVertical: TextAlignVertical.center,
                                   keyboardType: allowDecimal
@@ -892,6 +896,7 @@ class _HealthProfileForm1State extends State<HealthProfileForm1Screen> {
                                   },
                                   validator: (_) => null,
                                   onSaved: (_) {},
+                                ),
                                 ),
                               ),
                               SizedBox(width: healthDp(context, 8)),

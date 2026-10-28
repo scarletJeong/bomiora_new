@@ -1,9 +1,11 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/services.dart';
 import '../../../../core/navigation/app_navigator_key.dart';
+import '../../../../core/utils/web_keyboard_inset.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../data/models/cart/cart_item_model.dart';
 import '../../../../data/models/shop_default/reservation_settings_model.dart';
@@ -68,6 +70,8 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
 
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
+  final FocusNode _nameFocus = FocusNode();
+  final FocusNode _phoneFocus = FocusNode();
   final ScrollController _scrollController = ScrollController();
   final GlobalKey _contactSectionKey = GlobalKey();
   
@@ -81,6 +85,8 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
     });
     _nameController.addListener(_onContactChanged);
     _phoneController.addListener(_onContactChanged);
+    _nameFocus.addListener(_onContactFieldFocus);
+    _phoneFocus.addListener(_onContactFieldFocus);
     _bootstrap();
   }
 
@@ -133,8 +139,12 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
   void dispose() {
     _nameController.removeListener(_onContactChanged);
     _phoneController.removeListener(_onContactChanged);
+    _nameFocus.removeListener(_onContactFieldFocus);
+    _phoneFocus.removeListener(_onContactFieldFocus);
     _nameController.dispose();
     _phoneController.dispose();
+    _nameFocus.dispose();
+    _phoneFocus.dispose();
     _scrollController.dispose();
     _selectedDate.dispose();
     _selectedTime.dispose();
@@ -154,6 +164,71 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
       curve: Curves.easeOut,
       alignment: 0.05,
     );
+  }
+
+  void _onContactFieldFocus() {
+    if (!_nameFocus.hasFocus && !_phoneFocus.hasFocus) return;
+    _liftContactField();
+    for (final delay in const [80, 240, 520]) {
+      Future<void>.delayed(Duration(milliseconds: delay), () {
+        if (!mounted) return;
+        if (!_nameFocus.hasFocus && !_phoneFocus.hasFocus) return;
+        _liftContactField();
+      });
+    }
+  }
+
+  void _liftContactField() {
+    if (!_scrollController.hasClients) return;
+    final focusContext = _nameFocus.hasFocus
+        ? _nameFocus.context
+        : _phoneFocus.hasFocus
+            ? _phoneFocus.context
+            : _contactSectionKey.currentContext;
+    if (focusContext == null || !focusContext.mounted) return;
+
+    final render = focusContext.findRenderObject();
+    if (render is! RenderBox || !render.attached || !render.hasSize) return;
+
+    var box = render;
+    focusContext.visitAncestorElements((element) {
+      if (element is StatefulElement && element.state is ScrollableState) {
+        return false;
+      }
+      final ancestor = element.renderObject;
+      if (ancestor is RenderBox && ancestor.attached && ancestor.hasSize) {
+        final height = ancestor.size.height;
+        if (height + 0.5 >= box.size.height && height <= 160) {
+          box = ancestor;
+        }
+        if (height > 280) return false;
+      }
+      return true;
+    });
+
+    final view = View.of(context);
+    final dpr = view.devicePixelRatio;
+    final screenHeight = view.physicalSize.height / dpr;
+    var keyboard = view.viewInsets.bottom / dpr;
+    final web = currentWebKeyboardOverlap();
+    if (web.bottom > keyboard) keyboard = web.bottom;
+    if (keyboard < 1) return;
+
+    const gap = 16.0;
+    const accessory = kIsWeb ? 56.0 : 0.0;
+    final viewBottom = web.visibleHeight > 1
+        ? web.visibleHeight
+        : screenHeight - keyboard;
+    final visibleBottom = viewBottom - gap - accessory;
+    final fieldBottom = box.localToGlobal(Offset.zero).dy + box.size.height;
+    if (fieldBottom <= visibleBottom + 1) return;
+
+    final delta = fieldBottom - visibleBottom;
+    final position = _scrollController.position;
+    final max = position.maxScrollExtent + keyboard + gap + accessory;
+    final next = (position.pixels + delta).clamp(position.minScrollExtent, max);
+    if ((next - position.pixels).abs() < 4) return;
+    position.jumpTo(next);
   }
 
   void _onContactChanged() {
@@ -887,6 +962,7 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
     required String label,
     required String hint,
     required TextEditingController controller,
+    required FocusNode focusNode,
     required IconData icon,
     TextInputType? keyboardType,
     List<TextInputFormatter>? inputFormatters,
@@ -950,8 +1026,10 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
                 SizedBox(height: healthDp(context, 1)),
                 TextField(
                   controller: controller,
+                  focusNode: focusNode,
                   keyboardType: keyboardType,
                   inputFormatters: inputFormatters,
+                  scrollPadding: EdgeInsets.only(bottom: healthDp(context, 120)),
                   style: TextStyle(
                     color: const Color(0xFF1A1A1E),
                     fontSize: healthSp(context, 13),
@@ -1021,12 +1099,14 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
               label: '성함',
               hint: '이름을 입력해주세요',
               controller: _nameController,
+              focusNode: _nameFocus,
               icon: Icons.person_outline,
             ),
             SizedBox(height: healthDp(context, 10)),
             _buildInlineContactField(
               label: '연락처',
               hint: '연락 가능한 번호를 입력해주세요',
+              focusNode: _phoneFocus,
               controller: _phoneController,
               icon: Icons.phone_outlined,
               keyboardType: TextInputType.number,
