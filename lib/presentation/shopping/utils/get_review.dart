@@ -1,5 +1,3 @@
-import '../../../core/utils/node_value_parser.dart';
-import '../../../data/models/product/product_model.dart';
 import '../../../data/models/review/review_model.dart';
 import '../../../data/services/review_service.dart';
 
@@ -30,7 +28,6 @@ class ProductReviewLoader {
 
   static Future<ProductReviewLoadResult?> load({
     required String productId,
-    Product? product,
   }) {
     final id = productId.trim();
     if (id.isEmpty) return Future.value(null);
@@ -38,7 +35,7 @@ class ProductReviewLoader {
     if (pending != null) return pending;
 
     late final Future<ProductReviewLoadResult?> future;
-    future = _fetch(productId: id, product: product).then((result) {
+    future = _fetch(productId: id).then((result) {
       if (result != null) _memory[id] = result;
       return result;
     }).whenComplete(() {
@@ -52,35 +49,14 @@ class ProductReviewLoader {
 
   static Future<ProductReviewLoadResult?> _fetch({
     required String productId,
-    Product? product,
   }) async {
 
-    String reviewProductId = productId;
-    if (product?.additionalInfo != null) {
-      final itOrgId =
-          NodeValueParser.asString(product!.additionalInfo!['it_org_id']) ??
-              NodeValueParser.asString(product.additionalInfo!['itOrgId']);
-      if (itOrgId != null && itOrgId.isNotEmpty) {
-        reviewProductId = itOrgId;
-      }
-    }
-
-    final result = await ReviewService.getProductReviews(
-      itId: reviewProductId,
-      rvkind: null,
-      page: 0,
-      size: 24,
-      fetchAll: false,
-    );
-
-    if (result['success'] != true) {
-      return null;
-    }
-
-    final allReviews = result['reviews'] as List<ReviewModel>;
+    // 리뷰 통합(it_review_link)은 서버가 상품 번호 기준으로 풀어 준다.
+    final allReviews = await _fetchAllPages(productId);
+    if (allReviews == null) return null;
     final supporter = allReviews.where((r) => r.isSupporterReview).toList();
-    // 일반 리뷰 탭은 서포터가 아닌 리뷰. 구매 리뷰(is_rvkind=prescription)도 포함한다.
-    final general = allReviews.where((r) => !r.isSupporterReview).toList();
+    // 카페24 '전체 리뷰'와 같음. 서포터를 뺀 목록이 아니다.
+    final general = allReviews;
 
     final stats = _buildStats(allReviews: allReviews, supporter: supporter);
     return ProductReviewLoadResult(
@@ -89,6 +65,46 @@ class ProductReviewLoader {
       generalReviews: general,
       stats: stats,
     );
+  }
+
+  static int _asInt(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '') ?? 0;
+  }
+
+  /// 승인 리뷰를 페이지마다 이어서 모두 받는다. 한 페이지 상한은 200건이다.
+  static Future<List<ReviewModel>?> _fetchAllPages(String itId) async {
+    const size = 200;
+    final first = await ReviewService.getProductReviews(
+      itId: itId,
+      rvkind: null,
+      page: 0,
+      size: size,
+    );
+    if (first['success'] != true) return null;
+
+    final reviews = List<ReviewModel>.from(
+      first['reviews'] as List<ReviewModel>? ?? const [],
+    );
+    final total = _asInt(first['totalElements']);
+    var page = 1;
+    while (reviews.length < total && page < 30) {
+      final next = await ReviewService.getProductReviews(
+        itId: itId,
+        rvkind: null,
+        page: page,
+        size: size,
+      );
+      if (next['success'] != true) break;
+      final batch = List<ReviewModel>.from(
+        next['reviews'] as List<ReviewModel>? ?? const [],
+      );
+      if (batch.isEmpty) break;
+      reviews.addAll(batch);
+      page += 1;
+    }
+    return reviews;
   }
 
   static Map<String, dynamic> _buildStats({

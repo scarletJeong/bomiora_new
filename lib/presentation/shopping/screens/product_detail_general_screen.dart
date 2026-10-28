@@ -273,7 +273,6 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
     try {
       final loaded = await ProductReviewLoader.load(
         productId: widget.productId,
-        product: _product,
       );
 
       if (loaded != null) {
@@ -688,7 +687,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
                   padding: EdgeInsets.only(right: healthDp(context, 10)),
                   child: buildTabItem(
                     2,
-                    '일반 리뷰${generalReviewCount == 0 ? '(0)' : '(+$generalReviewCount)'}',
+                    '전체 리뷰${generalReviewCount == 0 ? '(0)' : '(+$generalReviewCount)'}',
                     indicatorAlign: Alignment.centerRight,
                     textAlign: TextAlign.right,
                   ),
