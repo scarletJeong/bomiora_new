@@ -7,7 +7,7 @@ import '../../presentation/common/widgets/app_toast_overlay.dart';
 import '../navigation/app_navigator_key.dart';
 import 'inf_code_tracker.dart';
 
-/// 상품 공유: 시스템 공유 시트(카톡 등)로 제목·링크 전달.
+/// 상품 공유: 휴대폰 공유 시트(카카오톡, 메시지 등)로 제목·링크를 넘긴다.
 /// 링크는 현재 웹 호스트 기준 path 라우트(`/product/:id`)를 사용합니다.
 class ProductShare {
   ProductShare._();
@@ -41,7 +41,10 @@ class ProductShare {
     return '$_productionWebOrigin${routeUri.toString()}';
   }
 
-  static Future<bool> shareProduct({
+  /// 시스템 공유 시트를 연다. 시트를 쓸 수 없을 때만 링크를 복사한다.
+  ///
+  /// 반환값: 시트를 열었으면 true, 복사로 대체했으면 false, 사용자가 닫았으면 null.
+  static Future<bool?> shareProduct({
     required BuildContext anchorContext,
     required String itId,
     required String productName,
@@ -53,11 +56,8 @@ class ProductShare {
       productKind: productKind,
       infCode: infCode,
     );
-
-    if (kIsWeb) {
-      await Clipboard.setData(ClipboardData(text: url));
-      return false;
-    }
+    final name = productName.trim().isNotEmpty ? productName.trim() : '보미오라 상품';
+    final text = '$name\n$url';
 
     final box = anchorContext.findRenderObject() as RenderBox?;
     final Rect? origin = box != null && box.hasSize
@@ -65,14 +65,16 @@ class ProductShare {
         : null;
 
     try {
-      await SharePlus.instance.share(
+      final result = await SharePlus.instance.share(
         ShareParams(
-          text: url,
-          title: productName.isNotEmpty ? productName : '보미오라 상품',
-          subject: productName.isNotEmpty ? productName : '보미오라 상품',
+          text: text,
+          title: name,
+          subject: name,
           sharePositionOrigin: origin,
+          mailToFallbackEnabled: false,
         ),
       );
+      if (result.status == ShareResultStatus.dismissed) return null;
       return true;
     } catch (e) {
       if (_shouldFallbackToClipboard(e)) {
@@ -100,10 +102,9 @@ class ProductShare {
         productKind: productKind,
         infCode: infCode,
       );
-      _showFeedback(
-        context,
-        shared ? '공유하기를 실행했습니다.' : '링크가 클립보드에 복사되었습니다.',
-      );
+      if (shared == false) {
+        _showFeedback(context, '이 기기에서는 공유 창을 열 수 없어 링크를 복사했습니다.');
+      }
     } catch (_) {
       _showFeedback(context, '공유에 실패했습니다.');
     }
@@ -124,6 +125,10 @@ class ProductShare {
       return blob.contains('missingplugin') || blob.contains('missing plugin');
     }
     final s = error.toString().toLowerCase();
-    return s.contains('missingplugin') || s.contains('missing plugin');
+    return s.contains('missingplugin') ||
+        s.contains('missing plugin') ||
+        s.contains('canshare') ||
+        s.contains('share api is not supported') ||
+        s.contains('navigator.share');
   }
 }
