@@ -496,19 +496,19 @@ class _SwipeDeleteNotificationCardState
     final type = item.type?.toLowerCase() ?? '';
     final category = item.category;
     if (type == 'point' || category.contains('포인트')) {
-      return AppAssets.menu_point_icon;
+      return AppAssets.alarmCenterIconPoint;
     }
     if (type == 'coupon' || category.contains('쿠폰')) {
-      return AppAssets.menu_coupon_icon;
+      return AppAssets.alarmCenterIconCoupon;
     }
     if (type == 'review' || category.contains('리뷰')) {
-      return AppAssets.appbarAlarmIcon;
+      return AppAssets.alarmCenterIconReview;
     }
     if (type == 'contact' ||
         type == 'inquiry' ||
         type == 'qna' ||
         category.contains('문의')) {
-      return AppAssets.menu_QA_icon;
+      return AppAssets.alarmCenterIconQA;
     }
     return AppAssets.appbarAlarmIcon;
   }

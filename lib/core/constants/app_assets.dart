@@ -125,11 +125,18 @@ abstract final class AppAssets {
   // 서포터 리뷰 카드 - 서포터 리뷰어 배지 
   static const String myReviewSupporterBadgeIcon = '${_img}myReview_supporter_badge_icon.svg';
 
+  // 알림센터 아이콘
+  static const String alarmCenterIconPoint = '${_img}alarm_center_icon_point.svg';  //포인트 알림센터
+  static const String alarmCenterIconCoupon = '${_img}alarm_center_icon_coupon.svg'; // 쿠폰(만료) 알림센터
+  static const String alarmCenterIconReview = '${_img}alarm_center_icon_review.svg'; // 리뷰 알림센터
+  static const String alarmCenterIconQA = '${_img}alarm_center_icon_QA.svg'; // 1:1문의 알림센터
+
 
   /* 4. 건강대시보드 */
   // 건강대시보드 연동 아이콘
   static const String healthConnectApple = '${_img}connect_apple.svg';
   static const String healthConnectSamsung = '${_img}connect_samsung.svg';
+  static const String healthConnectWeb = '${_img}connect_web.svg';
 
   // 그래프 확대 아이콘
   static const String healthZoomin = '${_img}graph_zoomin.svg';
