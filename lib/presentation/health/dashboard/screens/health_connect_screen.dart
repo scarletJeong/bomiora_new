@@ -238,7 +238,7 @@ class _HealthConnectScreenState extends State<HealthConnectScreen> {
         shape: BoxShape.circle,
       ),
       child: SvgPicture.asset(
-        AppAssets.mainCardIconHeartRate,
+        AppAssets.healthConnectWeb,
         width: icon,
         height: icon,
         fit: BoxFit.contain,
