@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/constants/app_assets.dart';
 
@@ -325,13 +326,14 @@ class _RecommendProductBottomSheetState extends State<RecommendProductBottomShee
                                     color: const Color(0xFF898686),
                                     fontSize: healthSp(context, 13),
                                     fontFamily: 'Gmarket Sans TTF',
-                                    fontWeight: FontWeight.w500,
+                                    fontWeight: FontWeight.w400,
                                   ),
                                 ),
-                                Icon(
-                                  Icons.chevron_right,
-                                  size: healthDp(context, 12),
-                                  color: const Color(0xFF898686),
+                                SizedBox(width: healthDp(context, 2)),
+                                SvgPicture.asset(
+                                  AppAssets.recommendProductBottomupGoToCartIcon,
+                                  width: healthDp(context, 6),
+                                  height: healthDp(context, 10),
                                 ),
                               ],
                             ),
@@ -341,13 +343,28 @@ class _RecommendProductBottomSheetState extends State<RecommendProductBottomShee
                     SizedBox(height: healthDp(context, 20)),
                     Align(
                       alignment: Alignment.centerLeft,
-                      child: Text(
-                        widget.title,
-                        style: TextStyle(
-                          color: const Color(0xFF1A1A1E),
-                          fontSize: healthSp(context, 16),
-                          fontFamily: 'Gmarket Sans TTF',
-                          fontWeight: FontWeight.w500,
+                      child: Text.rich(
+                        TextSpan(
+                          children: [
+                            TextSpan(
+                              text: '|',
+                              style: TextStyle(
+                                color: const Color(0xFF1A1A1E),
+                                fontSize: healthSp(context, 18),
+                                fontFamily: 'Gmarket Sans TTF',
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            TextSpan(
+                              text: ' ${widget.title}',
+                              style: TextStyle(
+                                color: const Color(0xFF1A1A1E),
+                                fontSize: healthSp(context, 16),
+                                fontFamily: 'Gmarket Sans TTF',
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),

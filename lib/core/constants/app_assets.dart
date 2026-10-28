@@ -134,6 +134,9 @@ abstract final class AppAssets {
   // 쇼핑몰 상세페이지 리뷰 잠금 아이콘
   static const String productDetailReviewLockIcon = '${_img}product_detail_review_lock.svg';
 
+  // 쇼핑몰 추천상품 바텀업 바로가기 아이콘
+  static const String recommendProductBottomupGoToCartIcon = '${_img}recommend_product_bottomup_go_to_cart.svg';
+
   /* 4. 건강대시보드 */
   // 건강대시보드 연동 아이콘
   static const String healthConnectApple = '${_img}connect_apple.svg';

@@ -755,30 +755,33 @@ class _SwipeDeleteQaCardState extends State<_SwipeDeleteQaCard> {
   @override
   Widget build(BuildContext context) {
     final deleteW = _deleteWidth(context);
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(widget.borderRadius),
-      child: Stack(
-        children: [
+    final swiping = _offsetX < -0.5;
+    return Stack(
+      children: [
+        if (swiping)
           Positioned.fill(
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: SizedBox(
-                width: deleteW,
-                child: Material(
-                  color: const Color(0xFFFF5A8D),
-                  child: InkWell(
-                    onTap: () {
-                      _close();
-                      widget.onDelete();
-                    },
-                    child: Center(
-                      child: Text(
-                        '삭제',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: healthSp(context, 14),
-                          fontFamily: 'Gmarket Sans TTF',
-                          fontWeight: FontWeight.w500,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(widget.borderRadius),
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: SizedBox(
+                  width: deleteW,
+                  child: Material(
+                    color: const Color(0xFFFF5A8D),
+                    child: InkWell(
+                      onTap: () {
+                        _close();
+                        widget.onDelete();
+                      },
+                      child: Center(
+                        child: Text(
+                          '삭제',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: healthSp(context, 14),
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
                     ),
@@ -787,27 +790,26 @@ class _SwipeDeleteQaCardState extends State<_SwipeDeleteQaCard> {
               ),
             ),
           ),
-          GestureDetector(
-            onHorizontalDragUpdate: _onHorizontalDragUpdate,
-            onHorizontalDragEnd: _onHorizontalDragEnd,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 160),
-              curve: Curves.easeOut,
-              transform: Matrix4.translationValues(_offsetX, 0, 0),
-              child: GestureDetector(
-                onTap: () {
-                  if (_offsetX != 0) {
-                    _close();
-                    return;
-                  }
-                  widget.onTap();
-                },
-                child: widget.child,
-              ),
+        GestureDetector(
+          onHorizontalDragUpdate: _onHorizontalDragUpdate,
+          onHorizontalDragEnd: _onHorizontalDragEnd,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            curve: Curves.easeOut,
+            transform: Matrix4.translationValues(_offsetX, 0, 0),
+            child: GestureDetector(
+              onTap: () {
+                if (_offsetX != 0) {
+                  _close();
+                  return;
+                }
+                widget.onTap();
+              },
+              child: widget.child,
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
