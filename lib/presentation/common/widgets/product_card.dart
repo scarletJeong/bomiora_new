@@ -34,6 +34,52 @@ bool shouldShowProductCardSubject(String strippedSubject) {
   return true;
 }
 
+/// 상품 상세 썸네일(375 기준 335×230)과 같은 가로세로 비.
+const double kProductDetailThumbWidth = 335;
+const double kProductDetailThumbHeight = 230;
+
+/// 사진 칸 크기는 그대로 두고, 335×230 비율을 유지한 채 확대해 칸을 채운다.
+class ProductCoverRatioImage extends StatelessWidget {
+  final String url;
+  final VoidCallback? onSettled;
+  final Widget Function(BuildContext, Object, StackTrace?)? errorBuilder;
+  final Widget Function(BuildContext, Widget, ImageChunkEvent?)? loadingBuilder;
+
+  const ProductCoverRatioImage({
+    super.key,
+    required this.url,
+    this.onSettled,
+    this.errorBuilder,
+    this.loadingBuilder,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return FittedBox(
+      fit: BoxFit.cover,
+      alignment: Alignment.center,
+      clipBehavior: Clip.hardEdge,
+      child: SizedBox(
+        width: kProductDetailThumbWidth,
+        height: kProductDetailThumbHeight,
+        child: AppNetworkImage(
+          url: url,
+          width: kProductDetailThumbWidth,
+          height: kProductDetailThumbHeight,
+          decodeWidthLogical: kProductDetailThumbWidth,
+          decodeHeightLogical: kProductDetailThumbHeight,
+          fit: BoxFit.cover,
+          preferHtmlElementOnWeb: false,
+          alignment: Alignment.center,
+          onSettled: onSettled,
+          errorBuilder: errorBuilder,
+          loadingBuilder: loadingBuilder,
+        ),
+      ),
+    );
+  }
+}
+
 /// 비대면 처방·일반 상품 목록 공통 카드 (2열 그리드 Figma)
 class ProductCatalogCard extends StatelessWidget {
   static const Color _brandPink = Color(0xFFFF5A8D);
@@ -66,7 +112,7 @@ class ProductCatalogCard extends StatelessWidget {
         _textLineH(context, 14);
   }
 
-  /// 그리드 [mainAxisExtent] — 이미지 180 + 간격 10 + 텍스트 영역 (375 기준)
+  /// 그리드 [mainAxisExtent] — 이미지 칸 180 + 간격 10 + 텍스트 영역 (375 기준)
   static double preferredMainAxisExtent(BuildContext context) {
     return healthDp(context, 180) +
         healthDp(context, 10) +
@@ -106,7 +152,7 @@ class ProductCatalogCard extends StatelessWidget {
     final title = stripProductCatalogHtml(product.name);
     final category = _categoryLabel();
 
-    final imageH = healthDp(context, 180);
+    final slotH = healthDp(context, 180);
     final imageRadius = healthDp(context, 10);
     final imageGap = healthDp(context, 10);
     final catTitleGap = healthDp(context, 4);
@@ -160,17 +206,12 @@ class ProductCatalogCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(imageRadius),
             child: SizedBox(
               width: double.infinity,
-              height: imageH,
+              height: slotH,
               child: ColoredBox(
                 color: const Color(0xFFF3F3F3),
                 child: product.displayImageUrl.isNotEmpty
-                    ? AppNetworkImage(
+                    ? ProductCoverRatioImage(
                         url: product.displayImageUrl,
-                        width: double.infinity,
-                        height: imageH,
-                        decodeHeightLogical: imageH,
-                        fit: BoxFit.cover,
-                        alignment: Alignment.center,
                         onSettled: onImageSettled,
                         errorBuilder: (_, __, ___) => _placeholder(context),
                         loadingBuilder: (context, child, progress) {

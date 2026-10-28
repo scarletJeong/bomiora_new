@@ -3,10 +3,9 @@ import 'package:flutter/material.dart';
 import '../../../data/models/product/product_model.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import 'app_clickable.dart';
-import 'app_network_image.dart';
 import 'product_card.dart';
 
-/// 설명 포함 상품 카드 (375 기준: 이미지 150×170 + 텍스트 102).
+/// 설명 포함 상품 카드 (375 기준: 이미지 칸 150×170).
 /// 설명은 `it_basic` → `description` 순입니다.
 class ProductCardWithSubscription extends StatelessWidget {
   static const Color _brandPink = Color(0xFFFF5A8D);
@@ -49,7 +48,7 @@ class ProductCardWithSubscription extends StatelessWidget {
         healthDp(context, 6);
   }
 
-  /// 이미지 170 + 간격 10 + 텍스트 블록
+  /// 이미지 칸 170 + 간격 10 + 텍스트 블록
   static double preferredMainAxisExtent(BuildContext context) {
     return healthDp(context, 170) +
         healthDp(context, 10) +
@@ -92,8 +91,7 @@ class ProductCardWithSubscription extends StatelessWidget {
     final hasDiscount =
         product.discountRate != null && product.discountRate! > 0;
 
-    final imageW = healthDp(context, 150);
-    final imageH = healthDp(context, 170);
+    final slotH = healthDp(context, 170);
     final imageRadius = healthDp(context, 10);
     final blockGap = healthDp(context, 10);
     final textH = textBlockHeight(context);
@@ -118,10 +116,10 @@ class ProductCardWithSubscription extends StatelessWidget {
             borderRadius: BorderRadius.circular(imageRadius),
             child: SizedBox(
               width: double.infinity,
-              height: imageH,
+              height: slotH,
               child: ColoredBox(
                 color: const Color(0xFFF3F3F3),
-                child: _buildImage(context, imageW, imageH),
+                child: _buildImage(context),
               ),
             ),
           ),
@@ -219,30 +217,24 @@ class ProductCardWithSubscription extends StatelessWidget {
     );
   }
 
-  Widget _buildImage(BuildContext context, double imageW, double imageH) {
-    final image = product.displayImageUrl.isNotEmpty
-        ? AppNetworkImage(
-            url: product.displayImageUrl,
-            width: double.infinity,
-            height: imageH,
-            decodeWidthLogical: imageW,
-            decodeHeightLogical: imageH,
-            fit: BoxFit.fill,
-            alignment: Alignment.center,
-            onSettled: onImageSettled,
-            errorBuilder: (_, __, ___) => _placeholder(context),
-            loadingBuilder: (context, child, progress) {
-              if (progress == null) return child;
-              return Center(
-                child: SizedBox(
-                  width: healthDp(context, 28),
-                  height: healthDp(context, 28),
-                  child: const CircularProgressIndicator(strokeWidth: 2),
-                ),
-              );
-            },
-          )
-        : _placeholder(context);
+  Widget _buildImage(BuildContext context) {
+    if (product.displayImageUrl.isEmpty) return _placeholder(context);
+
+    final image = ProductCoverRatioImage(
+      url: product.displayImageUrl,
+      onSettled: onImageSettled,
+      errorBuilder: (_, __, ___) => _placeholder(context),
+      loadingBuilder: (context, child, progress) {
+        if (progress == null) return child;
+        return Center(
+          child: SizedBox(
+            width: healthDp(context, 28),
+            height: healthDp(context, 28),
+            child: const CircularProgressIndicator(strokeWidth: 2),
+          ),
+        );
+      },
+    );
 
     if (!showMoreOverlay) return image;
 

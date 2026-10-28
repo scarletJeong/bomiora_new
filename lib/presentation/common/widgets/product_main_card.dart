@@ -3,10 +3,9 @@ import 'package:flutter/material.dart';
 import '../../../data/models/product/product_model.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import 'app_clickable.dart';
-import 'app_network_image.dart';
 import 'product_card.dart';
 
-/// 홈 New Product 카드 (375 기준: 이미지 150×170 + 텍스트 74).
+/// 홈 New Product 카드 (375 기준: 이미지 칸 150×170).
 class ProductMainCard extends StatelessWidget {
   static const Color _brandPink = Color(0xFFFF5A8D);
   static const Color _textDark = Color(0xFF1A1A1E);
@@ -44,7 +43,7 @@ class ProductMainCard extends StatelessWidget {
         healthDp(context, 6);
   }
 
-  /// 이미지 170 + 간격 10 + 텍스트 블록
+  /// 이미지 칸 170 + 간격 10 + 텍스트 블록
   static double preferredMainAxisExtent(BuildContext context) {
     return healthDp(context, 170) +
         healthDp(context, 10) +
@@ -78,8 +77,8 @@ class ProductMainCard extends StatelessWidget {
     final hasDiscount =
         product.discountRate != null && product.discountRate! > 0;
 
-    final imageW = healthDp(context, 150);
-    final imageH = healthDp(context, 170);
+    final imageW = preferredCardWidth(context);
+    final slotH = healthDp(context, 170);
     final imageRadius = healthDp(context, 11.54);
     final blockGap = healthDp(context, 10);
     final textH = textBlockHeight(context);
@@ -103,18 +102,12 @@ class ProductMainCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(imageRadius),
               child: SizedBox(
                 width: imageW,
-                height: imageH,
+                height: slotH,
                 child: ColoredBox(
                   color: const Color(0xFFF3F3F3),
                   child: product.displayImageUrl.isNotEmpty
-                      ? AppNetworkImage(
+                      ? ProductCoverRatioImage(
                           url: product.displayImageUrl,
-                          width: imageW,
-                          height: imageH,
-                          decodeWidthLogical: imageW,
-                          decodeHeightLogical: imageH,
-                          fit: BoxFit.cover,
-                          alignment: Alignment.center,
                           onSettled: onImageSettled,
                           errorBuilder: (_, __, ___) => _placeholder(context),
                         )
