@@ -124,6 +124,8 @@ class _PrescriptionReviewGuestLock extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            productDetailReviewLockBadge(context),
+            SizedBox(height: healthDp(context, 14)),
             Text(
               '의료법에 의거하여 의약품 후기는',
               textAlign: TextAlign.center,

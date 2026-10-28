@@ -131,6 +131,8 @@ abstract final class AppAssets {
   static const String alarmCenterIconReview = '${_img}alarm_center_icon_review.svg'; // 리뷰 알림센터
   static const String alarmCenterIconQA = '${_img}alarm_center_icon_QA.svg'; // 1:1문의 알림센터
 
+  // 쇼핑몰 상세페이지 리뷰 잠금 아이콘
+  static const String productDetailReviewLockIcon = '${_img}product_detail_review_lock.svg';
 
   /* 4. 건강대시보드 */
   // 건강대시보드 연동 아이콘
