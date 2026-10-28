@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -10,7 +12,8 @@ const double kHealthWebExpandDialogWidth = 1300;
 const double kHealthWebExpandDialogHeight = 634;
 
 /// 건강 그래프 확대:
-/// - 웹: 뒷배경 딤 처리 + 1300×634 다이얼로그 팝업
+/// - 넓은 웹: 뒷배경 딤 처리 + 1300×634 다이얼로그 팝업
+/// - 모바일 웹: 같은 팝업을 화면 안에 맞춰 줄임
 /// - 앱: 가로 전환 후 새 페이지 push (기존 동작)
 Future<void> openHealthChartExpandPage({
   required BuildContext context,
@@ -42,8 +45,22 @@ Future<void> openHealthChartExpandPage({
 }
 
 double _expandLayoutWidth(BuildContext context) {
-  if (kIsWeb) return kHealthWebExpandDialogWidth;
-  return MediaQuery.sizeOf(context).width;
+  final width = MediaQuery.sizeOf(context).width;
+  if (kIsWeb && width > kHealthWebExpandDialogWidth) {
+    return kHealthWebExpandDialogWidth;
+  }
+  return width;
+}
+
+/// 모바일 브라우저 하단 막대에 팝업이 가리지 않도록 남기는 여백.
+EdgeInsets _webExpandOuterPadding(BuildContext context) {
+  final size = MediaQuery.sizeOf(context);
+  final narrow = size.width < 700;
+  final side = narrow ? 12.0 : 24.0;
+  final top = narrow ? 12.0 : 24.0;
+  final viewBottom = MediaQuery.viewPaddingOf(context).bottom;
+  final bottom = narrow ? math.max(108.0, viewBottom + 16) : math.max(24.0, viewBottom + 16);
+  return EdgeInsets.fromLTRB(side, top, side, bottom);
 }
 
 double _expandTextScale(double layoutWidth) {
@@ -92,17 +109,18 @@ Widget _buildExpandedShell({
   WidgetBuilder? legendBuilder,
 }) {
   final outerWidth = _expandLayoutWidth(context);
+  final outerHeight = MediaQuery.sizeOf(context).height;
   final metrics = healthExpandedChartMetrics(outerWidth);
   final topPad = metrics.d(28.18);
   final bottomPad = 0.0;
   final headerToChart = metrics.d(17.62);
   final legendGap = metrics.d(HealthExpandedChartMetrics.chartToLegendGap);
-  final hPad = metrics.d(75.75);
+  final hPad = outerWidth >= 1000 ? metrics.d(75.75) : 16.0;
   final chartTextScale = _expandTextScale(outerWidth);
 
   return MediaQuery(
     data: MediaQuery.of(context).copyWith(
-      size: Size(outerWidth, kHealthWebExpandDialogHeight),
+      size: Size(outerWidth, outerHeight),
       textScaler: TextScaler.noScaling,
     ),
     child: Padding(
@@ -117,7 +135,14 @@ Widget _buildExpandedShell({
                 Expanded(
                   child: Align(
                     alignment: Alignment.centerLeft,
-                    child: periodSelectorBuilder(context),
+                    child: SizedBox(
+                      height: metrics.d(40),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: periodSelectorBuilder(context),
+                      ),
+                    ),
                   ),
                 )
               else
@@ -167,34 +192,62 @@ Future<void> _openWebPopup({
       builder: (dialogCtx) {
         return _ExpandRegisterRefreshOnce(
           onRegisterRefresh: onRegisterRefresh,
-          builder: (innerCtx) => Center(
-            child: Material(
-              color: Colors.transparent,
-              child: Container(
-                width: kHealthWebExpandDialogWidth,
-                height: kHealthWebExpandDialogHeight,
-                clipBehavior: Clip.antiAlias,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(healthDp(innerCtx, 20)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.18),
-                      blurRadius: healthDp(innerCtx, 32),
-                      offset: Offset(0, healthDp(innerCtx, 8)),
+          builder: (innerCtx) {
+            final outerPad = _webExpandOuterPadding(innerCtx);
+            return Padding(
+              padding: outerPad,
+              child: LayoutBuilder(
+                builder: (layoutCtx, constraints) {
+                  final dialogW = math.min(
+                    kHealthWebExpandDialogWidth,
+                    constraints.maxWidth,
+                  );
+                  final dialogH = math.min(
+                    kHealthWebExpandDialogHeight,
+                    constraints.maxHeight,
+                  );
+                  return Center(
+                    child: Material(
+                      color: Colors.transparent,
+                      child: SizedBox(
+                        width: dialogW,
+                        height: dialogH,
+                        child: Container(
+                          clipBehavior: Clip.antiAlias,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius:
+                                BorderRadius.circular(healthDp(layoutCtx, 20)),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.18),
+                                blurRadius: healthDp(layoutCtx, 32),
+                                offset: Offset(0, healthDp(layoutCtx, 8)),
+                              ),
+                            ],
+                          ),
+                          child: MediaQuery(
+                            data: MediaQuery.of(layoutCtx).copyWith(
+                              size: Size(dialogW, dialogH),
+                            ),
+                            child: Builder(
+                              builder: (shellCtx) => _buildExpandedShell(
+                                context: shellCtx,
+                                onClose: () => Navigator.of(dialogCtx).pop(),
+                                chartBuilder: chartBuilder,
+                                periodSelectorBuilder: periodSelectorBuilder,
+                                legendBuilder: legendBuilder,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
-                  ],
-                ),
-                child: _buildExpandedShell(
-                  context: innerCtx,
-                  onClose: () => Navigator.of(dialogCtx).pop(),
-                  chartBuilder: chartBuilder,
-                  periodSelectorBuilder: periodSelectorBuilder,
-                  legendBuilder: legendBuilder,
-                ),
+                  );
+                },
               ),
-            ),
-          ),
+            );
+          },
         );
       },
     );
