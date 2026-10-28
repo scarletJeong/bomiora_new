@@ -856,9 +856,10 @@ class _StaggeredBottomGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // 기본 설계(375 기준) — 폭에 따라 healthDp로 스케일
+    // 사진 비율. 모서리 곡선은 아래 ClipRRect 한 곳만 그린다.
+    const cardAspect = 295 / 449;
     final colW = healthDp(context, 124);
     final gap = healthDp(context, 8);
-    final cellH = healthDp(context, 158);
     final stagger = healthDp(context, 24);
     final rowGap = healthDp(context, 10);
 
@@ -867,27 +868,25 @@ class _StaggeredBottomGrid extends StatelessWidget {
         final w = c.maxWidth;
         final leftW = (w - gap) / 2;
         final scale = leftW / colW;
-        final h = cellH * scale;
         final g = gap;
         final rg = rowGap * scale;
         final st = stagger * scale;
 
         Widget cell(String asset) {
-          final radius = BorderRadius.circular(healthDp(context, 8));
+          // 카드 너비의 7%. 사진에 남은 모서리 흠(약 5%)보다 커서
+          // 잘린 자국은 가려지고, 곡선은 화면 해상도에서 한 번만 그려진다.
+          final radius = leftW * 0.07;
           return ClipRRect(
-            borderRadius: radius,
+            borderRadius: BorderRadius.circular(radius),
+            clipBehavior: Clip.antiAliasWithSaveLayer,
             child: AspectRatio(
-              aspectRatio: leftW / h,
-              child: Transform.scale(
-                scale: 1.02,
-                child: Image.asset(
-                  asset,
-                  fit: BoxFit.cover,
-                  alignment: Alignment.center,
-                  filterQuality: FilterQuality.medium,
-                  errorBuilder: (_, __, ___) =>
-                      const ColoredBox(color: Color(0xFFEEEEEE)),
-                ),
+              aspectRatio: cardAspect,
+              child: Image.asset(
+                asset,
+                fit: BoxFit.cover,
+                filterQuality: FilterQuality.high,
+                errorBuilder: (_, __, ___) =>
+                    ColoredBox(color: Colors.grey[200]!),
               ),
             ),
           );
