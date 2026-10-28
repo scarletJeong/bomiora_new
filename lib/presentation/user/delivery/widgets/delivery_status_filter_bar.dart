@@ -141,6 +141,7 @@ class _DeliveryStatusFilterBarState extends State<DeliveryStatusFilterBar> {
             child: WebDragScrollConfiguration(
               child: ClipRect(
                 child: SingleChildScrollView(
+                  key: ValueKey(_productType),
                   scrollDirection: Axis.horizontal,
                   physics: const BouncingScrollPhysics(),
                   child: Row(
