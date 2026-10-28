@@ -62,6 +62,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
   List<_CategoryTab> _baseTabOrder = [];
   bool _tabsReady = false;
   int _tabsRequestToken = 0;
+  int _productsRequestToken = 0;
 
   static const String _gmarket = 'Gmarket Sans TTF';
   static const Color _tabPink = Color(0xFFFF5B8C);
@@ -154,6 +155,8 @@ class _ProductListScreenState extends State<ProductListScreen> {
   }
 
   Future<void> _loadProducts() async {
+    final requestToken = ++_productsRequestToken;
+    final categoryId = _activeCategoryId;
     setState(() {
       _isLoading = true;
       _hasError = false;
@@ -161,12 +164,14 @@ class _ProductListScreenState extends State<ProductListScreen> {
 
     try {
       final products = await ProductRepository.getProductsByCategory(
-        categoryId: _activeCategoryId,
+        categoryId: categoryId,
         productKind: widget.productKind,
         page: 1,
         pageSize: _pageSize,
       );
 
+      if (!mounted || requestToken != _productsRequestToken) return;
+      if (categoryId != _activeCategoryId) return;
       setState(() {
         _products = products;
         _isLoading = false;
@@ -175,6 +180,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
       });
       _scheduleActiveTabScroll();
     } catch (_) {
+      if (!mounted || requestToken != _productsRequestToken) return;
       setState(() {
         _isLoading = false;
         _hasError = true;
@@ -195,6 +201,8 @@ class _ProductListScreenState extends State<ProductListScreen> {
   Future<void> _loadMoreProducts() async {
     if (_isLoadingMore || !_hasMore) return;
 
+    final requestToken = _productsRequestToken;
+    final categoryId = _activeCategoryId;
     setState(() {
       _isLoadingMore = true;
     });
@@ -202,12 +210,17 @@ class _ProductListScreenState extends State<ProductListScreen> {
     try {
       final nextPage = _currentPage + 1;
       final products = await ProductRepository.getProductsByCategory(
-        categoryId: _activeCategoryId,
+        categoryId: categoryId,
         productKind: widget.productKind,
         page: nextPage,
         pageSize: _pageSize,
       );
 
+      if (!mounted ||
+          requestToken != _productsRequestToken ||
+          categoryId != _activeCategoryId) {
+        return;
+      }
       setState(() {
         if (products.isNotEmpty) {
           _products.addAll(products);
@@ -318,6 +331,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                   healthDp(context, 48),
                 ),
                 sliver: SliverGrid(
+                  key: ValueKey(_activeCategoryId),
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2,
                     mainAxisExtent:

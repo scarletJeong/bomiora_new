@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/utils/image_url_helper.dart';
 import '../../../data/models/product/product_model.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import 'app_network_image.dart';
@@ -153,6 +154,7 @@ class ProductCatalogCard extends StatelessWidget {
     final category = _categoryLabel();
 
     final slotH = healthDp(context, 180);
+    final imageUrl = ImageUrlHelper.productGridThumbUrl(product.displayImageUrl);
     final imageRadius = healthDp(context, 10);
     final imageGap = healthDp(context, 10);
     final catTitleGap = healthDp(context, 4);
@@ -209,9 +211,10 @@ class ProductCatalogCard extends StatelessWidget {
               height: slotH,
               child: ColoredBox(
                 color: const Color(0xFFF3F3F3),
-                child: product.displayImageUrl.isNotEmpty
+                child: imageUrl.isNotEmpty
                     ? ProductCoverRatioImage(
-                        url: product.displayImageUrl,
+                        key: ValueKey(imageUrl),
+                        url: imageUrl,
                         onSettled: onImageSettled,
                         errorBuilder: (_, __, ___) => _placeholder(context),
                         loadingBuilder: (context, child, progress) {

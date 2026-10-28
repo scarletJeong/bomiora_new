@@ -380,6 +380,12 @@ class ImageUrlHelper {
     return '${ApiClient.baseUrl}/api/proxy/image?url=${Uri.encodeComponent(absolute)}';
   }
 
+  /// 상품 목록 카드. 웹은 원본 대신 가로 480px 썸네일을 받아 목록이 빨리 뜨게 한다.
+  static String productGridThumbUrl(String url) {
+    if (!kIsWeb) return url;
+    return contentListThumbUrl(url, width: 480);
+  }
+
   /// 목록 썸네일. 원본이 수 MB여도 가로 [width]px jpeg로 받는다.
   static String contentListThumbUrl(String url, {int width = 160}) {
     final direct = browserImageSrc(url);
