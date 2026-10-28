@@ -56,6 +56,7 @@ class ApiEndpoints {
   static const String updateCartItem = '/api/cart/update';
   static const String syncCartSelection = '/api/cart/select';
   static const String removeCartItem = '/api/cart/remove';
+  static const String removeCartItems = '/api/cart/remove-many';
   static const String generateOrderId = '/api/cart/generate-order-id';
   static const String kcpPayRequest = '/api/kcp-pay/request';
   static String kcpPayResult(String token) =>

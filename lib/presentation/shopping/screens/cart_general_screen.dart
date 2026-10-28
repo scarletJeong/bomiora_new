@@ -58,6 +58,7 @@ class _CartScreenState extends State<CartScreen> {
   Timer? _shippingDebounce;
   Future<void>? _pendingQtyUpdate;
   final Map<int, int> _qtyEpochById = {};
+  bool _deleteBusy = false;
 
   List<CartLineGroup> get _displayedGroups =>
       cartGroupsForTab(cartItems, prescriptionTab: false);
@@ -324,7 +325,61 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
+  /// 본품을 지우면 같은 상품의 추가상품 줄도 같이 뺀다.
+  Set<int> _expandDeleteIds(Iterable<int> ctIds) {
+    final ids = ctIds.where((id) => id > 0).toSet();
+    final parents = cartItems
+        .where((item) => ids.contains(item.ctId) && !item.isSupplyAdd)
+        .map((item) => item.itId.trim())
+        .where((id) => id.isNotEmpty)
+        .toSet();
+    if (parents.isEmpty) return ids;
+    for (final item in cartItems) {
+      final parent = (item.parentItId ?? '').trim();
+      if (parent.isNotEmpty && parents.contains(parent)) {
+        ids.add(item.ctId);
+      }
+    }
+    return ids;
+  }
+
+  void _dropCartItems(Set<int> ids) {
+    cartItems = cartItems.where((item) => !ids.contains(item.ctId)).toList();
+    selectedItems.removeAll(ids);
+    totalPrice = cartItems.fold<int>(0, (sum, item) => sum + item.lineAmount);
+    final available = _availableDisplayedItemIds;
+    selectAll =
+        available.isNotEmpty && available.difference(selectedItems).isEmpty;
+  }
+
+  Future<void> _commitCartDelete(Set<int> ids, String successMessage) async {
+    if (_deleteBusy || ids.isEmpty) return;
+    final snapshotItems = List<CartItem>.from(cartItems);
+    final snapshotSelected = Set<int>.from(selectedItems);
+    final snapshotTotal = totalPrice;
+    final snapshotSelectAll = selectAll;
+    _deleteBusy = true;
+    setState(() => _dropCartItems(ids));
+    AppToastOverlay.show(context, successMessage);
+    _scheduleShippingRefresh();
+    final result = await CartService.removeCartItems(ids.toList());
+    _deleteBusy = false;
+    if (!mounted || result['success'] == true) return;
+    setState(() {
+      cartItems = snapshotItems;
+      selectedItems = snapshotSelected;
+      totalPrice = snapshotTotal;
+      selectAll = snapshotSelectAll;
+    });
+    _scheduleShippingRefresh();
+    AppToastOverlay.show(
+      context,
+      result['message']?.toString() ?? '장바구니 삭제에 실패했습니다.',
+    );
+  }
+
   Future<void> _deleteCartItem(int ctId) async {
+    if (_deleteBusy) return;
     if (!await _ensureLoggedIn(message: '장바구니 수정은 로그인 후 이용할 수 있습니다.')) {
       return;
     }
@@ -335,49 +390,28 @@ class _CartScreenState extends State<CartScreen> {
       cancelText: '취소',
       confirmText: '삭제',
     );
-
-    if (confirmed) {
-      final result = await CartService.removeCartItem(ctId);
-      if (!mounted) return;
-
-      if (result['success'] == true) {
-        // 선택된 아이템에서도 제거
-        setState(() {
-          selectedItems.remove(ctId);
-        });
-        AppToastOverlay.show(context, '장바구니에서 상품이 삭제됐어요.');
-        _loadCart(showCachedData: true, forceRefresh: true);
-      }
-    }
+    if (confirmed != true || !mounted) return;
+    await _commitCartDelete(
+      _expandDeleteIds([ctId]),
+      '장바구니에서 상품이 삭제됐어요.',
+    );
   }
 
-  // 선택된 아이템들 삭제
   Future<void> _deleteSelectedItems() async {
+    if (_deleteBusy) return;
     if (!await _ensureLoggedIn(message: '장바구니 수정은 로그인 후 이용할 수 있습니다.')) {
       return;
     }
     final selectedDisplayedItems = _selectedDisplayedItemIds;
     if (selectedDisplayedItems.isEmpty) return;
-
-    final itemsToDelete = List<int>.from(selectedDisplayedItems);
-    for (final ctId in itemsToDelete) {
-      await CartService.removeCartItem(ctId);
-    }
-
-    if (!mounted) return;
-
-    AppToastOverlay.show(context, '장바구니에서 상품이 삭제됐어요.');
-
-    setState(() {
-      selectedItems.removeAll(itemsToDelete);
-      selectAll = false;
-    });
-
-    await _persistCartSelection();
-    _loadCart(showCachedData: true, forceRefresh: true);
+    await _commitCartDelete(
+      _expandDeleteIds(selectedDisplayedItems),
+      '장바구니에서 상품이 삭제됐어요.',
+    );
   }
 
   Future<void> _deleteSoldOutItems() async {
+    if (_deleteBusy) return;
     if (!await _ensureLoggedIn(message: '장바구니 수정은 로그인 후 이용할 수 있습니다.')) {
       return;
     }
@@ -393,18 +427,7 @@ class _CartScreenState extends State<CartScreen> {
       }
     }
     if (toDelete.isEmpty) return;
-
-    for (final ctId in toDelete) {
-      await CartService.removeCartItem(ctId);
-    }
-    if (!mounted) return;
-
-    AppToastOverlay.show(context, '품절·판매중지 상품이 삭제됐어요.');
-    setState(() {
-      selectedItems.removeAll(toDelete);
-    });
-    await _persistCartSelection();
-    _loadCart(showCachedData: true, forceRefresh: true);
+    await _commitCartDelete(toDelete, '품절·판매중지 상품이 삭제됐어요.');
   }
 
   // 선택된 아이템들의 총구매금액 계산

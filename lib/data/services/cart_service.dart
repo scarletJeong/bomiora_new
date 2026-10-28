@@ -910,6 +910,56 @@ class CartService {
     }
   }
 
+  /// 장바구니 여러 줄 삭제. 본품이면 서버가 추가상품도 함께 지운다.
+  static Future<Map<String, dynamic>> removeCartItems(List<int> ctIds) async {
+    final ids = ctIds.where((id) => id > 0).toSet().toList();
+    if (ids.isEmpty) {
+      return {
+        'success': true,
+        'message': '삭제할 상품이 없습니다.',
+      };
+    }
+    try {
+      final user = await AuthService.getUser();
+      if (user == null) {
+        return {
+          'success': false,
+          'message': '로그인이 필요합니다.',
+        };
+      }
+
+      invalidateCartCache();
+      final response = await ApiClient.post(
+        ApiEndpoints.removeCartItems,
+        {
+          'mb_id': user.id,
+          'ct_ids': ids,
+        },
+      );
+
+      if (response.statusCode == 200) {
+        Map<String, dynamic>? data;
+        try {
+          final decoded = json.decode(response.body);
+          if (decoded is Map<String, dynamic>) data = decoded;
+        } catch (_) {}
+        return {
+          'success': data?['success'] ?? true,
+          'message': data?['message'] ?? '장바구니에서 삭제되었습니다.',
+        };
+      }
+      return {
+        'success': false,
+        'message': '장바구니 삭제에 실패했습니다.',
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'message': '장바구니 삭제 중 오류가 발생했습니다: $e',
+      };
+    }
+  }
+
   /// 장바구니 항목 삭제
   static Future<Map<String, dynamic>> removeCartItem(int ctId) async {
     try {
