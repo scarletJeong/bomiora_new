@@ -901,48 +901,49 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
               _syncWeightField();
             }
 
-            return Column(
+            return Listener(
+              onPointerSignal: (event) {
+                if (event is! PointerScrollEvent) return;
+                if (event.scrollDelta.dx.abs() < event.scrollDelta.dy.abs()) {
+                  return;
+                }
+                // 세로 목록이 가로 휠을 브라우저 뒤로가기로 넘기지 못하게 먼저 막는다.
+                event.respond(allowPlatformDefault: false);
+                GestureBinding.instance.pointerSignalResolver.register(
+                  event,
+                  (signal) {
+                    if (signal is! PointerScrollEvent) return;
+                    if (signal.scrollDelta.dx.abs() < 1) return;
+                    final step = signal.scrollDelta.dx > 0 ? 1 : -1;
+                    final kg = (_weightLossKg + step).clamp(1, 30);
+                    setState(() => _weightLossKg = kg);
+                    _syncWeightField();
+                  },
+                );
+              },
+              child: RawGestureDetector(
+                behavior: HitTestBehavior.opaque,
+                gestures: {
+                  _EagerHorizontalDragRecognizer:
+                      GestureRecognizerFactoryWithHandlers<
+                          _EagerHorizontalDragRecognizer>(
+                    () => _EagerHorizontalDragRecognizer(),
+                    (instance) {
+                      instance.onDown = (d) {
+                        setFromLocalDx(d.localPosition.dx);
+                      };
+                      instance.onUpdate = (d) {
+                        setFromLocalDx(d.localPosition.dx);
+                      };
+                    },
+                  ),
+                },
+                child: Column(
               children: [
                 SizedBox(
                   height: thumbR * 2,
                   width: w,
-                  child: Listener(
-                    onPointerSignal: (event) {
-                      if (event is! PointerScrollEvent) return;
-                      if (event.scrollDelta.dx.abs() <
-                          event.scrollDelta.dy.abs()) {
-                        return;
-                      }
-                      GestureBinding.instance.pointerSignalResolver.register(
-                        event,
-                        (signal) {
-                          if (signal is! PointerScrollEvent) return;
-                          if (signal.scrollDelta.dx.abs() < 1) return;
-                          final step = signal.scrollDelta.dx > 0 ? 1 : -1;
-                          final kg = (_weightLossKg + step).clamp(1, 30);
-                          setState(() => _weightLossKg = kg);
-                          _syncWeightField();
-                        },
-                      );
-                    },
-                    child: RawGestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    gestures: {
-                      _EagerHorizontalDragRecognizer:
-                          GestureRecognizerFactoryWithHandlers<
-                              _EagerHorizontalDragRecognizer>(
-                        () => _EagerHorizontalDragRecognizer(),
-                        (instance) {
-                          instance.onDown = (d) {
-                            setFromLocalDx(d.localPosition.dx);
-                          };
-                          instance.onUpdate = (d) {
-                            setFromLocalDx(d.localPosition.dx);
-                          };
-                        },
-                      ),
-                    },
-                    child: Stack(
+                  child: Stack(
                       clipBehavior: Clip.none,
                       children: [
                         // 트랙(비활성)
@@ -986,9 +987,7 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
                         ),
                       ],
                     ),
-                    ),
                   ),
-                ),
                 SizedBox(height: healthDp(context, 4)),
                 SizedBox(
                   width: w,
@@ -1033,6 +1032,8 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
                   ),
                 ),
               ],
+                ),
+              ),
             );
           },
         ),
