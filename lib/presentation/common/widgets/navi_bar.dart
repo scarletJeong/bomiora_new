@@ -78,6 +78,9 @@ class FooterBar extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
+          hoverColor: Colors.transparent,
+          splashColor: Colors.transparent,
+          highlightColor: Colors.transparent,
           borderRadius: BorderRadius.circular(healthDp(context, 8)),
           child: Transform.translate(
             offset: Offset(healthDp(context, nudgeXBase), 0),
@@ -300,6 +303,9 @@ class SideNaviBar extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
+        hoverColor: Colors.transparent,
+        splashColor: Colors.transparent,
+        highlightColor: Colors.transparent,
         borderRadius: BorderRadius.circular(8),
         child: Column(
           mainAxisSize: MainAxisSize.min,
