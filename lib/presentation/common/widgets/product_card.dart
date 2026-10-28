@@ -4,6 +4,7 @@ import '../../../core/utils/image_url_helper.dart';
 import '../../../data/models/product/product_model.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import 'app_network_image.dart';
+import 'mobile_layout_wrapper.dart';
 
 /// 상품 목록/그리드용 HTML·엔티티 제거 (카드 타이틀·요약)
 String stripProductCatalogHtml(String? raw) {
@@ -113,9 +114,25 @@ class ProductCatalogCard extends StatelessWidget {
         _textLineH(context, 14);
   }
 
-  /// 그리드 [mainAxisExtent] — 이미지 칸 180 + 간격 10 + 텍스트 영역 (375 기준)
+  /// 2열 칸 가로. 목록 좌우 여백 20, 칸 간격 15와 같다.
+  ///
+  /// 그리드 높이는 목록 화면의 context(창 전체 폭)에서 계산되고,
+  /// 카드는 650 패널 안에서 그려진다. 창 폭을 그대로 쓰면 칸만 길어져
+  /// 가격 아래에 빈 공간이 생긴다.
+  static double imageSlotWidth(BuildContext context) {
+    final contentW = MobileAppLayoutWrapper.contentWidthOf(context);
+    final pad = healthDp(context, 20);
+    final gap = healthDp(context, 15);
+    return (contentW - pad * 2 - gap) / 2;
+  }
+
+  /// 375에서 160×180. 화면이 커지면 같은 비율로 커진다.
+  static double imageSlotHeight(BuildContext context) =>
+      imageSlotWidth(context) * 180 / 160;
+
+  /// 그리드 [mainAxisExtent] — 이미지 칸 + 간격 10 + 텍스트 영역
   static double preferredMainAxisExtent(BuildContext context) {
-    return healthDp(context, 180) +
+    return imageSlotHeight(context) +
         healthDp(context, 10) +
         textBlockHeight(context);
   }
@@ -153,7 +170,7 @@ class ProductCatalogCard extends StatelessWidget {
     final title = stripProductCatalogHtml(product.name);
     final category = _categoryLabel();
 
-    final slotH = healthDp(context, 180);
+    final slotH = imageSlotHeight(context);
     final imageUrl = ImageUrlHelper.productGridThumbUrl(product.displayImageUrl);
     final imageRadius = healthDp(context, 10);
     final imageGap = healthDp(context, 10);

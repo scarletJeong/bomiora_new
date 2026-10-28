@@ -1,4 +1,9 @@
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+
+import 'package:bomiora_app/core/utils/web_keyboard_inset.dart';
 
 /// 키보드가 열려도 페이지 높이는 줄이지 않는다.
 /// 입력칸에 포커스가 가면, 그 칸이 키보드에 가려질 때만 스크롤을 올려 칸을 키보드 위로 둔다.
@@ -19,18 +24,28 @@ class _KeyboardFieldLiftState extends State<KeyboardFieldLift>
     with WidgetsBindingObserver {
   final _KeyboardLiftExtra _extra = _KeyboardLiftExtra();
   int _liftGeneration = 0;
+  int _focusGeneration = 0;
+  bool _liftQueued = false;
+  Timer? _zeroInsetTimer;
+  Timer? _reliftTimer;
   ScrollPosition? _lastPosition;
+  bool _userDrivenScroll = false;
+  late final void Function() _unsubscribeWebKeyboard;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    FocusManager.instance.addListener(_scheduleLift);
+    FocusManager.instance.addListener(_onFocusChanged);
+    _unsubscribeWebKeyboard = subscribeWebKeyboardOverlap(_scheduleLift);
   }
 
   @override
   void dispose() {
-    FocusManager.instance.removeListener(_scheduleLift);
+    _zeroInsetTimer?.cancel();
+    _reliftTimer?.cancel();
+    _unsubscribeWebKeyboard();
+    FocusManager.instance.removeListener(_onFocusChanged);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -40,9 +55,23 @@ class _KeyboardFieldLiftState extends State<KeyboardFieldLift>
     _scheduleLift();
   }
 
+  void _onFocusChanged() {
+    final generation = ++_focusGeneration;
+    _scheduleLift();
+    for (final delay in const [80, 240, 520]) {
+      Future<void>.delayed(Duration(milliseconds: delay), () {
+        if (!mounted || generation != _focusGeneration) return;
+        _liftFocusedField();
+      });
+    }
+  }
+
   void _scheduleLift() {
+    if (_liftQueued) return;
+    _liftQueued = true;
     final generation = ++_liftGeneration;
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _liftQueued = false;
       if (!mounted || generation != _liftGeneration) return;
       _liftFocusedField();
     });
@@ -53,16 +82,34 @@ class _KeyboardFieldLiftState extends State<KeyboardFieldLift>
     final fieldContext = _editableContext(focusContext);
     final keyboard = _keyboardHeight(fieldContext ?? context);
 
-    if (fieldContext == null || keyboard <= 0) {
+    if (fieldContext == null) {
+      _zeroInsetTimer?.cancel();
+      _zeroInsetTimer = null;
       _extra.bottom = 0;
       _settleIfPastEnd();
       return;
     }
-
-    final fieldBox = fieldContext.findRenderObject();
-    if (fieldBox is! RenderBox || !fieldBox.attached || !fieldBox.hasSize) {
+    if (keyboard <= 0) {
+      _zeroInsetTimer ??= Timer(const Duration(milliseconds: 700), () {
+        _zeroInsetTimer = null;
+        if (!mounted) return;
+        if (_keyboardHeight(context) > 0) return;
+        _extra.bottom = 0;
+        _settleIfPastEnd();
+      });
       return;
     }
+    _zeroInsetTimer?.cancel();
+    _zeroInsetTimer = null;
+    pinWebDocumentScroll();
+
+    final fieldRender = fieldContext.findRenderObject();
+    if (fieldRender is! RenderBox ||
+        !fieldRender.attached ||
+        !fieldRender.hasSize) {
+      return;
+    }
+    final fieldBox = _revealBox(fieldContext, fieldRender);
 
     final scrollable = _pageScrollable(fieldContext);
     if (scrollable == null || !scrollable.position.hasPixels) return;
@@ -78,22 +125,32 @@ class _KeyboardFieldLiftState extends State<KeyboardFieldLift>
     final fieldTop = topLeft.dy;
     final fieldBottom = fieldTop + fieldBox.size.height;
 
+    // 키보드가 열린 뒤에는 칸을 아래로 내리지 않는다.
+    // 글자를 치면 입력칸을 화면 맨 아래로 되돌리는데, 그 자리가 키보드 아래다.
     var delta = 0.0;
     if (fieldBottom > visibleBottom) {
       delta = fieldBottom - visibleBottom;
     }
-    if (fieldTop - delta < visibleTop) {
-      delta = fieldTop - visibleTop;
-    }
-    if (delta.abs() < 1) return;
+    final roomAbove = fieldTop - visibleTop;
+    if (roomAbove < delta) delta = math.max(0, roomAbove);
+    if (delta < 1) return;
 
     final position = scrollable.position;
-    _extra.bottom = keyboard;
+    final slack = math.max(keyboard + gap, delta);
+    _extra.bottom = slack;
     _lastPosition = position;
-    final max = position.maxScrollExtent + keyboard;
-    final target = (position.pixels + delta).clamp(position.minScrollExtent, max);
+    final max = position.maxScrollExtent + slack;
+    final target =
+        (position.pixels + delta).clamp(position.minScrollExtent, max);
     if ((target - position.pixels).abs() < 1) return;
     position.jumpTo(target);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !position.hasPixels) return;
+      if (_extra.bottom <= 0) return;
+      if ((position.pixels - target).abs() <= 2) return;
+      final retryMax = position.maxScrollExtent + _extra.bottom;
+      position.jumpTo(target.clamp(position.minScrollExtent, retryMax));
+    });
   }
 
   void _settleIfPastEnd() {
@@ -110,18 +167,49 @@ class _KeyboardFieldLiftState extends State<KeyboardFieldLift>
 
   double _keyboardHeight(BuildContext context) {
     final view = View.maybeOf(context);
-    if (view == null) return 0;
-    final height = view.viewInsets.bottom / view.devicePixelRatio;
-    if (!height.isFinite || height < 1) return 0;
+    var height = 0.0;
+    if (view != null) {
+      final inset = view.viewInsets.bottom / view.devicePixelRatio;
+      if (inset.isFinite && inset > height) height = inset;
+    }
+    final web = currentWebKeyboardOverlap().bottom;
+    if (web > height) height = web;
+    if (height < 1) return 0;
     return height;
   }
 
   BuildContext? _editableContext(BuildContext? focusContext) {
     if (focusContext == null || !focusContext.mounted) return null;
-    final state = focusContext.findAncestorStateOfType<EditableTextState>();
+    EditableTextState? state;
+    if (focusContext is StatefulElement &&
+        focusContext.state is EditableTextState) {
+      state = focusContext.state as EditableTextState;
+    } else {
+      state = focusContext.findAncestorStateOfType<EditableTextState>();
+    }
     final editableContext = state?.context;
     if (editableContext == null || !editableContext.mounted) return null;
     return editableContext;
+  }
+
+  /// 글자 칸만이 아니라, 그 글자를 감싼 입력 상자까지 키보드 위로 올린다.
+  RenderBox _revealBox(BuildContext start, RenderBox fallback) {
+    var best = fallback;
+    start.visitAncestorElements((element) {
+      if (element is StatefulElement && element.state is ScrollableState) {
+        return false;
+      }
+      final render = element.renderObject;
+      if (render is RenderBox && render.attached && render.hasSize) {
+        final height = render.size.height;
+        if (height + 0.5 >= best.size.height && height <= 160) {
+          best = render;
+        }
+        if (height > 280) return false;
+      }
+      return true;
+    });
+    return best;
   }
 
   /// 입력칸 안의 가로 스크롤은 건너뛰고, 페이지를 올리는 세로 스크롤만 고른다.
@@ -135,11 +223,48 @@ class _KeyboardFieldLiftState extends State<KeyboardFieldLift>
     return null;
   }
 
+  bool _onScroll(ScrollNotification notification) {
+    if (notification.metrics.axis != Axis.vertical) return false;
+    if (notification is ScrollStartNotification &&
+        notification.dragDetails != null) {
+      _userDrivenScroll = true;
+      return false;
+    }
+    if (notification is ScrollUpdateNotification &&
+        notification.dragDetails != null) {
+      _userDrivenScroll = true;
+      return false;
+    }
+    if (notification is ScrollEndNotification) {
+      final fromUser = _userDrivenScroll;
+      _userDrivenScroll = false;
+      if (fromUser) return false;
+    } else if (_userDrivenScroll) {
+      return false;
+    }
+    if (notification is! ScrollUpdateNotification &&
+        notification is! ScrollEndNotification) {
+      return false;
+    }
+    // 글자 입력 때 칸을 키보드 아래로 되돌린 스크롤을 다시 올린다.
+    _scheduleLift();
+    _reliftTimer?.cancel();
+    _reliftTimer = Timer(const Duration(milliseconds: 140), () {
+      _reliftTimer = null;
+      if (!mounted) return;
+      _liftFocusedField();
+    });
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
-    return ScrollConfiguration(
-      behavior: _KeyboardLiftScrollBehavior(_extra),
-      child: widget.child,
+    return NotificationListener<ScrollNotification>(
+      onNotification: _onScroll,
+      child: ScrollConfiguration(
+        behavior: _KeyboardLiftScrollBehavior(_extra),
+        child: widget.child,
+      ),
     );
   }
 }
@@ -170,6 +295,10 @@ class _KeyboardLiftScrollPhysics extends ScrollPhysics {
   }
 
   double _max(ScrollMetrics position) => position.maxScrollExtent + extra.bottom;
+
+  /// 글자를 치는 동안 입력칸을 화면 맨 아래(키보드 밑)로 되돌리지 않는다.
+  @override
+  bool get allowImplicitScrolling => extra.bottom <= 0;
 
   @override
   double applyBoundaryConditions(ScrollMetrics position, double value) {
