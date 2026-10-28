@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/constants/app_assets.dart';
+import '../../../common/widgets/app_clickable.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/app_toast_overlay.dart';
 import '../../../common/widgets/login_required_dialog.dart';
@@ -125,7 +127,9 @@ class _HealthConnectScreenState extends State<HealthConnectScreen> {
         data: MediaQuery.of(context).copyWith(
           textScaler: TextScaler.linear(textScale),
         ),
-        child: Column(
+        child: _isWeb
+            ? _buildWebStoreBody()
+            : Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Expanded(
@@ -178,6 +182,156 @@ class _HealthConnectScreenState extends State<HealthConnectScreen> {
         ),
       ),
     );
+  }
+
+  /// 웹: 건강 앱 연동 대신 스토어 안내. 수치는 650 시안을 375 기준으로 환산했다.
+  Widget _buildWebStoreBody() {
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: EdgeInsets.all(healthDp(context, 20)),
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    Center(child: _buildWebMark()),
+                    SizedBox(height: healthDp(context, 10)),
+                    Padding(
+                      padding: EdgeInsets.all(healthDp(context, 10)),
+                      child: const Text(
+                        '건강 앱 연동은 모바일 앱에서만\n이용할 수 있습니다',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Color(0xFF1A1A1E),
+                          fontSize: 16,
+                          fontFamily: 'Gmarket Sans TTF',
+                          fontWeight: FontWeight.w500,
+                          height: 1.35,
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: healthDp(context, 10)),
+                    _buildWebInfoBox(),
+                  ],
+                ),
+              ),
+            ),
+            SizedBox(height: healthDp(context, 20)),
+            _buildStoreButton(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWebMark() {
+    final size = healthDp(context, 128);
+    final icon = healthDp(context, 70);
+    return Container(
+      width: size,
+      height: size,
+      alignment: Alignment.center,
+      decoration: const BoxDecoration(
+        color: Color(0x19FF5C8F),
+        shape: BoxShape.circle,
+      ),
+      child: SvgPicture.asset(
+        AppAssets.mainCardIconHeartRate,
+        width: icon,
+        height: icon,
+        fit: BoxFit.contain,
+      ),
+    );
+  }
+
+  Widget _buildWebInfoBox() {
+    const infoStyle = TextStyle(
+      color: Color(0xFF898686),
+      fontSize: 10,
+      fontFamily: 'Gmarket Sans TTF',
+      fontWeight: FontWeight.w500,
+      height: 1.4,
+    );
+    final iconSize = healthDp(context, 14);
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(healthDp(context, 12)),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7F8FA),
+        borderRadius: BorderRadius.circular(healthDp(context, 12)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SvgPicture.asset(
+            AppAssets.guideIcon,
+            width: iconSize,
+            height: iconSize,
+            colorFilter: const ColorFilter.mode(
+              Color(0xFF898686),
+              BlendMode.srcIn,
+            ),
+          ),
+          SizedBox(width: healthDp(context, 6)),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '웹에서는 건강 앱과 직접 연동할 수 없습니다.',
+                  style: infoStyle,
+                ),
+                SizedBox(height: healthDp(context, 6)),
+                Text(
+                  '스마트폰에서 보미오라 앱을 설치한 뒤 연동해주세요.',
+                  style: infoStyle,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStoreButton() {
+    return AppClickable(
+      onTap: _openAppStore,
+      child: Container(
+        width: double.infinity,
+        height: healthDp(context, 40),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(healthDp(context, 10)),
+          border: Border.all(color: const Color(0xFFFF5A8D)),
+        ),
+        child: const Text(
+          '앱스토어로 이동',
+          style: TextStyle(
+            color: Color(0xFFFF5A8D),
+            fontSize: 16,
+            fontFamily: 'Gmarket Sans TTF',
+            fontWeight: FontWeight.w500,
+            height: 1,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openAppStore() async {
+    final uri = _isIOS || defaultTargetPlatform == TargetPlatform.macOS
+        ? Uri.https('apps.apple.com', '/kr/search', {'term': '보미오라'})
+        : Uri.https('play.google.com', '/store/apps/details', {
+            'id': 'com.bomiora.app',
+          });
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!opened && mounted) {
+      AppToastOverlay.show(context, '스토어를 열 수 없습니다.');
+    }
   }
 
   Widget _buildConnectButton() {
