@@ -520,10 +520,10 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
                             height: 1,
                           ),
                         ),
-                        if (_reservationLine(order).isNotEmpty) ...[
+                        if (_scheduleLine(order) != null) ...[
                           SizedBox(height: healthDp(context, 5)),
                           Text(
-                            '예약시간: ${_reservationLine(order)}',
+                            _scheduleLine(order)!,
                             style: TextStyle(
                               color: _kPink,
                               fontSize: healthSp(context, 10),
@@ -1295,6 +1295,18 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
         order.odStatus.contains('취소') ||
         order.displayStatus == '주문 취소' ||
         order.displayStatus == '주문취소';
+  }
+
+  String? _scheduleLine(OrderListModel order) {
+    if (_isPaymentWaitingStage(order)) {
+      final deadline =
+          DateDisplayFormatter.formatBankDeadlineList(order.odBankAccount);
+      if (deadline.isEmpty) return null;
+      return '입금기간: $deadline';
+    }
+    final reservation = _reservationLine(order);
+    if (reservation.isEmpty) return null;
+    return '예약시간: $reservation';
   }
 
   String _reservationLine(OrderListModel order) {

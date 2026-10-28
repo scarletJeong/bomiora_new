@@ -376,6 +376,39 @@ class DateDisplayFormatter {
     return '${y}년 ${mo}월 ${d}일';
   }
 
+  /// `od_bank_account` 세 번째 토큰 `YYYYMMDDHHmmss` → `MM.dd(요일) HH:mm`
+  static String formatBankDeadlineList(String? bankAccountRaw) {
+    if (bankAccountRaw == null || bankAccountRaw.trim().isEmpty) return '';
+    final parts = bankAccountRaw
+        .split('/')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+    if (parts.length < 3) return '';
+    final digits = parts[2].replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.length < 12) return '';
+    final year = int.tryParse(digits.substring(0, 4));
+    final month = int.tryParse(digits.substring(4, 6));
+    final day = int.tryParse(digits.substring(6, 8));
+    final hour = int.tryParse(digits.substring(8, 10));
+    final minute = int.tryParse(digits.substring(10, 12));
+    if (year == null ||
+        month == null ||
+        day == null ||
+        hour == null ||
+        minute == null) {
+      return '';
+    }
+    if (month < 1 || month > 12 || day < 1 || day > 31) return '';
+    final date = DateTime(year, month, day);
+    const weekdays = ['월', '화', '수', '목', '금', '토', '일'];
+    final mm = month.toString().padLeft(2, '0');
+    final dd = day.toString().padLeft(2, '0');
+    final hh = hour.toString().padLeft(2, '0');
+    final mi = minute.toString().padLeft(2, '0');
+    return '$mm.$dd(${weekdays[date.weekday - 1]}) $hh:$mi';
+  }
+
   /// `od_bank_account` 세 번째 토큰 `YYYYMMDDHHmmss` → `YYYY년 MM월 DD일 HH시 mm분`
   static String formatBankDeadlineCompact14(String? raw) {
     if (raw == null || raw.isEmpty) return '-';

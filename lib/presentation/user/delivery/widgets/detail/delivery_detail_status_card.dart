@@ -30,6 +30,24 @@ class DeliveryDetailStatusCard extends StatelessWidget {
     );
   }
 
+  static String? _scheduleLine(
+    OrderDetailModel order, {
+    required bool isCancelled,
+  }) {
+    final awaiting =
+        order.displayStatus == '결제대기중' || order.odStatus == '주문';
+    if (awaiting) {
+      final deadline =
+          DateDisplayFormatter.formatBankDeadlineList(order.odBankAccount);
+      if (deadline.isEmpty) return null;
+      return '입금기간: $deadline';
+    }
+    if (isCancelled) return null;
+    final reservation = _reservationLine(order);
+    if (reservation == null || reservation.isEmpty) return null;
+    return '예약시간: $reservation';
+  }
+
   /// 비대면 주문의 예약일·시간. 없으면 null.
   static String? _reservationLine(OrderDetailModel order) {
     final dateLabel = _formatReservationDate(order.reservationDate);
@@ -134,10 +152,10 @@ class DeliveryDetailStatusCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  if (!isCancelled && _reservationLine(order) != null) ...[
+                  if (_scheduleLine(order, isCancelled: isCancelled) != null) ...[
                     SizedBox(height: healthDp(context, 4)),
                     Text(
-                      '예약시간: ${_reservationLine(order)}',
+                      _scheduleLine(order, isCancelled: isCancelled)!,
                       textAlign: TextAlign.right,
                       style: TextStyle(
                         color: DeliveryDetailSectionStyle.pink,

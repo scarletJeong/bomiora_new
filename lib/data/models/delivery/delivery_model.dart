@@ -197,6 +197,7 @@ class OrderListModel {
   final String? reservationDate;
   final String? reservationTime;
   final String? reservationEndTime;
+  final String? odBankAccount;
 
   OrderListModel({
     required this.odId,
@@ -221,6 +222,7 @@ class OrderListModel {
     this.reservationDate,
     this.reservationTime,
     this.reservationEndTime,
+    this.odBankAccount,
   });
 
   factory OrderListModel.fromJson(Map<dynamic, dynamic> json) {
@@ -315,6 +317,9 @@ class OrderListModel {
       reservationTime: NodeValueParser.asString(normalized['reservationTime']),
       reservationEndTime:
           NodeValueParser.asString(normalized['reservationEndTime']),
+      odBankAccount: NodeValueParser.asString(
+        normalized['odBankAccount'] ?? normalized['od_bank_account'],
+      ),
     );
   }
 
@@ -368,6 +373,7 @@ class OrderListModel {
       'reservationDate': reservationDate,
       'reservationTime': reservationTime,
       'reservationEndTime': reservationEndTime,
+      'odBankAccount': odBankAccount,
     };
   }
 
@@ -379,6 +385,7 @@ class OrderListModel {
     String? reservationDate,
     String? reservationTime,
     String? reservationEndTime,
+    String? odBankAccount,
   }) {
     return OrderListModel(
       odId: odId,
@@ -404,6 +411,7 @@ class OrderListModel {
       reservationDate: reservationDate ?? this.reservationDate,
       reservationTime: reservationTime ?? this.reservationTime,
       reservationEndTime: reservationEndTime ?? this.reservationEndTime,
+      odBankAccount: odBankAccount ?? this.odBankAccount,
     );
   }
 }
@@ -543,6 +551,7 @@ class OrderDetailModel {
       reservationDate: order.reservationDate,
       reservationTime: order.reservationTime,
       reservationEndTime: order.reservationEndTime,
+      odBankAccount: order.odBankAccount,
     );
   }
 
