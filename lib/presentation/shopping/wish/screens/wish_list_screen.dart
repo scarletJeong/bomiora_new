@@ -468,9 +468,34 @@ class _WishListScreenState extends State<WishListScreen> {
         bottomRight: Radius.circular(healthDp(context, 10)),
       );
 
+  /// 375에서 좌우 여백 20을 뺀 335 중 카드는 321, 이미지는 200.
+  /// 화면이 넓어지면 그 비율 그대로 커진다.
+  Widget _scaledWishCard({
+    required Widget Function(double cardW, double imageH) builder,
+  }) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final available = constraints.maxWidth.isFinite
+            ? constraints.maxWidth
+            : healthDp(context, 335);
+        final cardW = available * (321 / 335);
+        final imageH = cardW * (200 / 321);
+        return Align(
+          alignment: Alignment.center,
+          child: SizedBox(
+            width: cardW,
+            child: builder(cardW, imageH),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _wishCardImage({
     required String imageUrl,
     required BoxFit fit,
+    required double width,
+    required double height,
     VoidCallback? onTap,
   }) {
     final radius = healthDp(context, 10);
@@ -483,15 +508,15 @@ class _WishListScreenState extends State<WishListScreen> {
           topRight: Radius.circular(radius),
         ),
         child: SizedBox(
-          width: healthDp(context, 321),
-          height: healthDp(context, 200),
+          width: width,
+          height: height,
           child: imageUrl.isEmpty
               ? const ColoredBox(color: Color(0xFFF5F5F5))
               : Image.network(
             imageUrl,
             fit: fit,
-            width: healthDp(context, 321),
-            height: healthDp(context, 200),
+            width: width,
+            height: height,
             loadingBuilder: (context, child, loadingProgress) {
               if (loadingProgress == null) return child;
               return ColoredBox(
@@ -652,17 +677,16 @@ class _WishListScreenState extends State<WishListScreen> {
     final openDetail =
         productId.isEmpty ? null : () => _openProductDetail(productId, item);
 
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: SizedBox(
-      width: healthDp(context, 321),
-      child: Column(
+    return _scaledWishCard(
+      builder: (cardW, imageH) => Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _wishCardImage(
             imageUrl: ImageUrlHelper.getImageUrl(productImage),
             fit: BoxFit.fill,
+            width: cardW,
+            height: imageH,
             onTap: openDetail,
           ),
           _wishCardBody(
@@ -691,7 +715,6 @@ class _WishListScreenState extends State<WishListScreen> {
             ],
           ),
         ],
-      ),
       ),
     );
   }
@@ -778,16 +801,15 @@ class _WishListScreenState extends State<WishListScreen> {
             );
           };
 
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: SizedBox(
-      width: healthDp(context, 321),
-      child: Column(
+    return _scaledWishCard(
+      builder: (cardW, imageH) => Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _ContentWishImage(
             imageUrl: imageUrl,
+            width: cardW,
+            height: imageH,
             onTap: openDetail,
           ),
           _wishCardBody(
@@ -800,7 +822,6 @@ class _WishListScreenState extends State<WishListScreen> {
             ],
           ),
         ],
-      ),
       ),
     );
   }
@@ -853,10 +874,14 @@ class _WishListScreenState extends State<WishListScreen> {
 class _ContentWishImage extends StatefulWidget {
   const _ContentWishImage({
     required this.imageUrl,
+    required this.width,
+    required this.height,
     this.onTap,
   });
 
   final String imageUrl;
+  final double width;
+  final double height;
   final VoidCallback? onTap;
 
   @override
@@ -898,7 +923,8 @@ class _ContentWishImageState extends State<_ContentWishImage> {
   @override
   Widget build(BuildContext context) {
     final radius = healthDp(context, 10);
-    final height = healthDp(context, 200);
+    final width = widget.width;
+    final height = widget.height;
     return GestureDetector(
       onTap: widget.onTap,
       behavior: HitTestBehavior.opaque,
@@ -908,17 +934,17 @@ class _ContentWishImageState extends State<_ContentWishImage> {
           topRight: Radius.circular(radius),
         ),
         child: SizedBox(
-          width: healthDp(context, 321),
+          width: width,
           height: height,
           child: _url.isEmpty
               ? const ColoredBox(color: Color(0xFFF5F5F5))
               : AppNetworkImage(
                   url: _url,
                   fit: BoxFit.cover,
-                  width: healthDp(context, 321),
+                  width: width,
                   height: height,
-                  decodeWidthLogical: healthDp(context, 321),
-                  decodeHeightLogical: healthDp(context, 200),
+                  decodeWidthLogical: width,
+                  decodeHeightLogical: height,
                   loadingBuilder: (context, child, loadingProgress) {
                     if (loadingProgress == null) return child;
                     return ColoredBox(
