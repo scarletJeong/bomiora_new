@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
@@ -11,9 +13,11 @@ import '../../../data/repositories/product/product_repository.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/community_prefetch.dart';
 import '../../../data/services/banner_service.dart';
+import '../../../data/services/content_service.dart';
 import '../../../data/services/coupon_service.dart';
 import '../../common/widgets/app_clickable.dart';
 import '../../common/widgets/app_footer.dart';
+import '../../common/widgets/app_network_image.dart';
 import '../../common/navigation/app_bar_nav_guard.dart';
 import '../../common/widgets/appbar_menutap.dart';
 import '../../common/widgets/navi_bar.dart';
@@ -115,7 +119,38 @@ class _HomeScreenState extends State<HomeScreen> {
     _newProductsFuture = widget.newProductsFuture ??
         ProductRepository.getNewProducts(limit: _kNewLimit);
     _loadNewProducts();
+    unawaited(_precacheGuidebookThumbs());
     _scheduleBelowFoldLoad();
+  }
+
+  Future<void> _precacheGuidebookThumbs() async {
+    final result = await ContentService.getHomePreviewList();
+    if (!mounted || result['success'] != true) return;
+    final raw = result['data'];
+    if (raw is! List || raw.isEmpty) return;
+
+    final layout = HomeBigCardLayout.fromWidth(MediaQuery.sizeOf(context).width);
+    final jobs = <Future<void>>[];
+    for (final item in raw.take(3)) {
+      if (item is! Map) continue;
+      final url = ContentService.resolveThumbnailUrl(
+        item['thumbnail_url']?.toString(),
+        fallback: '',
+      );
+      if (url.isEmpty) continue;
+      jobs.add(
+        AppNetworkImage.precacheUrl(
+          context,
+          url,
+          width: layout.cardW,
+          height: layout.imageH,
+          decodeWidthLogical: layout.cardW,
+          decodeHeightLogical: layout.imageH,
+        ),
+      );
+    }
+    if (jobs.isEmpty || !mounted) return;
+    await Future.wait(jobs);
   }
 
   Future<void> _loadNewProducts() async {

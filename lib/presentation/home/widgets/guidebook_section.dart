@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/app_assets.dart';
 import '../../../data/services/content_service.dart';
 import '../../common/widgets/app_clickable.dart';
+import '../../common/widgets/app_network_image.dart';
 import '../../common/widgets/centered_empty_state.dart';
 import '../../common/widgets/web_dragscroll.dart';
 import '../../health/health_common/health_responsive_scale.dart';
@@ -28,7 +29,7 @@ class _GuidebookSectionState extends State<GuidebookSection> {
   }
 
   Future<List<Map<String, dynamic>>> _loadLatest() async {
-    final result = await ContentService.getContentList(page: 1, size: 3);
+    final result = await ContentService.getHomePreviewList();
     if (result['success'] == true) {
       final list = (result['data'] as List<Map<String, dynamic>>?) ?? const [];
       return list.take(3).toList();
@@ -173,9 +174,13 @@ class _GuidebookCard extends StatelessWidget {
                 width: m.cardW,
                 height: m.imageH,
                 child: thumb.isNotEmpty
-                    ? Image.network(
-                        thumb,
+                    ? AppNetworkImage(
+                        url: thumb,
                         fit: BoxFit.cover,
+                        width: m.cardW,
+                        height: m.imageH,
+                        decodeWidthLogical: m.cardW,
+                        decodeHeightLogical: m.imageH,
                         errorBuilder: (_, __, ___) => const ColoredBox(
                           color: Color(0xFFFFE9EA),
                         ),
