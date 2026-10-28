@@ -25,6 +25,9 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
   static const Color _kMuted = Color(0xFF898686);
   static const Color _kPink = Color(0xFFFF5A8D);
 
+  /// 디자인 확인용. 계정·서버에는 저장하지 않는다.
+  static const bool _showDesignPreview = true;
+
   int _selectedTab = 0;
   bool _isLoading = true;
   bool _isLoggedIn = false;
@@ -47,7 +50,56 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
     _loadNotifications();
   }
 
+  List<AppNotificationItem> _designPreviewItems() {
+    final now = DateTime.now();
+    return [
+      AppNotificationItem(
+        id: 'preview_point',
+        category: '포인트 적립',
+        title: '포인트 500P가 적립되었어요.',
+        createdAt: now,
+        isRead: false,
+        type: 'point',
+      ),
+      AppNotificationItem(
+        id: 'preview_contact',
+        category: '1:1문의',
+        title: '고객님께서 문의하신 내용에 답변이 등록되었습니다',
+        createdAt: now.subtract(const Duration(days: 1)),
+        isRead: true,
+        type: 'contact',
+      ),
+      AppNotificationItem(
+        id: 'preview_review',
+        category: '리뷰',
+        title: '상품은 마음에 드셨나요?',
+        description: '리뷰를 작성해주시면 현금처럼 쓸 수 있는 포인트를 지급해드립니다.',
+        createdAt: now.subtract(const Duration(days: 2)),
+        isRead: false,
+        type: 'review',
+      ),
+      AppNotificationItem(
+        id: 'preview_coupon',
+        category: '쿠폰',
+        title: '[웰컴쿠폰] 주문금액할인으로 지급된 쿠폰이 2026.10.29 에 소멸될 예정입니다.',
+        createdAt: now.subtract(const Duration(days: 3)),
+        isRead: true,
+        type: 'coupon',
+      ),
+    ];
+  }
+
   Future<void> _loadNotifications() async {
+    if (_showDesignPreview) {
+      if (!mounted) return;
+      setState(() {
+        _isLoggedIn = true;
+        _items = _designPreviewItems();
+        _isLoading = false;
+      });
+      return;
+    }
+
     final loggedIn = await AuthService.isLoggedIn();
     if (!mounted) return;
 
@@ -90,6 +142,15 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
 
   Future<void> _markAsRead(AppNotificationItem item) async {
     if (item.isRead) return;
+    if (_showDesignPreview) {
+      if (!mounted) return;
+      setState(() {
+        _items = _items
+            .map((e) => e.id == item.id ? e.copyWith(isRead: true) : e)
+            .toList();
+      });
+      return;
+    }
     await NotificationInboxService.markAsRead(item.id);
     if (!mounted) return;
     setState(() {
@@ -100,6 +161,13 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
   }
 
   Future<void> _deleteNotification(AppNotificationItem item) async {
+    if (_showDesignPreview) {
+      if (!mounted) return;
+      setState(() {
+        _items = _items.where((e) => e.id != item.id).toList();
+      });
+      return;
+    }
     final ok = await NotificationInboxService.removeById(item.id);
     if (!mounted) return;
     if (ok) {
