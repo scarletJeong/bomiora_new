@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart'
-    show TargetPlatform, defaultTargetPlatform, kIsWeb;
+    show TargetPlatform, debugPrint, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -316,6 +316,110 @@ class _PaymentScreenState extends State<PaymentScreen> {
       _usedPoint = 0;
       _pointController.clear();
     }
+    _logPaymentCoupons();
+  }
+
+  String _couponMethodLabel(int method) {
+    switch (method) {
+      case 0:
+        return '개별상품';
+      case 1:
+        return '카테고리';
+      case 2:
+        return '주문금액';
+      case 3:
+        return '배송비';
+      default:
+        return 'method=$method';
+    }
+  }
+
+  String _couponRejectReason(Coupon coupon) {
+    if (!coupon.isAvailable) {
+      if (coupon.isUsed) return '이미 사용 (주문 ${coupon.orderId})';
+      return '사용 기간 아님 (${coupon.formattedDateRange})';
+    }
+    if (coupon.method == 3) {
+      if (_baseShipping <= 0) return '배송비가 0원';
+      if (_shippingCouponGoodsAmount < coupon.minimum) {
+        return '배송비 쿠폰 기준금액 $_shippingCouponGoodsAmount원 < 최소 ${coupon.minimum}원';
+      }
+      return '';
+    }
+    if (_couponPointDisabled) return '인플루언서 상품만 있어 상품 쿠폰 제외';
+    if (_nonInfluencerAmount < coupon.minimum) {
+      return '쿠폰 대상 금액 $_nonInfluencerAmount원 < 최소 ${coupon.minimum}원';
+    }
+    switch (coupon.method) {
+      case 0:
+        final ids = widget.cartItems
+            .where((item) => !_isInfluencerCartItem(item))
+            .map((item) => item.itId)
+            .join(',');
+        final hit = widget.cartItems.any(
+          (item) => !_isInfluencerCartItem(item) && item.itId == coupon.target,
+        );
+        if (!hit) {
+          return '지정 상품 아님 (target=${coupon.target}, 장바구니=$ids)';
+        }
+        return '';
+      case 1:
+        if (coupon.target.trim().isEmpty) {
+          return _nonInfluencerAmount > 0 ? '' : '대상 금액 0원';
+        }
+        final target = coupon.target.trim().toLowerCase();
+        final hit = widget.cartItems.any((item) {
+          if (_isInfluencerCartItem(item)) return false;
+          final source =
+              '${item.productType ?? ''} ${item.itSubject ?? ''} ${item.itName}'
+                  .toLowerCase();
+          return source.contains(target);
+        });
+        if (!hit) return '카테고리/상품명에 "$target" 없음';
+        return '';
+      default:
+        return '';
+    }
+  }
+
+  void _logPaymentCoupons([String? note]) {
+    final cart = widget.cartItems
+        .map(
+          (item) =>
+              '${item.itName} it_id=${item.itId} kind=${item.ctKind} '
+              '금액=${item.ctPrice} 라인=${item.lineAmount} '
+              '인플루언서=${_isInfluencerCartItem(item)}',
+        )
+        .join(' | ');
+    debugPrint(
+      '[결제쿠폰] ${note ?? '필터 결과'} '
+      '보유 ${_loadedCoupons.length}건 / 화면적용 ${_applicableCoupons.length}건 / '
+      '대상금액=$_nonInfluencerAmount / 배송비쿠폰기준=$_shippingCouponGoodsAmount / '
+      '배송비=$_baseShipping / 쿠폰잠금=$_couponPointDisabled',
+    );
+    debugPrint('[결제쿠폰] 장바구니: ${cart.isEmpty ? '(없음)' : cart}');
+    if (_loadedCoupons.isEmpty) {
+      debugPrint('[결제쿠폰] 사용 가능 쿠폰 API 결과가 비어 있습니다.');
+      return;
+    }
+    for (final coupon in _loadedCoupons) {
+      final reason = _couponRejectReason(coupon);
+      final discount = coupon.maximum > 0
+          ? '${coupon.price}% (상한 ${coupon.maximum}원)'
+          : '${coupon.price}원';
+      debugPrint(
+        '[결제쿠폰] ${reason.isEmpty ? '표시' : '제외'} | ${coupon.subject} | '
+        'cp_id=${coupon.id} | ${_couponMethodLabel(coupon.method)} | '
+        'target=${coupon.target.isEmpty ? '(없음)' : coupon.target} | '
+        '최소 ${coupon.minimum}원 | 할인 $discount | '
+        '기간 ${coupon.formattedDateRange} | '
+        '사용가능=${coupon.isAvailable}'
+        '${reason.isEmpty ? '' : ' | 사유: $reason'}',
+      );
+    }
+    if (_couponPointDisabled && _applicableCoupons.isNotEmpty) {
+      debugPrint('[결제쿠폰] 적용 가능한 쿠폰이 있어도 인플루언서 상품만 있으면 쿠폰 선택 영역이 숨겨집니다.');
+    }
   }
 
   /// 배송비가 생기면 배송비 쿠폰을 총액에 바로 붙인다.
@@ -606,12 +710,20 @@ class _PaymentScreenState extends State<PaymentScreen> {
   Future<CartShippingQuote?> _fetchShippingQuote() async {
     final gen = ++_shippingQuoteGen;
     final ids = widget.cartItems.map((item) => item.ctId).where((id) => id > 0).toList();
-    if (ids.isEmpty) return null;
+    if (ids.isEmpty) {
+      _logPaymentCoupons('장바구니 ct_id가 없어 쿠폰 필터를 돌리지 않음');
+      return null;
+    }
     final quote = await CartService.getShippingQuote(
       ctIds: ids,
       zip: _zipController.text,
     );
-    if (!mounted || gen != _shippingQuoteGen || quote == null) return quote;
+    if (!mounted || gen != _shippingQuoteGen || quote == null) {
+      if (mounted && gen == _shippingQuoteGen && quote == null) {
+        _logPaymentCoupons('배송비 견적이 없어 쿠폰 필터를 돌리지 않음');
+      }
+      return quote;
+    }
     setState(() {
       _baseShipping = quote.baseShipping;
       _extraShipping = quote.extraShipping;
