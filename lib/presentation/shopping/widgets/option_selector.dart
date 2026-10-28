@@ -78,10 +78,27 @@ TextStyle _optionLabelTextStyle(BuildContext context) => TextStyle(
 
 
 TextStyle _selectedCardLabelTextStyle(BuildContext context) => TextStyle(
-      color: const Color(0xFF1A1A1A),
+      color: const Color(0xFF1A1A1E),
+      fontSize: healthSp(context, 16),
+      fontFamily: _kGmarketSans,
+      fontWeight: FontWeight.w500,
+      letterSpacing: healthSp(context, -1.44),
+    );
+
+TextStyle _selectedCardOptionTextStyle(BuildContext context) => TextStyle(
+      color: const Color(0xFF898686),
       fontSize: healthSp(context, 14),
       fontFamily: _kGmarketSans,
       fontWeight: FontWeight.w500,
+      height: 1.29,
+      letterSpacing: healthSp(context, -0.84),
+    );
+
+TextStyle _selectedCardPriceTextStyle(BuildContext context) => TextStyle(
+      color: const Color(0xFF1A1A1E),
+      fontSize: healthSp(context, 16),
+      fontFamily: _kGmarketSans,
+      fontWeight: FontWeight.w700,
     );
 
 String _formatPrice(int value) {
@@ -116,6 +133,34 @@ String _cardProductShortLabel({
 /// 선택 카드 옵션 줄: `단계 / 개월`
 String _selectedOptionValueText(ProductOption option) {
   return option.displayText;
+}
+
+/// 한 줄에 안 들어가면 `/` 앞에서 줄을 나눈다.
+String _wrapOptionLineAtSlash({
+  required String text,
+  required TextStyle style,
+  required double maxWidth,
+  required TextDirection textDirection,
+}) {
+  final trimmed = text.trim();
+  if (trimmed.isEmpty || maxWidth <= 0) return text;
+
+  final painter = TextPainter(
+    text: TextSpan(text: trimmed, style: style),
+    maxLines: 1,
+    textDirection: textDirection,
+    ellipsis: '…',
+  )..layout(maxWidth: maxWidth);
+  if (!painter.didExceedMaxLines) return trimmed;
+
+  var index = trimmed.lastIndexOf(' / ');
+  if (index < 0) index = trimmed.lastIndexOf('/');
+  if (index <= 0) return trimmed;
+
+  final before = trimmed.substring(0, index).trimRight();
+  final after = trimmed.substring(index).trimLeft();
+  if (before.isEmpty || after.isEmpty) return trimmed;
+  return '$before\n$after';
 }
 
 class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
@@ -770,12 +815,13 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final topRadius = healthDp(context, 50);
     return SizedBox(
       width: double.infinity,
       child: ClipRRect(
         borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(healthDp(context, 30)),
-          topRight: Radius.circular(healthDp(context, 30)),
+          topLeft: Radius.circular(topRadius),
+          topRight: Radius.circular(topRadius),
         ),
         child: Container(
           width: double.infinity,
@@ -787,24 +833,25 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
               minChildSize: 0.7,
               maxChildSize: 1.0,
               builder: (context, scrollController) {
-                final sheetPadding = healthDp(context, 30);
                 return Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    sheetPadding,
-                    healthDp(context, 10),
-                    sheetPadding,
-                    sheetPadding,
+                  padding: EdgeInsets.only(
+                    top: healthDp(context, 14),
+                    left: healthDp(context, 20),
+                    right: healthDp(context, 20),
+                    bottom: healthDp(context, 20),
                   ),
                   child: Column(
                     children: [
                       Center(
                         child: Container(
-                          width: healthDp(context, 40),
+                          width: healthDp(context, 45),
                           height: healthDp(context, 4),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[300],
-                            borderRadius:
-                                BorderRadius.circular(healthDp(context, 2)),
+                          decoration: ShapeDecoration(
+                            color: const Color(0xFFD2D2D2),
+                            shape: RoundedRectangleBorder(
+                              borderRadius:
+                                  BorderRadius.circular(healthDp(context, 10)),
+                            ),
                           ),
                         ),
                       ),
@@ -820,12 +867,6 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
                                   _selectedOptions.isNotEmpty ||
                                   _supplyLines.isNotEmpty) ...[
                                 SizedBox(height: healthDp(context, 20)),
-                                Divider(
-                                  height: healthDp(context, 1),
-                                  thickness: healthDp(context, 1),
-                                  color: Colors.grey[300],
-                                ),
-                                SizedBox(height: healthDp(context, 20)),
                                 _buildGroupedSelectionList(),
                                 _buildTotalAmountSection(),
                               ],
@@ -833,6 +874,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
                           ),
                         ),
                       ),
+                      SizedBox(height: healthDp(context, 20)),
                       _buildBottomActions(),
                     ],
                   ),
@@ -848,11 +890,13 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
   Widget _buildTotalAmountSection() {
     final totalQty = _calculateTotalQuantity();
     final totalPrice = _formatPrice(_calculateTotalPrice());
-    final letterSpacing = healthSp(context, -1.44);
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.symmetric(vertical: healthDp(context, 20)),
+      padding: EdgeInsets.symmetric(
+        horizontal: healthDp(context, 10),
+        vertical: healthDp(context, 14),
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -864,33 +908,30 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
                 TextSpan(
                   children: [
                     TextSpan(
-                      text: '총 ',
+                      text: '총',
                       style: TextStyle(
-                        color: const Color(0xFF1A1A1E),
+                        color: const Color(0xFF1A1A1A),
                         fontSize: healthSp(context, 16),
                         fontFamily: _kGmarketSans,
                         fontWeight: FontWeight.w500,
-                        letterSpacing: letterSpacing,
                       ),
                     ),
                     TextSpan(
-                      text: '$totalQty',
+                      text: ' $totalQty',
                       style: TextStyle(
                         color: const Color(0xFFFF5A8D),
                         fontSize: healthSp(context, 16),
                         fontFamily: _kGmarketSans,
                         fontWeight: FontWeight.w500,
-                        letterSpacing: letterSpacing,
                       ),
                     ),
                     TextSpan(
                       text: '개',
                       style: TextStyle(
-                        color: const Color(0xFF1A1A1E),
+                        color: const Color(0xFF1A1A1A),
                         fontSize: healthSp(context, 16),
                         fontFamily: _kGmarketSans,
                         fontWeight: FontWeight.w500,
-                        letterSpacing: letterSpacing,
                       ),
                     ),
                   ],
@@ -900,16 +941,15 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    '총금액',
+                    '총 금액',
                     style: TextStyle(
                       color: const Color(0xFF1A1A1E),
                       fontSize: healthSp(context, 16),
                       fontFamily: _kGmarketSans,
                       fontWeight: FontWeight.w500,
-                      letterSpacing: letterSpacing,
                     ),
                   ),
-                  SizedBox(width: healthDp(context, 8)),
+                  SizedBox(width: healthDp(context, 10)),
                   Text(
                     '${totalPrice}원',
                     style: TextStyle(
@@ -967,11 +1007,12 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
     if (showTwoAxes) {
       mainOptionFields = [
         DropdownBtn(
+          wrapAtWords: true,
           items: _stepGroups,
           value: _selectedStep ?? '',
           emptyText: widget.stepLabel,
           buttonHeight: dropdownHeight,
-          itemFontSizeBase: 15.54,
+          itemFontSizeBase: 14,
           itemTextAlign: TextAlign.left,
           scrollWhenItemCountExceeds: 6,
           maxVisibleItemsWhenScrolling: 5.5,
@@ -983,14 +1024,22 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
             });
           },
         ),
-        SizedBox(height: healthDp(context, 8)),
+        SizedBox(height: healthDp(context, 10)),
         DropdownBtn(
+          wrapAtWords: true,
           items: secondKeys,
           value: _selectedAxis2 ?? '',
           emptyText: widget.monthsLabel,
           enabled: _selectedStep != null,
+          dimWhenDisabled: false,
+          emptyTextColor: _selectedStep != null
+              ? const Color(0xFF898686)
+              : const Color(0xFFD2D2D2),
+          borderColor: _selectedStep != null
+              ? const Color(0xFFD2D2D2)
+              : const Color(0xFFE6E6E6),
           buttonHeight: dropdownHeight,
-          itemFontSizeBase: 15.54,
+          itemFontSizeBase: 14,
           itemTextAlign: TextAlign.left,
           scrollWhenItemCountExceeds: 6,
           maxVisibleItemsWhenScrolling: 5.5,
@@ -1016,11 +1065,12 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
       }
       mainOptionFields = [
         DropdownBtn(
+          wrapAtWords: true,
           items: flatLabels,
           value: selectedLabel,
           emptyText: widget.stepLabel,
           buttonHeight: dropdownHeight,
-          itemFontSizeBase: 15.54,
+          itemFontSizeBase: 14,
           itemTextAlign: TextAlign.left,
           scrollWhenItemCountExceeds: 6,
           maxVisibleItemsWhenScrolling: 5.5,
@@ -1038,14 +1088,22 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
       children: [
         ...mainOptionFields,
         if (_dep1Options.isNotEmpty) ...[
-          SizedBox(height: healthDp(context, 8)),
+          SizedBox(height: healthDp(context, 10)),
           DropdownBtn(
+          wrapAtWords: true,
             items: _dep1Options.map((o) => o.displayText).toList(),
             value: _selectedDep1?.displayText ?? '',
             emptyText: dep1Label,
             enabled: _hasMainSelection,
+            dimWhenDisabled: false,
+            emptyTextColor: _hasMainSelection
+                ? const Color(0xFF898686)
+                : const Color(0xFFD2D2D2),
+            borderColor: _hasMainSelection
+                ? const Color(0xFFD2D2D2)
+                : const Color(0xFFE6E6E6),
             buttonHeight: dropdownHeight,
-            itemFontSizeBase: 15.54,
+            itemFontSizeBase: 14,
             itemTextAlign: TextAlign.left,
             scrollWhenItemCountExceeds: 6,
             maxVisibleItemsWhenScrolling: 5.5,
@@ -1070,14 +1128,22 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
           ),
         ],
         if (_dep2Options.isNotEmpty) ...[
-          SizedBox(height: healthDp(context, 8)),
+          SizedBox(height: healthDp(context, 10)),
           DropdownBtn(
+          wrapAtWords: true,
             items: _dep2Options.map((o) => o.displayText).toList(),
             value: _selectedDep2?.displayText ?? '',
             emptyText: dep2Label,
             enabled: _hasMainSelection,
+            dimWhenDisabled: false,
+            emptyTextColor: _hasMainSelection
+                ? const Color(0xFF898686)
+                : const Color(0xFFD2D2D2),
+            borderColor: _hasMainSelection
+                ? const Color(0xFFD2D2D2)
+                : const Color(0xFFE6E6E6),
             buttonHeight: dropdownHeight,
-            itemFontSizeBase: 15.54,
+            itemFontSizeBase: 14,
             itemTextAlign: TextAlign.left,
             scrollWhenItemCountExceeds: 6,
             maxVisibleItemsWhenScrolling: 5.5,
@@ -1102,22 +1168,24 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
           ),
         ],
         if (_supplyProducts.isNotEmpty || _supplyLoading) ...[
-          SizedBox(height: healthDp(context, 16)),
+          SizedBox(height: healthDp(context, 20)),
           Padding(
-            padding: EdgeInsets.only(
-              left: healthDp(context, 2),
-              bottom: healthDp(context, 4),
-            ),
-            child: Text(
-              '추가 상품',
-              style: _optionLabelTextStyle(context),
+            padding: EdgeInsets.symmetric(vertical: healthDp(context, 5)),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                '추가 상품',
+                textAlign: TextAlign.center,
+                style: _optionLabelTextStyle(context),
+              ),
             ),
           ),
+          SizedBox(height: healthDp(context, 10)),
           if (!_hasMainSelection)
             Padding(
               padding: EdgeInsets.only(bottom: healthDp(context, 4)),
               child: Text(
-                '본상품 옵션을 먼저 선택해 주세요.',
+                keepTextWordsTogether('본상품 옵션을 먼저 선택해 주세요.'),
                 style: TextStyle(
                   color: const Color(0xFF898686),
                   fontSize: healthSp(context, 12),
@@ -1141,12 +1209,20 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
             // 추가상품 2개 이상일 때만 상품 선택 드롭다운
             if (_showSupplyProductPicker) ...[
               DropdownBtn(
+          wrapAtWords: true,
                 items: _supplyProducts.map((p) => p.name).toList(),
                 value: _pickedSupplyProduct?.name ?? '',
                 emptyText: '상품 선택',
                 enabled: _hasMainSelection,
+                dimWhenDisabled: false,
+                emptyTextColor: _hasMainSelection
+                    ? const Color(0xFF898686)
+                    : const Color(0xFFD2D2D2),
+                borderColor: _hasMainSelection
+                    ? const Color(0xFFD2D2D2)
+                    : const Color(0xFFE6E6E6),
                 buttonHeight: dropdownHeight,
-                itemFontSizeBase: 15.54,
+                itemFontSizeBase: 14,
                 itemTextAlign: TextAlign.left,
                 scrollWhenItemCountExceeds: 5,
                 maxVisibleItemsWhenScrolling: 4.5,
@@ -1163,7 +1239,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
                   _onSupplyProductPicked(found);
                 },
               ),
-              SizedBox(height: healthDp(context, 8)),
+              SizedBox(height: healthDp(context, 10)),
             ],
             if (_hasMainSelection && _pickedSupplyProduct != null)
               ..._buildSupplyOptionFields(
@@ -1198,11 +1274,12 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
     if (_supplyStepGroups.length > 1) {
       widgets.add(
         DropdownBtn(
+          wrapAtWords: true,
           items: _supplyStepGroups,
           value: _supplySelectedStep ?? '',
           emptyText: _supplyStepLabel,
           buttonHeight: dropdownHeight,
-          itemFontSizeBase: 15.54,
+          itemFontSizeBase: 14,
           itemTextAlign: TextAlign.left,
           scrollWhenItemCountExceeds: 5,
           maxVisibleItemsWhenScrolling: 4.5,
@@ -1222,7 +1299,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
           },
         ),
       );
-      widgets.add(SizedBox(height: healthDp(context, 8)));
+      widgets.add(SizedBox(height: healthDp(context, 10)));
     }
 
     // 하위(개월) 옵션이 있으면 개월 드롭다운
@@ -1239,14 +1316,22 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
 
       widgets.add(
         DropdownBtn(
+          wrapAtWords: true,
           items: monthsItems,
           value: _supplySelectedMonths != null
               ? '${_supplySelectedMonths}개월'
               : '',
           emptyText: _supplyMonthsLabel,
           enabled: _supplyMonthsEnabled || hasSingleStep,
+          dimWhenDisabled: false,
+          emptyTextColor: (_supplyMonthsEnabled || hasSingleStep)
+              ? const Color(0xFF898686)
+              : const Color(0xFFD2D2D2),
+          borderColor: (_supplyMonthsEnabled || hasSingleStep)
+              ? const Color(0xFFD2D2D2)
+              : const Color(0xFFE6E6E6),
           buttonHeight: dropdownHeight,
-          itemFontSizeBase: 15.54,
+          itemFontSizeBase: 14,
           itemTextAlign: TextAlign.left,
           scrollWhenItemCountExceeds: 5,
           maxVisibleItemsWhenScrolling: 4.5,
@@ -1270,6 +1355,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
     if (_supplySelectedStep != null && subOptions.length > 1) {
       widgets.add(
         DropdownBtn(
+          wrapAtWords: true,
           items: subOptions.map((o) {
             final text = o.subOption.isNotEmpty ? o.subOption : o.displayText;
             if (o.price <= 0) return text;
@@ -1282,7 +1368,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
                   : _pickedSupplyOption!.displayText),
           emptyText: _supplyMonthsLabel,
           buttonHeight: dropdownHeight,
-          itemFontSizeBase: 15.54,
+          itemFontSizeBase: 14,
           itemTextAlign: TextAlign.left,
           scrollWhenItemCountExceeds: 5,
           maxVisibleItemsWhenScrolling: 4.5,
@@ -1315,11 +1401,12 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
       final only = subOptions.first;
       widgets.add(
         DropdownBtn(
+          wrapAtWords: true,
           items: [only.displayText],
           value: '',
           emptyText: _supplyStepLabel,
           buttonHeight: dropdownHeight,
-          itemFontSizeBase: 15.54,
+          itemFontSizeBase: 14,
           itemTextAlign: TextAlign.left,
           scrollWhenItemCountExceeds: 5,
           maxVisibleItemsWhenScrolling: 4.5,
@@ -1332,11 +1419,12 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
     // 비계층 폴백: 전체 옵션 단일 드롭다운
     widgets.add(
       DropdownBtn(
+          wrapAtWords: true,
         items: _pickedSupplyOptions.map((o) => o.displayText).toList(),
         value: _pickedSupplyOption?.displayText ?? '',
         emptyText: _supplyStepLabel,
         buttonHeight: dropdownHeight,
-        itemFontSizeBase: 15.54,
+        itemFontSizeBase: 14,
         itemTextAlign: TextAlign.left,
         scrollWhenItemCountExceeds: 5,
         maxVisibleItemsWhenScrolling: 4.5,
@@ -1473,22 +1561,25 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
     return Container(
       margin: EdgeInsets.only(bottom: marginBottom),
       decoration: BoxDecoration(
-        color: const Color(0xFFFF5A8D).withValues(alpha: 0.02),
+        color: const Color(0xFFFFFCFD),
         borderRadius: _selectionCardRadius(
           roundTop: roundTop,
           roundBottom: roundBottom,
         ),
-        border: Border.all(color: const Color(0x7FD2D2D2)),
+        border: Border.all(
+          width: 1,
+          color: const Color(0x7FD2D2D2),
+        ),
       ),
       child: Stack(
         clipBehavior: Clip.none,
         children: [
           Padding(
             padding: EdgeInsets.fromLTRB(
-              healthDp(context, 12),
-              healthDp(context, 10),
-              healthDp(context, 30),
-              healthDp(context, 10),
+              healthDp(context, 16),
+              healthDp(context, 16),
+              healthDp(context, 32),
+              healthDp(context, 16),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1497,7 +1588,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
                   title: title,
                   optionLine: pinkValue,
                 ),
-                SizedBox(height: healthDp(context, 10)),
+                SizedBox(height: healthDp(context, 12)),
                 Row(
                   children: [
                     QuantityStepper(
@@ -1511,12 +1602,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
                     const Spacer(),
                     Text(
                       '${_formatPrice(lineTotal)}원',
-                      style: TextStyle(
-                        fontSize: healthSp(context, 14),
-                        fontFamily: _kGmarketSans,
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFF1A1A1A),
-                      ),
+                      style: _selectedCardPriceTextStyle(context),
                     ),
                   ],
                 ),
@@ -1561,17 +1647,20 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(healthDp(context, 10)),
-        border: Border.all(color: const Color(0x7FD2D2D2)),
+        border: Border.all(
+          width: 1,
+          color: const Color(0x7FD2D2D2),
+        ),
       ),
       child: Stack(
         clipBehavior: Clip.none,
         children: [
           Padding(
             padding: EdgeInsets.fromLTRB(
-              healthDp(context, 12),
-              healthDp(context, 10),
-              healthDp(context, 30),
-              healthDp(context, 10),
+              healthDp(context, 16),
+              healthDp(context, 16),
+              healthDp(context, 32),
+              healthDp(context, 16),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1580,7 +1669,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
                   title: title,
                   optionLine: valueText,
                 ),
-                SizedBox(height: healthDp(context, 10)),
+                SizedBox(height: healthDp(context, 12)),
                 Row(
                   children: [
                     QuantityStepper(
@@ -1594,12 +1683,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
                     const Spacer(),
                     Text(
                       '${_formatPrice(lineTotal)}원',
-                      style: TextStyle(
-                        fontSize: healthSp(context, 14),
-                        fontFamily: _kGmarketSans,
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFF1A1A1A),
-                      ),
+                      style: _selectedCardPriceTextStyle(context),
                     ),
                   ],
                 ),
@@ -1632,26 +1716,36 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
     required String title,
     required String optionLine,
   }) {
-    final labelStyle = _selectedCardLabelTextStyle(context);
-    final optionStyle = labelStyle;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           title,
-          style: labelStyle,
+          style: _selectedCardLabelTextStyle(context),
           softWrap: true,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
         ),
-        if (optionLine.trim().isNotEmpty)
-          Text(
-            optionLine,
-            style: optionStyle,
-            softWrap: true,
-            maxLines: 3,
-            overflow: TextOverflow.ellipsis,
+        if (optionLine.trim().isNotEmpty) ...[
+          SizedBox(height: healthDp(context, 5)),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final style = _selectedCardOptionTextStyle(context);
+              final maxWidth = constraints.maxWidth.isFinite
+                  ? constraints.maxWidth
+                  : healthDp(context, 287);
+              final wrapped = _wrapOptionLineAtSlash(
+                text: optionLine,
+                style: style,
+                maxWidth: maxWidth,
+                textDirection: Directionality.of(context),
+              );
+              return Text(
+                wrapped,
+                style: style,
+                softWrap: true,
+              );
+            },
           ),
+        ],
       ],
     );
   }
@@ -1686,16 +1780,19 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
           roundTop: roundTop,
           roundBottom: roundBottom,
         ),
-        border: Border.all(color: const Color(0x7FD2D2D2)),
+        border: Border.all(
+          width: 1,
+          color: const Color(0x7FD2D2D2),
+        ),
       ),
       child: Stack(
         children: [
           Padding(
             padding: EdgeInsets.fromLTRB(
-              healthDp(context, 12),
-              healthDp(context, 10),
-              healthDp(context, 30),
-              healthDp(context, 10),
+              healthDp(context, 16),
+              healthDp(context, 16),
+              healthDp(context, 32),
+              healthDp(context, 16),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1704,7 +1801,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
                   title: title,
                   optionLine: pinkValue,
                 ),
-                SizedBox(height: healthDp(context, 10)),
+                SizedBox(height: healthDp(context, 12)),
                 Row(
                   children: [
                     QuantityStepper(
@@ -1717,13 +1814,8 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
                     ),
                     const Spacer(),
                     Text(
-                      '+${_formatPrice(lineTotal)}원',
-                      style: TextStyle(
-                        fontSize: healthSp(context, 14),
-                        fontFamily: _kGmarketSans,
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFF1A1A1A),
-                      ),
+                      '${_formatPrice(lineTotal)}원',
+                      style: _selectedCardPriceTextStyle(context),
                     ),
                   ],
                 ),
@@ -1804,7 +1896,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
       padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       visualDensity: VisualDensity.compact,
-      backgroundColor: const Color(0xFFFF4081),
+      backgroundColor: const Color(0xFFFF5A8D),
       foregroundColor: Colors.white,
       disabledBackgroundColor: Colors.grey[300],
       shape: RoundedRectangleBorder(
@@ -1893,7 +1985,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
                   onPressed: _canCheckout ? widget.onReserve : null,
                   style: _sheetFilledButtonStyle(),
                   child: Text(
-                    '처방 예약 하기',
+                    '처방 예약하기',
                     style: TextStyle(
                       fontSize: healthSp(context, 16),
                       fontWeight: FontWeight.w500,
@@ -1993,8 +2085,8 @@ class _GeneralQuantityBottomSheetState extends State<GeneralQuantityBottomSheet>
                   children: [
                     Expanded(
                       child: Text(
-                        widget.productName,
-                        maxLines: 2,
+                        keepTextWordsTogether(widget.productName),
+                        softWrap: true,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: const Color(0xFF1A1A1E),

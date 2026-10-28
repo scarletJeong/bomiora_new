@@ -4,6 +4,23 @@ import 'package:flutter/material.dart';
 
 import '../../health/health_common/health_responsive_scale.dart';
 
+/// 공백에서만 줄이 바뀌게 한다. 한글이 글자 중간에서 끊기지 않는다.
+String keepTextWordsTogether(String text) {
+  if (text.length < 2) return text;
+  final buffer = StringBuffer();
+  final units = text.characters.toList();
+  for (var i = 0; i < units.length; i++) {
+    buffer.write(units[i]);
+    final hasNext = i + 1 < units.length;
+    if (hasNext &&
+        units[i].trim().isNotEmpty &&
+        units[i + 1].trim().isNotEmpty) {
+      buffer.write('\u2060');
+    }
+  }
+  return buffer.toString();
+}
+
 class DropdownBtn extends StatefulWidget {
   static OverlayEntry? _sharedOverlayEntry;
 
@@ -36,6 +53,9 @@ class DropdownBtn extends StatefulWidget {
   final FontWeight? valueFontWeight;
   /// 비활성일 때 전체를 흐리게. false면 [backgroundColor]만으로 비활성을 표현한다.
   final bool dimWhenDisabled;
+
+  /// 제목·옵션처럼 긴 글은 단어(공백) 단위로만 줄바꿈한다.
+  final bool wrapAtWords;
 
   /// 아이템 수가 이 값을 **초과**하면 스크롤 모드.
   /// 예: 6 → 7개 이상일 때 [maxVisibleItemsWhenScrolling]개만 노출
@@ -109,6 +129,7 @@ class DropdownBtn extends StatefulWidget {
     double? maxVisibleItemsWhenScrolling,
     LayerLink? layerLink,
     bool alignRight = false,
+    bool wrapAtWords = false,
   }) {
     closeMenu();
 
@@ -250,6 +271,7 @@ class DropdownBtn extends StatefulWidget {
                                 itemTextAlign: itemTextAlign,
                                 leading: leadingBuilder?.call(items[i]),
                                 itemLeadingGap: itemLeadingGap,
+                                wrapAtWords: wrapAtWords,
                                 onTap: () {
                                   onSelected(items[i]);
                                   close();
@@ -293,6 +315,7 @@ class DropdownBtn extends StatefulWidget {
                             itemTextAlign: itemTextAlign,
                             leading: leadingBuilder?.call(items[i]),
                             itemLeadingGap: itemLeadingGap,
+                            wrapAtWords: wrapAtWords,
                             onTap: () {
                               onSelected(items[i]);
                               close();
@@ -388,6 +411,7 @@ class DropdownBtn extends StatefulWidget {
     this.emptyFontWeight,
     this.valueFontWeight,
     this.dimWhenDisabled = true,
+    this.wrapAtWords = false,
     this.scrollWhenItemCountExceeds,
     this.maxVisibleItemsWhenScrolling,
   });
@@ -457,6 +481,7 @@ class _DropdownBtnState extends State<DropdownBtn> {
       itemPadding: itemPadding,
       scrollWhenItemCountExceeds: widget.scrollWhenItemCountExceeds,
       maxVisibleItemsWhenScrolling: widget.maxVisibleItemsWhenScrolling,
+      wrapAtWords: widget.wrapAtWords,
       onSelected: (item) {
         widget.onChanged(item);
         if (mounted) setState(() {});
@@ -490,44 +515,53 @@ class _DropdownBtnState extends State<DropdownBtn> {
     final itemFontSize = healthSp(context, widget.itemFontSizeBase);
     final itemLeadingGap = healthDp(context, widget.itemLeadingGapBase);
 
-    return SizedBox(
-      height: widget.buttonHeight,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(radius),
-        onTap: canOpen ? _toggle : null,
-        child: Opacity(
-          opacity: widget.enabled || !widget.dimWhenDisabled ? 1 : 0.55,
-          child: Container(
-            key: _anchorKey,
-            padding: EdgeInsets.symmetric(horizontal: padH),
-            decoration: ShapeDecoration(
-              color: widget.backgroundColor ?? Colors.white,
-              shape: RoundedRectangleBorder(
-                side: BorderSide(width: borderW, color: borderColor),
-                borderRadius: BorderRadius.circular(radius),
-              ),
+    return InkWell(
+      borderRadius: BorderRadius.circular(radius),
+      onTap: canOpen ? _toggle : null,
+      child: Opacity(
+        opacity: widget.enabled || !widget.dimWhenDisabled ? 1 : 0.55,
+        child: Container(
+          key: _anchorKey,
+          alignment: Alignment.center,
+          constraints: widget.wrapAtWords
+              ? BoxConstraints(minHeight: widget.buttonHeight)
+              : BoxConstraints.tightFor(height: widget.buttonHeight),
+          padding: EdgeInsets.symmetric(
+            horizontal: padH,
+            vertical: widget.wrapAtWords ? healthDp(context, 8) : 0,
+          ),
+          decoration: ShapeDecoration(
+            color: widget.backgroundColor ?? Colors.white,
+            shape: RoundedRectangleBorder(
+              side: BorderSide(width: borderW, color: borderColor),
+              borderRadius: BorderRadius.circular(radius),
             ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                if (leading != null) ...[
-                  leading,
-                  SizedBox(width: itemLeadingGap),
-                ],
-                Expanded(
-                  child: Text(
-                    display,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: widget.itemTextAlign,
-                    style: TextStyle(
-                      color: displayColor,
-                      fontSize: itemFontSize,
-                      fontFamily: _fontFamily,
-                      fontWeight: displayWeight,
-                      height: 1.0,
-                    ),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              if (leading != null) ...[
+                leading,
+                SizedBox(width: itemLeadingGap),
+              ],
+              Expanded(
+                child: Text(
+                  widget.wrapAtWords
+                      ? keepTextWordsTogether(display)
+                      : display,
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: widget.wrapAtWords ? 4 : null,
+                  softWrap: true,
+                  textAlign: widget.itemTextAlign,
+                  style: TextStyle(
+                    color: displayColor,
+                    fontSize: itemFontSize,
+                    fontFamily: _fontFamily,
+                    fontWeight: displayWeight,
+                    height: widget.wrapAtWords ? 1.3 : 1.0,
                   ),
                 ),
+              ),
                 Icon(
                   _open
                       ? Icons.keyboard_arrow_up_rounded
@@ -541,8 +575,7 @@ class _DropdownBtnState extends State<DropdownBtn> {
             ),
           ),
         ),
-      ),
-    );
+      );
   }
 }
 
@@ -560,6 +593,7 @@ class _DropdownHoverItem extends StatefulWidget {
     required this.onTap,
     this.leading,
     this.itemLeadingGap = 0,
+    this.wrapAtWords = false,
   });
 
   final String label;
@@ -574,6 +608,7 @@ class _DropdownHoverItem extends StatefulWidget {
   final VoidCallback onTap;
   final Widget? leading;
   final double itemLeadingGap;
+  final bool wrapAtWords;
 
   @override
   State<_DropdownHoverItem> createState() => _DropdownHoverItemState();
@@ -638,8 +673,11 @@ class _DropdownHoverItemState extends State<_DropdownHoverItem> {
                 ],
                 Flexible(
                   child: Text(
-                    widget.label,
+                    widget.wrapAtWords
+                        ? keepTextWordsTogether(widget.label)
+                        : widget.label,
                     textAlign: widget.itemTextAlign,
+                    softWrap: true,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: const Color(0xFF1A1A1A),
