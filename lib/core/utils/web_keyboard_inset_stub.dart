@@ -7,3 +7,7 @@ WebKeyboardOverlap currentWebKeyboardOverlap() => WebKeyboardOverlap.none;
 void Function() subscribeWebKeyboardOverlap(void Function() onChange) => () {};
 
 void pinWebDocumentScroll() {}
+
+bool webEditingElementFocused() => false;
+
+void setWebInputScrollLock(bool lock) {}

@@ -18,6 +18,9 @@ class KeyboardFieldLift extends StatefulWidget {
 
 class _KeyboardLiftExtra {
   double bottom = 0;
+
+  /// 입력칸에 포커스가 있는 동안에는 칸을 화면 아래로 되돌리지 않는다.
+  bool hold = false;
 }
 
 class _KeyboardFieldLiftState extends State<KeyboardFieldLift>
@@ -30,6 +33,7 @@ class _KeyboardFieldLiftState extends State<KeyboardFieldLift>
   Timer? _reliftTimer;
   ScrollPosition? _lastPosition;
   bool _userDrivenScroll = false;
+  double _latchedKeyboard = 0;
   late final void Function() _unsubscribeWebKeyboard;
 
   @override
@@ -56,6 +60,10 @@ class _KeyboardFieldLiftState extends State<KeyboardFieldLift>
   }
 
   void _onFocusChanged() {
+    final field = _editableContext(FocusManager.instance.primaryFocus?.context);
+    if (field != null || webEditingElementFocused()) {
+      _extra.hold = true;
+    }
     final generation = ++_focusGeneration;
     _scheduleLift();
     for (final delay in const [80, 240, 520]) {
@@ -80,23 +88,31 @@ class _KeyboardFieldLiftState extends State<KeyboardFieldLift>
   void _liftFocusedField() {
     final focusContext = FocusManager.instance.primaryFocus?.context;
     final fieldContext = _editableContext(focusContext);
-    final keyboard = _keyboardHeight(fieldContext ?? context);
+    final editing = fieldContext != null || webEditingElementFocused();
+    final measured = _keyboardHeight(fieldContext ?? context);
+    if (measured > _latchedKeyboard) _latchedKeyboard = measured;
+    final keyboard = measured > 0
+        ? measured
+        : (editing ? _latchedKeyboard : 0.0);
 
-    if (fieldContext == null) {
+    if (!editing) {
       _zeroInsetTimer?.cancel();
       _zeroInsetTimer = null;
-      _extra.bottom = 0;
+      _latchedKeyboard = 0;
+      _extra
+        ..hold = false
+        ..bottom = 0;
+      setWebInputScrollLock(false);
       _settleIfPastEnd();
       return;
     }
-    if (keyboard <= 0) {
-      _zeroInsetTimer ??= Timer(const Duration(milliseconds: 700), () {
-        _zeroInsetTimer = null;
-        if (!mounted) return;
-        if (_keyboardHeight(context) > 0) return;
-        _extra.bottom = 0;
-        _settleIfPastEnd();
-      });
+
+    _extra.hold = true;
+    if (keyboard > 0) {
+      _extra.bottom = math.max(_extra.bottom, keyboard);
+      setWebInputScrollLock(true);
+    }
+    if (keyboard <= 0 || fieldContext == null) {
       return;
     }
     _zeroInsetTimer?.cancel();
@@ -298,7 +314,7 @@ class _KeyboardLiftScrollPhysics extends ScrollPhysics {
 
   /// 글자를 치는 동안 입력칸을 화면 맨 아래(키보드 밑)로 되돌리지 않는다.
   @override
-  bool get allowImplicitScrolling => extra.bottom <= 0;
+  bool get allowImplicitScrolling => !extra.hold;
 
   @override
   double applyBoundaryConditions(ScrollMetrics position, double value) {

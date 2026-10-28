@@ -8,8 +8,10 @@ export 'package:bomiora_app/core/utils/web_keyboard_overlap.dart';
 
 void Function()? _onChange;
 html.EventListener? _viewportListener;
+html.EventListener? _inputListener;
 JSFunction? _geometryListener;
 bool _listening = false;
+bool _pinning = false;
 
 WebKeyboardOverlap currentWebKeyboardOverlap() {
   final innerHeight = _px(html.window.innerHeight);
@@ -42,17 +44,36 @@ void Function() subscribeWebKeyboardOverlap(void Function() onChange) {
 }
 
 void pinWebDocumentScroll() {
-  final view = html.window;
-  if (view.scrollY != 0) {
-    view.scrollTo(0, 0);
+  if (_pinning) return;
+  _pinning = true;
+  try {
+    final view = html.window;
+    if (view.scrollY != 0) {
+      view.scrollTo(0, 0);
+    }
+    final root = html.document.documentElement;
+    if (root != null && root.scrollTop != 0) {
+      root.scrollTop = 0;
+    }
+    final body = html.document.body;
+    if (body != null && body.scrollTop != 0) {
+      body.scrollTop = 0;
+    }
+  } finally {
+    _pinning = false;
   }
-  final root = html.document.documentElement;
-  if (root != null && root.scrollTop != 0) {
-    root.scrollTop = 0;
-  }
-  final body = html.document.body;
-  if (body != null && body.scrollTop != 0) {
-    body.scrollTop = 0;
+}
+
+bool webEditingElementFocused() {
+  final active = html.document.activeElement;
+  if (active == null) return false;
+  final tag = active.tagName.toLowerCase();
+  return tag == 'input' || tag == 'textarea' || active.isContentEditable == true;
+}
+
+void setWebInputScrollLock(bool lock) {
+  if (lock) {
+    pinWebDocumentScroll();
   }
 }
 
@@ -60,11 +81,24 @@ void _ensureListening() {
   if (_listening) return;
   _listening = true;
 
-  _viewportListener = (_) => _onChange?.call();
+  _viewportListener = (_) {
+    pinWebDocumentScroll();
+    _onChange?.call();
+  };
   final viewport = html.window.visualViewport;
   viewport?.addEventListener('resize', _viewportListener);
   viewport?.addEventListener('scroll', _viewportListener);
   html.window.addEventListener('resize', _viewportListener);
+  html.window.addEventListener('scroll', _viewportListener);
+
+  _inputListener = (_) {
+    if (!webEditingElementFocused()) return;
+    pinWebDocumentScroll();
+    _onChange?.call();
+  };
+  html.document.addEventListener('input', _inputListener, true);
+  html.document.addEventListener('beforeinput', _inputListener, true);
+  html.document.addEventListener('keydown', _inputListener, true);
 
   final keyboard = _virtualKeyboard();
   if (keyboard == null) return;
