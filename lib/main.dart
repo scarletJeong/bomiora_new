@@ -22,6 +22,7 @@ import 'data/services/kakao_auth_service.dart';
 import 'data/services/naver_auth_service.dart';
 import 'data/services/fcm_service_stub.dart'
     if (dart.library.io) 'data/services/fcm_service.dart';
+import 'presentation/common/widgets/keyboard_field_lift.dart';
 import 'presentation/common/widgets/mobile_layout_wrapper.dart';
 import 'presentation/shopping/screens/product_detail_screen.dart';
 import 'presentation/shopping/screens/product_detail_general_screen.dart';
@@ -124,6 +125,7 @@ class _BomioraAppState extends State<BomioraApp> {
         // 인셋을 없애 모든 페이지가 그 자리에 머물게 한다.
         return MediaQuery(
           data: media.copyWith(viewInsets: EdgeInsets.zero),
+          child: KeyboardFieldLift(
           child: LayoutScaffoldMessenger(
             child: ValueListenableBuilder<bool>(
               valueListenable: AppActionGate.splash,
@@ -147,6 +149,7 @@ class _BomioraAppState extends State<BomioraApp> {
                 );
               },
             ),
+          ),
           ),
         );
       },
