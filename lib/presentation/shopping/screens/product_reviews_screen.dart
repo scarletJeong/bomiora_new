@@ -22,6 +22,8 @@ class PrescriptionReviewTabPanel extends StatelessWidget {
   final bool embedInParentScroll;
   final bool showCouponSection;
   final String? fallbackImageUrl;
+  final bool hasMore;
+  final PrescriptionReviewStats? statsOverride;
 
   const PrescriptionReviewTabPanel({
     super.key,
@@ -35,12 +37,14 @@ class PrescriptionReviewTabPanel extends StatelessWidget {
     this.embedInParentScroll = false,
     this.showCouponSection = false,
     this.fallbackImageUrl,
+    this.hasMore = false,
+    this.statsOverride,
   });
 
   @override
   Widget build(BuildContext context) {
     final sorted = _sortPhotoFirst(reviews);
-    final stats = PrescriptionReviewStats.fromReviews(sorted);
+    final stats = statsOverride ?? PrescriptionReviewStats.fromReviews(sorted);
     final capped =
         visibleCount > sorted.length ? sorted.length : visibleCount;
     final visible = sorted.take(capped).toList();
@@ -84,7 +88,7 @@ class PrescriptionReviewTabPanel extends StatelessWidget {
                 fallbackImageUrl: fallbackImageUrl,
               ),
             ),
-          if (!guestLoginLocked && capped < sorted.length)
+          if (!guestLoginLocked && (capped < sorted.length || hasMore))
             Padding(
               padding: EdgeInsets.fromLTRB(hPad, healthDp(context, 48), hPad, 0),
               child: ProductReviewLoadMoreButton(

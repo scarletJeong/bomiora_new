@@ -22,6 +22,8 @@ class GeneralReviewTabPanel extends StatelessWidget {
   final bool embedInParentScroll;
   final bool showCouponSection;
   final String? fallbackImageUrl;
+  final bool hasMore;
+  final double? averageOverride;
 
   const GeneralReviewTabPanel({
     super.key,
@@ -35,12 +37,14 @@ class GeneralReviewTabPanel extends StatelessWidget {
     this.embedInParentScroll = false,
     this.showCouponSection = false,
     this.fallbackImageUrl,
+    this.hasMore = false,
+    this.averageOverride,
   });
 
   @override
   Widget build(BuildContext context) {
     final sorted = _sortPhotoFirst(reviews);
-    final average = GeneralReviewStats.averageOf(sorted);
+    final average = averageOverride ?? GeneralReviewStats.averageOf(sorted);
     final capped =
         visibleCount > sorted.length ? sorted.length : visibleCount;
     final visible = sorted.take(capped).toList();
@@ -74,7 +78,7 @@ class GeneralReviewTabPanel extends StatelessWidget {
                 fallbackImageUrl: fallbackImageUrl,
               ),
             ),
-          if (!guestLoginLocked && capped < sorted.length)
+          if (!guestLoginLocked && (capped < sorted.length || hasMore))
             Padding(
               padding: EdgeInsets.fromLTRB(hPad, healthDp(context, 48), hPad, 0),
               child: ProductReviewLoadMoreButton(

@@ -395,14 +395,32 @@ class ReviewStatsModel {
   final double averageScore;
   final int? generalCount;
   final int? supporterCount;
-  
+  final double? score1Avg;
+  final double? score2Avg;
+  final double? score3Avg;
+  final double? score4Avg;
+  final double? supporterAverage;
+  final double? supporterScore1Avg;
+  final double? supporterScore2Avg;
+  final double? supporterScore3Avg;
+  final double? supporterScore4Avg;
+
   ReviewStatsModel({
     required this.totalCount,
     required this.averageScore,
     this.generalCount,
     this.supporterCount,
+    this.score1Avg,
+    this.score2Avg,
+    this.score3Avg,
+    this.score4Avg,
+    this.supporterAverage,
+    this.supporterScore1Avg,
+    this.supporterScore2Avg,
+    this.supporterScore3Avg,
+    this.supporterScore4Avg,
   });
-  
+
   factory ReviewStatsModel.fromJson(Map<String, dynamic> json) {
     final normalized = NodeValueParser.normalizeMap(json);
     return ReviewStatsModel(
@@ -410,6 +428,15 @@ class ReviewStatsModel {
       averageScore: NodeValueParser.asDouble(normalized['averageScore']) ?? 0.0,
       generalCount: NodeValueParser.asInt(normalized['generalCount']),
       supporterCount: NodeValueParser.asInt(normalized['supporterCount']),
+      score1Avg: NodeValueParser.asDouble(normalized['score1Avg']),
+      score2Avg: NodeValueParser.asDouble(normalized['score2Avg']),
+      score3Avg: NodeValueParser.asDouble(normalized['score3Avg']),
+      score4Avg: NodeValueParser.asDouble(normalized['score4Avg']),
+      supporterAverage: NodeValueParser.asDouble(normalized['supporterAverage']),
+      supporterScore1Avg: NodeValueParser.asDouble(normalized['supporterScore1Avg']),
+      supporterScore2Avg: NodeValueParser.asDouble(normalized['supporterScore2Avg']),
+      supporterScore3Avg: NodeValueParser.asDouble(normalized['supporterScore3Avg']),
+      supporterScore4Avg: NodeValueParser.asDouble(normalized['supporterScore4Avg']),
     );
   }
 }

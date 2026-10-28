@@ -6,24 +6,118 @@ class ProductReviewLoadResult {
   final List<ReviewModel> supporterReviews;
   final List<ReviewModel> generalReviews;
   final Map<String, dynamic> stats;
+  final bool supporterHasNext;
+  final bool allHasNext;
 
   const ProductReviewLoadResult({
     required this.allReviews,
     required this.supporterReviews,
     required this.generalReviews,
     required this.stats,
+    required this.supporterHasNext,
+    required this.allHasNext,
   });
 }
 
+class ProductReviewPage {
+  final List<ReviewModel> reviews;
+  final bool hasNext;
+  final int totalCount;
+
+  const ProductReviewPage({
+    required this.reviews,
+    required this.hasNext,
+    required this.totalCount,
+  });
+}
+
+/// 탭에 찍는 갯수. 리뷰 본문과 따로 받는다.
+class ProductReviewCounts {
+  final int totalCount;
+  final int supporterCount;
+  final double? totalAverage;
+  final double? supporterAverage;
+  final double? totalScore1;
+  final double? totalScore2;
+  final double? totalScore3;
+  final double? totalScore4;
+  final double? supporterScore1;
+  final double? supporterScore2;
+  final double? supporterScore3;
+  final double? supporterScore4;
+
+  const ProductReviewCounts({
+    required this.totalCount,
+    required this.supporterCount,
+    this.totalAverage,
+    this.supporterAverage,
+    this.totalScore1,
+    this.totalScore2,
+    this.totalScore3,
+    this.totalScore4,
+    this.supporterScore1,
+    this.supporterScore2,
+    this.supporterScore3,
+    this.supporterScore4,
+  });
+
+  factory ProductReviewCounts.fromStats(ReviewStatsModel stats) {
+    return ProductReviewCounts(
+      totalCount: stats.totalCount,
+      supporterCount: stats.supporterCount ?? 0,
+      totalAverage: stats.averageScore,
+      supporterAverage: stats.supporterAverage,
+      totalScore1: stats.score1Avg,
+      totalScore2: stats.score2Avg,
+      totalScore3: stats.score3Avg,
+      totalScore4: stats.score4Avg,
+      supporterScore1: stats.supporterScore1Avg,
+      supporterScore2: stats.supporterScore2Avg,
+      supporterScore3: stats.supporterScore3Avg,
+      supporterScore4: stats.supporterScore4Avg,
+    );
+  }
+}
+
 class ProductReviewLoader {
+  static const int pageSize = 12;
+
   static final Map<String, ProductReviewLoadResult> _memory = {};
   static final Map<String, Future<ProductReviewLoadResult?>> _inflight = {};
+  static final Map<String, ProductReviewCounts> _counts = {};
+  static final Map<String, Future<ProductReviewCounts?>> _countInflight = {};
 
   /// 같은 상품을 다시 열면 네트워크 전에 바로 그릴 수 있게 한다.
   static ProductReviewLoadResult? cached(String productId) {
     final id = productId.trim();
     if (id.isEmpty) return null;
     return _memory[id];
+  }
+
+  static ProductReviewCounts? cachedCounts(String productId) {
+    final id = productId.trim();
+    if (id.isEmpty) return null;
+    return _counts[id];
+  }
+
+  /// 서포터/전체 갯수만 받는다. 리뷰 본문을 기다리지 않는다.
+  static Future<ProductReviewCounts?> loadCounts(String productId) {
+    final id = productId.trim();
+    if (id.isEmpty) return Future.value(null);
+    final pending = _countInflight[id];
+    if (pending != null) return pending;
+
+    late final Future<ProductReviewCounts?> future;
+    future = _fetchCounts(id).then((result) {
+      if (result != null) _counts[id] = result;
+      return result;
+    }).whenComplete(() {
+      if (identical(_countInflight[id], future)) {
+        _countInflight.remove(id);
+      }
+    });
+    _countInflight[id] = future;
+    return future;
   }
 
   static Future<ProductReviewLoadResult?> load({
@@ -47,23 +141,60 @@ class ProductReviewLoader {
     return future;
   }
 
+  static Future<ProductReviewCounts?> _fetchCounts(String productId) async {
+    final result = await ReviewService.getProductReviewStats(itId: productId);
+    final stats = result['stats'] as ReviewStatsModel?;
+    if (result['success'] == true && stats != null && stats.supporterCount != null) {
+      return ProductReviewCounts.fromStats(stats);
+    }
+
+    if (result['success'] == true && stats != null) {
+      final supporterPage = await fetchPage(
+        productId: productId,
+        rvkind: 'supporter',
+        page: 0,
+        size: 1,
+      );
+      return ProductReviewCounts(
+        totalCount: stats.totalCount,
+        supporterCount: supporterPage == null
+            ? 0
+            : _asInt(supporterPage.totalCount),
+      );
+    }
+
+    final pages = await Future.wait([
+      fetchPage(productId: productId, page: 0, size: 1),
+      fetchPage(productId: productId, rvkind: 'supporter', page: 0, size: 1),
+    ]);
+    final all = pages[0];
+    if (all == null) return null;
+    return ProductReviewCounts(
+      totalCount: all.totalCount,
+      supporterCount: pages[1]?.totalCount ?? 0,
+    );
+  }
+
   static Future<ProductReviewLoadResult?> _fetch({
     required String productId,
   }) async {
+    final pages = await Future.wait([
+      fetchPage(productId: productId, page: 0),
+      fetchPage(productId: productId, rvkind: 'supporter', page: 0),
+    ]);
+    final all = pages[0];
+    final supporter = pages[1];
+    if (all == null && supporter == null) return null;
 
-    // 리뷰 통합(it_review_link)은 서버가 상품 번호 기준으로 풀어 준다.
-    final allReviews = await _fetchAllPages(productId);
-    if (allReviews == null) return null;
-    final supporter = allReviews.where((r) => r.isSupporterReview).toList();
-    // 카페24 '전체 리뷰'와 같음. 서포터를 뺀 목록이 아니다.
-    final general = allReviews;
-
-    final stats = _buildStats(allReviews: allReviews, supporter: supporter);
+    final allReviews = all?.reviews ?? const <ReviewModel>[];
+    final supporterReviews = supporter?.reviews ?? const <ReviewModel>[];
     return ProductReviewLoadResult(
       allReviews: allReviews,
-      supporterReviews: supporter,
-      generalReviews: general,
-      stats: stats,
+      supporterReviews: supporterReviews,
+      generalReviews: allReviews,
+      supporterHasNext: supporter?.hasNext ?? false,
+      allHasNext: all?.hasNext ?? false,
+      stats: _buildStats(allReviews: allReviews, supporter: supporterReviews),
     );
   }
 
@@ -73,38 +204,27 @@ class ProductReviewLoader {
     return int.tryParse(value?.toString() ?? '') ?? 0;
   }
 
-  /// 승인 리뷰를 페이지마다 이어서 모두 받는다. 한 페이지 상한은 200건이다.
-  static Future<List<ReviewModel>?> _fetchAllPages(String itId) async {
-    const size = 200;
-    final first = await ReviewService.getProductReviews(
-      itId: itId,
-      rvkind: null,
-      page: 0,
+  /// 한 페이지만 받는다. 더보기는 다음 페이지를 이어서 요청한다.
+  static Future<ProductReviewPage?> fetchPage({
+    required String productId,
+    String? rvkind,
+    required int page,
+    int size = pageSize,
+  }) async {
+    final result = await ReviewService.getProductReviews(
+      itId: productId,
+      rvkind: rvkind,
+      page: page,
       size: size,
     );
-    if (first['success'] != true) return null;
-
-    final reviews = List<ReviewModel>.from(
-      first['reviews'] as List<ReviewModel>? ?? const [],
+    if (result['success'] != true) return null;
+    return ProductReviewPage(
+      reviews: List<ReviewModel>.from(
+        result['reviews'] as List<ReviewModel>? ?? const [],
+      ),
+      hasNext: result['hasNext'] == true,
+      totalCount: _asInt(result['totalElements']),
     );
-    final total = _asInt(first['totalElements']);
-    var page = 1;
-    while (reviews.length < total && page < 30) {
-      final next = await ReviewService.getProductReviews(
-        itId: itId,
-        rvkind: null,
-        page: page,
-        size: size,
-      );
-      if (next['success'] != true) break;
-      final batch = List<ReviewModel>.from(
-        next['reviews'] as List<ReviewModel>? ?? const [],
-      );
-      if (batch.isEmpty) break;
-      reviews.addAll(batch);
-      page += 1;
-    }
-    return reviews;
   }
 
   static Map<String, dynamic> _buildStats({

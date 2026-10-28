@@ -70,6 +70,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   bool? _usePointConfig; // cf_use_point 설정값
   int _visibleSupporterReviewCount = 3;
   int _visibleNormalReviewCount = 3;
+  int? _supporterReviewTotal;
+  int? _totalReviewCount;
+  PrescriptionReviewStats? _supporterReviewStats;
+  PrescriptionReviewStats? _allReviewStats;
+  bool _supporterHasNext = false;
+  bool _allHasNext = false;
+  int _supporterPage = 0;
+  int _allPage = 0;
+  bool _reviewPaging = false;
   UserModel? _loggedInUser;
 
   // 옵션 관련 상태
@@ -99,6 +108,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     if (cachedReviews != null) {
       _supporterReviews = cachedReviews.supporterReviews;
       _generalReviews = cachedReviews.generalReviews;
+      _supporterHasNext = cachedReviews.supporterHasNext;
+      _allHasNext = cachedReviews.allHasNext;
+    }
+    final cachedCounts = ProductReviewLoader.cachedCounts(widget.productId);
+    if (cachedCounts != null) {
+      _assignReviewCounts(cachedCounts);
     }
     _loadReviews();
     _loadProductDetail();
@@ -214,9 +229,71 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     });
   }
 
+  void _assignReviewCounts(ProductReviewCounts counts) {
+    _supporterReviewTotal = counts.supporterCount;
+    _totalReviewCount = counts.totalCount;
+    _supporterReviewStats = _reviewStatsFrom(
+      average: counts.supporterAverage,
+      score1: counts.supporterScore1,
+      score2: counts.supporterScore2,
+      score3: counts.supporterScore3,
+      score4: counts.supporterScore4,
+    );
+    _allReviewStats = _reviewStatsFrom(
+      average: counts.totalAverage,
+      score1: counts.totalScore1,
+      score2: counts.totalScore2,
+      score3: counts.totalScore3,
+      score4: counts.totalScore4,
+    );
+  }
+
+  PrescriptionReviewStats? _reviewStatsFrom({
+    required double? average,
+    required double? score1,
+    required double? score2,
+    required double? score3,
+    required double? score4,
+  }) {
+    if (average == null ||
+        score1 == null ||
+        score2 == null ||
+        score3 == null ||
+        score4 == null) {
+      return null;
+    }
+    int percent(double score) => (score * 20).round().clamp(0, 100);
+    return PrescriptionReviewStats(
+      average: average,
+      score1Percent: percent(score1),
+      score2Percent: percent(score2),
+      score3Percent: percent(score3),
+      score4Percent: percent(score4),
+    );
+  }
+
+  String _reviewCountSuffix(int? count) {
+    if (count == null) return '';
+    return count == 0 ? '(0)' : '(+$count)';
+  }
+
+  Future<void> _loadReviewCounts() async {
+    try {
+      final counts = await ProductReviewLoader.loadCounts(widget.productId);
+      if (!mounted || counts == null) return;
+      _safeSetState(() => _assignReviewCounts(counts));
+    } catch (_) {}
+  }
+
   Future<void> _loadReviews() async {
     if (widget.productId.isEmpty) return;
+    await Future.wait([
+      _loadReviewCounts(),
+      _loadReviewPages(),
+    ]);
+  }
 
+  Future<void> _loadReviewPages() async {
     final hadCache = ProductReviewLoader.cached(widget.productId) != null;
     if (!hadCache) {
       _safeSetState(() {
@@ -233,6 +310,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
         _safeSetState(() {
           _supporterReviews = loaded.supporterReviews;
           _generalReviews = loaded.generalReviews;
+          _supporterHasNext = loaded.supporterHasNext;
+          _allHasNext = loaded.allHasNext;
+          _supporterPage = 0;
+          _allPage = 0;
           _visibleSupporterReviewCount = 3;
           _visibleNormalReviewCount = 3;
           _isLoadingReviews = false;
@@ -246,6 +327,54 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       _safeSetState(() {
         _isLoadingReviews = false;
       });
+    }
+  }
+
+  Future<void> _revealMoreReviews({required bool supporter}) async {
+    if (_reviewPaging) return;
+    final loaded = supporter ? _supporterReviews : _generalReviews;
+    final visible =
+        supporter ? _visibleSupporterReviewCount : _visibleNormalReviewCount;
+    final hasNext = supporter ? _supporterHasNext : _allHasNext;
+    final page = supporter ? _supporterPage : _allPage;
+    final nextVisible = visible + 3;
+    if (nextVisible <= loaded.length || !hasNext) {
+      final cap = nextVisible > loaded.length ? loaded.length : nextVisible;
+      _safeSetState(() {
+        if (supporter) {
+          _visibleSupporterReviewCount = cap;
+        } else {
+          _visibleNormalReviewCount = cap;
+        }
+      });
+      return;
+    }
+
+    _reviewPaging = true;
+    try {
+      final more = await ProductReviewLoader.fetchPage(
+        productId: widget.productId,
+        rvkind: supporter ? 'supporter' : null,
+        page: page + 1,
+      );
+      if (!mounted || more == null) return;
+      _safeSetState(() {
+        final merged = [...loaded, ...more.reviews];
+        final cap = nextVisible > merged.length ? merged.length : nextVisible;
+        if (supporter) {
+          _supporterReviews = merged;
+          _supporterPage = page + 1;
+          _supporterHasNext = more.hasNext;
+          _visibleSupporterReviewCount = cap;
+        } else {
+          _generalReviews = merged;
+          _allPage = page + 1;
+          _allHasNext = more.hasNext;
+          _visibleNormalReviewCount = cap;
+        }
+      });
+    } finally {
+      _reviewPaging = false;
     }
   }
 
@@ -466,9 +595,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   }
 
   Widget _buildProductDetail() {
-    final supporterReviewCount = _supporterReviews.length;
-    final generalReviewCount = _generalReviews.length;
-
     return AnimatedBuilder(
       animation: _tabController,
       builder: (context, _) {
@@ -484,8 +610,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
               delegate: _SliverTabBarDelegate(
                 _buildProductTabBar(
                   context,
-                  supporterReviewCount: supporterReviewCount,
-                  generalReviewCount: generalReviewCount,
+                  supporterReviewCount: _supporterReviewTotal,
+                  generalReviewCount: _totalReviewCount,
                 ),
                 height: _productTabBarHeight(context),
               ),
@@ -546,8 +672,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   /// 탭 글자 ↔ 핑크 인디케이터 간격 5px
   Widget _buildProductTabBar(
     BuildContext context, {
-    required int supporterReviewCount,
-    required int generalReviewCount,
+    required int? supporterReviewCount,
+    required int? generalReviewCount,
   }) {
     const pink = Color(0xFFFF5A8D);
     const gray = Color(0xFF898383);
@@ -647,7 +773,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                   padding: EdgeInsets.only(top: dividerTop),
                   child: _buildTabDivider(context),
                 ),
-                buildTabItem(1, '서포터 리뷰${supporterReviewCount == 0 ? '(0)' : '(+$supporterReviewCount)'}'),
+                buildTabItem(1, '서포터 리뷰${_reviewCountSuffix(supporterReviewCount)}'),
                 Padding(
                   padding: EdgeInsets.only(top: dividerTop),
                   child: _buildTabDivider(context),
@@ -656,7 +782,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                   padding: EdgeInsets.only(right: healthDp(context, 10)),
                   child: buildTabItem(
                     2,
-                    '전체 리뷰${generalReviewCount == 0 ? '(0)' : '(+$generalReviewCount)'}',
+                    '전체 리뷰${_reviewCountSuffix(generalReviewCount)}',
                     indicatorAlign: Alignment.centerRight,
                     textAlign: TextAlign.right,
                   ),
@@ -881,11 +1007,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       embedInParentScroll: true,
       showCouponSection: !hideCoupon,
       fallbackImageUrl: _reviewFallbackImageUrl,
-      onLoadMore: () {
-        _safeSetState(() {
-          _visibleSupporterReviewCount += 3;
-        });
-      },
+      hasMore: _supporterHasNext,
+      statsOverride: _supporterReviewStats,
+      onLoadMore: () => _revealMoreReviews(supporter: true),
       onReviewTap: _openReviewDetail,
     );
   }
@@ -897,14 +1021,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       visibleCount: _visibleNormalReviewCount,
       guestLoginLocked: !_isReviewLoginOk,
       onGuestLoginTap: _onGuestReviewLoginTap,
+      hasMore: _allHasNext,
+      statsOverride: _allReviewStats,
       embedInParentScroll: true,
       showCouponSection: false,
       fallbackImageUrl: _reviewFallbackImageUrl,
-      onLoadMore: () {
-        _safeSetState(() {
-          _visibleNormalReviewCount += 3;
-        });
-      },
+      onLoadMore: () => _revealMoreReviews(supporter: false),
       onReviewTap: _openReviewDetail,
     );
   }
