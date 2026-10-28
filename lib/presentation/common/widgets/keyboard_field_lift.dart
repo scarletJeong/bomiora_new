@@ -30,9 +30,7 @@ class _KeyboardFieldLiftState extends State<KeyboardFieldLift>
   int _focusGeneration = 0;
   bool _liftQueued = false;
   Timer? _zeroInsetTimer;
-  Timer? _reliftTimer;
   ScrollPosition? _lastPosition;
-  bool _userDrivenScroll = false;
   double _latchedKeyboard = 0;
   late final void Function() _unsubscribeWebKeyboard;
 
@@ -47,7 +45,6 @@ class _KeyboardFieldLiftState extends State<KeyboardFieldLift>
   @override
   void dispose() {
     _zeroInsetTimer?.cancel();
-    _reliftTimer?.cancel();
     _unsubscribeWebKeyboard();
     FocusManager.instance.removeListener(_onFocusChanged);
     WidgetsBinding.instance.removeObserver(this);
@@ -117,7 +114,6 @@ class _KeyboardFieldLiftState extends State<KeyboardFieldLift>
     }
     _zeroInsetTimer?.cancel();
     _zeroInsetTimer = null;
-    pinWebDocumentScroll();
 
     final fieldRender = fieldContext.findRenderObject();
     if (fieldRender is! RenderBox ||
@@ -149,7 +145,8 @@ class _KeyboardFieldLiftState extends State<KeyboardFieldLift>
     }
     final roomAbove = fieldTop - visibleTop;
     if (roomAbove < delta) delta = math.max(0, roomAbove);
-    if (delta < 1) return;
+    // 글자 입력마다 1~2px 다시 맞추면 화면이 깜빡인다. 가려진 만큼만 올린다.
+    if (delta < 12) return;
 
     final position = scrollable.position;
     final slack = math.max(keyboard + gap, delta);
@@ -158,15 +155,8 @@ class _KeyboardFieldLiftState extends State<KeyboardFieldLift>
     final max = position.maxScrollExtent + slack;
     final target =
         (position.pixels + delta).clamp(position.minScrollExtent, max);
-    if ((target - position.pixels).abs() < 1) return;
+    if ((target - position.pixels).abs() < 12) return;
     position.jumpTo(target);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !position.hasPixels) return;
-      if (_extra.bottom <= 0) return;
-      if ((position.pixels - target).abs() <= 2) return;
-      final retryMax = position.maxScrollExtent + _extra.bottom;
-      position.jumpTo(target.clamp(position.minScrollExtent, retryMax));
-    });
   }
 
   void _settleIfPastEnd() {
@@ -239,48 +229,11 @@ class _KeyboardFieldLiftState extends State<KeyboardFieldLift>
     return null;
   }
 
-  bool _onScroll(ScrollNotification notification) {
-    if (notification.metrics.axis != Axis.vertical) return false;
-    if (notification is ScrollStartNotification &&
-        notification.dragDetails != null) {
-      _userDrivenScroll = true;
-      return false;
-    }
-    if (notification is ScrollUpdateNotification &&
-        notification.dragDetails != null) {
-      _userDrivenScroll = true;
-      return false;
-    }
-    if (notification is ScrollEndNotification) {
-      final fromUser = _userDrivenScroll;
-      _userDrivenScroll = false;
-      if (fromUser) return false;
-    } else if (_userDrivenScroll) {
-      return false;
-    }
-    if (notification is! ScrollUpdateNotification &&
-        notification is! ScrollEndNotification) {
-      return false;
-    }
-    // 글자 입력 때 칸을 키보드 아래로 되돌린 스크롤을 다시 올린다.
-    _scheduleLift();
-    _reliftTimer?.cancel();
-    _reliftTimer = Timer(const Duration(milliseconds: 140), () {
-      _reliftTimer = null;
-      if (!mounted) return;
-      _liftFocusedField();
-    });
-    return false;
-  }
-
   @override
   Widget build(BuildContext context) {
-    return NotificationListener<ScrollNotification>(
-      onNotification: _onScroll,
-      child: ScrollConfiguration(
-        behavior: _KeyboardLiftScrollBehavior(_extra),
-        child: widget.child,
-      ),
+    return ScrollConfiguration(
+      behavior: _KeyboardLiftScrollBehavior(_extra),
+      child: widget.child,
     );
   }
 }

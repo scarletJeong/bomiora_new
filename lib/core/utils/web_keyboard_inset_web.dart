@@ -7,11 +7,12 @@ import 'package:bomiora_app/core/utils/web_keyboard_overlap.dart';
 export 'package:bomiora_app/core/utils/web_keyboard_overlap.dart';
 
 void Function()? _onChange;
-html.EventListener? _viewportListener;
-html.EventListener? _inputListener;
+html.EventListener? _resizeListener;
+html.EventListener? _scrollListener;
 JSFunction? _geometryListener;
 bool _listening = false;
 bool _pinning = false;
+bool _scrollLocked = false;
 
 WebKeyboardOverlap currentWebKeyboardOverlap() {
   final innerHeight = _px(html.window.innerHeight);
@@ -73,32 +74,25 @@ bool webEditingElementFocused() {
 
 void setWebInputScrollLock(bool lock) {
   if (lock) {
+    if (_scrollLocked) return;
+    _scrollLocked = true;
     pinWebDocumentScroll();
+    return;
   }
+  _scrollLocked = false;
 }
 
 void _ensureListening() {
   if (_listening) return;
   _listening = true;
 
-  _viewportListener = (_) {
-    pinWebDocumentScroll();
-    _onChange?.call();
-  };
+  _resizeListener = (_) => _onChange?.call();
+  _scrollListener = (_) => pinWebDocumentScroll();
   final viewport = html.window.visualViewport;
-  viewport?.addEventListener('resize', _viewportListener);
-  viewport?.addEventListener('scroll', _viewportListener);
-  html.window.addEventListener('resize', _viewportListener);
-  html.window.addEventListener('scroll', _viewportListener);
-
-  _inputListener = (_) {
-    if (!webEditingElementFocused()) return;
-    pinWebDocumentScroll();
-    _onChange?.call();
-  };
-  html.document.addEventListener('input', _inputListener, true);
-  html.document.addEventListener('beforeinput', _inputListener, true);
-  html.document.addEventListener('keydown', _inputListener, true);
+  viewport?.addEventListener('resize', _resizeListener);
+  viewport?.addEventListener('scroll', _scrollListener);
+  html.window.addEventListener('resize', _resizeListener);
+  html.window.addEventListener('scroll', _scrollListener);
 
   final keyboard = _virtualKeyboard();
   if (keyboard == null) return;
