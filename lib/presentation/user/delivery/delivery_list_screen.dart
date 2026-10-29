@@ -1637,33 +1637,20 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
 
       if (!mounted) return;
       final isPrescription = orderDetail.isPrescriptionOrder;
-      final bool? reviewWritten;
-      if (pending.length > 1) {
-        reviewWritten = await Navigator.push<bool>(
-          context,
-          MaterialPageRoute(
-            builder: (_) => DeliverySelectList(
-              orderDetail: orderDetail,
-              pendingProducts: pending,
-            ),
-          ),
-        );
-      } else {
-        reviewWritten = await Navigator.push<bool>(
-          context,
-          MaterialPageRoute(
-            builder: (_) => isPrescription
-                ? ReviewWriteScreen(
-                    orderDetail: orderDetail,
-                    selectedProducts: pending,
-                  )
-                : ReviewWriteGeneralScreen(
-                    orderDetail: orderDetail,
-                    selectedProducts: pending,
-                  ),
-          ),
-        );
-      }
+      final bool? reviewWritten = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => isPrescription
+              ? ReviewWriteScreen(
+                  orderDetail: orderDetail,
+                  selectedProducts: pending,
+                )
+              : ReviewWriteGeneralScreen(
+                  orderDetail: orderDetail,
+                  selectedProducts: pending,
+                ),
+        ),
+      );
 
       if (reviewWritten == true) {
         await _loadOrders(force: true);
