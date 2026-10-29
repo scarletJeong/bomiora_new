@@ -296,10 +296,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
     if (_selectedStatus == 'all') {
       _displayedOrders = byType.where((order) {
         if (order.countsAsOpenOrderHistory) return true;
-        final prescription =
-            _selectedProductType == DeliveryProductType.prescription;
-        return prescription &&
-            (order.displayStatus == '결제대기중' || order.odStatus == '주문');
+        return order.displayStatus == '결제대기중' || order.odStatus == '주문';
       }).toList();
       return;
     }
