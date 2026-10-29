@@ -182,12 +182,28 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   bool get _phoneChanged =>
       _digitsOnly(_enteredPhoneDigits) != _originalPhoneDigits;
 
-  bool get _passwordChanged =>
+  bool get _nicknameReady =>
+      _nicknameChanged && _nicknameController.text.trim().isNotEmpty;
+
+  /// 연락처는 번호가 바뀌고 인증번호 확인까지 끝난 뒤에만 저장할 수 있습니다.
+  bool get _phoneReady => _phoneChanged && _contactPhoneVerified;
+
+  bool get _passwordInProgress =>
       _newPasswordController.text.isNotEmpty ||
       _confirmPasswordController.text.isNotEmpty;
 
+  bool get _passwordReady {
+    final pw = _newPasswordController.text;
+    final confirm = _confirmPasswordController.text;
+    return pw.isNotEmpty &&
+        confirm.isNotEmpty &&
+        pw == confirm &&
+        isValidAppPassword(pw);
+  }
+
+  /// 닉네임, 인증된 연락처, 비밀번호 중 하나라도 저장 가능하면 저장 버튼을 켭니다.
   bool get _hasProfileChanges =>
-      _nicknameChanged || _phoneChanged || _passwordChanged;
+      _nicknameReady || _phoneReady || _passwordReady;
 
   void _onFormChanged() {
     if (mounted) setState(() {});
@@ -417,95 +433,72 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     }
   }
 
-  bool _isValidPassword(String pw) {
-    final t = pw.trim();
-    if (t.length < 8 || t.length > 16) return false;
-    final hasLetter = RegExp(r'[A-Za-z]').hasMatch(t);
-    final hasDigit = RegExp(r'[0-9]').hasMatch(t);
-    final hasSpecial =
-        RegExp(r'[!@#$%^&*(),.?":{}|<>_\-\\/\[\]~`+=;]').hasMatch(t);
-    return hasLetter && hasDigit && hasSpecial;
-  }
-
   Future<void> _saveProfile() async {
     if (_currentUser == null) return;
+    if (!_hasProfileChanges) return;
 
-    if (_passwordMismatch) {
+    if (_nicknameReady && !_canChangeNicknameNow()) {
+      _showNicknameChangeLimitToast();
+      _nicknameController.text = _originalNickname;
+      if (mounted) setState(() {});
       return;
     }
 
-    if (_nicknameChanged && !_canChangeNicknameNow()) {
-      _showNicknameChangeLimitToast();
-      _nicknameController.text = _originalNickname;
+    if (_phoneChanged && !_contactPhoneVerified) {
+      if (!mounted) return;
+      AppToastOverlay.showAlert(context, '인증번호를 입력하세요');
+      if (!_nicknameReady && !_passwordReady) return;
+    }
+
+    if (_passwordInProgress && !_passwordReady) {
+      if (!mounted) return;
+      AppToastOverlay.showAlert(context, '비밀번호를 확인해 주세요');
       return;
     }
 
     try {
-      final phone = _digitsOnly(_enteredPhoneDigits);
-      if (phone != _originalPhoneDigits && !_contactPhoneVerified) {
+      var saved = !_nicknameReady && !_phoneReady;
+      if (_nicknameReady || _phoneReady) {
+        final phone = _phoneReady
+            ? _digitsOnly(_enteredPhoneDigits)
+            : _originalPhoneDigits;
+        final result = await AuthService.updateProfile(
+          mbId: _currentUser!.id,
+          name: _currentUser!.name,
+          nickname: _nicknameController.text
+              .trim()
+              .replaceAll(RegExp(r'[^a-zA-Z0-9ㄱ-ㅎㅏ-ㅣ가-힣]'), ''),
+          phone: phone,
+        );
+
         if (!mounted) return;
-        AppToastOverlay.showAlert(context, '인증번호를 입력하세요');
-        return;
-      }
-      final result = await AuthService.updateProfile(
-        mbId: _currentUser!.id,
-        name: _currentUser!.name,
-        nickname: _nicknameController.text
-            .trim()
-            .replaceAll(RegExp(r'[^a-zA-Z0-9ㄱ-ㅎㅏ-ㅣ가-힣]'), ''),
-        phone: phone,
-      );
 
-      if (!mounted) return;
-
-      if (result['success'] != true) {
-        if (result['code'] == 'NICKNAME_CHANGE_TOO_SOON') {
-          _showNicknameChangeLimitToast();
-          _nicknameController.text = _originalNickname;
-          if (mounted) setState(() {});
+        if (result['success'] != true) {
+          if (result['code'] == 'NICKNAME_CHANGE_TOO_SOON') {
+            _showNicknameChangeLimitToast();
+            _nicknameController.text = _originalNickname;
+            if (mounted) setState(() {});
+          }
+          return;
         }
-        return;
+        saved = true;
       }
 
-      // 프로필 저장 직후 로컬 사용자·닉네임 잠금 상태 반영
-      final refreshed = await AuthService.getUser();
-      if (mounted && refreshed != null) {
-        setState(() {
-          _currentUser = refreshed;
-          _originalNickname = refreshed.nickname ?? '';
-          _nicknameController.text = _originalNickname;
-        });
-      }
-
-      if (result['success'] == true) {
-        final newPw = _newPasswordController.text.trim();
-        final confirmPw = _confirmPasswordController.text.trim();
-
-        if (newPw.isNotEmpty || confirmPw.isNotEmpty) {
-          if (newPw.isEmpty || confirmPw.isEmpty) {
-            return;
-          }
-          if (!_isValidPassword(newPw)) {
-            return;
-          }
-          if (newPw != confirmPw) {
-            return;
-          }
-
-          final pwResult = await AuthService.changePassword(
-            mbId: _currentUser!.id,
-            newPassword: newPw,
-          );
-          if (!mounted) return;
-          if (pwResult['success'] != true) {
-            return;
-          }
-
-          _newPasswordController.clear();
-          _confirmPasswordController.clear();
+      if (_passwordReady) {
+        final pwResult = await AuthService.changePassword(
+          mbId: _currentUser!.id,
+          newPassword: _newPasswordController.text,
+        );
+        if (!mounted) return;
+        if (pwResult['success'] != true) {
+          return;
         }
+        _newPasswordController.clear();
+        _confirmPasswordController.clear();
+        saved = true;
+      }
 
-        // 사용자 정보 새로고침
+      if (saved) {
         await _loadCurrentUser();
       }
     } catch (e) {}
