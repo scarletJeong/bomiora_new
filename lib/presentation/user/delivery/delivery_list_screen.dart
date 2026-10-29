@@ -1304,6 +1304,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
       if (deadline.isEmpty) return null;
       return '입금기간: $deadline';
     }
+    if (!order.isPrescriptionOrder) return null;
     final reservation = _reservationLine(order);
     if (reservation.isEmpty) return null;
     return '예약시간: $reservation';

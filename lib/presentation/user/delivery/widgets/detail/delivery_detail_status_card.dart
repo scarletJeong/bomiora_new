@@ -43,6 +43,7 @@ class DeliveryDetailStatusCard extends StatelessWidget {
       return '입금기간: $deadline';
     }
     if (isCancelled) return null;
+    if (!order.isPrescriptionOrder) return null;
     final reservation = _reservationLine(order);
     if (reservation == null || reservation.isEmpty) return null;
     return '예약시간: $reservation';
