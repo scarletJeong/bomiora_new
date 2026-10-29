@@ -24,6 +24,18 @@ bool _scrollLocked = false;
 bool _compensateQueued = false;
 double _lastNotifiedBottom = 0;
 double _appliedShift = 0;
+String? _kbLast;
+int _kbLastMs = 0;
+
+void _kb(String message) {
+  final now = DateTime.now().millisecondsSinceEpoch;
+  if (message == _kbLast && now - _kbLastMs < 250) return;
+  _kbLast = message;
+  _kbLastMs = now;
+  try {
+    js_util.callMethod(html.window.console, 'log', ['[kb] $message']);
+  } catch (_) {}
+}
 
 WebKeyboardOverlap currentWebKeyboardOverlap() {
   try {
@@ -133,17 +145,20 @@ void _ensureListening() {
 
   _resizeListener = (_) {
     try {
+      _logViewport('resize');
       stickWebVisualViewport();
       _notifyKeyboardHeightChange();
     } catch (_) {}
   };
   _scrollListener = (_) {
     try {
+      _logViewport('scroll');
       stickWebVisualViewport();
     } catch (_) {}
   };
   _inputListener = (_) {
     try {
+      _logViewport('input');
       stickWebVisualViewport();
     } catch (_) {}
   };
@@ -190,7 +205,13 @@ void _compensateFocusedInput() {
   final visibleHeight = _px(viewport.height);
   if (visibleHeight < 1) return;
   // 포커스 직후 iOS 가 입력창을 화면 밖에 두는 동안에는 밀지 않는다.
-  if (rect.top < -200 || rect.height < 1 || rect.width < 1) return;
+  if (rect.top < -200 || rect.height < 1 || rect.width < 1) {
+    _kb(
+      'compensate skip offscreen top=${rect.top.toStringAsFixed(0)} '
+      'h=${rect.height.toStringAsFixed(0)} shift=${_appliedShift.toStringAsFixed(0)}',
+    );
+    return;
+  }
 
   // rect 는 이미 적용된 이동을 포함한다. 이동 전 위치로 필요한 양을 다시 계산한다.
   final unshiftedBottom = rect.bottom + _appliedShift;
@@ -199,7 +220,32 @@ void _compensateFocusedInput() {
   final distVisual = visibleHeight - unshiftedBottom;
   final dist = distLayout < distVisual ? distLayout : distVisual;
   final needed = (_kGap + _kAccessory + _kFieldChrome) - dist;
+  final before = _appliedShift;
   _applyShift(needed > 0 ? needed : 0);
+  if ((before - _appliedShift).abs() >= 1 || (needed <= 0 && before > 0)) {
+    _kb(
+      'compensate shift ${before.toStringAsFixed(0)}->${_appliedShift.toStringAsFixed(0)} '
+      'needed=${needed.toStringAsFixed(0)} dist=${dist.toStringAsFixed(0)} '
+      'rect.bottom=${rect.bottom.toStringAsFixed(0)} '
+      'visibleH=${visibleHeight.toStringAsFixed(0)} '
+      'offsetTop=${_px(viewport.offsetTop).toStringAsFixed(0)}',
+    );
+  }
+}
+
+void _logViewport(String reason) {
+  final viewport = html.window.visualViewport;
+  final input = _focusedInput();
+  final rect = input?.getBoundingClientRect();
+  _kb(
+    '$reason inner=${_px(html.window.innerHeight).toStringAsFixed(0)} '
+    'vvH=${_px(viewport?.height).toStringAsFixed(0)} '
+    'offsetTop=${_px(viewport?.offsetTop).toStringAsFixed(0)} '
+    'scrollY=${_px(html.window.scrollY).toStringAsFixed(0)} '
+    'shift=${_appliedShift.toStringAsFixed(0)} '
+    'inputBottom=${rect == null ? '-' : rect.bottom.toStringAsFixed(0)} '
+    'lock=$_scrollLocked',
+  );
 }
 
 void _applyShift(double shift) {

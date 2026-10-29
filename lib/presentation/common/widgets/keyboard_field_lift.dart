@@ -17,6 +17,25 @@ const double _kFieldGap = 20;
 bool _keyboardLiftHold = false;
 double _keyboardLiftSlack = 0;
 
+String? _kbLast;
+DateTime? _kbLastAt;
+
+/// 릴리즈 웹에서도 브라우저 콘솔에 남긴다. 같은 문장은 0.25초만 한 번.
+void _kb(String message) {
+  final now = DateTime.now();
+  if (message == _kbLast &&
+      _kbLastAt != null &&
+      now.difference(_kbLastAt!).inMilliseconds < 250) {
+    return;
+  }
+  _kbLast = message;
+  _kbLastAt = now;
+  // ignore: avoid_print
+  print('[kb] $message');
+}
+
+String _n(double v) => v.isFinite ? v.toStringAsFixed(0) : 'nan';
+
 /// 키보드가 열려도 페이지 높이는 줄이지 않는다.
 /// 입력칸에 포커스가 가면, 그 칸이 키보드에 가려질 때만 스크롤을 올려 칸을 키보드 위로 둔다.
 class KeyboardFieldLift extends StatefulWidget {
@@ -117,6 +136,7 @@ class _KeyboardFieldLiftState extends State<KeyboardFieldLift>
                 null ||
             webEditingElementFocused();
         if (stillEditing) return;
+        _kb('release hold cleared');
         _latchedKeyboard = 0;
         _pinnedPixels = null;
         _keyboardLiftHold = false;
@@ -135,18 +155,28 @@ class _KeyboardFieldLiftState extends State<KeyboardFieldLift>
     _keyboardLiftHold = true;
     _extra.hold = true;
     setWebInputScrollLock(true);
-    if (fieldContext == null) return;
+    if (fieldContext == null) {
+      _kb(
+        'lift abort no-field webFocus=${webEditingElementFocused()} '
+        'latched=${_n(_latchedKeyboard)}',
+      );
+      return;
+    }
 
     final fieldRender = fieldContext.findRenderObject();
     if (fieldRender is! RenderBox ||
         !fieldRender.attached ||
         !fieldRender.hasSize) {
+      _kb('lift abort no-box');
       return;
     }
     final fieldBox = _revealBox(fieldContext, fieldRender);
 
     final scrollable = _pageScrollable(fieldContext);
-    if (scrollable == null || !scrollable.position.hasPixels) return;
+    if (scrollable == null || !scrollable.position.hasPixels) {
+      _kb('lift abort no-scroll boxH=${_n(fieldBox.size.height)}');
+      return;
+    }
 
     final view = View.of(fieldContext);
     final cover = _keyboardCoverOf(
@@ -156,6 +186,9 @@ class _KeyboardFieldLiftState extends State<KeyboardFieldLift>
     );
     final visibleTop = view.padding.top / view.devicePixelRatio + _kFieldGap;
     final visibleBottom = cover.visibleBottom;
+    final overlap = currentWebKeyboardOverlap();
+    final screen = view.physicalSize.height / view.devicePixelRatio;
+    final inset = view.viewInsets.bottom / view.devicePixelRatio;
 
     final topLeft = fieldBox.localToGlobal(Offset.zero);
     final fieldTop = topLeft.dy;
@@ -173,6 +206,15 @@ class _KeyboardFieldLiftState extends State<KeyboardFieldLift>
 
     if (delta <= 0.5) {
       _pinnedPixels = position.pixels;
+      _kb(
+        'lift skip covered=no fieldBottom=${_n(fieldBottom)} '
+        'visibleBottom=${_n(visibleBottom)} kb=${_n(cover.keyboard)} '
+        'reserve=${_n(cover.reserve)} px=${_n(position.pixels)} '
+        'max=${_n(position.maxScrollExtent)} boxH=${_n(fieldBox.size.height)} '
+        'screen=${_n(screen)} visibleH=${_n(overlap.visibleHeight)} '
+        'inset=${_n(inset)} webBottom=${_n(overlap.bottom)} '
+        'mobileAcc=${webPreferKeyboardAccessory()}',
+      );
       return;
     }
 
@@ -192,6 +234,23 @@ class _KeyboardFieldLiftState extends State<KeyboardFieldLift>
     position.jumpTo(target);
     _applyingLift = false;
     _pinnedPixels = target;
+    final after = position.pixels;
+    _kb(
+      'lift jump delta=${_n(delta)} fieldBottom=${_n(fieldBottom)} '
+      'visibleBottom=${_n(visibleBottom)} kb=${_n(cover.keyboard)} '
+      'reserve=${_n(cover.reserve)} px ${_n(target)}->${_n(after)} '
+      'max=${_n(position.maxScrollExtent)} slack=${_n(_extra.bottom)} '
+      'boxH=${_n(fieldBox.size.height)} '
+      'screen=${_n(screen)} visibleH=${_n(overlap.visibleHeight)} '
+      'inset=${_n(inset)} webBottom=${_n(overlap.bottom)} '
+      'mobileAcc=${webPreferKeyboardAccessory()}',
+    );
+    if ((after - target).abs() > 1) {
+      _kb(
+        'lift JUMP REVERTED target=${_n(target)} after=${_n(after)} '
+        'max=${_n(position.maxScrollExtent)} hold=${_extra.hold}',
+      );
+    }
   }
 
   void _attachPinnedPosition(ScrollPosition position) {
@@ -211,7 +270,7 @@ class _KeyboardFieldLiftState extends State<KeyboardFieldLift>
   }
 
   void _restorePinnedPixels() {
-    if (_restoringPin || _applyingLift || !_extra.hold) return;
+    if (_restoringPin || _applyingLift) return;
     final position = _lastPosition;
     final pinned = _pinnedPixels;
     if (position == null || pinned == null || !position.hasPixels) return;
@@ -221,9 +280,16 @@ class _KeyboardFieldLiftState extends State<KeyboardFieldLift>
       }
       return;
     }
+    _kb(
+      'scroll DROP px ${_n(position.pixels)} pinned=${_n(pinned)} '
+      'hold=${_extra.hold} flagHold=$_keyboardLiftHold '
+      'max=${_n(position.maxScrollExtent)}',
+    );
+    if (!_extra.hold) return;
     _restoringPin = true;
     try {
       position.jumpTo(pinned);
+      _kb('scroll RESTORE -> ${_n(position.pixels)}');
     } finally {
       _restoringPin = false;
     }
@@ -421,24 +487,52 @@ void liftContextAboveKeyboard(BuildContext context) {
     if (scrollable.position.axis == Axis.vertical) break;
     scrollable = scrollable.context.findAncestorStateOfType<ScrollableState>();
   }
-  if (scrollable == null || !scrollable.position.hasPixels) return;
+  if (scrollable == null || !scrollable.position.hasPixels) {
+    _kb('focus-lift abort no-scroll');
+    return;
+  }
 
   final view = View.of(context);
   final cover = _keyboardCoverOf(view, editing: true);
-  if (cover.keyboard < 1 && cover.reserve < 1) return;
+  final fieldBottom = box.localToGlobal(Offset.zero).dy + box.size.height;
+  if (cover.keyboard < 1 && cover.reserve < 1) {
+    _kb(
+      'focus-lift abort no-cover fieldBottom=${_n(fieldBottom)} '
+      'boxH=${_n(box.size.height)}',
+    );
+    return;
+  }
 
   final visibleBottom = cover.visibleBottom;
-  final fieldBottom = box.localToGlobal(Offset.zero).dy + box.size.height;
-  if (fieldBottom <= visibleBottom + 0.5) return;
+  if (fieldBottom <= visibleBottom + 0.5) {
+    _kb(
+      'focus-lift skip fieldBottom=${_n(fieldBottom)} '
+      'visibleBottom=${_n(visibleBottom)} kb=${_n(cover.keyboard)} '
+      'reserve=${_n(cover.reserve)}',
+    );
+    return;
+  }
 
   final delta = fieldBottom - visibleBottom;
   final position = scrollable.position;
   final reserve = math.max(cover.keyboard + cover.reserve, delta);
   _keyboardLiftHold = true;
   _keyboardLiftSlack = math.max(_keyboardLiftSlack, reserve);
+  final before = position.pixels;
   final next = math.max(position.minScrollExtent, position.pixels + delta);
   if ((next - position.pixels).abs() <= 0.5) return;
   position.jumpTo(next);
+  _kb(
+    'focus-lift jump delta=${_n(delta)} px ${_n(before)}->${_n(position.pixels)} '
+    'target=${_n(next)} fieldBottom=${_n(fieldBottom)} '
+    'visibleBottom=${_n(visibleBottom)}',
+  );
+  if ((position.pixels - next).abs() > 1) {
+    _kb(
+      'focus-lift JUMP REVERTED target=${_n(next)} '
+      'after=${_n(position.pixels)} max=${_n(position.maxScrollExtent)}',
+    );
+  }
 }
 
 /// 키보드가 가리는 높이만큼 스크롤 본문 아래에 빈 칸을 넣어, 맨 아래 입력칸도 키보드 위로 올릴 수 있게 한다.
