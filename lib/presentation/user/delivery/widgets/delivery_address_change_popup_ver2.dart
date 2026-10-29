@@ -907,15 +907,26 @@ class _AddressFormDialogState extends State<_AddressFormDialog>
   }) {
     final borderColor = _pulseBorderColor(pulseKey);
     final radius = healthDp(context, 10);
-    return SizedBox(
+    final fieldH = healthDp(context, 45);
+    return Container(
       width: double.infinity,
-      height: healthDp(context, 45),
+      height: fieldH,
+      alignment: Alignment.centerLeft,
+      padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
+      decoration: ShapeDecoration(
+        color: _kFieldFill,
+        shape: RoundedRectangleBorder(
+          side: BorderSide(color: borderColor),
+          borderRadius: BorderRadius.circular(radius),
+        ),
+      ),
       child: TextField(
         controller: controller,
         keyboardType: keyboardType,
         textInputAction: textInputAction,
         inputFormatters: inputFormatters,
         cursorColor: _kPink,
+        textAlignVertical: TextAlignVertical.center,
         onChanged: (_) {
           if (_pulseFields.contains(pulseKey)) {
             setState(() => _pulseFields = {..._pulseFields}..remove(pulseKey));
@@ -933,32 +944,22 @@ class _AddressFormDialogState extends State<_AddressFormDialog>
           fontSize: healthSp(context, 12),
           fontFamily: _kFont,
           fontWeight: FontWeight.w500,
+          height: 1.0,
         ),
         decoration: InputDecoration(
           isDense: true,
-          filled: true,
-          fillColor: _kFieldFill,
-          contentPadding: EdgeInsets.all(healthDp(context, 10)),
+          isCollapsed: true,
+          contentPadding: EdgeInsets.zero,
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
           hintText: hint,
           hintStyle: TextStyle(
             color: _kMuted,
             fontSize: healthSp(context, 12),
             fontFamily: _kFont,
             fontWeight: FontWeight.w300,
-          ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(radius),
-            borderSide: BorderSide(color: borderColor),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(radius),
-            borderSide: BorderSide(color: borderColor),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(radius),
-            borderSide: BorderSide(
-              color: _pulseFields.contains(pulseKey) ? borderColor : _kPink,
-            ),
+            height: 1.0,
           ),
         ),
       ),

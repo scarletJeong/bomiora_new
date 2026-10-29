@@ -565,17 +565,13 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
     }
   }
 
-  /// 본품 2축(기간 등) — 상위 선택과 무관하게 전체 값을 노출
-  List<String> _allMainSecondAxisKeys() {
-    final keys = <String>[];
-    final seen = <String>{};
-    for (final o in _mainSelectableOptions) {
-      final key = o.axisValue2.trim().isNotEmpty
-          ? o.axisValue2.trim()
-          : (o.months != null ? '${o.months}개월' : '');
-      if (key.isEmpty || !seen.add(key)) continue;
-      keys.add(key);
-    }
+  String _secondAxisKeyOf(ProductOption o) {
+    if (o.axisValue2.trim().isNotEmpty) return o.axisValue2.trim();
+    if (o.months != null) return '${o.months}개월';
+    return '';
+  }
+
+  void _sortSecondAxisKeys(List<String> keys) {
     keys.sort((a, b) {
       final ma =
           int.tryParse(RegExp(r'^(\d+)').firstMatch(a)?.group(1) ?? '') ?? 0;
@@ -583,6 +579,19 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
           int.tryParse(RegExp(r'^(\d+)').firstMatch(b)?.group(1) ?? '') ?? 0;
       return ma.compareTo(mb);
     });
+  }
+
+  /// 본품 2축 값 목록. [step]이 있으면 해당 1축에 실제 존재하는 조합만 반환.
+  List<String> _mainSecondAxisKeys({String? step}) {
+    final keys = <String>[];
+    final seen = <String>{};
+    for (final o in _mainSelectableOptions) {
+      if (step != null && o.step != step) continue;
+      final key = _secondAxisKeyOf(o);
+      if (key.isEmpty || !seen.add(key)) continue;
+      keys.add(key);
+    }
+    _sortSecondAxisKeys(keys);
     return keys;
   }
 
@@ -592,10 +601,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
   }) {
     for (final o in _mainSelectableOptions) {
       if (o.step != step) continue;
-      final key = o.axisValue2.trim().isNotEmpty
-          ? o.axisValue2.trim()
-          : (o.months != null ? '${o.months}개월' : '');
-      if (key == axis2) return o;
+      if (_secondAxisKeyOf(o) == axis2) return o;
     }
     return null;
   }
@@ -1000,8 +1006,10 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
                 ? widget.product!.depOption2Subject!
                 : '추가 선택 2');
 
-    final secondKeys = _allMainSecondAxisKeys();
-    final showTwoAxes = _stepGroups.length > 1 && secondKeys.length > 1;
+    // 2축 UI 여부: 전체 옵션 기준. 드롭다운 항목은 선택 1축에 실제 있는 조합만.
+    final allSecondKeys = _mainSecondAxisKeys();
+    final secondKeys = _mainSecondAxisKeys(step: _selectedStep);
+    final showTwoAxes = _stepGroups.length > 1 && allSecondKeys.length > 1;
 
     final List<Widget> mainOptionFields;
     if (showTwoAxes) {
@@ -1021,6 +1029,11 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
               _selectedStep = step;
               _selectedAxis2 = null;
               _clearDepSelections();
+              if (_usesAxisDelimiter) {
+                _updateAxis2Groups();
+              } else {
+                _updateMonthsGroups();
+              }
             });
           },
         ),

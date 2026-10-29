@@ -938,76 +938,68 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
     final radius = healthDp(context, 10);
     final fieldH = _fieldHeight(context);
     final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
-    return SizedBox(
+    // 배송지명 칩과 같은 높이. 입력 테두리는 글자 높이에 붙지 않게 바깥 박스에 둔다.
+    return Container(
       key: key,
       width: double.infinity,
       height: fieldH,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: fillColor,
-          borderRadius: BorderRadius.circular(radius),
-          border: Border.all(color: borderColor),
+      alignment: Alignment.centerLeft,
+      padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
+      decoration: BoxDecoration(
+        color: fillColor,
+        borderRadius: BorderRadius.circular(radius),
+        border: Border.all(color: borderColor),
+      ),
+      child: TextField(
+        controller: controller,
+        focusNode: focusNode,
+        keyboardType: keyboardType,
+        inputFormatters: inputFormatters,
+        textInputAction: textInputAction,
+        textAlignVertical: TextAlignVertical.center,
+        maxLines: 1,
+        cursorColor: _kPink,
+        scrollPadding: EdgeInsets.only(
+          bottom: keyboardInset + healthDp(context, 180),
         ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(radius),
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: TextField(
-                controller: controller,
-                focusNode: focusNode,
-                keyboardType: keyboardType,
-                inputFormatters: inputFormatters,
-                textInputAction: textInputAction,
-                textAlignVertical: TextAlignVertical.center,
-                maxLines: 1,
-                cursorColor: _kPink,
-                scrollPadding: EdgeInsets.only(
-                  bottom: keyboardInset + healthDp(context, 180),
-                ),
-                style: TextStyle(
-                  color: _kInk,
-                  fontSize: healthSp(context, 12),
-                  fontFamily: _kFont,
-                  fontWeight: FontWeight.w500,
-                  height: 1.0,
-                ),
-                onTap: () {
-                  if (pulseKey == 'addr2') {
-                    _scrollToAddr2Field(alignment: 0.05);
-                  }
-                },
-                onEditingComplete: onSubmitted,
-                onSubmitted: (_) => onSubmitted?.call(),
-                onChanged: (_) {
-                  if (_pulseFields.contains(pulseKey)) {
-                    setState(
-                      () => _pulseFields = {..._pulseFields}..remove(pulseKey),
-                    );
-                  }
-                },
-                decoration: InputDecoration(
-                  isDense: true,
-                  isCollapsed: true,
-                  contentPadding: EdgeInsets.zero,
-                  border: InputBorder.none,
-                  enabledBorder: InputBorder.none,
-                  focusedBorder: InputBorder.none,
-                  disabledBorder: InputBorder.none,
-                  errorBorder: InputBorder.none,
-                  focusedErrorBorder: InputBorder.none,
-                  hintText: hint,
-                  hintStyle: TextStyle(
-                    color: _kMuted,
-                    fontSize: healthSp(context, 12),
-                    fontFamily: _kFont,
-                    fontWeight: FontWeight.w300,
-                    height: 1.0,
-                  ),
-                ),
-              ),
-            ),
+        style: TextStyle(
+          color: _kInk,
+          fontSize: healthSp(context, 12),
+          fontFamily: _kFont,
+          fontWeight: FontWeight.w500,
+          height: 1.0,
+        ),
+        onTap: () {
+          if (pulseKey == 'addr2') {
+            _scrollToAddr2Field(alignment: 0.05);
+          }
+        },
+        onEditingComplete: onSubmitted,
+        onSubmitted: (_) => onSubmitted?.call(),
+        onChanged: (_) {
+          if (_pulseFields.contains(pulseKey)) {
+            setState(
+              () => _pulseFields = {..._pulseFields}..remove(pulseKey),
+            );
+          }
+        },
+        decoration: InputDecoration(
+          isDense: true,
+          isCollapsed: true,
+          contentPadding: EdgeInsets.zero,
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
+          disabledBorder: InputBorder.none,
+          errorBorder: InputBorder.none,
+          focusedErrorBorder: InputBorder.none,
+          hintText: hint,
+          hintStyle: TextStyle(
+            color: _kMuted,
+            fontSize: healthSp(context, 12),
+            fontFamily: _kFont,
+            fontWeight: FontWeight.w300,
+            height: 1.0,
           ),
         ),
       ),
