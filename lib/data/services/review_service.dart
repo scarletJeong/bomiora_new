@@ -6,6 +6,18 @@ import '../../core/network/api_client.dart';
 import '../../core/network/api_endpoints.dart';
 
 // 리뷰 서비스 내부 디버그 콘솔 출력 비활성화
+
+List<ReviewModel> _reviewsFromCheck(dynamic raw) {
+  if (raw is! List) return const [];
+  final out = <ReviewModel>[];
+  for (final item in raw) {
+    if (item is Map) {
+      out.add(ReviewModel.fromJson(Map<String, dynamic>.from(item)));
+    }
+  }
+  return out;
+}
+
 /// 리뷰 서비스
 class ReviewService {
   static const Duration _bestCacheTtl = Duration(minutes: 1);
@@ -632,6 +644,32 @@ class ReviewService {
     }
   }
 
+  /// 이 주문에 이미 작성된 리뷰 본문. 배지에서 기존 리뷰를 보여줄 때 사용한다.
+  static List<ReviewModel> reviewsOf(Map<String, dynamic> check) {
+    final raw = check['reviews'];
+    if (raw is List<ReviewModel>) return raw;
+    return _reviewsFromCheck(raw);
+  }
+
+  static Future<List<ReviewModel>> reviewsForOrder({
+    required String mbId,
+    required String odId,
+  }) async {
+    final id = odId.trim();
+    if (mbId.trim().isEmpty || id.isEmpty) return const [];
+    final result = await getMemberReviews(
+      mbId: mbId,
+      page: 0,
+      size: 200,
+      forceRefresh: true,
+    );
+    final raw = result['reviews'];
+    if (raw is! List) return const [];
+    return raw.whereType<ReviewModel>().where((review) {
+      return (review.odId ?? '').trim() == id;
+    }).toList();
+  }
+
   /// 주문에 대한 리뷰 작성 여부 확인 (+ 작성 완료 itId 목록)
   ///
   /// [mbId] 회원 ID
@@ -662,6 +700,7 @@ class ReviewService {
           'success': true,
           'exists': data['exists'] ?? reviewedItIds.isNotEmpty,
           'reviewedItIds': reviewedItIds,
+          'reviews': _reviewsFromCheck(data['reviews']),
         };
       } else {
         final errorData = json.decode(response.body);

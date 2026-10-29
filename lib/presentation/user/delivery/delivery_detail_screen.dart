@@ -800,6 +800,14 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
     final reviewed =
         (check['reviewedItIds'] as List<String>?) ?? const <String>[];
     final pending = pendingReviewProducts(_orderDetail!, reviewed);
+    final products = reviewableOrderProducts(_orderDetail!);
+    var existing = ReviewService.reviewsOf(check);
+    if (existing.isEmpty && reviewed.isNotEmpty) {
+      existing = await ReviewService.reviewsForOrder(
+        mbId: user.id,
+        odId: _orderDetail!.odId,
+      );
+    }
 
     if (!mounted) return;
     setState(() => _reviewedItIds = reviewed);
@@ -816,11 +824,15 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
         builder: (_) => isPrescription
             ? ReviewWriteScreen(
                 orderDetail: _orderDetail!,
-                selectedProducts: pending,
+                selectedProducts: products,
+                reviewedItIds: reviewed,
+                existingReviews: existing,
               )
             : ReviewWriteGeneralScreen(
                 orderDetail: _orderDetail!,
-                selectedProducts: pending,
+                selectedProducts: products,
+                reviewedItIds: reviewed,
+                existingReviews: existing,
               ),
       ),
     );

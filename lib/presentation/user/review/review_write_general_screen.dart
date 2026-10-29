@@ -36,11 +36,15 @@ class ReviewWriteGeneralScreen extends StatefulWidget {
   final OrderDetailModel? orderDetail;
   final ReviewModel? initialReview;
   final List<OrderItem>? selectedProducts;
+  final List<String> reviewedItIds;
+  final List<ReviewModel> existingReviews;
 
   ReviewWriteGeneralScreen({
     super.key,
     required OrderDetailModel orderDetail,
     this.selectedProducts,
+    this.reviewedItIds = const [],
+    this.existingReviews = const [],
   })  : orderDetail = orderDetail,
         initialReview = null;
 
@@ -49,7 +53,9 @@ class ReviewWriteGeneralScreen extends StatefulWidget {
     required ReviewModel review,
   })  : orderDetail = null,
         initialReview = review,
-        selectedProducts = null;
+        selectedProducts = null,
+        reviewedItIds = const [],
+        existingReviews = const [];
 
   bool get _isEditMode => initialReview != null;
 
@@ -106,6 +112,41 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
 
   bool get _isMulti => !widget._isEditMode && _targetProducts.length > 1;
 
+  Set<String> get _reviewedIds => widget.reviewedItIds
+      .map((e) => e.trim())
+      .where((e) => e.isNotEmpty)
+      .toSet();
+
+  bool _isReviewedIndex(int index) {
+    if (index < 0 || index >= _targetProducts.length) return false;
+    return _reviewedIds.contains(_targetProducts[index].itId.trim());
+  }
+
+  bool get _isCurrentReviewed => _isReviewedIndex(_productIndex);
+
+  int get _firstWritableIndex {
+    for (var i = 0; i < _targetProducts.length; i++) {
+      if (!_isReviewedIndex(i)) return i;
+    }
+    return 0;
+  }
+
+  bool get _hasLaterWritable {
+    for (var i = _productIndex + 1; i < _targetProducts.length; i++) {
+      if (!_isReviewedIndex(i)) return true;
+    }
+    return false;
+  }
+
+  ReviewModel? _existingAt(int index) {
+    if (!_isReviewedIndex(index)) return null;
+    final id = _targetProducts[index].itId.trim();
+    for (final review in widget.existingReviews) {
+      if (review.itId.trim() == id) return review;
+    }
+    return null;
+  }
+
   OrderItem? get _firstOrderItem {
     final list = _targetProducts;
     if (list.isEmpty) return null;
@@ -127,6 +168,7 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
       });
     };
     _reviewController.addListener(_reviewTextListener);
+    _productIndex = _firstWritableIndex;
 
     final r = widget.initialReview;
     if (r != null) {
@@ -155,6 +197,11 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
   }
 
   void _loadDraft(int index) {
+    final existing = _existingAt(index);
+    if (existing != null) {
+      _applyExistingReview(existing);
+      return;
+    }
     final d = _drafts[index];
     if (d == null) {
       _score = 0;
@@ -171,19 +218,38 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
     _reviewBodyError = null;
   }
 
+  void _applyExistingReview(ReviewModel review) {
+    final positive = review.isPositiveReviewText?.trim() ?? '';
+    final more = review.isMoreReviewText?.trim() ?? '';
+    _reviewController.text = positive.isNotEmpty ? positive : more;
+    _score = _snapTenthRating(review.totalIsScore ?? review.averageScore ?? 0);
+    _draftImages
+      ..clear()
+      ..addAll(
+        review.images
+            .take(_maxImages)
+            .map((path) => _ReviewDraftImage(serverPath: path)),
+      );
+    _reviewBodyError = null;
+  }
+
   void _goToProductIndex(int index) {
     if (index == _productIndex) return;
 
-    for (var i = 0; i < index; i++) {
-      if (i == _productIndex) {
-        if (!_validateCurrent()) return;
-      } else if (!_isProductDraftComplete(i)) {
-        AppToastOverlay.show(context, '${i + 1}번 상품 리뷰를 먼저 작성해 주세요.');
-        return;
+    final targetReviewed = _isReviewedIndex(index);
+    if (!targetReviewed) {
+      for (var i = 0; i < index; i++) {
+        if (_isReviewedIndex(i)) continue;
+        if (i == _productIndex) {
+          if (!_validateCurrent()) return;
+        } else if (!_isProductDraftComplete(i)) {
+          AppToastOverlay.show(context, '${i + 1}번 상품 리뷰를 먼저 작성해 주세요.');
+          return;
+        }
       }
     }
 
-    _saveCurrentDraft();
+    if (!_isCurrentReviewed) _saveCurrentDraft();
     setState(() {
       _productIndex = index;
       _loadDraft(index);
@@ -213,12 +279,31 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
       _score >= 0.1 && _reviewController.text.trim().length >= 20;
 
   Future<void> _onNextProduct() async {
-    if (!_validateCurrent()) return;
-    _saveCurrentDraft();
+    if (!_isCurrentReviewed && !_validateCurrent()) return;
+    if (!_isCurrentReviewed) _saveCurrentDraft();
     setState(() {
       _productIndex += 1;
       _loadDraft(_productIndex);
     });
+  }
+
+  void _onNextFromReviewed() {
+    if (_productIndex < _targetProducts.length - 1) {
+      setState(() {
+        _productIndex += 1;
+        _loadDraft(_productIndex);
+      });
+      return;
+    }
+    final next = _firstWritableIndex;
+    if (next != _productIndex) {
+      setState(() {
+        _productIndex = next;
+        _loadDraft(next);
+      });
+      return;
+    }
+    Navigator.pop(context);
   }
 
   void _onPrevProduct() {
@@ -250,6 +335,7 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
   }
 
   bool _isProductDraftComplete(int index) {
+    if (_isReviewedIndex(index)) return true;
     if (index == _productIndex) return _canProceedCurrent;
     final d = _drafts[index];
     if (d == null) return false;
@@ -257,16 +343,24 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
   }
 
   Widget _buildProductStepChip(int index) {
+    final reviewed = _isReviewedIndex(index);
     final kind = _productStepKind(index);
     final label = '${index + 1}번 상품';
-    final showIcon = kind != 2;
+    final showIcon = reviewed || kind != 2;
 
     late final Color bg;
     late final Color border;
     late final Color textColor;
     List<BoxShadow>? shadows;
 
-    switch (kind) {
+    if (reviewed) {
+      final selected = index == _productIndex;
+      bg = const Color(0xFFE6E6E6);
+      border = selected ? const Color(0xFF8E8E8E) : const Color(0xFFD0D0D0);
+      textColor = const Color(0xFF8A8A8A);
+      shadows = null;
+    } else {
+      switch (kind) {
       case 0: // 완료
         bg = const Color(0xFFFFF0F5);
         border = const Color(0xFFFFC5D8);
@@ -291,6 +385,7 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
         textColor = _kMuted;
         shadows = null;
         break;
+      }
     }
 
     return GestureDetector(
@@ -403,6 +498,7 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
       final url = ImageUrlHelper.getImageUrl(draft.serverPath);
       return Image.network(
         url,
+        key: ValueKey(url),
         width: size,
         height: size,
         fit: BoxFit.cover,
@@ -457,6 +553,7 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
       if (!_validateCurrent()) return;
       _saveCurrentDraft();
       for (var i = 0; i < _targetProducts.length; i++) {
+        if (_isReviewedIndex(i)) continue;
         if (i == _productIndex) continue;
         final d = _drafts[i];
         if (d == null || d.score < 0.1 || d.text.trim().length < 20) {
@@ -522,6 +619,7 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
 
       int? createdId;
       for (var i = 0; i < _targetProducts.length; i++) {
+        if (_isReviewedIndex(i)) continue;
         late final double score;
         late final String text;
         late final List<_ReviewDraftImage> imgs;
@@ -656,10 +754,12 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
                           padding: EdgeInsets.symmetric(
                             horizontal: healthDp(context, 20),
                           ),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
+                          child: IgnorePointer(
+                            ignoring: _isCurrentReviewed,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
                               _barSectionTitle(context, '주문상품 정보'),
                               SizedBox(height: healthDp(context, 10)),
                               _productCard(context, item, edit),
@@ -696,7 +796,8 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
                               ),
                               SizedBox(height: healthDp(context, 10)),
                               _imageSection(context),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                         SizedBox(height: healthDp(context, 24)),
@@ -715,12 +816,49 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
   }
 
   Widget _bottomActionBar(BuildContext context) {
-    final isLast = !_isMulti || _productIndex >= _targetProducts.length - 1;
+    if (_isCurrentReviewed) {
+      return SafeArea(
+        top: false,
+        child: Container(
+          width: double.infinity,
+          padding: EdgeInsets.fromLTRB(
+            healthDp(context, 20),
+            healthDp(context, 5),
+            healthDp(context, 20),
+            healthDp(context, 5),
+          ),
+          child: SizedBox(
+            height: healthDp(context, 40),
+            child: ElevatedButton(
+              onPressed: _isLoading ? null : _onNextFromReviewed,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _kPink,
+                disabledBackgroundColor: const Color(0xFFD2D2D2),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(healthDp(context, 10)),
+                ),
+              ),
+              child: Text(
+                '다음',
+                style: TextStyle(
+                  fontFamily: _kFont,
+                  color: Colors.white,
+                  fontSize: healthSp(context, 16),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     final isFirst = !_isMulti || _productIndex <= 0;
     final leftLabel = (_isMulti && !isFirst) ? '이전' : '취소';
     final rightLabel = widget._isEditMode
         ? '수정'
-        : (_isMulti && !isLast)
+        : (_isMulti && _hasLaterWritable)
             ? '다음'
             : '리뷰 등록하기';
 
@@ -785,7 +923,7 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
                   onPressed: (_isLoading || !_canProceedCurrent)
                       ? null
                       : () {
-                          if (_isMulti && !isLast) {
+                          if (_isMulti && _hasLaterWritable) {
                             _onNextProduct();
                           } else {
                             AppActionGate.protect(_submit);
@@ -915,6 +1053,7 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
           borderRadius: r4,
           child: Image.network(
             u,
+            key: ValueKey(u),
             width: side,
             height: side,
             fit: BoxFit.cover,
@@ -951,28 +1090,35 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
               child: SizedBox(
                 width: healthDp(context, 64),
                 height: healthDp(context, 64),
-                child:
-                    (item.imageUrl != null && item.imageUrl!.trim().isNotEmpty)
-                        ? Image.network(
-                            ImageUrlHelper.getImageUrl(item.imageUrl),
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Container(
-                              color: const Color(0xFFE9E9E9),
-                              child: Icon(
-                                Icons.image_outlined,
-                                color: _kMuted,
-                                size: healthDp(context, 24),
-                              ),
-                            ),
-                          )
-                        : Container(
-                            color: const Color(0xFFE9E9E9),
-                            child: Icon(
-                              Icons.image_outlined,
-                              color: _kMuted,
-                              size: healthDp(context, 24),
-                            ),
-                          ),
+                child: () {
+                  final raw = item.imageUrl?.trim() ?? '';
+                  final url = raw.isEmpty
+                      ? null
+                      : ImageUrlHelper.normalizeThumbnailUrl(raw, item.itId);
+                  if (url == null || url.isEmpty) {
+                    return Container(
+                      color: const Color(0xFFE9E9E9),
+                      child: Icon(
+                        Icons.image_outlined,
+                        color: _kMuted,
+                        size: healthDp(context, 24),
+                      ),
+                    );
+                  }
+                  return Image.network(
+                    url,
+                    key: ValueKey('${item.itId}|$url'),
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(
+                      color: const Color(0xFFE9E9E9),
+                      child: Icon(
+                        Icons.image_outlined,
+                        color: _kMuted,
+                        size: healthDp(context, 24),
+                      ),
+                    ),
+                  );
+                }(),
               ),
             ),
             SizedBox(width: healthDp(context, 12)),
@@ -1243,15 +1389,16 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
             scrollDirection: Axis.horizontal,
             child: Row(
               children: [
-                Builder(
-                  builder: (anchorContext) {
-                    return InkWell(
-                      onTap: () => _openPhotoSourceDropdown(anchorContext),
-                      child: const ReviewPhotoAddCard(),
-                    );
-                  },
-                ),
-                if (_draftImages.isNotEmpty)
+                if (!_isCurrentReviewed)
+                  Builder(
+                    builder: (anchorContext) {
+                      return InkWell(
+                        onTap: () => _openPhotoSourceDropdown(anchorContext),
+                        child: const ReviewPhotoAddCard(),
+                      );
+                    },
+                  ),
+                if (!_isCurrentReviewed && _draftImages.isNotEmpty)
                   SizedBox(width: healthDp(context, 8)),
                 ..._draftImages.asMap().entries.map((e) {
                   return Padding(
@@ -1263,7 +1410,8 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
                               BorderRadius.circular(healthDp(context, 8)),
                           child: _draftImageThumb(context, e.value, img),
                         ),
-                        Positioned(
+                        if (!_isCurrentReviewed)
+                          Positioned(
                           right: healthDp(context, 2),
                           top: healthDp(context, 2),
                           child: InkWell(

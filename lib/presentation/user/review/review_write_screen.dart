@@ -52,12 +52,16 @@ class ReviewWriteScreen extends StatefulWidget {
 
   /// 선택 화면에서 넘어온 작성 대상 상품 (없으면 주문 본품 전체 중 첫 상품)
   final List<OrderItem>? selectedProducts;
+  final List<String> reviewedItIds;
+  final List<ReviewModel> existingReviews;
 
   const ReviewWriteScreen({
     super.key,
     this.orderDetail,
     this.initialReview,
     this.selectedProducts,
+    this.reviewedItIds = const [],
+    this.existingReviews = const [],
   });
 
   const ReviewWriteScreen.edit({
@@ -65,7 +69,9 @@ class ReviewWriteScreen extends StatefulWidget {
     required ReviewModel review,
   })  : orderDetail = null,
         initialReview = review,
-        selectedProducts = null;
+        selectedProducts = null,
+        reviewedItIds = const [],
+        existingReviews = const [];
 
   @override
   State<ReviewWriteScreen> createState() => _ReviewWriteScreenState();
@@ -119,6 +125,41 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
 
   bool get _isMulti => !_isEditMode && _targetProducts.length > 1;
 
+  Set<String> get _reviewedIds => widget.reviewedItIds
+      .map((e) => e.trim())
+      .where((e) => e.isNotEmpty)
+      .toSet();
+
+  bool _isReviewedIndex(int index) {
+    if (index < 0 || index >= _targetProducts.length) return false;
+    return _reviewedIds.contains(_targetProducts[index].itId.trim());
+  }
+
+  bool get _isCurrentReviewed => _isReviewedIndex(_productIndex);
+
+  int get _firstWritableIndex {
+    for (var i = 0; i < _targetProducts.length; i++) {
+      if (!_isReviewedIndex(i)) return i;
+    }
+    return 0;
+  }
+
+  bool get _hasLaterWritable {
+    for (var i = _productIndex + 1; i < _targetProducts.length; i++) {
+      if (!_isReviewedIndex(i)) return true;
+    }
+    return false;
+  }
+
+  ReviewModel? _existingAt(int index) {
+    if (!_isReviewedIndex(index)) return null;
+    final id = _targetProducts[index].itId.trim();
+    for (final review in widget.existingReviews) {
+      if (review.itId.trim() == id) return review;
+    }
+    return null;
+  }
+
   OrderItem? get _currentProduct {
     final list = _targetProducts;
     if (list.isEmpty) return null;
@@ -130,6 +171,9 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
   void initState() {
     super.initState();
     setBlockBrowserBackSwipe(true);
+    if (widget.initialReview == null) {
+      _productIndex = _firstWritableIndex;
+    }
     _weightFocus.addListener(() {
       if (!_weightFocus.hasFocus && mounted) {
         _commitWeightText(allowBelow: true);
@@ -184,7 +228,11 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
 
     final fromItem = item?.imageUrl?.trim();
     if (fromItem != null && fromItem.isNotEmpty) {
-      return guardNoImg(ImageUrlHelper.getImageUrl(fromItem));
+      final normalized =
+          ImageUrlHelper.normalizeThumbnailUrl(fromItem, item?.itId);
+      if (normalized != null && normalized.isNotEmpty) {
+        return guardNoImg(normalized);
+      }
     }
     final thumb = review?.productImage?.trim();
     if (thumb != null &&
@@ -217,6 +265,7 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
       borderRadius: r4,
       child: Image.network(
         url,
+        key: ValueKey(url),
         width: side,
         height: side,
         fit: BoxFit.cover,
@@ -292,6 +341,7 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
       final url = ImageUrlHelper.getImageUrl(draft.serverPath);
       return Image.network(
         url,
+        key: ValueKey(url),
         width: size,
         height: size,
         fit: BoxFit.cover,
@@ -427,7 +477,9 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
                           padding: EdgeInsets.symmetric(
                             horizontal: healthDp(context, 20),
                           ),
-                          child: Column(
+                          child: IgnorePointer(
+                            ignoring: _isCurrentReviewed,
+                            child: Column(
                             mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
@@ -468,6 +520,7 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
                               _buildImageSection(),
                               SizedBox(height: healthDp(context, 20)),
                             ],
+                            ),
                           ),
                         ),
                         const ReviewPolicyFooter(),
@@ -505,6 +558,7 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
   }
 
   bool _isProductDraftComplete(int index) {
+    if (_isReviewedIndex(index)) return true;
     if (index == _productIndex) return _canProceedCurrent;
     final d = _drafts[index];
     if (d == null) return false;
@@ -517,16 +571,24 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
   }
 
   Widget _buildProductStepChip(int index) {
+    final reviewed = _isReviewedIndex(index);
     final kind = _productStepKind(index);
     final label = '${index + 1}번 상품';
-    final showIcon = kind != 2;
+    final showIcon = reviewed || kind != 2;
 
     late final Color bg;
     late final Color border;
     late final Color textColor;
     List<BoxShadow>? shadows;
 
-    switch (kind) {
+    if (reviewed) {
+      final selected = index == _productIndex;
+      bg = const Color(0xFFE6E6E6);
+      border = selected ? const Color(0xFF8E8E8E) : const Color(0xFFD0D0D0);
+      textColor = const Color(0xFF8A8A8A);
+      shadows = null;
+    } else {
+      switch (kind) {
       case 0: // 완료
         bg = const Color(0xFFFFF0F5);
         border = const Color(0xFFFFC5D8);
@@ -551,6 +613,7 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
         textColor = _kMuted;
         shadows = null;
         break;
+      }
     }
 
     return GestureDetector(
@@ -608,7 +671,31 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
       ..images = List<_ReviewDraftImage>.from(_draftImages);
   }
 
+  void _applyExistingReview(ReviewModel review) {
+    _score1 = _snapTenthRating(review.isScore1.toDouble());
+    _score2 = _snapTenthRating(review.isScore2.toDouble());
+    _score3 = _snapTenthRating(review.isScore3.toDouble());
+    _score4 = _snapTenthRating(review.isScore4.toDouble());
+    _weightLossKg = _snapWeightKg(review.isOutageNum ?? 0);
+    _syncWeightField();
+    _positiveController.text = review.isPositiveReviewText ?? '';
+    _negativeController.text = review.isNegativeReviewText ?? '';
+    _moreController.text = review.isMoreReviewText ?? '';
+    _draftImages
+      ..clear()
+      ..addAll(
+        review.images
+            .take(_maxImages)
+            .map((path) => _ReviewDraftImage(serverPath: path)),
+      );
+  }
+
   void _loadDraft(int index) {
+    final existing = _existingAt(index);
+    if (existing != null) {
+      _applyExistingReview(existing);
+      return;
+    }
     final d = _drafts[index];
     if (d == null) {
       _score1 = 0;
@@ -640,17 +727,20 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
   void _goToProductIndex(int index) {
     if (index == _productIndex) return;
 
-    // 앞선 상품을 모두 완료한 뒤에만 이동 (순서대로 작성)
-    for (var i = 0; i < index; i++) {
-      if (i == _productIndex) {
-        if (!_validateCurrentForm()) return;
-      } else if (!_isProductDraftComplete(i)) {
-        AppToastOverlay.show(context, '${i + 1}번 상품 리뷰를 먼저 작성해 주세요.');
-        return;
+    final targetReviewed = _isReviewedIndex(index);
+    if (!targetReviewed) {
+      for (var i = 0; i < index; i++) {
+        if (_isReviewedIndex(i)) continue;
+        if (i == _productIndex) {
+          if (!_validateCurrentForm()) return;
+        } else if (!_isProductDraftComplete(i)) {
+          AppToastOverlay.show(context, '${i + 1}번 상품 리뷰를 먼저 작성해 주세요.');
+          return;
+        }
       }
     }
 
-    _saveCurrentDraft();
+    if (!_isCurrentReviewed) _saveCurrentDraft();
     setState(() {
       _productIndex = index;
       _loadDraft(index);
@@ -682,12 +772,31 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
       _negativeController.text.trim().length >= 20;
 
   Future<void> _onNextProduct() async {
-    if (!_validateCurrentForm()) return;
-    _saveCurrentDraft();
+    if (!_isCurrentReviewed && !_validateCurrentForm()) return;
+    if (!_isCurrentReviewed) _saveCurrentDraft();
     setState(() {
       _productIndex += 1;
       _loadDraft(_productIndex);
     });
+  }
+
+  void _onNextFromReviewed() {
+    if (_productIndex < _targetProducts.length - 1) {
+      setState(() {
+        _productIndex += 1;
+        _loadDraft(_productIndex);
+      });
+      return;
+    }
+    final next = _firstWritableIndex;
+    if (next != _productIndex) {
+      setState(() {
+        _productIndex = next;
+        _loadDraft(next);
+      });
+      return;
+    }
+    Navigator.pop(context);
   }
 
   void _onPrevProduct() {
@@ -1369,15 +1478,16 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: [
-                    Builder(
-                      builder: (anchorContext) {
-                        return InkWell(
-                          onTap: () => _openPhotoSourceDropdown(anchorContext),
-                          child: const ReviewPhotoAddCard(),
-                        );
-                      },
-                    ),
-                    if (_draftImages.isNotEmpty)
+                    if (!_isCurrentReviewed)
+                      Builder(
+                        builder: (anchorContext) {
+                          return InkWell(
+                            onTap: () => _openPhotoSourceDropdown(anchorContext),
+                            child: const ReviewPhotoAddCard(),
+                          );
+                        },
+                      ),
+                    if (!_isCurrentReviewed && _draftImages.isNotEmpty)
                       SizedBox(width: healthDp(context, 8)),
                     ..._draftImages.asMap().entries.map((e) {
                       return Padding(
@@ -1389,7 +1499,8 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
                                   BorderRadius.circular(healthDp(context, 8)),
                               child: _draftImageThumb(e.value, thumb),
                             ),
-                            Positioned(
+                            if (!_isCurrentReviewed)
+                              Positioned(
                               right: healthDp(context, 2),
                               top: healthDp(context, 2),
                               child: InkWell(
@@ -1433,11 +1544,49 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
   }
 
   Widget _buildBottomButtons() {
-    final isLast = !_isMulti || _productIndex >= _targetProducts.length - 1;
+    if (_isCurrentReviewed) {
+      return SafeArea(
+        top: false,
+        child: Container(
+          width: double.infinity,
+          padding: EdgeInsets.fromLTRB(
+            healthDp(context, 20),
+            healthDp(context, 10),
+            healthDp(context, 20),
+            healthDp(context, 10),
+          ),
+          color: Colors.white,
+          child: SizedBox(
+            height: healthDp(context, 40),
+            child: ElevatedButton(
+              onPressed: _isLoading ? null : _onNextFromReviewed,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _kPink,
+                disabledBackgroundColor: const Color(0xFFD2D2D2),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(healthDp(context, 10)),
+                ),
+              ),
+              child: Text(
+                '다음',
+                style: TextStyle(
+                  fontFamily: _kFont,
+                  color: Colors.white,
+                  fontSize: healthSp(context, 16),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     final isFirst = !_isMulti || _productIndex <= 0;
     final leftLabel = _isEditMode ? '취소' : '이전';
     final rightLabel =
-        _isEditMode ? '수정' : (_isMulti ? (isLast ? '완료' : '다음') : '완료');
+        _isEditMode ? '수정' : (_isMulti && _hasLaterWritable ? '다음' : '완료');
 
     return SafeArea(
       top: false,
@@ -1507,7 +1656,7 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
                   onPressed: (_isLoading || !_canProceedCurrent)
                       ? null
                       : () {
-                          if (_isMulti && !isLast) {
+                          if (_isMulti && _hasLaterWritable) {
                             _onNextProduct();
                           } else {
                             AppActionGate.protect(_submitReview);
@@ -1546,6 +1695,7 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
       if (!_validateCurrentForm()) return;
       _saveCurrentDraft();
       for (var i = 0; i < _targetProducts.length; i++) {
+        if (_isReviewedIndex(i)) continue;
         if (i == _productIndex) continue;
         final d = _drafts[i];
         if (d == null ||
@@ -1633,6 +1783,7 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
 
       int? createdId;
       for (var i = 0; i < _targetProducts.length; i++) {
+        if (_isReviewedIndex(i)) continue;
         late final double s1, s2, s3, s4;
         late final int weight;
         late final String positive, negative, more;
