@@ -111,10 +111,11 @@ class _DeliveryAddressChangePopupState
       (m[key] ?? '').toString().trim();
 
   String _zipOf(Map<String, dynamic> m) {
-    final z1 = _addrField(m, 'adZip1');
-    if (z1.isNotEmpty) return z1.replaceAll(RegExp(r'\D'), '');
-    final z = _addrField(m, 'adZip').replaceAll(RegExp(r'\D'), '');
-    return z;
+    final z1 = _addrField(m, 'adZip1').replaceAll(RegExp(r'\D'), '');
+    final z2 = _addrField(m, 'adZip2').replaceAll(RegExp(r'\D'), '');
+    if (z1.length >= 5) return z1;
+    if (z1.isNotEmpty || z2.isNotEmpty) return '$z1$z2';
+    return _addrField(m, 'adZip').replaceAll(RegExp(r'\D'), '');
   }
 
   static String _normText(String value) =>
@@ -628,7 +629,9 @@ class _AddressFormDialogState extends State<_AddressFormDialog>
 
     _nameController.text = (m['adName'] ?? '').toString().trim();
     _phoneController.text = (m['adHp'] ?? m['adTel'] ?? '').toString().trim();
-    _zipController.text = (m['adZip1'] ?? '').toString().trim();
+    final z1 = (m['adZip1'] ?? '').toString().replaceAll(RegExp(r'\D'), '');
+    final z2 = (m['adZip2'] ?? '').toString().replaceAll(RegExp(r'\D'), '');
+    _zipController.text = z1.length >= 5 ? z1 : '$z1$z2';
     _addr1Controller.text = (m['adAddr1'] ?? '').toString().trim();
     _addr2Controller.text = (m['adAddr2'] ?? '').toString().trim();
     _isDefault = m['adDefault'] == 1;

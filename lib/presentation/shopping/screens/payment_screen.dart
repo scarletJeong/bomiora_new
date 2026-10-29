@@ -713,7 +713,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
     _addressNameController.text = _safe(ad?['adSubject']);
     _receiverController.text = _safe(ad?['adName']);
     _phoneController.text = _safe(ad?['adHp']);
-    _zipController.text = _safe(ad?['adZip1']);
+    _zipController.text =
+        _formatPostalCodeDisplay(_shippingZipFromAddress(ad));
     _addressController.text = [
       _safe(ad?['adAddr1']),
       _safe(ad?['adAddr2']),
@@ -791,12 +792,24 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   String _safe(dynamic value) => (value ?? '').toString().trim();
 
+  String _postalDigits(String raw) =>
+      raw.replaceAll(RegExp(r'[^0-9]'), '');
+
+  /// 웹 주문서와 같이 `ad_zip1 + ad_zip2` 전체로 도서·산간 추가배송비를 조회한다.
+  /// 5자리가 `adZip1`에만 있으면 그 값을 쓰고, 3+2로 나뉜 주소는 이어 붙인다.
+  String _shippingZipFromAddress(Map<String, dynamic>? ad) {
+    final z1 = _postalDigits(_safe(ad?['adZip1']));
+    final z2 = _postalDigits(_safe(ad?['adZip2']));
+    if (z1.length >= 5) return z1;
+    return '$z1$z2';
+  }
+
   String _formatPostalCodeDisplay(String postalCode) {
-    final t = postalCode.replaceAll(RegExp(r'[^0-9]'), '');
+    final t = _postalDigits(postalCode);
     if (t.length == 5) {
       return '${t.substring(0, 3)}-${t.substring(3)}';
     }
-    return postalCode.trim();
+    return t;
   }
 
   String _formatPhoneDisplay(String raw) {
@@ -2110,6 +2123,22 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   '배송비',
                   '${PriceFormatter.format(_baseShipping + _extraShipping)} 원',
                 ),
+                if (_extraShipping > 0) ...[
+                  SizedBox(height: healthDp(context, 4)),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      '산간·도서 지역은 추가 배송비가 발생합니다',
+                      style: TextStyle(
+                        color: _muted,
+                        fontSize: healthSp(context, 10),
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w300,
+                        letterSpacing: -0.40,
+                      ),
+                    ),
+                  ),
+                ],
               ],
               if (_shippingCouponDiscount > 0) ...[
                 SizedBox(height: healthDp(context, 16)),
