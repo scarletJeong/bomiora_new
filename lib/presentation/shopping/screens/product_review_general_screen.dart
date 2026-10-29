@@ -154,11 +154,9 @@ class GeneralReviewStats {
 List<ReviewModel> _sortPhotoFirst(List<ReviewModel> reviews) {
   final sorted = List<ReviewModel>.from(reviews)
     ..sort((a, b) {
-      final aHas = a.images.isNotEmpty;
-      final bHas = b.images.isNotEmpty;
-      if (aHas && !bHas) return -1;
-      if (!aHas && bHas) return 1;
-      return 0;
+      final at = a.isTime?.millisecondsSinceEpoch ?? 0;
+      final bt = b.isTime?.millisecondsSinceEpoch ?? 0;
+      return bt.compareTo(at);
     });
   return sorted;
 }
