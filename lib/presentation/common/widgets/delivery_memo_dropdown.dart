@@ -80,11 +80,26 @@ class _DeliveryMemoDropdownState extends State<DeliveryMemoDropdown> {
     }
     final custom = widget.customSelected ||
         DeliveryMemoDropdown.isCustomMemo(widget.value);
+    final enteredCustom = custom && !_isCustom;
     _isCustom = custom;
-    _customDirty = false;
-    final nextText = custom ? widget.value : '';
-    if (_customController.text != nextText) {
-      _customController.text = nextText;
+    if (!custom) {
+      _customDirty = false;
+      if (_customController.text.isNotEmpty) {
+        _customController.clear();
+      }
+      return;
+    }
+    // 드롭다운 문구를 고른 뒤 '직접 입력'으로 바꾸면 그 문구를 칸에 넣지 않는다.
+    if (enteredCustom &&
+        DeliveryMemoDropdown.presets.contains(widget.value.trim())) {
+      _customController.clear();
+      _customDirty = false;
+      return;
+    }
+    if (DeliveryMemoDropdown.isCustomMemo(widget.value) &&
+        _customController.text != widget.value) {
+      _customController.text = widget.value;
+      _customDirty = false;
     }
   }
 
@@ -104,16 +119,19 @@ class _DeliveryMemoDropdownState extends State<DeliveryMemoDropdown> {
 
   void _onPresetChanged(String value) {
     if (value == DeliveryMemoDropdown.customLabel) {
+      final previous = widget.value.trim();
+      final fromPreset = DeliveryMemoDropdown.presets.contains(previous);
       setState(() {
         _isCustom = true;
-        if (DeliveryMemoDropdown.presets.contains(widget.value.trim())) {
+        if (fromPreset || previous.isEmpty) {
           _customController.clear();
           _customDirty = false;
-        } else {
+        } else if (_customController.text != widget.value) {
           _customController.text = widget.value;
         }
       });
       widget.onCustomModeChanged?.call(true);
+      if (fromPreset) widget.onChanged?.call('');
       return;
     }
     setState(() {
