@@ -241,13 +241,15 @@ class _BomioraAppState extends State<BomioraApp> {
         },
         '/point': (context) => const PointScreen(),
         '/order': (context) => const DeliveryListScreen(),
+        // 레거시: `/order-detail` (ID 없음). 가능하면 arguments의 주문번호로 상세를 연다.
+        // 정상 진입은 `/order-detail/:odId` (onGenerateRoute).
         '/order-detail': (context) {
           final args = ModalRoute.of(context)?.settings.arguments;
           var orderNumber = '';
           OrderDetailModel? initialOrder;
           if (args is Map) {
             orderNumber =
-                (args['orderNumber'] ?? args['odId'] ?? '').toString();
+                (args['orderNumber'] ?? args['odId'] ?? '').toString().trim();
             final preview = args['initialOrder'];
             if (preview is OrderDetailModel) {
               initialOrder = preview;
@@ -409,6 +411,36 @@ class _BomioraAppState extends State<BomioraApp> {
           return MaterialPageRoute(
             builder: (context) =>
                 ProductDetailGeneralScreen(productId: productId),
+            settings: RouteSettings(
+              name: routeName,
+              arguments: settings.arguments,
+            ),
+          );
+        }
+
+        // 주문 상세: /order-detail/:od_id
+        if (uri.pathSegments.length == 2 &&
+            uri.pathSegments[0] == 'order-detail' &&
+            uri.pathSegments[1].trim().isNotEmpty) {
+          final orderNumber =
+              Uri.decodeComponent(uri.pathSegments[1].trim());
+          final args = settings.arguments;
+          OrderDetailModel? initialOrder;
+          var returnToOrderList = false;
+          if (args is Map) {
+            final preview = args['initialOrder'];
+            if (preview is OrderDetailModel) {
+              initialOrder = preview;
+            }
+            returnToOrderList = args['returnToOrderList'] == true ||
+                args['fromPaymentComplete'] == true;
+          }
+          return MaterialPageRoute(
+            builder: (context) => DeliveryDetailScreen(
+              orderNumber: orderNumber,
+              initialOrder: initialOrder,
+              returnToOrderList: returnToOrderList,
+            ),
             settings: RouteSettings(
               name: routeName,
               arguments: settings.arguments,

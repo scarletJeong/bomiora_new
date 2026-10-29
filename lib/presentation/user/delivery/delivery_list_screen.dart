@@ -1339,11 +1339,12 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
 
   /// 주문 상세 화면으로 이동 (복귀 시 목록 갱신 — 수령확인/취소 반영)
   Future<void> _navigateToOrderDetail(OrderListModel order) async {
+    final odId = order.odId.trim();
     final result = await Navigator.pushNamed(
       context,
-      '/order-detail',
+      '/order-detail/$odId',
       arguments: {
-        'orderNumber': order.odId,
+        'orderNumber': odId,
         'initialOrder': OrderDetailModel.fromListPreview(order),
       },
     );
@@ -1377,8 +1378,8 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
     }
     final result = await Navigator.pushNamed(
       context,
-      '/order-detail',
-      arguments: {'orderNumber': odId},
+      '/order-detail/${odId.trim()}',
+      arguments: {'orderNumber': odId.trim()},
     );
     if (!mounted) return;
     if (result is Map && result['cancelled'] == true) {

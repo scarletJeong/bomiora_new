@@ -68,6 +68,14 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
   @override
   void initState() {
     super.initState();
+    final odId = widget.orderNumber.trim();
+    if (odId.isEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        Navigator.pushReplacementNamed(context, '/order');
+      });
+      return;
+    }
     final preview = widget.initialOrder;
     if (preview != null) {
       _orderDetail = preview;
@@ -78,6 +86,9 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
   }
 
   Future<void> _loadOrderDetail() async {
+    final odId = widget.orderNumber.trim();
+    if (odId.isEmpty) return;
+
     final hasPreview = _orderDetail != null;
     if (!hasPreview) {
       setState(() => _isLoading = true);
@@ -86,12 +97,17 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
     try {
       final user = await AuthService.getUser();
       if (user == null) {
-        if (mounted) Navigator.pop(context);
+        if (!mounted) return;
+        if (Navigator.canPop(context)) {
+          Navigator.pop(context);
+        } else {
+          Navigator.pushReplacementNamed(context, '/login');
+        }
         return;
       }
 
       final result = await OrderService.getOrderDetail(
-        odId: widget.orderNumber,
+        odId: odId,
         mbId: user.id,
       );
 
@@ -185,7 +201,14 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
         context,
         AppAssets.emptyDeliveryIcon,
       ),
-      message: '주문 내역이 없습니다.',
+      message: '주문 내역을 불러올 수 없습니다.',
+      trailing: CenteredEmptyState.loginButtonTrailing(
+        context,
+        label: '주문내역으로',
+        onPressed: () {
+          Navigator.pushReplacementNamed(context, '/order');
+        },
+      ),
     );
   }
 

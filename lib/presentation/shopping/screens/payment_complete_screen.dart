@@ -159,12 +159,13 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
   }
 
   void _openOrderDetail(OrderDetailModel order) {
+    final odId = order.odId.trim();
     Navigator.pushNamed(
       context,
-      '/order-detail',
+      '/order-detail/$odId',
       arguments: {
-        'orderNumber': order.odId,
-        'odId': order.odId,
+        'orderNumber': odId,
+        'odId': odId,
         'returnToOrderList': true,
       },
     ).then((result) {
