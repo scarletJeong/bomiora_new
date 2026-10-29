@@ -379,7 +379,6 @@ class QaInquiryDraft {
     String? fallbackProductName,
     int? fallbackPrice,
     String? fallbackOption,
-    int? fallbackCount,
   }) {
     final source = items.isNotEmpty
         ? items
@@ -389,17 +388,10 @@ class QaInquiryDraft {
       final cards = source.map(_cardFromOrderItem).toList(growable: false);
       final firstName =
           cards.first.name.trim().isNotEmpty ? cards.first.name.trim() : '상품';
-      final extraCount = cards.length > 1
-          ? cards.length - 1
-          : ((fallbackCount != null && fallbackCount > 1)
-              ? fallbackCount - 1
-              : 0);
-      final displayName =
-          extraCount > 0 ? '$firstName 외 $extraCount건' : firstName;
       return QaInquiryDraft(
         category: '주문',
         itId: _nonEmpty(source.first.itId),
-        productName: displayName,
+        productName: firstName,
         imageUrl: source.first.imageUrl,
         price: source.first.totalPrice > 0
             ? source.first.totalPrice
@@ -412,21 +404,21 @@ class QaInquiryDraft {
         ),
         itSubject: _itSubjectFromItem(source.first),
         selectTabLabel: '주문/배송',
+        selectedByOrderNumber: odId.trim().isNotEmpty,
         cardItems: cards,
       );
     }
 
-    final count = fallbackCount ?? 1;
     final baseName = fallbackProductName ?? '주문 상품';
-    final displayName = count > 1 ? '$baseName 외 ${count - 1}건' : baseName;
     return QaInquiryDraft(
       category: '주문',
-      productName: displayName,
+      productName: baseName,
       price: fallbackPrice,
       odId: odId,
       orderDate: orderDate,
       optionText: fallbackOption,
       selectTabLabel: '주문/배송',
+      selectedByOrderNumber: odId.trim().isNotEmpty,
       cardItems: [
         QaInquiryCardItem(
           name: baseName,
@@ -470,7 +462,6 @@ class QaInquiryDraft {
         fallbackProductName: order.firstProductName,
         fallbackPrice: order.firstProductPrice ?? order.totalPrice,
         fallbackOption: order.firstProductOption,
-        fallbackCount: order.odCartCount > 0 ? order.odCartCount : null,
       );
 
   /// 주문 상세에서 1:1 문의 진입 시 상품·주문 정보 프리필
@@ -481,6 +472,5 @@ class QaInquiryDraft {
         items: order.products,
         item: order.products.isNotEmpty ? order.products.first : null,
         fallbackPrice: order.totalPrice,
-        fallbackCount: order.products.isNotEmpty ? order.products.length : null,
       );
 }
