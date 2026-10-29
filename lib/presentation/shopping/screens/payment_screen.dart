@@ -642,6 +642,20 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   int get _expectedPoint => (_rewardBase * _pointRate / 100).floor();
 
+  String _pointFieldText(int value) =>
+      value <= 0 ? '' : PointService.formatPoint(value);
+
+  void _writePointField(int value) {
+    final formatted = _pointFieldText(value);
+    if (_pointController.text == formatted) return;
+    _syncingPoint = true;
+    _pointController.value = TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
+    _syncingPoint = false;
+  }
+
   void _onPointChanged() {
     if (_syncingPoint) return;
     final raw = _pointController.text.replaceAll(RegExp(r'[^0-9]'), '');
@@ -650,13 +664,16 @@ class _PaymentScreenState extends State<PaymentScreen> {
         value > _maxUsablePointHundreds ? _maxUsablePointHundreds : value;
     // 1224 입력 → 1200 처럼 100점 단위로 자동 절삭 (단, 0~99는 그대로 입력 유지)
     final safe = capped >= 100 ? (capped ~/ 100) * 100 : capped;
+    final formatted = _pointFieldText(safe);
 
-    if (raw != safe.toString()) {
+    if (_pointController.text != formatted) {
+      final digitsBefore = _digitsBeforeSelection(_pointController);
       _syncingPoint = true;
       _pointController.value = TextEditingValue(
-        text: safe == 0 ? '' : '$safe',
-        selection:
-            TextSelection.collapsed(offset: safe == 0 ? 0 : '$safe'.length),
+        text: formatted,
+        selection: TextSelection.collapsed(
+          offset: _offsetAfterDigits(formatted, digitsBefore),
+        ),
       );
       _syncingPoint = false;
     }
@@ -666,6 +683,24 @@ class _PaymentScreenState extends State<PaymentScreen> {
         _usedPoint = safe;
       });
     }
+  }
+
+  int _digitsBeforeSelection(TextEditingController controller) {
+    final text = controller.text;
+    final offset = controller.selection.isValid
+        ? controller.selection.extentOffset.clamp(0, text.length)
+        : text.length;
+    return text.substring(0, offset).replaceAll(RegExp(r'[^0-9]'), '').length;
+  }
+
+  int _offsetAfterDigits(String formatted, int digits) {
+    var cursor = 0;
+    var seen = 0;
+    while (cursor < formatted.length && seen < digits) {
+      if (formatted[cursor] != ',') seen++;
+      cursor++;
+    }
+    return cursor;
   }
 
   /// [preserveDeliveryMemo]: 배송지 변경 시 주소북 adMemo가 비어 있으면
@@ -1958,7 +1993,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                             final max = _maxUsablePointHundreds;
                             setState(() {
                               _usedPoint = max;
-                              _pointController.text = max > 0 ? '$max' : '';
+                              _writePointField(max);
                             });
                           },
                           borderRadius:
@@ -2315,7 +2350,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
       if (_usedPoint > _maxUsablePoint) {
         _usedPoint = _maxUsablePoint;
-        _pointController.text = _usedPoint == 0 ? '' : '$_usedPoint';
+        _writePointField(_usedPoint);
       }
     });
   }
@@ -2387,7 +2422,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 _selectedCoupons.removeWhere((c) => c.no == coupon.no);
                 if (_usedPoint > _maxUsablePointHundreds) {
                   _usedPoint = _maxUsablePointHundreds;
-                  _pointController.text = _usedPoint == 0 ? '' : '$_usedPoint';
+                  _writePointField(_usedPoint);
                 }
               });
             },
