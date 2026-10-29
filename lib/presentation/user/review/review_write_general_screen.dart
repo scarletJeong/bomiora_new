@@ -231,15 +231,13 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
 
   Widget _buildProductTabs() {
     final list = _targetProducts;
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          for (var i = 0; i < list.length; i++) ...[
-            if (i > 0) SizedBox(width: healthDp(context, 8)),
-            _buildProductStepChip(i),
-          ],
-        ],
+    return SizedBox(
+      height: healthDp(context, 25),
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: list.length,
+        separatorBuilder: (_, __) => SizedBox(width: healthDp(context, 8)),
+        itemBuilder: (_, i) => _buildProductStepChip(i),
       ),
     );
   }
@@ -638,6 +636,16 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
               key: _formKey,
               child: Column(
                 children: [
+                  if (!widget._isEditMode && _isMulti)
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        healthDp(context, 20),
+                        healthDp(context, 10),
+                        healthDp(context, 20),
+                        0,
+                      ),
+                      child: _buildProductTabs(),
+                    ),
                   Expanded(
                     child: ListView(
                       padding: EdgeInsets.only(
@@ -652,10 +660,6 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
                             mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              if (!widget._isEditMode && _isMulti) ...[
-                                _buildProductTabs(),
-                                SizedBox(height: healthDp(context, 24)),
-                              ],
                               _barSectionTitle(context, '주문상품 정보'),
                               SizedBox(height: healthDp(context, 10)),
                               _productCard(context, item, edit),
@@ -1076,7 +1080,7 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
                   AppStarRating(
                     rating: _score,
                     starSize: healthDp(context, 20.25),
-                    gap: healthDp(context, 4),
+                    gap: healthDp(context, 1),
                     color: _kPink,
                     preciseFill: true,
                   ),
@@ -1129,7 +1133,7 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
                 rating: _score,
                 onRatingChanged: (v) => setState(() => _score = v),
                 starSize: healthDp(context, 25),
-                gap: healthDp(context, 4),
+                gap: healthDp(context, 1),
                 color: _kPink,
                 alignment: MainAxisAlignment.end,
                 snapMode: AppStarSnapMode.tenth,

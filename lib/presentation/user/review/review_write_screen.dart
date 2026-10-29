@@ -410,6 +410,16 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
               key: _formKey,
               child: Column(
                 children: [
+                  if (!_isEditMode && _isMulti)
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        healthDp(context, 20),
+                        healthDp(context, 10),
+                        healthDp(context, 20),
+                        0,
+                      ),
+                      child: _buildProductTabs(),
+                    ),
                   Expanded(
                     child: ListView(
                       children: [
@@ -421,13 +431,9 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
                             mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              if (!_isEditMode) ...[
-                                if (_isMulti) ...[
-                                  _buildProductTabs(),
-                                  SizedBox(height: healthDp(context, 24)),
-                                ],
-                                _buildProductSection(),
-                              ] else
+                              if (!_isEditMode)
+                                _buildProductSection()
+                              else
                                 _buildReviewProductSectionForEdit(),
                               SizedBox(height: healthDp(context, 24)),
                               _buildWeightSection(),
@@ -480,15 +486,13 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
 
   Widget _buildProductTabs() {
     final list = _targetProducts;
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          for (var i = 0; i < list.length; i++) ...[
-            if (i > 0) SizedBox(width: healthDp(context, 8)),
-            _buildProductStepChip(i),
-          ],
-        ],
+    return SizedBox(
+      height: healthDp(context, 25),
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: list.length,
+        separatorBuilder: (_, __) => SizedBox(width: healthDp(context, 8)),
+        itemBuilder: (_, i) => _buildProductStepChip(i),
       ),
     );
   }

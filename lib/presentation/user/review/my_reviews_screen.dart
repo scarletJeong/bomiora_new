@@ -391,8 +391,8 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
           SizedBox(height: healthDp(context, 8)),
           AppStarRating(
             rating: score,
-            starSize: healthDp(context, 20.25),
-            gap: healthDp(context, 2),
+            starSize: healthDp(context, 24.5),
+            gap: healthDp(context, 0.7),
             color: _kPink,
           ),
         ],
@@ -768,11 +768,9 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
     final average = _prescriptionAverage(r);
     final kg = r.isOutageNum;
     return Padding(
-      padding: EdgeInsets.symmetric(
-        horizontal: healthDp(context, 10),
-        vertical: healthDp(context, 4),
-      ),
+      padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Text(
             average.toStringAsFixed(1),
@@ -781,59 +779,53 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
               fontSize: healthSp(context, 32),
               fontFamily: 'Gmarket Sans TTF',
               fontWeight: FontWeight.w700,
+              height: 1,
             ),
           ),
-          SizedBox(width: healthDp(context, 8)),
-          Flexible(
-            child: Wrap(
-              spacing: healthDp(context, 8),
-              runSpacing: healthDp(context, 6),
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                AppStarRating(
-                  rating: average,
-                  starSize: healthDp(context, 20.25),
-                  gap: healthDp(context, 4),
-                  color: _kPink,
-                  preciseFill: true,
+          SizedBox(width: healthDp(context, 5)),
+          AppStarRating(
+            rating: average,
+            starSize: healthDp(context, 20),
+            gap: healthDp(context, 0),
+            color: _kPink,
+            preciseFill: true,
+          ),
+          const Spacer(),
+          if (kg != null && kg > 0)
+            Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: healthDp(context, 6),
+                vertical: healthDp(context, 5.5),
+              ),
+              decoration: ShapeDecoration(
+                color: const Color(0x19FF5A8D),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(healthDp(context, 20)),
                 ),
-                if (kg != null && kg > 0)
-                  Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: healthDp(context, 6),
-                      vertical: healthDp(context, 5.5),
-                    ),
-                    decoration: ShapeDecoration(
-                      color: const Color(0x19FF5A8D),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(healthDp(context, 20)),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        SvgPicture.asset(
-                          AppAssets.myReviewCardWeightLossIcon,
-                          width: healthDp(context, 13),
-                          height: healthDp(context, 13),
-                          fit: BoxFit.contain,
-                        ),
-                        SizedBox(width: healthDp(context, 4)),
-                        Text(
-                          '${kg}kg 감량',
-                          style: TextStyle(
-                            color: _kPink,
-                            fontSize: healthSp(context, 10),
-                            fontFamily: 'Gmarket Sans TTF',
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SvgPicture.asset(
+                    AppAssets.myReviewCardWeightLossIcon,
+                    width: healthDp(context, 13),
+                    height: healthDp(context, 13),
+                    fit: BoxFit.contain,
+                  ),
+                  SizedBox(width: healthDp(context, 4)),
+                  Text(
+                    '${kg}kg 감량',
+                    style: TextStyle(
+                      color: _kPink,
+                      fontSize: healthSp(context, 10),
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w500,
+                      height: 1,
                     ),
                   ),
-              ],
+                ],
+              ),
             ),
-          ),
         ],
       ),
     );
@@ -844,9 +836,9 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
       _prescriptionHeader(r),
       SizedBox(height: healthDp(context, 10)),
       Container(height: healthDp(context, 1), color: _kBorder),
-      SizedBox(height: healthDp(context, 16)),
+      SizedBox(height: healthDp(context, 12)),
       _prescriptionScoreSummary(r),
-      SizedBox(height: healthDp(context, 10)),
+      SizedBox(height: healthDp(context, 12)),
       _prescriptionRatingGrid(r),
     ];
 
