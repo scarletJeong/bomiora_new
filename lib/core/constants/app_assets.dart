@@ -18,7 +18,8 @@ abstract final class AppAssets {
   static const String appbarSettingsIcon = '${_img}appbar_menu_settings.svg'; // 설정
   static const String appbarReviewIcon = '${_img}appbar_menu_review.svg'; // 리뷰
   static const String appbarHomeIcon = '${_img}appbar_menu_home.svg'; // 메인 홈
-  static const String appbarBackIcon = '${_img}appbar_menu_back.svg'; // 뒤로가기
+  static const String appbarBackIcon = '${_img}appbar_menu_back.svg'; // 뒤로가기 검정색 - 바텀업 바로라기 옆 아이콘
+  static const String appbarBackIconGray = '${_img}appbar_menu_back_gray.svg'; // 뒤로가기 회색 - 문진표 수정 옆 아이콘 
   static const String appbarSettingToggleIcon = '${_img}appbar_menu_setting_toggle.svg'; // 톱니바퀴 설정
 
   // 스플래시 화면

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../../../../core/constants/app_assets.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/services/health_profile_service.dart';
@@ -357,15 +358,27 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
                   horizontal: healthDp(context, 4),
                   vertical: healthDp(context, 4),
                 ),
-                child: Text(
-                  '수정 >',
-                  style: TextStyle(
-                    color: _kMuted,
-                    fontSize: healthSp(context, 14),
-                    fontFamily: _kFont,
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: healthSp(context, -1.26),
-                  ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '수정',
+                      style: TextStyle(
+                        color: _kMuted,
+                        fontSize: healthSp(context, 14),
+                        fontFamily: _kFont,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: healthSp(context, -1.26),
+                      ),
+                    ),
+                    SizedBox(width: healthDp(context, 4)),
+                    SvgPicture.asset(
+                      AppAssets.appbarBackIconGray,
+                      width: healthDp(context, 5),
+                      height: healthDp(context, 9),
+                      fit: BoxFit.contain,
+                    ),
+                  ],
                 ),
               ),
             ),
