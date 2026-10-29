@@ -36,14 +36,20 @@ class QuantityStepper extends StatelessWidget {
         spacing: healthDp(context, 10),
         children: [
           _roundButton(context, Icons.remove, onDecrease),
-          Text(
-            '$quantity',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: _ink,
-              fontSize: healthSp(context, 14),
-              fontFamily: 'Gmarket Sans TTF',
-              fontWeight: FontWeight.w500,
+          SizedBox(
+            width: healthDp(context, 22),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                '$quantity',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: _ink,
+                  fontSize: healthSp(context, 14),
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
             ),
           ),
           _roundButton(context, Icons.add, onIncrease),
