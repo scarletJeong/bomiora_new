@@ -32,9 +32,18 @@ class HealthProfileForm4Screen extends StatefulWidget {
 }
 
 class _HealthProfileForm4State extends State<HealthProfileForm4Screen> {
+  static const _dietFieldIds = <String>[
+    'answer_13_medicine',
+    'answer_13_period',
+    'answer_13_dosage',
+    'answer_13_sideeffect',
+  ];
+
   late final HealthProfileFormSession session;
   late final bool _ownsSession;
   final _formKey = GlobalKey<FormState>();
+  late final Map<String, TextEditingController> _dietCtrls;
+  bool _dietResetting = false;
 
   bool get isSectionEdit => widget.session == null;
 
@@ -61,7 +70,31 @@ class _HealthProfileForm4State extends State<HealthProfileForm4Screen> {
   }
 
   void _onSession() {
+    _pullDietControllers();
     if (mounted) setState(() {});
+  }
+
+  void _pullDietControllers() {
+    for (final id in _dietFieldIds) {
+      final next = session.formData[id]?.toString() ?? '';
+      final controller = _dietCtrls[id];
+      if (controller != null && controller.text != next) {
+        controller.text = next;
+      }
+    }
+  }
+
+  void _resetDietDetails() {
+    _dietResetting = true;
+    FocusManager.instance.primaryFocus?.unfocus();
+    for (final id in _dietFieldIds) {
+      session.formData[id] = '';
+      session.backupAnswer13Fields[id] = '';
+      _dietCtrls[id]?.clear();
+    }
+    session.dietDetailResetTick++;
+    _dietResetting = false;
+    setState(() {});
   }
 
   void _unbindSession() {
@@ -81,10 +114,19 @@ class _HealthProfileForm4State extends State<HealthProfileForm4Screen> {
   void initState() {
     super.initState();
     _bindSession();
+    _dietCtrls = {
+      for (final id in _dietFieldIds)
+        id: TextEditingController(
+          text: session.formData[id]?.toString() ?? '',
+        ),
+    };
   }
 
   @override
   void dispose() {
+    for (final controller in _dietCtrls.values) {
+      controller.dispose();
+    }
     _unbindSession();
     super.dispose();
   }
@@ -152,6 +194,7 @@ class _HealthProfileForm4State extends State<HealthProfileForm4Screen> {
                               .backupAnswer13Fields['answer_13_sideeffect'] ??
                           '';
                       session.dietDetailResetTick++;
+                      _pullDietControllers();
                     }
                   });
                 },
@@ -272,15 +315,7 @@ class _HealthProfileForm4State extends State<HealthProfileForm4Screen> {
               Material(
                 color: Colors.transparent,
                 child: InkWell(
-                  onTap: () {
-                    setState(() {
-                      session.formData['answer_13_medicine'] = '';
-                      session.formData['answer_13_period'] = '';
-                      session.formData['answer_13_dosage'] = '';
-                      session.formData['answer_13_sideeffect'] = '';
-                      session.dietDetailResetTick++;
-                    });
-                  },
+                  onTap: _resetDietDetails,
                   borderRadius: BorderRadius.circular(healthDp(context, 50)),
                   child: Container(
                     height: healthDp(context, 28),
@@ -358,8 +393,7 @@ class _HealthProfileForm4State extends State<HealthProfileForm4Screen> {
           height: healthDp(context, 45),
           child: KeyboardLiftOnFocus(
             child: TextFormField(
-            key: ValueKey<String>('diet_$id:$session.dietDetailResetTick'),
-            initialValue: session.formData[id]?.toString() ?? '',
+            controller: _dietCtrls[id],
             textAlignVertical: TextAlignVertical.center,
             style: TextStyle(
               color: const Color(0xFF1A1A1E),
@@ -401,6 +435,7 @@ class _HealthProfileForm4State extends State<HealthProfileForm4Screen> {
               ),
             ),
             onChanged: (v) {
+              if (_dietResetting) return;
               session.formData[id] = v;
               setState(() {});
             },
