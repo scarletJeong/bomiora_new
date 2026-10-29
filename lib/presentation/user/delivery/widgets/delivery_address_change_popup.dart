@@ -276,27 +276,13 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
     if (_addresses.isEmpty) return null;
     if (_hasAddressId(_selectedAddressId)) return _selectedAddressId;
 
-    // 주문에 적용된(또는 화면에 표시 중인) 수령지 우선 — 기본배송지로 떨어지지 않게
-    final fromSnapshot = _matchAddressIdFromSnapshot(
+    // 지금 주문에 적용된 수령지만 선택. 기본배송지는 그 주소와 같을 때만 선택된다.
+    return _matchAddressIdFromSnapshot(
       name: widget.recipientName ?? '',
       phone: widget.recipientPhone ?? '',
       addr1: widget.recipientAddress ?? '',
       addr2: widget.recipientAddressDetail ?? '',
     );
-    if (fromSnapshot != null) return fromSnapshot;
-
-    final hasOrderHint = (widget.recipientName ?? '').trim().isNotEmpty ||
-        (widget.recipientPhone ?? '').trim().isNotEmpty ||
-        (widget.recipientAddress ?? '').trim().isNotEmpty;
-    // 수령지 힌트가 있는데 아직 못 찾으면 기본배송지 강제 선택하지 않음
-    // (비동기 주문상세 매칭 결과를 기다림)
-    if (hasOrderHint) return null;
-
-    final defaultAddress = _addresses.firstWhere(
-      (a) => a['adDefault'] == 1,
-      orElse: () => _addresses.first,
-    );
-    return _asAddressId(defaultAddress['adId']);
   }
 
   int? _matchAddressIdFromSnapshot({
@@ -311,8 +297,8 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
     final oAddr2 = _normText(addr2);
     if (oName.isEmpty && oPhone.isEmpty && oAddr1.isEmpty) return null;
 
-    int? softMatch;
-    int? namePhoneMatch;
+    int? bestId;
+    var bestScore = 0;
     for (final a in _addresses) {
       final aName = (a['adName'] ?? '').toString().trim();
       final aPhone = (a['adHp'] ?? a['adTel'] ?? '')
@@ -327,24 +313,42 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
       final phoneOk = oPhone.isEmpty || oPhone == aPhone;
       if (!nameOk || !phoneOk) continue;
 
-      if (oAddr1 == a1 && oAddr2 == a2) return id;
-      if (oAddr1 == a1) {
-        softMatch ??= id;
-        continue;
+      final score = _addressMatchScore(
+        orderAddr1: oAddr1,
+        orderAddr2: oAddr2,
+        cardAddr1: a1,
+        cardAddr2: a2,
+      );
+      if (score > bestScore) {
+        bestScore = score;
+        bestId = id;
       }
-      // 주문 주소가 기본+상세가 합쳐진 경우 / 공백·표기 차이
-      final combined = '$a1$a2';
-      if (oAddr1.isNotEmpty &&
-          (oAddr1 == combined ||
-              oAddr1.contains(a1) ||
-              a1.contains(oAddr1) ||
-              combined.contains(oAddr1))) {
-        softMatch ??= id;
-        continue;
-      }
-      namePhoneMatch ??= id;
     }
-    return softMatch ?? namePhoneMatch;
+    return bestId;
+  }
+
+  /// 이름·전화번호만 같고 주소가 다른 카드(기본배송지)는 선택하지 않습니다.
+  static int _addressMatchScore({
+    required String orderAddr1,
+    required String orderAddr2,
+    required String cardAddr1,
+    required String cardAddr2,
+  }) {
+    if (orderAddr1.isEmpty && orderAddr2.isEmpty) return 0;
+    if (orderAddr1 == cardAddr1 && orderAddr2 == cardAddr2) return 100;
+    if (orderAddr1 == cardAddr1 &&
+        (orderAddr2.isEmpty || cardAddr2.isEmpty)) {
+      return 80;
+    }
+    final combined = '$cardAddr1$cardAddr2';
+    if (orderAddr1.isNotEmpty && orderAddr1 == combined) return 90;
+    if (orderAddr1.isNotEmpty &&
+        cardAddr1.isNotEmpty &&
+        orderAddr1.startsWith(cardAddr1)) {
+      final rest = orderAddr1.substring(cardAddr1.length);
+      if (cardAddr2.isNotEmpty && rest.contains(cardAddr2)) return 70;
+    }
+    return 0;
   }
 
   /// 주문에 현재 적용된 배송지와 동일한 주소 카드 id를 찾습니다.

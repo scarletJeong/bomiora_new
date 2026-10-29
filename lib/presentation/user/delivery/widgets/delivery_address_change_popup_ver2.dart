@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../../common/widgets/daum_postcode_search_dialog.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 import '../../../../core/utils/node_value_parser.dart';
+import '../../../../data/models/delivery/delivery_model.dart';
 import '../../../../data/services/address_service.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/services/delivery_service.dart' as order_service;
@@ -84,20 +85,16 @@ class _DeliveryAddressChangePopupState
         .any((a) => _asAddressId(a['adId']) == _selectedAddressId)) {
       // 기존 선택 유지
     } else {
-      final matchedId = _matchInitiallySelectedAddressId();
-      if (matchedId != null) {
-        _selectedAddressId = matchedId;
-      } else if (widget.initiallySelectedAddress != null &&
-          widget.initiallySelectedAddress!.isNotEmpty) {
-        // 현재 선택 힌트가 있는데 매칭 실패 시 기본배송지로 떨어지지 않음
-        _selectedAddressId = null;
-      } else {
-        final defaultAddress = _addresses.firstWhere(
-          (a) => a['adDefault'] == 1,
-          orElse: () => _addresses.first,
-        );
-        _selectedAddressId = _asAddressId(defaultAddress['adId']);
+      var matchedId = _matchInitiallySelectedAddressId();
+      final hasInitial = widget.initiallySelectedAddress != null &&
+          widget.initiallySelectedAddress!.isNotEmpty;
+      // 주문 모드인데 현재 배송지 힌트가 없으면 주문 수령지로 맞춘다.
+      // 기본배송지라는 이유만으로 선택(핑크)하지 않는다.
+      if (matchedId == null && !hasInitial && !widget._isCheckoutMode) {
+        matchedId = await _matchOrderRecipientId(user.id);
+        if (!mounted) return;
       }
+      _selectedAddressId = matchedId;
     }
     setState(() => _isLoading = false);
   }
@@ -145,7 +142,8 @@ class _DeliveryAddressChangePopupState
       return null;
     }
 
-    int? softMatch;
+    int? bestId;
+    var bestScore = 0;
     for (final a in _addresses) {
       final aZip = _zipOf(a);
       final aName = _addrField(a, 'adName');
@@ -160,20 +158,102 @@ class _DeliveryAddressChangePopupState
       final hpOk = hp.isEmpty || aHp == hp;
       if (!zipOk || !nameOk || !hpOk) continue;
 
-      if (addr1 == aAddr1 && addr2 == aAddr2) return id;
-      if (addr1 == aAddr1) {
-        softMatch ??= id;
-        continue;
-      }
-      final combined = '$aAddr1$aAddr2';
-      if (addr1.isNotEmpty &&
-          (addr1 == combined ||
-              addr1.contains(aAddr1) ||
-              aAddr1.contains(addr1))) {
-        softMatch ??= id;
+      final score = _addressMatchScore(
+        orderAddr1: addr1,
+        orderAddr2: addr2,
+        cardAddr1: aAddr1,
+        cardAddr2: aAddr2,
+      );
+      if (score > bestScore) {
+        bestScore = score;
+        bestId = id;
       }
     }
-    return softMatch;
+    return bestId;
+  }
+
+  /// 주소가 실제로 같을 때만 점수를 줍니다. 이름만 같은 기본배송지는 제외합니다.
+  static int _addressMatchScore({
+    required String orderAddr1,
+    required String orderAddr2,
+    required String cardAddr1,
+    required String cardAddr2,
+  }) {
+    if (orderAddr1.isEmpty && orderAddr2.isEmpty) return 0;
+    if (orderAddr1 == cardAddr1 && orderAddr2 == cardAddr2) return 100;
+    if (orderAddr1 == cardAddr1 &&
+        (orderAddr2.isEmpty || cardAddr2.isEmpty)) {
+      return 80;
+    }
+    final combined = '$cardAddr1$cardAddr2';
+    if (orderAddr1.isNotEmpty && orderAddr1 == combined) return 90;
+    if (orderAddr1.isNotEmpty &&
+        cardAddr1.isNotEmpty &&
+        orderAddr1.startsWith(cardAddr1)) {
+      final rest = orderAddr1.substring(cardAddr1.length);
+      if (cardAddr2.isNotEmpty && rest.contains(cardAddr2)) return 70;
+    }
+    return 0;
+  }
+
+  Future<int?> _matchOrderRecipientId(String mbId) async {
+    final orderId = widget.orderId?.trim() ?? '';
+    if (orderId.isEmpty) return null;
+    try {
+      final result = await order_service.OrderService.getOrderDetail(
+        odId: orderId,
+        mbId: mbId,
+      );
+      if (result['success'] != true) return null;
+      final order = result['order'];
+      if (order is! OrderDetailModel) return null;
+      return _matchRecipientAddressId(
+        name: order.recipientName,
+        phone: order.recipientPhone,
+        addr1: order.recipientAddress,
+        addr2: order.recipientAddressDetail,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  int? _matchRecipientAddressId({
+    required String name,
+    required String phone,
+    required String addr1,
+    required String addr2,
+  }) {
+    final oName = name.trim();
+    final oPhone = phone.replaceAll(RegExp(r'[^0-9]'), '');
+    final oAddr1 = _normText(addr1);
+    final oAddr2 = _normText(addr2);
+    if (oName.isEmpty && oPhone.isEmpty && oAddr1.isEmpty) return null;
+
+    int? bestId;
+    var bestScore = 0;
+    for (final a in _addresses) {
+      final aName = _addrField(a, 'adName');
+      final aPhone = _addrField(a, 'adHp').replaceAll(RegExp(r'\D'), '');
+      final a1 = _normText(_addrField(a, 'adAddr1'));
+      final a2 = _normText(_addrField(a, 'adAddr2'));
+      final id = _asAddressId(a['adId']);
+      if (id == null) continue;
+      final nameOk = oName.isEmpty || oName == aName;
+      final phoneOk = oPhone.isEmpty || oPhone == aPhone;
+      if (!nameOk || !phoneOk) continue;
+      final score = _addressMatchScore(
+        orderAddr1: oAddr1,
+        orderAddr2: oAddr2,
+        cardAddr1: a1,
+        cardAddr2: a2,
+      );
+      if (score > bestScore) {
+        bestScore = score;
+        bestId = id;
+      }
+    }
+    return bestId;
   }
 
   Future<void> _submit() async {
