@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
+import '../../../../core/constants/app_assets.dart';
 import '../../../common/widgets/app_bar_menu.dart';
 import '../health_responsive_scale.dart';
 
@@ -126,10 +128,10 @@ class HealthAppBar extends StatelessWidget
                   behavior: HitTestBehavior.opaque,
                   onTap: onBack ?? () => Navigator.pop(context),
                   child: Center(
-                    child: Icon(
-                      Icons.chevron_left,
-                      color: Colors.black,
-                      size: iconSize,
+                    child: SvgPicture.asset(
+                      AppAssets.appbarGetBackIcon,
+                      width: iconSize,
+                      height: iconSize,
                     ),
                   ),
                 ),
