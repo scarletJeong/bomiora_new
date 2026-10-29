@@ -244,9 +244,9 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                   height: healthDp(context, 30),
                   child: Center(
                     child: SvgPicture.asset(
-                      AppAssets.appbarSettingsIcon,
-                      width: healthDp(context, 20),
-                      height: healthDp(context, 20),
+                      AppAssets.appbarSettingToggleIcon,
+                      width: healthDp(context, 22),
+                      height: healthDp(context, 23),
                       fit: BoxFit.contain,
                     ),
                   ),
