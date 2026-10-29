@@ -57,6 +57,9 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   ];
   String _originalPhoneDigits = '';
   String _originalNickname = '';
+
+  /// 인증번호 확인에 성공한 연락처 숫자. 이 번호가 입력란과 같으면 저장할 수 있습니다.
+  String? _otpVerifiedDigits;
   static const int _nicknameChangeIntervalMonths = 6;
   String? _contactOtpToken;
   bool _contactPhoneVerified = true;
@@ -107,6 +110,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         _phone3Controller.text = '';
       }
       _originalPhoneDigits = phone;
+      _otpVerifiedDigits = null;
       _contactPhoneVerified = true;
       _contactOtpToken = null;
       _contactOtpErrorText = null;
@@ -185,8 +189,11 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   bool get _nicknameReady =>
       _nicknameChanged && _nicknameController.text.trim().isNotEmpty;
 
-  /// 연락처는 번호가 바뀌고 인증번호 확인까지 끝난 뒤에만 저장할 수 있습니다.
-  bool get _phoneReady => _phoneChanged && _contactPhoneVerified;
+  /// 인증번호 확인이 끝난 현재 연락처면 저장할 수 있습니다.
+  bool get _phoneReady {
+    if (!_contactOtpVerifiedSuccess || _otpVerifiedDigits == null) return false;
+    return _digitsOnly(_enteredPhoneDigits) == _otpVerifiedDigits;
+  }
 
   bool get _passwordInProgress =>
       _newPasswordController.text.isNotEmpty ||
@@ -295,10 +302,20 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
 
   void _onPhoneDigitsChanged() {
     final entered = _digitsOnly(_enteredPhoneDigits);
+    if (_otpVerifiedDigits != null && entered == _otpVerifiedDigits) {
+      if (!_contactPhoneVerified || !_contactOtpVerifiedSuccess) {
+        setState(() {
+          _contactPhoneVerified = true;
+          _contactOtpVerifiedSuccess = true;
+        });
+      }
+      return;
+    }
     setState(() {
       if (entered != _originalPhoneDigits) {
         _contactPhoneVerified = false;
         if (_contactOtpVerifiedSuccess || _contactOtpToken != null) {
+          _otpVerifiedDigits = null;
           _contactOtpToken = null;
           _contactOtpVerifiedSuccess = false;
           _secondsLeft = 0;
@@ -306,6 +323,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         }
         _contactOtpErrorText = null;
       } else {
+        _otpVerifiedDigits = null;
         _contactPhoneVerified = true;
         _contactOtpToken = null;
         _contactOtpErrorText = null;
@@ -340,6 +358,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
       _contactOtpSending = true;
       _contactOtpErrorText = null;
       _contactPhoneVerified = false;
+      _otpVerifiedDigits = null;
       _contactOtpToken = null;
       _contactOtpVerifiedSuccess = false;
     });
@@ -414,7 +433,9 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
       return;
     }
 
+    final verifiedDigits = _digitsOnly(_enteredPhoneDigits);
     setState(() {
+      _otpVerifiedDigits = verifiedDigits;
       _contactPhoneVerified = true;
       _contactOtpToken = null;
       _secondsLeft = 0;
@@ -460,7 +481,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
       var saved = !_nicknameReady && !_phoneReady;
       if (_nicknameReady || _phoneReady) {
         final phone = _phoneReady
-            ? _digitsOnly(_enteredPhoneDigits)
+            ? (_otpVerifiedDigits ?? _digitsOnly(_enteredPhoneDigits))
             : _originalPhoneDigits;
         final result = await AuthService.updateProfile(
           mbId: _currentUser!.id,
