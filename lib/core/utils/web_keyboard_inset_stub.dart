@@ -16,4 +16,7 @@ void clearWebVisualViewportStick() {}
 
 bool webEditingElementFocused() => false;
 
+/// 휴대폰 브라우저(iOS Safari 자동완성 바 등)에서만 입력칸을 더 올린다.
+bool webPreferKeyboardAccessory() => false;
+
 void setWebInputScrollLock(bool lock) {}

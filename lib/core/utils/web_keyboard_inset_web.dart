@@ -6,10 +6,12 @@ import 'package:bomiora_app/core/utils/web_keyboard_overlap.dart';
 export 'package:bomiora_app/core/utils/web_keyboard_overlap.dart';
 
 const _kOverlayToken = 'interactive-widget=overlays-content';
-const _kGap = 16.0;
-const _kAccessory = 56.0;
-const _kCoverSlop = 8.0;
-const _kMaxShift = 240.0;
+const _kGap = 20.0;
+/// iOS Safari 키보드 위 자동완성 바. visualViewport 높이에는 포함되지 않는다.
+const _kAccessory = 88.0;
+/// HTML input 은 글자 줄만 재므로, 그 아래 입력 상자 테두리까지 같이 올린다.
+const _kFieldChrome = 28.0;
+const _kMaxShift = 420.0;
 
 void Function()? _onChange;
 html.EventListener? _resizeListener;
@@ -100,6 +102,18 @@ bool webEditingElementFocused() {
   }
 }
 
+bool webPreferKeyboardAccessory() {
+  try {
+    final ua = html.window.navigator.userAgent.toLowerCase();
+    return ua.contains('iphone') ||
+        ua.contains('ipad') ||
+        ua.contains('ipod') ||
+        ua.contains('android');
+  } catch (_) {
+    return false;
+  }
+}
+
 void setWebInputScrollLock(bool lock) {
   if (lock) {
     ensureWebKeyboardOverlayMode();
@@ -175,14 +189,17 @@ void _compensateFocusedInput() {
   final rect = input.getBoundingClientRect();
   final visibleHeight = _px(viewport.height);
   if (visibleHeight < 1) return;
+  // 포커스 직후 iOS 가 입력창을 화면 밖에 두는 동안에는 밀지 않는다.
+  if (rect.top < -200 || rect.height < 1 || rect.width < 1) return;
 
-  final distLayout = (_px(viewport.offsetTop) + visibleHeight) - rect.bottom;
-  final distVisual = visibleHeight - rect.bottom;
+  // rect 는 이미 적용된 이동을 포함한다. 이동 전 위치로 필요한 양을 다시 계산한다.
+  final unshiftedBottom = rect.bottom + _appliedShift;
+  final distLayout =
+      (_px(viewport.offsetTop) + visibleHeight) - unshiftedBottom;
+  final distVisual = visibleHeight - unshiftedBottom;
   final dist = distLayout < distVisual ? distLayout : distVisual;
-  final overflow = (_kGap + _kAccessory) - dist;
-  if (overflow <= _kCoverSlop) return;
-
-  _applyShift(_appliedShift + overflow);
+  final needed = (_kGap + _kAccessory + _kFieldChrome) - dist;
+  _applyShift(needed > 0 ? needed : 0);
 }
 
 void _applyShift(double shift) {

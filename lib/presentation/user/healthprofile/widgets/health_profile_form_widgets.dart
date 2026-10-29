@@ -900,6 +900,7 @@ class HealthProfileStepScroll extends StatelessWidget {
             ),
             SizedBox(height: healthDp(context, 8)),
           ],
+          const KeyboardInsetSpacer(),
         ],
       ),
     );

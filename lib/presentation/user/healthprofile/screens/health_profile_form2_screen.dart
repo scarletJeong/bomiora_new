@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../common/widgets/app_toast_overlay.dart';
+import '../../../common/widgets/keyboard_field_lift.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 import '../widgets/health_profile_common.dart';
@@ -150,7 +151,13 @@ class _HealthProfileForm2State extends State<HealthProfileForm2Screen> {
                   healthDp(context, 20),
                   healthDp(context, 16),
                 ),
-                child: questions,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    questions,
+                    const KeyboardInsetSpacer(),
+                  ],
+                ),
               )
             : HealthProfileStepScroll(
                 session: session,

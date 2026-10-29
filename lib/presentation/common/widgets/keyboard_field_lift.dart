@@ -1,13 +1,21 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:ui' show FlutterView;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 import 'package:bomiora_app/core/utils/web_keyboard_inset.dart';
 
-/// 모바일 웹 키보드 위 자동완성 바. visualViewport 높이에는 안 잡힌다.
-const double _kWebAccessoryBar = 56;
+/// 모바일 웹 키보드 위 자동완성 바. visualViewport·viewInsets 에는 안 잡힌다.
+const double _kWebAccessoryBar = 88;
+
+const double _kFieldGap = 20;
+
+/// 포커스 중 스크롤이 키보드 아래로 되돌아가지 않게 하는 표시.
+/// 화면별 포커스 콜백과 [KeyboardFieldLift]가 같이 쓴다.
+bool _keyboardLiftHold = false;
+double _keyboardLiftSlack = 0;
 
 /// 키보드가 열려도 페이지 높이는 줄이지 않는다.
 /// 입력칸에 포커스가 가면, 그 칸이 키보드에 가려질 때만 스크롤을 올려 칸을 키보드 위로 둔다.
@@ -38,6 +46,7 @@ class _KeyboardFieldLiftState extends State<KeyboardFieldLift>
   double _latchedKeyboard = 0;
   double? _pinnedPixels;
   bool _restoringPin = false;
+  bool _applyingLift = false;
   late final void Function() _unsubscribeWebKeyboard;
 
   @override
@@ -72,7 +81,7 @@ class _KeyboardFieldLiftState extends State<KeyboardFieldLift>
     }
     final generation = ++_focusGeneration;
     _scheduleLift();
-    for (final delay in const [80, 240, 520]) {
+    for (final delay in const [80, 240, 520, 900]) {
       Future<void>.delayed(Duration(milliseconds: delay), () {
         if (!mounted || generation != _focusGeneration) return;
         _liftFocusedField();
@@ -97,9 +106,6 @@ class _KeyboardFieldLiftState extends State<KeyboardFieldLift>
     final editing = fieldContext != null || webEditingElementFocused();
     final measured = _keyboardHeight(fieldContext ?? context);
     if (measured > _latchedKeyboard) _latchedKeyboard = measured;
-    final keyboard = measured > 0
-        ? measured
-        : (editing ? _latchedKeyboard : 0.0);
 
     if (!editing) {
       _releaseTimer ??= Timer(const Duration(milliseconds: 400), () {
@@ -113,6 +119,8 @@ class _KeyboardFieldLiftState extends State<KeyboardFieldLift>
         if (stillEditing) return;
         _latchedKeyboard = 0;
         _pinnedPixels = null;
+        _keyboardLiftHold = false;
+        _keyboardLiftSlack = 0;
         _extra
           ..hold = false
           ..bottom = 0;
@@ -124,17 +132,10 @@ class _KeyboardFieldLiftState extends State<KeyboardFieldLift>
     _releaseTimer?.cancel();
     _releaseTimer = null;
 
+    _keyboardLiftHold = true;
     _extra.hold = true;
     setWebInputScrollLock(true);
-    if (keyboard > 0) {
-      _extra.bottom = math.max(
-        _extra.bottom,
-        keyboard + (kIsWeb ? _kWebAccessoryBar : 0),
-      );
-    }
-    if (keyboard <= 0 || fieldContext == null) {
-      return;
-    }
+    if (fieldContext == null) return;
 
     final fieldRender = fieldContext.findRenderObject();
     if (fieldRender is! RenderBox ||
@@ -148,18 +149,13 @@ class _KeyboardFieldLiftState extends State<KeyboardFieldLift>
     if (scrollable == null || !scrollable.position.hasPixels) return;
 
     final view = View.of(fieldContext);
-    final dpr = view.devicePixelRatio;
-    final screenHeight = view.physicalSize.height / dpr;
-    const gap = 16.0;
-    const accessory = kIsWeb ? _kWebAccessoryBar : 0.0;
-    final visibleTop = view.padding.top / dpr + gap;
-    final overlap = currentWebKeyboardOverlap();
-    // Flutter 좌표는 레이아웃 화면. 브라우저가 민 화면(visibleTop)과 섞지 않는다.
-    // 글자 입력 때 칸을 키보드에 붙이는 쪽은 web_keyboard_inset_web 에서 되돌린다.
-    final viewBottom = overlap.visibleHeight > 1
-        ? overlap.visibleHeight
-        : screenHeight - keyboard;
-    final visibleBottom = viewBottom - gap - accessory;
+    final cover = _keyboardCoverOf(
+      view,
+      editing: true,
+      hintedKeyboard: _latchedKeyboard,
+    );
+    final visibleTop = view.padding.top / view.devicePixelRatio + _kFieldGap;
+    final visibleBottom = cover.visibleBottom;
 
     final topLeft = fieldBox.localToGlobal(Offset.zero);
     final fieldTop = topLeft.dy;
@@ -175,22 +171,26 @@ class _KeyboardFieldLiftState extends State<KeyboardFieldLift>
     final position = scrollable.position;
     _attachPinnedPosition(position);
 
-    if (delta < 16) {
+    if (delta <= 0.5) {
       _pinnedPixels = position.pixels;
       return;
     }
 
-    final slack = math.max(keyboard + gap + accessory, delta);
-    _extra.bottom = slack;
+    final reserve = math.max(cover.keyboard + cover.reserve, delta);
+    _extra.bottom = math.max(_extra.bottom, reserve);
+    _keyboardLiftSlack = math.max(_keyboardLiftSlack, reserve);
     _lastPosition = position;
-    final max = position.maxScrollExtent + slack;
-    final target =
-        (position.pixels + delta).clamp(position.minScrollExtent, max);
-    if ((target - position.pixels).abs() < 16) {
+    final target = math.max(
+      position.minScrollExtent,
+      position.pixels + delta,
+    );
+    if ((target - position.pixels).abs() <= 0.5) {
       _pinnedPixels = position.pixels;
       return;
     }
+    _applyingLift = true;
     position.jumpTo(target);
+    _applyingLift = false;
     _pinnedPixels = target;
   }
 
@@ -211,7 +211,7 @@ class _KeyboardFieldLiftState extends State<KeyboardFieldLift>
   }
 
   void _restorePinnedPixels() {
-    if (_restoringPin || !_extra.hold) return;
+    if (_restoringPin || _applyingLift || !_extra.hold) return;
     final position = _lastPosition;
     final pinned = _pinnedPixels;
     if (position == null || pinned == null || !position.hasPixels) return;
@@ -333,20 +333,24 @@ class _KeyboardLiftScrollPhysics extends ScrollPhysics {
     return _KeyboardLiftScrollPhysics(extra: extra, parent: buildParent(ancestor));
   }
 
-  double _max(ScrollMetrics position) => position.maxScrollExtent + extra.bottom;
+  bool get _holding => extra.hold || _keyboardLiftHold;
+
+  double get _slack => math.max(extra.bottom, _keyboardLiftSlack);
+
+  double _max(ScrollMetrics position) => position.maxScrollExtent + _slack;
 
   /// 글자를 치는 동안 입력칸을 화면 맨 아래(키보드 밑)로 되돌리지 않는다.
   @override
-  bool get allowImplicitScrolling => !extra.hold;
+  bool get allowImplicitScrolling => !_holding;
 
   @override
   double applyBoundaryConditions(ScrollMetrics position, double value) {
-    if (extra.hold &&
+    if (_holding &&
         position.axis == Axis.vertical &&
         value < position.pixels) {
       return value - position.pixels;
     }
-    if (position.axis != Axis.vertical || extra.bottom <= 0) {
+    if (position.axis != Axis.vertical || _slack <= 0) {
       return super.applyBoundaryConditions(position, value);
     }
     final max = _max(position);
@@ -367,10 +371,12 @@ class _KeyboardLiftScrollPhysics extends ScrollPhysics {
 
   @override
   Simulation? createBallisticSimulation(ScrollMetrics position, double velocity) {
-    if (extra.hold && position.axis == Axis.vertical && velocity < 0) {
+    // jumpTo 가 본문 끝을 넘기면 velocity 0 으로 되감기 시뮬레이션이 붙는다.
+    // 입력 중에는 그 되감기를 막아야 칸이 키보드 아래로 돌아가지 않는다.
+    if (_holding && position.axis == Axis.vertical && velocity <= 0) {
       return null;
     }
-    if (position.axis != Axis.vertical || extra.bottom <= 0) {
+    if (position.axis != Axis.vertical || _slack <= 0) {
       return super.createBallisticSimulation(position, velocity);
     }
     final max = _max(position);
@@ -418,28 +424,133 @@ void liftContextAboveKeyboard(BuildContext context) {
   if (scrollable == null || !scrollable.position.hasPixels) return;
 
   final view = View.of(context);
-  final dpr = view.devicePixelRatio;
-  final screenHeight = view.physicalSize.height / dpr;
-  var keyboard = view.viewInsets.bottom / dpr;
-  final web = currentWebKeyboardOverlap();
-  if (web.bottom > keyboard) keyboard = web.bottom;
-  if (keyboard < 1) return;
+  final cover = _keyboardCoverOf(view, editing: true);
+  if (cover.keyboard < 1 && cover.reserve < 1) return;
 
-  const gap = 16.0;
-  const accessory = kIsWeb ? _kWebAccessoryBar : 0.0;
-  final viewBottom = web.visibleHeight > 1
-      ? web.visibleHeight
-      : screenHeight - keyboard;
-  final visibleBottom = viewBottom - gap - accessory;
+  final visibleBottom = cover.visibleBottom;
   final fieldBottom = box.localToGlobal(Offset.zero).dy + box.size.height;
-  if (fieldBottom <= visibleBottom + 1) return;
+  if (fieldBottom <= visibleBottom + 0.5) return;
 
   final delta = fieldBottom - visibleBottom;
   final position = scrollable.position;
-  final max = position.maxScrollExtent + keyboard + gap + accessory;
-  final next = (position.pixels + delta).clamp(position.minScrollExtent, max);
-  if ((next - position.pixels).abs() < 4) return;
+  final reserve = math.max(cover.keyboard + cover.reserve, delta);
+  _keyboardLiftHold = true;
+  _keyboardLiftSlack = math.max(_keyboardLiftSlack, reserve);
+  final next = math.max(position.minScrollExtent, position.pixels + delta);
+  if ((next - position.pixels).abs() <= 0.5) return;
   position.jumpTo(next);
+}
+
+/// 키보드가 가리는 높이만큼 스크롤 본문 아래에 빈 칸을 넣어, 맨 아래 입력칸도 키보드 위로 올릴 수 있게 한다.
+class KeyboardInsetSpacer extends StatefulWidget {
+  const KeyboardInsetSpacer({super.key});
+
+  @override
+  State<KeyboardInsetSpacer> createState() => _KeyboardInsetSpacerState();
+}
+
+class _KeyboardInsetSpacerState extends State<KeyboardInsetSpacer>
+    with WidgetsBindingObserver {
+  late final void Function() _unsubscribe;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _unsubscribe = subscribeWebKeyboardOverlap(() {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _unsubscribe();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeMetrics() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final height = _keyboardScrollSlack(context);
+    if (height < 1) return const SizedBox.shrink();
+    return SizedBox(height: height);
+  }
+}
+
+class _KeyboardCover {
+  const _KeyboardCover({
+    required this.keyboard,
+    required this.reserve,
+    required this.visibleBottom,
+  });
+
+  /// Flutter 화면에서 키보드가 덮은 높이.
+  final double keyboard;
+
+  /// 키보드 위로 더 비워 둘 간격(자동완성 바 + 여백).
+  final double reserve;
+
+  /// 입력 상자 바닥이 이 y 보다 위에 있어야 한다.
+  final double visibleBottom;
+}
+
+_KeyboardCover _keyboardCoverOf(
+  FlutterView view, {
+  required bool editing,
+  double hintedKeyboard = 0,
+}) {
+  final dpr = view.devicePixelRatio;
+  final screenHeight = view.physicalSize.height / dpr;
+  final overlap = currentWebKeyboardOverlap();
+  final visible =
+      overlap.visibleHeight > 1 ? overlap.visibleHeight : screenHeight;
+  final flutterHidden = math.max(0.0, screenHeight - visible);
+
+  var keyboard = view.viewInsets.bottom / dpr;
+  if (!keyboard.isFinite || keyboard < 0) keyboard = 0;
+  if (overlap.bottom > keyboard) keyboard = overlap.bottom;
+  if (hintedKeyboard > keyboard) keyboard = hintedKeyboard;
+  if (flutterHidden > keyboard) keyboard = flutterHidden;
+
+  // 화면 높이가 이미 보이는 영역과 같으면 키보드는 레이아웃 밖에 있다.
+  // 그때 키보드 높이를 한 번 더 빼면 입력칸이 화면 위로 올라간다.
+  final hasVisible = overlap.visibleHeight > 1;
+  final viewAlreadyFits =
+      hasVisible && (screenHeight - visible).abs() < 48;
+  final keyboardForLayout = viewAlreadyFits ? 0.0 : keyboard;
+
+  final accessory = kIsWeb &&
+          webPreferKeyboardAccessory() &&
+          (editing || keyboard > 1)
+      ? _kWebAccessoryBar
+      : 0.0;
+  final reserve = (keyboardForLayout > 1 || accessory > 0)
+      ? _kFieldGap + accessory
+      : 0.0;
+
+  var viewBottom = screenHeight - (keyboardForLayout > 1 ? keyboardForLayout : 0);
+  if (hasVisible) {
+    viewBottom = math.min(viewBottom, overlap.visibleHeight);
+  }
+  return _KeyboardCover(
+    keyboard: keyboardForLayout,
+    reserve: reserve,
+    visibleBottom: viewBottom - reserve,
+  );
+}
+
+double _keyboardScrollSlack(BuildContext context) {
+  final view = View.maybeOf(context);
+  if (view == null) return 0;
+  final editing = webEditingElementFocused();
+  final cover = _keyboardCoverOf(view, editing: editing);
+  if (!editing && cover.keyboard < 1) return 0;
+  return cover.keyboard + cover.reserve;
 }
 
 /// 자식 입력칸에 포커스가 가면 키보드 위로 올린다.
@@ -454,7 +565,7 @@ class KeyboardLiftOnFocus extends StatelessWidget {
       onFocusChange: (focused) {
         if (!focused) return;
         _run(context);
-        for (final delay in const [80, 240, 520]) {
+        for (final delay in const [80, 240, 520, 900]) {
           Future<void>.delayed(Duration(milliseconds: delay), () {
             if (!context.mounted) return;
             liftContextAboveKeyboard(context);
