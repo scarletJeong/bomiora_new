@@ -182,9 +182,7 @@ class FCMService {
     );
 
     var channelId = 'default_channel';
-    if (type == 'order' || type == 'delivery') {
-      channelId = 'high_importance_channel';
-    } else if (type == 'health') {
+    if (type == 'health') {
       channelId = 'health_channel';
     }
 
@@ -272,12 +270,10 @@ class FCMService {
         data['order_number']?.toString() ?? data['od_id']?.toString() ?? id;
 
     switch (type) {
-      case 'order':
-      case 'delivery':
       case 'review':
         if (orderNumber.isNotEmpty) {
           nav.pushNamed(
-            '/order-detail',
+            '/order-detail/$orderNumber',
             arguments: {'orderNumber': orderNumber, 'odId': orderNumber},
           );
         } else {

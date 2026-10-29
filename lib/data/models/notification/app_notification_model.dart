@@ -89,10 +89,6 @@ class AppNotificationItem {
       case 'inquiry':
       case 'qna':
         return '1:1문의';
-      case 'order':
-        return '결제완료';
-      case 'delivery':
-        return '배송시작';
       case 'review':
         return '리뷰';
       case 'point':

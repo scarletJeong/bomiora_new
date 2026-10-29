@@ -30,10 +30,6 @@ class NotificationInboxService {
       case 'inquiry':
       case 'qna':
         return '1:1문의';
-      case 'order':
-        return '결제완료';
-      case 'delivery':
-        return '배송시작';
       case 'review':
         return '리뷰';
       case 'point':
@@ -63,9 +59,6 @@ class NotificationInboxService {
     final t = (type ?? '').toLowerCase();
 
     if (t == 'review' && odId.isNotEmpty) return 'review_$odId';
-    if ((t == 'order' || t == 'delivery') && odId.isNotEmpty) {
-      return '${t}_$odId';
-    }
     if ((t == 'contact' || t == 'inquiry' || t == 'qna') && wrId.isNotEmpty) {
       return 'contact_$wrId';
     }

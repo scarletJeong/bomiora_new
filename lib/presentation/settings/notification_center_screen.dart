@@ -204,12 +204,10 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
         Navigator.pushNamed(context, '/coupon');
         break;
       case 'review':
-      case 'order':
-      case 'delivery':
         if (linkId.isNotEmpty) {
           Navigator.pushNamed(
             context,
-            '/order-detail',
+            '/order-detail/$linkId',
             arguments: {'orderNumber': linkId, 'odId': linkId},
           );
         } else {
