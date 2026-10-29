@@ -1442,7 +1442,9 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
                   '$len/500',
                   style: TextStyle(
                     fontFamily: _kFont,
-                    color: _kMuted,
+                    color: requiredField && controller.text.trim().length >= 20
+                        ? const Color(0xFF16A34A)
+                        : _kMuted,
                     fontSize: healthSp(context, 10),
                     fontWeight: FontWeight.w300,
                     letterSpacing: -0.50,
