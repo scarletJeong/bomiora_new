@@ -35,6 +35,7 @@ dependencies:
   
   # 로컬 저장소
   shared_preferences: ^2.2.2
+  path_provider: ^2.1.5
   
   # 로컬 데이터베이스
   sqflite: ^2.3.0
