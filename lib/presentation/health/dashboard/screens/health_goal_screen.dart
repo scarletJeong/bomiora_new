@@ -3,10 +3,12 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/health/health_refresh_bus.dart';
+import '../../../../core/logging/failure_log.dart';
 import '../../../../data/repositories/health/dashboard/health_dashboard_repository.dart';
 import '../../../../data/repositories/health/health_goal/health_goal_repository.dart';
-import '../../../../core/health/health_refresh_bus.dart';
 import '../../../../data/services/auth_service.dart';
+import '../../../common/widgets/app_toast_overlay.dart';
 import '../../../common/widgets/keyboard_aware_form_body.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../health_common/health_input_complete.dart';
@@ -181,6 +183,15 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
     final user = await AuthService.getUser();
     final mbId = user?.id;
     if (mbId == null || mbId.isEmpty) {
+      const reason = '로그인 정보를 확인할 수 없습니다.';
+      if (mounted) {
+        AppToastOverlay.showAlert(context, reason);
+      }
+      await FailureLog.record(
+        code: 'health_goal.save',
+        mbId: '',
+        reason: reason,
+      );
       return;
     }
 
@@ -199,7 +210,18 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
       HealthDashboardRepository.invalidate(mbId, true);
       notifyHealthDataChanged();
       Navigator.pop(context, true);
+      return;
     }
+
+    final reason = (result.message ?? '').trim().isEmpty
+        ? '목표 저장에 실패했습니다.'
+        : result.message!.trim();
+    AppToastOverlay.showAlert(context, '목표 저장에 실패했습니다.');
+    await FailureLog.record(
+      code: 'health_goal.save',
+      mbId: mbId,
+      reason: reason,
+    );
   }
 
   @override
