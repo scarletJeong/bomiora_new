@@ -309,9 +309,17 @@ class _PaymentScreenState extends State<PaymentScreen> {
     _applicableCoupons = _loadedCoupons.where(_isCouponApplicable).toList();
     _selectedCoupons =
         _selectedCoupons.where(_isCouponApplicable).toList();
+    // 배송비 변동 등으로 최종액이 3천원 미만이면 쿠폰을 뒤에서부터 해제
+    while (_selectedCoupons.isNotEmpty &&
+        !_keepsMinPayable(_selectedCoupons)) {
+      _selectedCoupons.removeLast();
+    }
     if (_couponPointDisabled) {
       _usedPoint = 0;
       _pointController.clear();
+    } else if (_usedPoint > _maxUsablePointHundreds) {
+      _usedPoint = _maxUsablePointHundreds;
+      _writePointField(_usedPoint);
     }
     _logPaymentCoupons();
   }
@@ -538,33 +546,43 @@ class _PaymentScreenState extends State<PaymentScreen> {
     return discount < 0 ? 0 : discount;
   }
 
-  int get _productCouponDiscount {
+  int _productCouponDiscountFor(List<Coupon> coupons) {
     if (_couponPointDisabled) return 0;
-    final raw = _selectedCoupons
+    final raw = coupons
         .where((coupon) => coupon.method != 3)
         .fold<int>(0, (sum, coupon) => sum + _discountForCoupon(coupon));
     if (raw <= _nonInfluencerAmount) return raw;
     return _nonInfluencerAmount;
   }
 
-  int get _shippingCouponDiscount {
+  int _shippingCouponDiscountFor(List<Coupon> coupons) {
     if (_couponPointDisabled) return 0;
-    final raw = _selectedCoupons
+    final raw = coupons
         .where((coupon) => coupon.method == 3)
         .fold<int>(0, (sum, coupon) => sum + _shippingDiscountFor(coupon));
     if (raw <= _baseShipping) return raw < 0 ? 0 : raw;
     return _baseShipping;
   }
 
+  int get _productCouponDiscount =>
+      _productCouponDiscountFor(_selectedCoupons);
+
+  int get _shippingCouponDiscount =>
+      _shippingCouponDiscountFor(_selectedCoupons);
+
   int get _couponDiscount => _productCouponDiscount;
 
-  int get _pointEligibleBaseAmount {
-    final base = _nonInfluencerAmount - _couponDiscount;
+  int _pointEligibleBaseAmountFor(List<Coupon> coupons) {
+    final base =
+        _nonInfluencerAmount - _productCouponDiscountFor(coupons);
     return base < 0 ? 0 : base;
   }
 
-  int get _maxPointByRate {
-    final eligibleBase = _pointEligibleBaseAmount;
+  int get _pointEligibleBaseAmount =>
+      _pointEligibleBaseAmountFor(_selectedCoupons);
+
+  int _maxPointByRateFor(List<Coupon> coupons) {
+    final eligibleBase = _pointEligibleBaseAmountFor(coupons);
     final nonInfTotal = _nonInfluencerAmount;
     if (eligibleBase <= 0 || nonInfTotal <= 0) return 0;
 
@@ -578,47 +596,68 @@ class _PaymentScreenState extends State<PaymentScreen> {
     return total < 0 ? 0 : total;
   }
 
-  int get _shippingNet =>
-      _baseShipping + _extraShipping - _shippingCouponDiscount;
+  int get _maxPointByRate => _maxPointByRateFor(_selectedCoupons);
 
-  int get _maxPointByMinimumPayable {
+  int _shippingNetFor(List<Coupon> coupons) =>
+      _baseShipping +
+      _extraShipping -
+      _shippingCouponDiscountFor(coupons);
+
+  int get _shippingNet => _shippingNetFor(_selectedCoupons);
+
+  int _maxPointByMinimumPayableFor(List<Coupon> coupons) {
     final maxByMinimum = _purchaseAmount +
-        _shippingNet -
-        _productCouponDiscount -
+        _shippingNetFor(coupons) -
+        _productCouponDiscountFor(coupons) -
         _minPayableAmount;
     return maxByMinimum < 0 ? 0 : maxByMinimum;
   }
 
-  int get _maxUsablePoint {
+  int get _maxPointByMinimumPayable =>
+      _maxPointByMinimumPayableFor(_selectedCoupons);
+
+  int _maxUsablePointFor(List<Coupon> coupons) {
     if (_couponPointDisabled) return 0;
     const maxPerOrder = 50000;
     final candidates = [
       _myPoint,
-      _maxPointByRate,
-      _maxPointByMinimumPayable,
+      _maxPointByRateFor(coupons),
+      _maxPointByMinimumPayableFor(coupons),
       maxPerOrder,
     ];
     final v = candidates.reduce((a, b) => a < b ? a : b);
     return v < 0 ? 0 : v;
   }
 
+  int get _maxUsablePoint => _maxUsablePointFor(_selectedCoupons);
+
   int get _maxUsablePointHundreds => (_maxUsablePoint ~/ 100) * 100;
 
-  int get _pointDiscount {
-    final capped = _usedPoint > _maxUsablePointHundreds
-        ? _maxUsablePointHundreds
-        : _usedPoint;
+  int _pointDiscountFor(List<Coupon> coupons, int usedPoint) {
+    final maxHundreds = (_maxUsablePointFor(coupons) ~/ 100) * 100;
+    final capped = usedPoint > maxHundreds ? maxHundreds : usedPoint;
     return (capped ~/ 100) * 100;
   }
 
-  int get _finalAmount {
+  int get _pointDiscount =>
+      _pointDiscountFor(_selectedCoupons, _usedPoint);
+
+  /// 쿠폰·포인트 적용 후 최종 결제액 (하한 검증용).
+  int _finalAmountFor(List<Coupon> coupons, int usedPoint) {
     final amount = _purchaseAmount +
         _baseShipping +
         _extraShipping -
-        _productCouponDiscount -
-        _shippingCouponDiscount -
-        _pointDiscount;
+        _productCouponDiscountFor(coupons) -
+        _shippingCouponDiscountFor(coupons) -
+        _pointDiscountFor(coupons, usedPoint);
     return amount < 0 ? 0 : amount;
+  }
+
+  int get _finalAmount => _finalAmountFor(_selectedCoupons, _usedPoint);
+
+  bool _keepsMinPayable(List<Coupon> coupons, [int? usedPoint]) {
+    return _finalAmountFor(coupons, usedPoint ?? _usedPoint) >=
+        _minPayableAmount;
   }
 
   /// 실결제에서 남은 배송비(기본 + 지역 - 배송비 쿠폰)를 뺀 금액.
@@ -2316,6 +2355,31 @@ class _PaymentScreenState extends State<PaymentScreen> {
     return others.any((coupon) => coupon.method != method);
   }
 
+  List<Coupon> _selectionAfterPicking(Coupon picked) {
+    final next = List<Coupon>.from(_selectedCoupons);
+    final method = picked.method;
+    if (method == 3) {
+      next.removeWhere((coupon) => coupon.method == 3);
+      next.add(picked);
+    } else if (method == 1) {
+      next.removeWhere(
+        (coupon) => coupon.method != 1 && coupon.method != 3,
+      );
+      if (next.where((coupon) => coupon.method == 1).length < 2) {
+        next.add(picked);
+      }
+    } else {
+      next.removeWhere(
+        (coupon) =>
+            coupon.method != 3 &&
+            (coupon.method == 1 || coupon.method != method),
+      );
+      next.removeWhere((coupon) => coupon.method == method);
+      next.add(picked);
+    }
+    return next;
+  }
+
   List<Coupon> _availableCouponsForUnifiedPicker() {
     return _applicableCoupons.where((coupon) {
       if (_selectedCoupons.any((selected) => selected.no == coupon.no)) {
@@ -2327,7 +2391,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
             _selectedCoupons.where((c) => c.method == 1).length;
         if (categoryCount >= 2) return false;
       }
-      return true;
+      // 카테고리 2장 등 과할인은 허용하되, 최종 결제액 3천원 미만이 되는 조합은 제외
+      return _keepsMinPayable(_selectionAfterPicking(coupon));
     }).toList();
   }
 
@@ -2337,31 +2402,17 @@ class _PaymentScreenState extends State<PaymentScreen> {
     final index = lines.indexOf(label);
     if (index < 0 || index >= candidates.length) return;
     final picked = candidates[index];
-    final method = picked.method;
+    final next = _selectionAfterPicking(picked);
+    if (!_keepsMinPayable(next)) {
+      AppToastOverlay.showAlert(
+        context,
+        '최종 결제금액은 ${PriceFormatter.format(_minPayableAmount)}원 이상이어야 합니다.',
+      );
+      return;
+    }
 
     setState(() {
-      if (method == 3) {
-        _selectedCoupons.removeWhere((coupon) => coupon.method == 3);
-        _selectedCoupons.add(picked);
-      } else if (method == 1) {
-        _selectedCoupons.removeWhere(
-          (coupon) => coupon.method != 1 && coupon.method != 3,
-        );
-        final categoryCount =
-            _selectedCoupons.where((coupon) => coupon.method == 1).length;
-        if (categoryCount < 2) {
-          _selectedCoupons.add(picked);
-        }
-      } else {
-        _selectedCoupons.removeWhere(
-          (coupon) =>
-              coupon.method != 3 &&
-              (coupon.method == 1 || coupon.method != method),
-        );
-        _selectedCoupons.removeWhere((coupon) => coupon.method == method);
-        _selectedCoupons.add(picked);
-      }
-
+      _selectedCoupons = next;
       if (_usedPoint > _maxUsablePoint) {
         _usedPoint = _maxUsablePoint;
         _writePointField(_usedPoint);
