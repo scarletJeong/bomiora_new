@@ -142,36 +142,6 @@ class StepsRepository {
     }
   }
 
-  // 걸음수 기록 저장
-  static Future<bool> saveStepsRecord(StepsRecord record) async {
-    try {
-      final response = await http.post(
-        Uri.parse('$_baseUrl/api/steps'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode(record.toJson()),
-      );
-
-      return response.statusCode == 200 || response.statusCode == 201;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  // 걸음수 기록 업데이트
-  static Future<bool> updateStepsRecord(StepsRecord record) async {
-    try {
-      final response = await http.put(
-        Uri.parse('$_baseUrl/api/steps/${record.id}'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode(record.toJson()),
-      );
-
-      return response.statusCode == 200;
-    } catch (e) {
-      return false;
-    }
-  }
-
   // 걸음수 통계 가져오기 (mb_id 기반; 비숫자 mb_id는 0 통계 반환)
   static Future<StepsStatistics?> getStepsStatisticsByMbId(String mbId) async {
     final userId = int.tryParse(mbId.trim());
@@ -253,38 +223,6 @@ class StepsRepository {
       return [];
     } catch (e) {
       return [];
-    }
-  }
-
-  // 걸음수 기록 삭제
-  static Future<bool> deleteStepsRecord(int recordId) async {
-    try {
-      final response = await http.delete(
-        Uri.parse('$_baseUrl/api/steps/$recordId'),
-        headers: {'Content-Type': 'application/json'},
-      );
-
-      return response.statusCode == 200;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  // 목표 걸음수 설정
-  static Future<bool> setStepsGoal(int userId, int goalSteps) async {
-    try {
-      final response = await http.post(
-        Uri.parse('$_baseUrl/api/steps'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'user_id': userId,
-          'goal_steps': goalSteps,
-        }),
-      );
-
-      return response.statusCode == 200 || response.statusCode == 201;
-    } catch (e) {
-      return false;
     }
   }
 
