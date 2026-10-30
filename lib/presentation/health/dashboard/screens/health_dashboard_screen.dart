@@ -58,14 +58,14 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
   bool isLoading = true;
   DateTime selectedDate = DateTime.now();
 
-  int consumedCalories = 1500;
-  int targetCalories = 2000;
+  int consumedCalories = 0;
+  int targetCalories = 0;
   num totalCarbs = 0;
   num totalProtein = 0;
   num totalFat = 0;
   num totalOther = 0;
 
-  int steps = 6320;
+  int steps = 0;
   int heartRate = 0;
   int systolicBP = 0;
   int diastolicBP = 0;
@@ -135,6 +135,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
           height = 170.0;
           bmi = 0.0;
           consumedCalories = 0;
+          targetCalories = 0;
           totalCarbs = 0;
           totalProtein = 0;
           totalFat = 0;
