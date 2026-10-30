@@ -15,6 +15,7 @@ import '../../../../data/models/health/steps/steps_record_model.dart';
 import '../../blood_pressure/screens/blood_pressure_list_screen.dart';
 import '../../blood_sugar/screens/blood_sugar_list_screen.dart';
 import '../../health_common/health_responsive_scale.dart';
+import '../../health_common/health_vital_status.dart';
 import '../../health_common/widgets/health_status_label.dart';
 import '../../heart_rate/screens/heart_rate_list_screen.dart';
 import '../../menstrual_cycle/screens/menstrual_cycle_list_screen.dart';
@@ -128,7 +129,7 @@ class TodayHealthRecordSection extends StatelessWidget {
                                     '${latestBloodSugarRecord!.bloodSugar.toStringAsFixed(1)} mg/dL'
                                 : '입력하세요.',
                             subtitle: '',
-                            statusText: _bloodSugarStatusLabel(
+                            statusText: HealthVitalStatus.bloodSugar(
                               latestBloodSugarRecord,
                             ),
                             iconAsset: AppAssets.mainCardIconBloodSugar,
@@ -159,10 +160,8 @@ class TodayHealthRecordSection extends StatelessWidget {
                                 ? '수축기 $systolicBP mmHg\n이완기 $diastolicBP mmHg'
                                 : '입력하세요.\n입력하세요.',
                             subtitle: '',
-                            statusText: _bloodPressureStatusLabel(
-                              latestBloodPressureRecord,
-                              systolicBP,
-                              diastolicBP,
+                            statusText: HealthVitalStatus.bloodPressure(
+                              record: latestBloodPressureRecord,
                             ),
                             iconAsset: AppAssets.mainCardIconBloodPressure,
                             compact: true,
@@ -342,25 +341,6 @@ String _periodText(
       '${DateFormat('M/d').format(start)}-${DateFormat('M/d').format(end)}';
 
   return '$when($cycleRange)';
-}
-
-String _bloodPressureStatusLabel(
-  BloodPressureRecord? latestBloodPressureRecord,
-  int systolicBP,
-  int diastolicBP,
-) {
-  if (latestBloodPressureRecord == null) return '모름';
-  if (systolicBP >= 140 || diastolicBP >= 90) return '고혈압';
-  if (systolicBP < 90 || diastolicBP < 60) return '전단계';
-  return '정상';
-}
-
-String _bloodSugarStatusLabel(BloodSugarRecord? latestBloodSugarRecord) {
-  if (latestBloodSugarRecord == null) return '모름';
-  final int sugar = latestBloodSugarRecord.bloodSugar;
-  if (sugar < 70) return '주의';
-  if (sugar <= 140) return '정상';
-  return '의심';
 }
 
 Widget _buildMainCardIcon(BuildContext context, String assetPath) {

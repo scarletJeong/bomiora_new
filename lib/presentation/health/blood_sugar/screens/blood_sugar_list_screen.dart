@@ -7,6 +7,7 @@ import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/btn_record.dart';
 import '../../health_common/health_chart_axis_style.dart';
 import '../../health_common/health_responsive_scale.dart';
+import '../../health_common/health_vital_status.dart';
 import '../../health_common/widgets/health_app_bar.dart';
 import '../../health_common/widgets/health_edit_bottom_sheet.dart';
 import '../../health_common/widgets/health_chart_expand_page.dart';
@@ -816,9 +817,18 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen>
                   spacing: healthDp(context, 10),
                   runSpacing: healthDp(context, 10),
                   children: const [
-                    _SugarLegend(color: Color(0xFF71D375), label: '정상'),
-                    _SugarLegend(color: Color(0xFFFFE78B), label: '전단계'),
-                    _SugarLegend(color: Color(0xFFFF6161), label: '의심'),
+                    _SugarLegend(
+                      color: HealthVitalStatus.normalBg,
+                      label: '정상',
+                    ),
+                    _SugarLegend(
+                      color: HealthVitalStatus.cautionBg,
+                      label: '당뇨 전단계',
+                    ),
+                    _SugarLegend(
+                      color: HealthVitalStatus.dangerBg,
+                      label: '당뇨',
+                    ),
                   ],
                 ),
               ),
@@ -854,19 +864,11 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen>
 
   bool _isDiffUp(int? diff) => diff != null && diff > 0;
 
-  /// 혈당 상태별 헤더 색상: 정상 #71D375, 전단계 #FFE78B, 의심 #FF6161.
-  /// 사용처: 공복/식후 카드 헤더(_buildSugarSummaryCardNew의 headerColor), 아래 범례(_SugarLegend)와 동일 구간 색상.
+  /// 공복/식후 카드 헤더. [BloodSugarRecord.calculateStatus]와 같은 판정.
   Color _sugarHeaderColor(int? bloodSugar, String type) {
-    if (bloodSugar == null) return const Color(0xFF71D375);
-    if (type == '공복') {
-      if (bloodSugar < 100) return const Color(0xFF71D375); // 정상
-      if (bloodSugar <= 125) return const Color(0xFFFFE78B); // 전단계
-      return const Color(0xFFFF6161); // 의심
-    }
-    // 식후
-    if (bloodSugar < 140) return const Color(0xFF71D375);
-    if (bloodSugar <= 199) return const Color(0xFFFFE78B);
-    return const Color(0xFFFF6161);
+    if (bloodSugar == null) return HealthVitalStatus.normalBg;
+    final status = BloodSugarRecord.calculateStatus(bloodSugar, type);
+    return HealthVitalStatus.background(status);
   }
 
   Future<void> _openSugarEditorForType(String type) async {
@@ -1262,22 +1264,9 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen>
     return painter.width + healthDp(context, 6);
   }
 
-  /// 수정 바텀시트·상태 배지: 정상·전단계·의심 색 (목록 범례와 동일).
+  /// 수정 바텀시트·상태 배지. 목록 헤더와 같은 판정.
   Color _sugarStatusBadgeColor(BloodSugarRecord record) {
-    final status = BloodSugarRecord.calculateStatus(
-      record.bloodSugar,
-      record.measurementType,
-    );
-    switch (status) {
-      case '정상':
-        return const Color(0xFF71D375);
-      case '당뇨 전단계':
-        return const Color(0xFFFFE78B);
-      case '당뇨':
-        return const Color(0xFFFF6161);
-      default:
-        return const Color(0xFF71D375);
-    }
+    return HealthVitalStatus.background(HealthVitalStatus.bloodSugar(record));
   }
 }
 

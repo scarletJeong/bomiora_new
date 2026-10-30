@@ -9,6 +9,7 @@ import '../../../common/widgets/btn_record.dart';
 import '../../../common/chart_layout.dart';
 import '../../health_common/health_chart_axis_style.dart';
 import '../../health_common/health_responsive_scale.dart';
+import '../../health_common/health_vital_status.dart';
 import '../../health_common/widgets/health_app_bar.dart';
 import '../../health_common/widgets/health_edit_bottom_sheet.dart';
 import '../../health_common/widgets/health_period_selector.dart';
@@ -750,8 +751,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen>
                 child: _buildPressureSummaryCardNew(
                   label: '수축기',
                   value: systolic > 0 ? '$systolic' : '-',
-                  headerColor: _pressureHeaderColor(
-                      systolic > 0 ? systolic : null, '수축기'),
+                  headerColor: _pressureHeaderColor(systolic, diastolic),
                   diffText: _diffText(systolicDiff),
                   diffUp: _isUp(systolicDiff),
                 ),
@@ -761,8 +761,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen>
                 child: _buildPressureSummaryCardNew(
                   label: '이완기',
                   value: diastolic > 0 ? '$diastolic' : '-',
-                  headerColor: _pressureHeaderColor(
-                      diastolic > 0 ? diastolic : null, '이완기'),
+                  headerColor: _pressureHeaderColor(systolic, diastolic),
                   diffText: _diffText(diastolicDiff),
                   diffUp: _isUp(diastolicDiff),
                 ),
@@ -777,10 +776,30 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen>
                   spacing: healthDp(context, 10),
                   runSpacing: healthDp(context, 10),
                   children: const [
-                    _PressureLegend(color: Color(0xFF71D375), label: '정상'),
-                    _PressureLegend(color: Color(0xFFFFE78B), label: '주의혈압'),
-                    _PressureLegend(color: Color(0xFFFEAF8E), label: '전단계'),
-                    _PressureLegend(color: Color(0xFFFF6161), label: '고혈압'),
+                    _PressureLegend(
+                      color: HealthVitalStatus.lowBg,
+                      label: '저혈압',
+                    ),
+                    _PressureLegend(
+                      color: HealthVitalStatus.normalBg,
+                      label: '정상',
+                    ),
+                    _PressureLegend(
+                      color: HealthVitalStatus.cautionBg,
+                      label: '고혈압 전단계',
+                    ),
+                    _PressureLegend(
+                      color: HealthVitalStatus.stageBg,
+                      label: '1기 고혈압',
+                    ),
+                    _PressureLegend(
+                      color: HealthVitalStatus.dangerBg,
+                      label: '2기 고혈압',
+                    ),
+                    _PressureLegend(
+                      color: HealthVitalStatus.crisisBg,
+                      label: '고혈압 위기',
+                    ),
                   ],
                 ),
               ),
@@ -818,21 +837,12 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen>
 
   bool _isUp(int? diff) => diff != null && diff > 0;
 
-  // 혈압상태색상 정하는 곳 (정상: 0xFF71D375, 주의혈압: 0xFFFFE78B, 전단계: 0xFFFEAF8E, 고혈압: 0xFFFF6161)
-  // 사용처: 수축기/이완기 카드 상단 헤더(_buildPressureSummaryCardNew의 headerColor), 아래 범례(_PressureLegend)
-  Color _pressureHeaderColor(int? value, String type) {
-    if (value == null || value <= 0) return const Color(0xFF71D375);
-    if (type == '수축기') {
-      if (value < 120) return const Color(0xFF71D375); // 정상
-      if (value <= 129) return const Color(0xFFFFE78B); // 주의혈압
-      if (value <= 139) return const Color(0xFFFEAF8E); // 전단계
-      return const Color(0xFFFF6161); // 고혈압
-    }
-    // 이완기
-    if (value < 80) return const Color(0xFF71D375); // 정상
-    if (value <= 84) return const Color(0xFFFFE78B); // 주의혈압
-    if (value <= 89) return const Color(0xFFFEAF8E); // 전단계
-    return const Color(0xFFFF6161); // 고혈압
+  /// 수축기·이완기 카드 헤더. 한 쌍을 [BloodPressureRecord.calculateStatus]로 판정한다.
+  Color _pressureHeaderColor(int systolic, int diastolic) {
+    if (systolic <= 0 || diastolic <= 0) return HealthVitalStatus.normalBg;
+    return HealthVitalStatus.background(
+      BloodPressureRecord.calculateStatus(systolic, diastolic),
+    );
   }
 
   Widget _buildPressureSummaryCardNew({
