@@ -455,6 +455,7 @@ class _WeightListScreenState extends State<WeightListScreen>
 
   @override
   void onHealthDataChanged() {
+    if (!healthRefreshIncludes(HealthRefreshDomain.weight)) return;
     _loadData();
   }
 
@@ -1868,7 +1869,7 @@ class _WeightListScreenState extends State<WeightListScreen>
         );
 
         await WeightRepository.updateWeightRecord(updatedRecord);
-        notifyHealthDataChanged('weight');
+        notifyHealthDataChanged(HealthRefreshDomain.weight);
         _loadData();
       } else {
         Navigator.push(
@@ -1908,7 +1909,7 @@ class _WeightListScreenState extends State<WeightListScreen>
         );
 
         await WeightRepository.updateWeightRecord(updatedRecord);
-        notifyHealthDataChanged('weight');
+        notifyHealthDataChanged(HealthRefreshDomain.weight);
         _loadData(); // 데이터 새로고침
       }
     } catch (e) {}

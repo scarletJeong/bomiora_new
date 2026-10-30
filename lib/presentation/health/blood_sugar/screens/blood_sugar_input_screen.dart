@@ -186,7 +186,7 @@ class _BloodSugarInputScreenState extends State<BloodSugarInputScreen> {
       if (mounted) {
         if (success) {
           HealthDashboardRepository.invalidate(user.id);
-          notifyHealthDataChanged();
+          notifyHealthDataChanged(HealthRefreshDomain.bloodSugar);
           Navigator.pop(context, true); // 성공
         }
       }
@@ -259,7 +259,7 @@ class _BloodSugarInputScreenState extends State<BloodSugarInputScreen> {
       if (mounted) {
         if (success) {
           HealthDashboardRepository.invalidate(widget.record!.mbId);
-          notifyHealthDataChanged();
+          notifyHealthDataChanged(HealthRefreshDomain.bloodSugar);
           Navigator.pop(context, true); // 성공
         }
       }

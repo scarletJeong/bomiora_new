@@ -104,11 +104,12 @@ class _TodayDietScreenState extends State<TodayDietScreen>
   void _onFoodItemAdded() {
     // HealthRefreshBus가 이 화면의 onHealthDataChanged도 호출하므로
     // 여기서 직접 로드하면 동일 GET이 두 번 발생한다.
-    notifyHealthDataChanged();
+    notifyHealthDataChanged(HealthRefreshDomain.food);
   }
 
   @override
   void onHealthDataChanged() {
+    if (!healthRefreshIncludes(HealthRefreshDomain.food)) return;
     _loadMealData();
   }
 

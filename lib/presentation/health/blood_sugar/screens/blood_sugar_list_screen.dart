@@ -17,6 +17,7 @@ import '../../health_common/widgets/health_list_edit_button.dart';
 import '../../../../data/models/health/blood_sugar/blood_sugar_record_model.dart';
 import '../../../../data/models/user/user_model.dart';
 import '../../../../data/repositories/health/blood_sugar/blood_sugar_repository.dart';
+import '../../../../core/health/health_refresh_bus.dart';
 import '../../../../core/health/health_refresh_listener.dart';
 import '../../../../data/services/auth_service.dart';
 import '../widgets/blood_sugar_chart_section.dart';
@@ -467,6 +468,7 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen>
 
   @override
   void onHealthDataChanged() {
+    if (!healthRefreshIncludes(HealthRefreshDomain.bloodSugar)) return;
     _loadData();
   }
 

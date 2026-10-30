@@ -239,7 +239,7 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
             await WeightRepository.refreshRecordsForDate(user.id, day);
           }
           HealthDashboardRepository.invalidate(user.id);
-          notifyHealthDataChanged('weight');
+          notifyHealthDataChanged(HealthRefreshDomain.weight);
           Navigator.pop(context, true); // 성공
         }
       }
@@ -283,7 +283,7 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
       record.mbId,
       record.id!,
     );
-    notifyHealthDataChanged('weight');
+    notifyHealthDataChanged(HealthRefreshDomain.weight);
     if (mounted) Navigator.pop(context, true);
     unawaited(_persistDelete(record, previous));
   }
@@ -303,7 +303,7 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
       );
     }
     HealthDashboardRepository.invalidate(record.mbId);
-    notifyHealthDataChanged('weight');
+    notifyHealthDataChanged(HealthRefreshDomain.weight);
   }
 
   @override

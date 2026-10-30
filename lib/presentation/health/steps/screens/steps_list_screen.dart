@@ -13,6 +13,7 @@ import '../../../../data/repositories/health/steps/steps_repository.dart';
 import '../../../../data/repositories/health/health_goal/health_goal_repository.dart';
 import '../../../../data/models/health/health_goal_record_model.dart';
 import '../../../../data/services/auth_service.dart';
+import '../../../../core/health/health_refresh_bus.dart';
 import '../../../../core/health/health_refresh_listener.dart';
 import '../utils/step_calculator.dart';
 import '../widgets/steps_chart_tooltip.dart';
@@ -78,6 +79,7 @@ class _StepsTodayScreenState extends State<StepsTodayScreen>
 
   @override
   void onHealthDataChanged() {
+    if (!healthRefreshIncludes(HealthRefreshDomain.steps)) return;
     _loadData();
   }
 

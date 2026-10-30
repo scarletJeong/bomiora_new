@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import '../../../../data/models/health/heart_rate/heart_rate_record_model.dart';
 import '../../../../data/models/user/user_model.dart';
 import '../../../../data/repositories/health/heart_rate/heart_rate_repository.dart';
+import '../../../../core/health/health_refresh_bus.dart';
 import '../../../../core/health/health_refresh_listener.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../common/chart_layout.dart';
@@ -76,6 +77,7 @@ class _HeartRateListScreenState extends State<HeartRateListScreen>
 
   @override
   void onHealthDataChanged() {
+    if (!healthRefreshIncludes(HealthRefreshDomain.heartRate)) return;
     _loadData();
   }
 

@@ -59,6 +59,7 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen>
 
   @override
   void onHealthDataChanged() {
+    if (!healthRefreshIncludes(HealthRefreshDomain.menstrual)) return;
     _loadMenstrualCycleData();
   }
 
@@ -781,7 +782,7 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen>
 
           if (success) {
             HealthDashboardRepository.invalidate(user.id);
-            notifyHealthDataChanged();
+            notifyHealthDataChanged(HealthRefreshDomain.menstrual);
           }
         } catch (e) {}
       }

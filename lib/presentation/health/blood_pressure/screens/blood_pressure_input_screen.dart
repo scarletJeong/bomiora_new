@@ -204,7 +204,7 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
       );
 
       final previous = BloodPressureRepository.optimisticallyUpsert(record);
-      notifyHealthDataChanged();
+      notifyHealthDataChanged(HealthRefreshDomain.bloodPressure);
       if (mounted) Navigator.pop(context, true);
       unawaited(_persistRecord(record, previous));
     } catch (e) {
@@ -229,7 +229,7 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
       );
     }
     HealthDashboardRepository.invalidate(record.mbId);
-    notifyHealthDataChanged();
+    notifyHealthDataChanged(HealthRefreshDomain.bloodPressure);
   }
 
   void _onDeletePressed() {
@@ -271,7 +271,7 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
       if (mounted) {
         if (success) {
           HealthDashboardRepository.invalidate(widget.record!.mbId);
-          notifyHealthDataChanged();
+          notifyHealthDataChanged(HealthRefreshDomain.bloodPressure);
           Navigator.pop(context, true); // 성공
         }
       }

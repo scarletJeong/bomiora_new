@@ -1374,7 +1374,7 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
       }
 
       final previous = MenstrualCycleRepository.optimisticallyUpsert(record);
-      notifyHealthDataChanged();
+      notifyHealthDataChanged(HealthRefreshDomain.menstrual);
       if (mounted) Navigator.pop(context, true);
       unawaited(_persistMenstrualCycle(
         record: record,
@@ -1405,6 +1405,6 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
       );
     }
     HealthDashboardRepository.invalidate(record.mbId);
-    notifyHealthDataChanged();
+    notifyHealthDataChanged(HealthRefreshDomain.menstrual);
   }
 }

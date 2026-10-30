@@ -97,10 +97,12 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
 
   @override
   void onHealthDataChanged() {
-    final domain = HealthRefreshBus.instance.domain;
+    final foodOnly =
+        HealthRefreshBus.instance.domain == HealthRefreshDomain.food;
     _loadData(
       showBlockingLoader: false,
-      includeFood: domain == null || domain == 'food',
+      includeDashboard: !foodOnly,
+      includeFood: healthRefreshIncludes(HealthRefreshDomain.food),
     );
   }
 
@@ -117,6 +119,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
   Future<void> _loadData({
     bool showBlockingLoader = true,
     bool forceRefresh = false,
+    bool includeDashboard = true,
     bool includeFood = true,
   }) async {
     if (showBlockingLoader) {
@@ -167,7 +170,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
       }
 
       final userId = user.id.toString();
-      if (!forceRefresh) {
+      if (includeDashboard && !forceRefresh) {
         final cached = HealthDashboardRepository.peek(
           mbId: userId,
           date: selectedDate,
@@ -178,19 +181,24 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
       }
 
       final results = await Future.wait<dynamic>([
-        HealthDashboardRepository.fetchDashboard(
-          mbId: userId,
-          date: selectedDate,
-          forceRefresh: forceRefresh,
-        ),
-        if (includeFood)
-          FoodRepository.getRecordsForDate(
-            userId,
-            selectedDate,
-            forceRefresh: forceRefresh,
-          ),
+        includeDashboard
+            ? HealthDashboardRepository.fetchDashboard(
+                mbId: userId,
+                date: selectedDate,
+                forceRefresh: forceRefresh,
+              )
+            : Future<HealthDashboardPayload?>.value(null),
+        includeFood
+            ? FoodRepository.getRecordsForDate(
+                userId,
+                selectedDate,
+                forceRefresh: forceRefresh,
+              )
+            : Future<List<FoodRecordSummary>?>.value(null),
       ]);
-      final dashboard = results[0] as HealthDashboardPayload?;
+      final dashboard = includeDashboard
+          ? results[0] as HealthDashboardPayload?
+          : null;
 
       final weightRecords = dashboard?.weightRecords ?? <WeightRecord>[];
       final bpRecords =
@@ -205,13 +213,15 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
       final foodRecords = includeFood
           ? results[1] as List<FoodRecordSummary>
           : null;
-      unawaited(
-        HealthDashboardRepository.fetchDashboard(
-          mbId: userId,
-          date: selectedDate.subtract(const Duration(days: 1)),
-          forceRefresh: forceRefresh,
-        ),
-      );
+      if (includeDashboard) {
+        unawaited(
+          HealthDashboardRepository.fetchDashboard(
+            mbId: userId,
+            date: selectedDate.subtract(const Duration(days: 1)),
+            forceRefresh: forceRefresh,
+          ),
+        );
+      }
 
       // 선택한 날짜에 측정 기록이 있을 때만 사용 (다른 날의 최신 체중으로 채우지 않음)
       final WeightRecord? weightRecord = _latestOfDate(
@@ -225,34 +235,36 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
 
       setState(() {
         currentUser = user;
-        latestWeightRecord = weightRecord;
-        latestBloodPressureRecord = bloodPressureRecord;
-        latestBloodSugarRecord = bloodSugarRecord;
-        latestMenstrualCycleRecord = menstrualCycleRecord;
-        latestHeartRateRecord = heartRateRecord;
-        latestStepsRecord = stepsRecord;
-        latestHealthGoal = healthGoal;
+        if (includeDashboard) {
+          latestWeightRecord = weightRecord;
+          latestBloodPressureRecord = bloodPressureRecord;
+          latestBloodSugarRecord = bloodSugarRecord;
+          latestMenstrualCycleRecord = menstrualCycleRecord;
+          latestHeartRateRecord = heartRateRecord;
+          latestStepsRecord = stepsRecord;
+          latestHealthGoal = healthGoal;
 
-        if (weightRecord != null) {
-          currentWeight = weightRecord.weight;
-          height = weightRecord.height ?? 170.0;
-          bmi = weightRecord.resolvedBmi ?? 0.0;
-        } else {
-          currentWeight = 0.0;
-          height = 170.0;
-          bmi = 0.0;
+          if (weightRecord != null) {
+            currentWeight = weightRecord.weight;
+            height = weightRecord.height ?? 170.0;
+            bmi = weightRecord.resolvedBmi ?? 0.0;
+          } else {
+            currentWeight = 0.0;
+            height = 170.0;
+            bmi = 0.0;
+          }
+
+          if (bloodPressureRecord != null) {
+            systolicBP = bloodPressureRecord.systolic;
+            diastolicBP = bloodPressureRecord.diastolic;
+          } else {
+            systolicBP = 0;
+            diastolicBP = 0;
+          }
+
+          heartRate = heartRateRecord?.heartRate ?? 0;
+          steps = stepsRecord?.totalSteps ?? 0;
         }
-
-        if (bloodPressureRecord != null) {
-          systolicBP = bloodPressureRecord.systolic;
-          diastolicBP = bloodPressureRecord.diastolic;
-        } else {
-          systolicBP = 0;
-          diastolicBP = 0;
-        }
-
-        heartRate = heartRateRecord?.heartRate ?? 0;
-        steps = stepsRecord?.totalSteps ?? 0;
 
         if (foodRecords != null) {
           consumedCalories =

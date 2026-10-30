@@ -21,6 +21,7 @@ import '../../health_common/widgets/health_list_edit_button.dart';
 import '../../../../data/models/health/blood_pressure/blood_pressure_record_model.dart';
 import '../../../../data/models/user/user_model.dart';
 import '../../../../data/repositories/health/blood_pressure/blood_pressure_repository.dart';
+import '../../../../core/health/health_refresh_bus.dart';
 import '../../../../core/health/health_refresh_listener.dart';
 import '../../../../data/services/auth_service.dart';
 import 'blood_pressure_input_screen.dart';
@@ -497,6 +498,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen>
 
   @override
   void onHealthDataChanged() {
+    if (!healthRefreshIncludes(HealthRefreshDomain.bloodPressure)) return;
     _loadData();
   }
 
