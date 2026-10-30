@@ -5,6 +5,7 @@ import '../../../../core/constants/app_assets.dart';
 import '../../../../core/utils/image_url_helper.dart';
 import '../../food/screens/food_list_screen.dart';
 import '../../health_common/health_responsive_scale.dart';
+import '../../health_common/macro_kcal.dart';
 
 /// 건강 대시보드 — 「오늘의 식사」 블록(헤더, 매크로 바, 끼니 카드).
 class TodayMealSection extends StatelessWidget {
@@ -249,22 +250,12 @@ class _TodayMealMacroBar extends StatelessWidget {
     final fillRatio = (targetCalories > 0 && consumedCalories > 0)
         ? (consumedCalories / targetCalories).clamp(0.0, 1.0)
         : 0.0;
-    final carbsKcal = (totalCarbs * 4).toDouble();
-    final proteinKcal = (totalProtein * 4).toDouble();
-    final fatKcal = (totalFat * 9).toDouble();
-    final otherKcal = (totalOther * 4).toDouble();
-    final totalKcalFromMacros =
-        carbsKcal + proteinKcal + fatKcal + otherKcal;
-    int carbsFlex = 1, proteinFlex = 1, fatFlex = 1, otherFlex = 1;
-    if (totalKcalFromMacros > 0) {
-      carbsFlex =
-          (carbsKcal / totalKcalFromMacros * 100).round().clamp(1, 100);
-      proteinFlex =
-          (proteinKcal / totalKcalFromMacros * 100).round().clamp(1, 100);
-      fatFlex = (fatKcal / totalKcalFromMacros * 100).round().clamp(1, 100);
-      otherFlex =
-          (otherKcal / totalKcalFromMacros * 100).round().clamp(1, 100);
-    }
+    final shares = MacroKcalShares.fromGrams(
+      carbsG: totalCarbs,
+      proteinG: totalProtein,
+      fatG: totalFat,
+      otherG: totalOther,
+    );
     final filledFlex = (fillRatio * 100).round().clamp(0, 100);
     final emptyFlex = (100 - filledFlex).clamp(1, 100);
     final barHeight = healthDp(context, 8);
@@ -293,25 +284,25 @@ class _TodayMealMacroBar extends StatelessWidget {
                       child: Row(
                         children: [
                           Expanded(
-                            flex: carbsFlex,
+                            flex: shares.carbs,
                             child: Container(
                               color: const Color(0xFFFFDFC3),
                             ),
                           ),
                           Expanded(
-                            flex: proteinFlex,
+                            flex: shares.protein,
                             child: Container(
                               color: const Color(0xFFFEA38E),
                             ),
                           ),
                           Expanded(
-                            flex: fatFlex,
+                            flex: shares.fat,
                             child: Container(
                               color: const Color(0xFFFCF4C1),
                             ),
                           ),
                           Expanded(
-                            flex: otherFlex,
+                            flex: shares.other,
                             child: Container(
                               color: const Color(0xFFE2E2E2),
                             ),

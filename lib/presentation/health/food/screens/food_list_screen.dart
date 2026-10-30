@@ -12,6 +12,7 @@ import '../../../../core/health/health_refresh_bus.dart';
 import '../../../../core/health/health_refresh_listener.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../health_common/health_responsive_scale.dart';
+import '../../health_common/macro_kcal.dart';
 import '../../health_common/widgets/health_app_bar.dart';
 import '../../health_common/widgets/health_date_selector.dart';
 import '../widgets/food_input_widgets.dart';
@@ -272,18 +273,12 @@ class _TodayDietScreenState extends State<TodayDietScreen>
     final fillRatio = (_maxCalories > 0 && totalCalories > 0)
         ? (totalCalories / _maxCalories).clamp(0.0, 1.0)
         : 0.0;
-    final carbsKcal = (totalCarbs * 4).toDouble();
-    final proteinKcal = (totalProtein * 4).toDouble();
-    final fatKcal = (totalFat * 9).toDouble();
-    final otherKcal = (totalOther * 4).toDouble();
-    final totalKcalFromMacros = carbsKcal + proteinKcal + fatKcal + otherKcal;
-    int cF = 1, pF = 1, fF = 1, oF = 1;
-    if (totalKcalFromMacros > 0) {
-      cF = (carbsKcal / totalKcalFromMacros * 100).round().clamp(1, 100);
-      pF = (proteinKcal / totalKcalFromMacros * 100).round().clamp(1, 100);
-      fF = (fatKcal / totalKcalFromMacros * 100).round().clamp(1, 100);
-      oF = (otherKcal / totalKcalFromMacros * 100).round().clamp(1, 100);
-    }
+    final shares = MacroKcalShares.fromGrams(
+      carbsG: totalCarbs,
+      proteinG: totalProtein,
+      fatG: totalFat,
+      otherG: totalOther,
+    );
     final filledFlex = (fillRatio * 100).round().clamp(0, 100);
     final emptyFlex = (100 - filledFlex).clamp(1, 100);
     final barHeight = healthDp(context, 8);
@@ -311,19 +306,19 @@ class _TodayDietScreenState extends State<TodayDietScreen>
                       child: Row(
                         children: [
                           Expanded(
-                            flex: cF,
+                            flex: shares.carbs,
                             child: Container(color: const Color(0xFFFFDFC3)),
                           ),
                           Expanded(
-                            flex: pF,
+                            flex: shares.protein,
                             child: Container(color: const Color(0xFFFEA38E)),
                           ),
                           Expanded(
-                            flex: fF,
+                            flex: shares.fat,
                             child: Container(color: const Color(0xFFFCF4C1)),
                           ),
                           Expanded(
-                            flex: oF,
+                            flex: shares.other,
                             child: Container(color: const Color(0xFFE2E2E2)),
                           ),
                         ],
