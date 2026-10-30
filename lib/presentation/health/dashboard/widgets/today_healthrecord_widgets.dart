@@ -214,7 +214,7 @@ class TodayHealthRecordSection extends StatelessWidget {
                         context,
                         title: '심박수',
                         titleIconAsset: AppAssets.mainCardIconHeartRate,
-                        value: latestHeartRateRecord != null ? null : '입력하세요.',
+                        value: latestHeartRateRecord != null ? null : '연동하세요.',
                         valueWidget: latestHeartRateRecord != null
                             ? Text(
                                 '$heartRate bpm',
@@ -565,72 +565,6 @@ Widget _buildStepsCard(
   final double titleSz =
       dashboardLayout ? healthSp(context, 14) : healthSp(context, 15);
 
-  if (latestStepsRecord == null) {
-    return GestureDetector(
-      onTap: () async {
-        if (!await onBeforeAction()) return;
-        if (!context.mounted) return;
-        await Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => StepsTodayScreen(
-              initialDate: selectedDate,
-              initialStepsRecord: latestStepsRecord,
-              initialHealthGoal: latestHealthGoal,
-            ),
-          ),
-        );
-        onAfterReturn();
-      },
-      child: Container(
-        padding: EdgeInsets.all(pad),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(
-            dashboardLayout ? healthDp(context, 10) : 18,
-          ),
-          border: Border.all(
-            color: healthCardBorder,
-            width: dashboardLayout ? 0.5 : 1,
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                '걸음수',
-                textScaler: TextScaler.noScaling,
-                style: TextStyle(
-                  fontSize: titleSz,
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w700,
-                  color: Colors.black,
-                ),
-              ),
-            ),
-            SizedBox(height: healthDp(context, 5)),
-            Expanded(
-              child: Center(
-                child: Text(
-                  '입력하세요.',
-                  textScaler: TextScaler.noScaling,
-                  style: TextStyle(
-                    color: const Color(0xFF8C8888),
-                    fontSize: healthSp(context, 12),
-                    fontFamily: 'Gmarket Sans TTF',
-                    fontWeight: FontWeight.w300,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   final int targetSteps = (latestHealthGoal?.dailyStepGoal != null &&
           latestHealthGoal!.dailyStepGoal! > 0)
       ? latestHealthGoal.dailyStepGoal!
@@ -675,7 +609,7 @@ Widget _buildStepsCard(
               '걸음수',
               textScaler: TextScaler.noScaling,
               style: TextStyle(
-                fontSize: healthSp(context, 14),
+                fontSize: titleSz,
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: FontWeight.w700,
                 color: Colors.black,
