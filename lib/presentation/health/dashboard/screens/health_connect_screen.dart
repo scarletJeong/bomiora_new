@@ -12,6 +12,7 @@ import '../../../common/widgets/login_required_dialog.dart';
 import '../../health_common/widgets/health_app_bar.dart';
 import '../../health_common/health_responsive_scale.dart';
 import '../../../../data/services/auth_service.dart';
+import '../../../../data/services/health_sync_link_store.dart';
 import '../../../../data/services/health_sync_service.dart';
 import '../../../../data/repositories/health/sync/health_app_sync_repository.dart';
 import '../../../../data/repositories/health/dashboard/health_dashboard_repository.dart';
@@ -41,6 +42,29 @@ class _HealthConnectScreenState extends State<HealthConnectScreen> {
   String get _providerApiValue =>
       _isIOS ? 'apple_health' : 'google_health_connect';
 
+  @override
+  void initState() {
+    super.initState();
+    _restoreLinkState();
+  }
+
+  Future<void> _restoreLinkState() async {
+    if (!_isSupportedPlatform) return;
+    final user = await AuthService.getUser();
+    final mbId = user?.id.trim() ?? '';
+    if (mbId.isEmpty) return;
+    final enabled = await HealthSyncLinkStore.isEnabled(mbId);
+    if (!enabled) {
+      if (mounted) {
+        setState(() => _isConnected = false);
+      }
+      return;
+    }
+    final permitted = await HealthSyncService.hasReadPermission();
+    if (!mounted) return;
+    setState(() => _isConnected = permitted);
+  }
+
   String get _guideText {
     if (_isIOS) {
       return '애플 건강(HealthKit)과 연동해 주세요.';
@@ -61,10 +85,21 @@ class _HealthConnectScreenState extends State<HealthConnectScreen> {
 
   Future<void> _toggleConnection() async {
     if (_isConnected) {
+      final user = await AuthService.getUser();
+      final mbId = user?.id.trim() ?? '';
+      if (mbId.isNotEmpty) {
+        await HealthSyncLinkStore.setEnabled(mbId, false);
+      }
+      final result = await HealthSyncService.disconnect();
+      if (!mounted) return;
       setState(() {
         _isConnected = false;
         _savedToServer = false;
+        _snapshot = null;
       });
+      if (result.message.isNotEmpty) {
+        AppToastOverlay.show(context, result.message);
+      }
       return;
     }
 
@@ -84,6 +119,9 @@ class _HealthConnectScreenState extends State<HealthConnectScreen> {
 
     var savedToServer = false;
     var message = result.message;
+    if (result.success) {
+      await HealthSyncLinkStore.setEnabled(user.id, true);
+    }
     if (result.success && result.snapshot != null) {
       final persist = await HealthAppSyncRepository.persistToday(
         mbId: user.id,
@@ -353,7 +391,9 @@ class _HealthConnectScreenState extends State<HealthConnectScreen> {
           ),
         ),
         child: Text(
-          _isSyncing ? '연동 중…' : '연동하기',
+          _isSyncing
+              ? '연동 중…'
+              : (_isConnected ? '해제하기' : '연동하기'),
           style: const TextStyle(
             color: Colors.white,
             fontSize: 16,

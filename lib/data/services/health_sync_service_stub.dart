@@ -20,7 +20,21 @@ class HealthSyncResult {
   });
 }
 
+class HealthSyncDisconnectResult {
+  final bool revoked;
+  final bool openedSettings;
+  final String message;
+
+  const HealthSyncDisconnectResult({
+    required this.revoked,
+    required this.openedSettings,
+    required this.message,
+  });
+}
+
 class HealthSyncService {
+  static Future<bool> hasReadPermission() async => false;
+
   static Future<HealthSyncResult> connectAndFetchToday() async {
     return const HealthSyncResult(
       success: false,
@@ -39,6 +53,14 @@ class HealthSyncService {
       supported: false,
       steps: null,
       heartRate: null,
+      message: '현재 플랫폼에서는 건강앱 연동이 지원되지 않습니다.',
+    );
+  }
+
+  static Future<HealthSyncDisconnectResult> disconnect() async {
+    return const HealthSyncDisconnectResult(
+      revoked: false,
+      openedSettings: false,
       message: '현재 플랫폼에서는 건강앱 연동이 지원되지 않습니다.',
     );
   }

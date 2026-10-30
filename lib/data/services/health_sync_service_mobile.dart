@@ -4,10 +4,13 @@ import 'package:flutter/foundation.dart';
 import 'package:health/health.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import 'auth_service.dart';
+import 'health_sync_link_store.dart';
 import 'health_sync_service_stub.dart';
 import 'health_sync_snapshot.dart';
 
-export 'health_sync_service_stub.dart' show HealthSyncResult;
+export 'health_sync_service_stub.dart'
+    show HealthSyncResult, HealthSyncDisconnectResult;
 export 'health_sync_snapshot.dart';
 
 class HealthSyncService {
@@ -51,6 +54,78 @@ class HealthSyncService {
 
   static List<HealthDataAccess> _permissionsFor(List<HealthDataType> types) =>
       List.filled(types.length, HealthDataAccess.READ);
+
+  static Future<bool> _isLinkEnabled() async {
+    final user = await AuthService.getUser();
+    final mbId = user?.id.trim() ?? '';
+    if (mbId.isEmpty) return false;
+    return HealthSyncLinkStore.isEnabled(mbId);
+  }
+
+  static Future<bool> hasReadPermission() async {
+    try {
+      if (!Platform.isAndroid && !Platform.isIOS) return false;
+      await _health.configure();
+      if (Platform.isAndroid) {
+        final available = await _health.isHealthConnectAvailable();
+        if (!available) return false;
+      }
+      final types = _readTypes;
+      if (types.isEmpty) return false;
+      return await _health.hasPermissions(
+            types,
+            permissions: _permissionsFor(types),
+          ) ??
+          false;
+    } catch (e) {
+      debugPrint('HealthSyncService.hasReadPermission: $e');
+      return false;
+    }
+  }
+
+  /// 앞으로 자동 조회를 멈추기 위한 OS 쪽 해제.
+  /// 서버에 이미 저장된 기록은 삭제하지 않는다.
+  static Future<HealthSyncDisconnectResult> disconnect() async {
+    if (Platform.isAndroid) {
+      try {
+        await _health.configure();
+        final available = await _health.isHealthConnectAvailable();
+        if (available) {
+          await _health.revokePermissions();
+        }
+        return const HealthSyncDisconnectResult(
+          revoked: true,
+          openedSettings: false,
+          message: '건강 앱 연동을 해제했습니다. 앞으로 자동으로 가져오지 않습니다.',
+        );
+      } catch (e, st) {
+        debugPrint('HealthSyncService.disconnect: $e\n$st');
+        return const HealthSyncDisconnectResult(
+          revoked: false,
+          openedSettings: false,
+          message:
+              '연동은 껐습니다. Health Connect 권한 해제에 실패했습니다. 설정에서 보미오라 권한을 확인해 주세요.',
+        );
+      }
+    }
+
+    if (Platform.isIOS) {
+      final opened = await openAppSettings();
+      return HealthSyncDisconnectResult(
+        revoked: false,
+        openedSettings: opened,
+        message: opened
+            ? '연동을 껐습니다. 아이폰은 건강 권한을 앱에서 끌 수 없어 설정 화면을 열었습니다. 건강 접근 권한에서 보미오라를 꺼 주세요.'
+            : '연동을 껐습니다. 아이폰 설정 > 건강 > 데이터 접근 및 기기에서 보미오라 권한을 꺼 주세요.',
+      );
+    }
+
+    return const HealthSyncDisconnectResult(
+      revoked: false,
+      openedSettings: false,
+      message: '현재 플랫폼에서는 건강앱 연동이 지원되지 않습니다.',
+    );
+  }
 
   static Future<HealthSyncResult> connectAndFetchToday() async {
     try {
@@ -131,6 +206,17 @@ class HealthSyncService {
       }
 
       await _health.configure();
+
+      if (!authorized && !await _isLinkEnabled()) {
+        return const HealthSyncResult(
+          success: false,
+          authorized: false,
+          supported: true,
+          steps: null,
+          heartRate: null,
+          message: '건강 앱 연동이 꺼져 있습니다.',
+        );
+      }
 
       if (Platform.isAndroid) {
         final available = await _health.isHealthConnectAvailable();
