@@ -324,7 +324,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   int get _purchaseAmount =>
-      widget.cartItems.fold(0, (sum, item) => sum + item.ctPrice);
+      widget.cartItems.fold(0, (sum, item) => sum + item.lineAmount);
 
   /// 배송비 쿠폰 최소 금액. 일반·처방 상품 중 인플루언서가 아닌 라인 금액 합.
   int get _shippingCouponGoodsAmount => widget.cartItems.fold<int>(0, (sum, item) {

@@ -1630,7 +1630,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
     final result = await CartService.addOrMergeToCart(
       productId: _product!.id,
       quantity: quantity,
-      price: _product!.price * quantity,
+      price: _product!.price,
       ctKind: _product!.ctKind,
     );
 
@@ -1762,7 +1762,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       result = await CartService.addToCart(
         productId: _product!.id,
         quantity: quantity!,
-        price: _product!.price * quantity,
+        price: _product!.price,
         ctKind: _product!.ctKind.isNotEmpty ? _product!.ctKind : 'general',
       );
     }

@@ -186,12 +186,8 @@ class CartService {
     bool mergeIfExists = false,
   }) async {
     final ioType = option.ioType;
-    final int linePrice;
-    if (ioType == 1 || ioType == 2 || ioType == 3) {
-      linePrice = 0;
-    } else {
-      linePrice = (product.price + option.price) * quantity;
-    }
+    // PHP: ct_price = 본품 단가, io_price = 옵션 단가 (라인 총액은 서버가 계산)
+    final unitPrice = product.price;
 
     String ctOptionText = option.displayText.trim();
     if (ctOptionText.isEmpty) {
@@ -201,7 +197,7 @@ class CartService {
     return addOrMergeToCart(
       productId: product.id,
       quantity: quantity,
-      price: linePrice,
+      price: unitPrice,
       optionId: option.id,
       optionText: ctOptionText,
       optionPrice: option.price,
@@ -414,17 +410,12 @@ class CartService {
           supplyLines.map((line) async {
             final qty = line.quantity;
             final ioType = line.option?.ioType ?? 0;
-            final int price;
-            if (ioType == 1 || ioType == 2 || ioType == 3) {
-              price = line.basePrice * qty;
-            } else {
-              price = (line.basePrice + (line.option?.price ?? 0)) * qty;
-            }
+            // 서버/PHP: price·option_price는 단가 (라인 총액 아님)
             final optionText = line.option?.displayText ?? '';
             return addToCart(
               productId: line.productId,
               quantity: qty,
-              price: price,
+              price: line.basePrice,
               optionId: line.option?.id,
               optionText: optionText,
               optionPrice: line.option?.price ?? 0,

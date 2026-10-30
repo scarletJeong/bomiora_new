@@ -10,11 +10,13 @@ class CartItem {
   final String itName; // 상품명
   final String? itSubject; // 상품 설명
   final String ctStatus; // 장바구니 상태 (쇼핑, 주문완료 등)
-  final int ctPrice; // 장바구니 가격 (총 가격)
+  /// 본품 단가 (운영 PHP `ct_price` = `it_price`)
+  final int ctPrice;
   final String ctOption; // 옵션 정보
   final int ctQty; // 수량
   final String? ioId; // 옵션 ID
-  final int? ioPrice; // 옵션 가격
+  /// 옵션 단가 (운영 PHP `io_price`)
+  final int? ioPrice;
   final int ioType; // 0~3
   final String ctKind; // 상품 종류 (general | prescription)
   /// 파싱된 kind: general | prescription | supply_add(parent 있을 때)
@@ -106,13 +108,13 @@ class CartItem {
     );
   }
 
-  /// 라인 결제금액 (io_type 1~3은 io_price 반영)
+  /// 라인 결제금액 — PHP `bomiora_cart_line_price_sql` 과 동일.
+  /// io_type 1: io×qty / io_type 0·2·3: (ct+io)×qty
   int get lineAmount {
     final io = ioPrice ?? 0;
-    if (ioType == 1 || ioType == 2 || ioType == 3) {
-      return ctPrice + io * ctQty;
-    }
-    return ctPrice;
+    final qty = ctQty < 1 ? 1 : ctQty;
+    if (ioType == 1) return io * qty;
+    return (ctPrice + io) * qty;
   }
 
   /// 쿠폰 카테고리 매칭용 ID 목록 (`ca_id` / `ca_id2` / `ca_id3`)

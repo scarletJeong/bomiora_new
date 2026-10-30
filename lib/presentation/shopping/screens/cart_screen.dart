@@ -248,8 +248,7 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   CartItem _itemWithQuantity(CartItem old, int quantity) {
-    final unit =
-        old.ctQty > 0 ? old.ctPrice / old.ctQty : old.ctPrice.toDouble();
+    // ct_price는 단가 — 수량만 바꾸고 단가는 유지 (PHP와 동일)
     return CartItem(
       ctId: old.ctId,
       odId: old.odId,
@@ -258,7 +257,7 @@ class _CartScreenState extends State<CartScreen> {
       itName: old.itName,
       itSubject: old.itSubject,
       ctStatus: old.ctStatus,
-      ctPrice: (unit * quantity).round(),
+      ctPrice: old.ctPrice,
       ctOption: old.ctOption,
       ctQty: quantity,
       ioId: old.ioId,
