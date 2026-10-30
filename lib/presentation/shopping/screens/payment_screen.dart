@@ -287,23 +287,19 @@ class _PaymentScreenState extends State<PaymentScreen> {
       return _shippingCouponGoodsAmount >= coupon.minimum;
     }
     if (_couponPointDisabled) return false;
-    if (_nonInfluencerAmount < coupon.minimum) return false;
     switch (coupon.method) {
       case 0:
+        if (_nonInfluencerAmount < coupon.minimum) return false;
         return widget.cartItems.any(
           (item) => !_isInfluencerCartItem(item) && item.itId == coupon.target,
         );
       case 1:
-        if (coupon.target.trim().isEmpty) return _nonInfluencerAmount > 0;
-        final target = coupon.target.trim().toLowerCase();
-        return widget.cartItems.any((item) {
-          if (_isInfluencerCartItem(item)) return false;
-          final source =
-              '${item.productType ?? ''} ${item.itSubject ?? ''} ${item.itName}'
-                  .toLowerCase();
-          return source.contains(target);
-        });
+        final categoryAmount = _baseAmountForCoupon(coupon);
+        if (categoryAmount <= 0) return false;
+        if (categoryAmount < coupon.minimum) return false;
+        return true;
       default:
+        if (_nonInfluencerAmount < coupon.minimum) return false;
         return true;
     }
   }
@@ -347,11 +343,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
       return '';
     }
     if (_couponPointDisabled) return '인플루언서 상품만 있어 상품 쿠폰 제외';
-    if (_nonInfluencerAmount < coupon.minimum) {
-      return '쿠폰 대상 금액 $_nonInfluencerAmount원 < 최소 ${coupon.minimum}원';
-    }
     switch (coupon.method) {
       case 0:
+        if (_nonInfluencerAmount < coupon.minimum) {
+          return '쿠폰 대상 금액 $_nonInfluencerAmount원 < 최소 ${coupon.minimum}원';
+        }
         final ids = widget.cartItems
             .where((item) => !_isInfluencerCartItem(item))
             .map((item) => item.itId)
@@ -364,20 +360,22 @@ class _PaymentScreenState extends State<PaymentScreen> {
         }
         return '';
       case 1:
-        if (coupon.target.trim().isEmpty) {
-          return _nonInfluencerAmount > 0 ? '' : '대상 금액 0원';
+        final categoryAmount = _baseAmountForCoupon(coupon);
+        if (categoryAmount <= 0) {
+          final cats = widget.cartItems
+              .where((item) => !_isInfluencerCartItem(item))
+              .map((item) => '${item.itId}:${item.categoryIds.join('/')}')
+              .join(', ');
+          return '카테고리 대상 상품 없음 (target=${coupon.target}, 장바구니 ca_id=$cats)';
         }
-        final target = coupon.target.trim().toLowerCase();
-        final hit = widget.cartItems.any((item) {
-          if (_isInfluencerCartItem(item)) return false;
-          final source =
-              '${item.productType ?? ''} ${item.itSubject ?? ''} ${item.itName}'
-                  .toLowerCase();
-          return source.contains(target);
-        });
-        if (!hit) return '카테고리/상품명에 "$target" 없음';
+        if (categoryAmount < coupon.minimum) {
+          return '카테고리 대상 금액 ${categoryAmount}원 < 최소 ${coupon.minimum}원';
+        }
         return '';
       default:
+        if (_nonInfluencerAmount < coupon.minimum) {
+          return '쿠폰 대상 금액 $_nonInfluencerAmount원 < 최소 ${coupon.minimum}원';
+        }
         return '';
     }
   }
@@ -386,8 +384,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
     final cart = widget.cartItems
         .map(
           (item) =>
-              '${item.itName} it_id=${item.itId} kind=${item.ctKind} '
-              '금액=${item.ctPrice} 라인=${item.lineAmount} '
+              '${item.itName} it_id=${item.itId} ca=${item.categoryIds.join('/')} '
+              'kind=${item.ctKind} 금액=${item.ctPrice} 라인=${item.lineAmount} '
               '인플루언서=${_isInfluencerCartItem(item)}',
         )
         .join(' | ');
@@ -927,14 +925,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
             .fold<int>(0, (sum, item) => sum + item.ctPrice);
       case 1:
         if (coupon.target.trim().isEmpty) return _nonInfluencerAmount;
-        final target = coupon.target.trim().toLowerCase();
-        return widget.cartItems.where((item) {
-          if (!isEligibleItem(item)) return false;
-          final source =
-              '${item.productType ?? ''} ${item.itSubject ?? ''} ${item.itName}'
-                  .toLowerCase();
-          return source.contains(target);
-        }).fold<int>(0, (sum, item) => sum + item.ctPrice);
+        return widget.cartItems
+            .where((item) =>
+                isEligibleItem(item) &&
+                item.matchesCategoryTarget(coupon.target))
+            .fold<int>(0, (sum, item) => sum + item.ctPrice);
       case 2:
         return _nonInfluencerAmount;
       case 3:

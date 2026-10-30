@@ -36,6 +36,12 @@ class CartItem {
 
   // 상품 타입 (한의약품 등)
   final String? productType;
+  /// 상품 카테고리 ID (`bomiora_shop_item_new.ca_id`)
+  final String? caId;
+  /// 추가 카테고리 (`ca_id2`)
+  final String? caId2;
+  /// 추가 카테고리 (`ca_id3`)
+  final String? caId3;
   // 인플루언서 상품 구분값 (빈값이면 일반 상품)
   final String ctMbInf;
   // 포인트 사용 가능 비율 (0~100)
@@ -71,6 +77,9 @@ class CartItem {
     this.reservationTime,
     this.imageUrl,
     this.productType,
+    this.caId,
+    this.caId2,
+    this.caId3,
     this.ctMbInf = '',
     this.pointUsageRate = 10,
     this.ctSelect = false,
@@ -104,6 +113,21 @@ class CartItem {
       return ctPrice + io * ctQty;
     }
     return ctPrice;
+  }
+
+  /// 쿠폰 카테고리 매칭용 ID 목록 (`ca_id` / `ca_id2` / `ca_id3`)
+  List<String> get categoryIds {
+    return [caId, caId2, caId3]
+        .map((e) => (e ?? '').trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+  }
+
+  /// 웹 주문서와 동일: `cp_target`이 ca_id 목록에 있으면 카테고리 쿠폰 대상
+  bool matchesCategoryTarget(String target) {
+    final t = target.trim().toLowerCase();
+    if (t.isEmpty) return true;
+    return categoryIds.any((id) => id.toLowerCase() == t);
   }
 
   factory CartItem.fromJson(Map<String, dynamic> json) {
@@ -253,6 +277,18 @@ class CartItem {
       productType: NodeValueParser.asString(normalized['product_type']) ??
           NodeValueParser.asString(normalized['productType']) ??
           '한의약품',
+      caId: NodeValueParser.asString(normalized['ca_id']) ??
+          NodeValueParser.asString(normalized['caId']) ??
+          NodeValueParser.asString(normalized['product_ca_id']) ??
+          NodeValueParser.asString(normalized['productCaId']),
+      caId2: NodeValueParser.asString(normalized['ca_id2']) ??
+          NodeValueParser.asString(normalized['caId2']) ??
+          NodeValueParser.asString(normalized['product_ca_id2']) ??
+          NodeValueParser.asString(normalized['productCaId2']),
+      caId3: NodeValueParser.asString(normalized['ca_id3']) ??
+          NodeValueParser.asString(normalized['caId3']) ??
+          NodeValueParser.asString(normalized['product_ca_id3']) ??
+          NodeValueParser.asString(normalized['productCaId3']),
       ctMbInf: NodeValueParser.asString(
               normalized['ct_mb_inf'] ?? normalized['ctMbInf']) ??
           '',
@@ -355,6 +391,9 @@ class CartItem {
       'reservation_time': reservationTime,
       'image_url': imageUrl,
       'product_type': productType,
+      'ca_id': caId,
+      'ca_id2': caId2,
+      'ca_id3': caId3,
       'ct_mb_inf': ctMbInf,
       'point_usage_rate': pointUsageRate,
       'ct_select': ctSelect ? 1 : 0,
