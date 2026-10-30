@@ -3,7 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../../common/chart_layout.dart';
-import '../../blood_pressure/widgets/blood_pressure_chart_section.dart';
+import '../../health_common/health_chart_y_axis.dart';
 import '../../health_common/health_chart_axis_style.dart';
 import '../../health_common/health_chart_metrics.dart';
 import '../../health_common/health_responsive_scale.dart';
