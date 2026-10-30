@@ -405,8 +405,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
     }
     for (final coupon in _loadedCoupons) {
       final reason = _couponRejectReason(coupon);
-      final discount = coupon.maximum > 0
-          ? '${coupon.price}% (상한 ${coupon.maximum}원)'
+      final discount = coupon.type == 1
+          ? '${coupon.price}%${coupon.maximum > 0 ? ' (상한 ${coupon.maximum}원)' : ''}'
           : '${coupon.price}원';
       debugPrint(
         '[결제쿠폰] ${reason.isEmpty ? '표시' : '제외'} | ${coupon.subject} | '
@@ -525,15 +525,21 @@ class _PaymentScreenState extends State<PaymentScreen> {
     ];
   }
 
+  /// 서버 `computeCouponDiscount`와 동일: type=1 비율(+trunc), 아니면 정액, maximum 상한.
   int _discountForCoupon(Coupon coupon) {
     if (coupon.method == 3) return _shippingDiscountFor(coupon);
     final base = _baseAmountForCoupon(coupon);
     if (base <= 0 || base < coupon.minimum) return 0;
-    if (coupon.maximum > 0) {
-      final discount = (base * coupon.price / 100).floor();
-      return discount > coupon.maximum ? coupon.maximum : discount;
+    var discount = coupon.price;
+    if (coupon.type == 1) {
+      final trunc = coupon.trunc > 0 ? coupon.trunc : 1;
+      discount = ((base * coupon.price / 100) / trunc).floor() * trunc;
     }
-    return coupon.price > base ? base : coupon.price;
+    if (coupon.maximum > 0 && discount > coupon.maximum) {
+      discount = coupon.maximum;
+    }
+    if (discount > base) discount = base;
+    return discount < 0 ? 0 : discount;
   }
 
   /// 배송비 쿠폰은 기본 배송비만 기준으로 깎고, 상품 쿠폰 한도와 더하지 않는다.
