@@ -1721,24 +1721,9 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
     AppToastOverlay.show(context, '결제 정보를 불러오지 못했습니다. 다시 시도해 주세요.');
   }
 
-  int _resolveBuyNowShippingCost({
-    required List<CartItem> payItems,
-    required List<CartItem> allGeneralItems,
-    required int cartShippingCost,
-  }) {
-    if (payItems.isEmpty) return 0;
-    if (payItems.length == allGeneralItems.length &&
-        payItems.every(
-          (item) => allGeneralItems.any((all) => all.ctId == item.ctId),
-        )) {
-      return cartShippingCost;
-    }
-    return 0;
-  }
-
+  /// 바로구매 배송비는 넘기지 않는다. 결제 화면 `_loadShippingQuote`가 정본.
   Future<void> _openGeneralPaymentScreen({
     required List<CartItem> payItems,
-    required int shippingCost,
   }) async {
     if (!mounted || payItems.isEmpty) return;
 
@@ -1748,7 +1733,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
         settings: const RouteSettings(name: '/pay'),
         builder: (_) => PaymentScreen(
           cartItems: payItems,
-          shippingCost: shippingCost,
+          shippingCost: 0,
           sourceTitle: '일반상품 결제',
         ),
       ),
@@ -1806,21 +1791,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       return;
     }
 
-    final cart = await CartService.getCart();
-    if (!mounted || cart['success'] != true) return;
-
-    final allGeneralItems = _parseGeneralCartItems(cart);
-    final cartShippingCost = (cart['shipping_cost'] as num?)?.toInt() ?? 0;
-    final shippingCost = _resolveBuyNowShippingCost(
-      payItems: payItems,
-      allGeneralItems: allGeneralItems,
-      cartShippingCost: cartShippingCost,
-    );
-
-    await _openGeneralPaymentScreen(
-      payItems: payItems,
-      shippingCost: shippingCost,
-    );
+    await _openGeneralPaymentScreen(payItems: payItems);
   }
 
   Future<void> _openMatchingCart({
@@ -1861,10 +1832,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       final items = addedItems ??
           (addedItemsFuture != null ? await addedItemsFuture : null);
       if (items != null && items.isNotEmpty) {
-        await _openGeneralPaymentScreen(
-          payItems: items,
-          shippingCost: 0,
-        );
+        await _openGeneralPaymentScreen(payItems: items);
       }
       return;
     }
@@ -1896,10 +1864,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
           _showBuyNowFailedSnackBar();
           return;
         }
-        await _openGeneralPaymentScreen(
-          payItems: items,
-          shippingCost: 0,
-        );
+        await _openGeneralPaymentScreen(payItems: items);
       },
     );
   }

@@ -144,6 +144,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
   @override
   void initState() {
     super.initState();
+    // 진입 shippingCost는 임시값. 주소·장바구니 견적(_loadShippingQuote)이 정본이다.
     _baseShipping = widget.shippingCost < 0 ? 0 : widget.shippingCost;
     _pointController.addListener(_onPointChanged);
     prefetchKcpPayScripts();
@@ -765,15 +766,15 @@ class _PaymentScreenState extends State<PaymentScreen> {
       ctIds: ids,
       zip: _zipController.text,
     );
-    if (!mounted || gen != _shippingQuoteGen || quote == null) {
-      if (mounted && gen == _shippingQuoteGen && quote == null) {
-        _logPaymentCoupons('배송비 견적이 없어 쿠폰 필터를 돌리지 않음');
-      }
-      return quote;
+    if (!mounted || gen != _shippingQuoteGen) return quote;
+    if (quote == null) {
+      _logPaymentCoupons('배송비 견적이 없어 쿠폰 필터를 돌리지 않음');
+      return null;
     }
+    // 진입 shippingCost와 무관하게 견적 결과를 UI·쿠폰 기준으로 쓴다(0원 무료배송 포함).
     setState(() {
-      _baseShipping = quote.baseShipping;
-      _extraShipping = quote.extraShipping;
+      _baseShipping = quote.baseShipping < 0 ? 0 : quote.baseShipping;
+      _extraShipping = quote.extraShipping < 0 ? 0 : quote.extraShipping;
       _pointRate = quote.pointRate;
       _syncCouponLists();
       _maybeAutoSelectShippingCoupon();
