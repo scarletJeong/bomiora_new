@@ -19,6 +19,12 @@ double healthTextScaleByWidth(double width) {
   return 1.0 + (clamped - 375.0) / 275.0 * 0.5;
 }
 
+/// 카드 외곽선. 식사·건강기록·걸음·키/체중 카드가 같은 색을 쓴다.
+const Color healthCardBorder = Color(0xFFF0F0F0);
+
+/// 아이콘 링·입력 박스처럼 카드보다 진한 구분선.
+const Color healthDividerBorder = Color(0x7FD2D2D2);
+
 /// 375 기준 폰트 크기를 Health 레이아웃 폭 기준으로 스케일합니다.
 double healthSp(BuildContext context, double base) {
   final width = MediaQuery.of(context).size.width;

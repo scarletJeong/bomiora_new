@@ -609,22 +609,22 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       '안녕하세요',
                       style: TextStyle(
                         color: Colors.white,
                         fontFamily: 'Gmarket Sans TTF',
-                        fontSize: 15,
+                        fontSize: healthSp(context, 15),
                         fontWeight: FontWeight.w300,
                         letterSpacing: -0.9,
                       ),
                     ),
                     Text(
                       '${currentUser?.name ?? '-'}님 !',
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.white,
                         fontFamily: 'Gmarket Sans TTF',
-                        fontSize: 15,
+                        fontSize: healthSp(context, 15),
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -670,9 +670,9 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(999)),
                 ),
-                child: const Text('목표설정 >',
+                child: Text('목표설정 >',
                     style: TextStyle(
-                        fontSize: 10,
+                        fontSize: healthSp(context, 10),
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w300)),
               ),
@@ -695,9 +695,9 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(999)),
                 ),
-                child: const Text('연동하기 >',
+                child: Text('연동하기 >',
                     style: TextStyle(
-                        fontSize: 10,
+                        fontSize: healthSp(context, 10),
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w300)),
               ),
@@ -811,10 +811,10 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
                             ),
                             child: Text(
                               diff > 0 ? '+${diff}kg' : '${diff}kg',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: Color(0xFFFF5A8D),
                                 fontFamily: 'Gmarket Sans TTF',
-                                fontSize: 9,
+                                fontSize: healthSp(context, 9),
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
@@ -848,20 +848,20 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
                             ? '${leftLabelWeight.toInt()}kg'
                             : '${leftLabelWeight.toStringAsFixed(1)}kg')
                         : '--- kg',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Colors.white,
                       fontFamily: 'Gmarket Sans TTF',
                       fontWeight: FontWeight.w400,
-                      fontSize: 11,
+                      fontSize: healthSp(context, 11),
                     ),
                   ),
                   Text(
                     rightLabel,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Colors.white,
                       fontFamily: 'Gmarket Sans TTF',
                       fontWeight: FontWeight.w400,
-                      fontSize: 11,
+                      fontSize: healthSp(context, 11),
                     ),
                   ),
                 ],
@@ -935,7 +935,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(healthDp(context, 10)),
-          border: Border.all(color: const Color(0xFFF0F0F0)),
+          border: Border.all(color: healthCardBorder),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -943,8 +943,8 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
           children: [
             Text(
               title,
-              style: const TextStyle(
-                fontSize: 14,
+              style: TextStyle(
+                fontSize: healthSp(context, 14),
                 fontFamily: 'Gmarket Sans TTF',
                 color: Color(0xFF303030),
                 fontWeight: FontWeight.w700,
@@ -952,8 +952,8 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
             ),
             Text(
               value,
-              style: const TextStyle(
-                fontSize: 10,
+              style: TextStyle(
+                fontSize: healthSp(context, 10),
                 fontFamily: 'Gmarket Sans TTF',
                 color: Colors.black,
                 fontWeight: FontWeight.w300,

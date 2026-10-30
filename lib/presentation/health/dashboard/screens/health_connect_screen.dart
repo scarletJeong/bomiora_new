@@ -183,9 +183,9 @@ class _HealthConnectScreenState extends State<HealthConnectScreen> {
                   children: [
                     Text(
                       _guideText,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Color(0xFF1A1A1A),
-                        fontSize: 14,
+                        fontSize: healthSp(context, 14),
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w300,
                         height: 1.45,
@@ -238,12 +238,12 @@ class _HealthConnectScreenState extends State<HealthConnectScreen> {
                     SizedBox(height: healthDp(context, 10)),
                     Padding(
                       padding: EdgeInsets.all(healthDp(context, 10)),
-                      child: const Text(
+                      child: Text(
                         '건강 앱 연동은 모바일 앱에서만\n이용할 수 있습니다',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: Color(0xFF1A1A1E),
-                          fontSize: 16,
+                          fontSize: healthSp(context, 16),
                           fontFamily: 'Gmarket Sans TTF',
                           fontWeight: FontWeight.w500,
                           height: 1.35,
@@ -285,9 +285,9 @@ class _HealthConnectScreenState extends State<HealthConnectScreen> {
   }
 
   Widget _buildWebInfoBox() {
-    const infoStyle = TextStyle(
+    final infoStyle = TextStyle(
       color: Color(0xFF898686),
-      fontSize: 10,
+      fontSize: healthSp(context, 10),
       fontFamily: 'Gmarket Sans TTF',
       fontWeight: FontWeight.w500,
       height: 1.4,
@@ -346,11 +346,11 @@ class _HealthConnectScreenState extends State<HealthConnectScreen> {
           borderRadius: BorderRadius.circular(healthDp(context, 10)),
           border: Border.all(color: const Color(0xFFFF5A8D)),
         ),
-        child: const Text(
+        child: Text(
           '앱스토어로 이동',
           style: TextStyle(
             color: Color(0xFFFF5A8D),
-            fontSize: 16,
+            fontSize: healthSp(context, 16),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w500,
             height: 1,
@@ -394,9 +394,9 @@ class _HealthConnectScreenState extends State<HealthConnectScreen> {
           _isSyncing
               ? '연동 중…'
               : (_isConnected ? '해제하기' : '연동하기'),
-          style: const TextStyle(
+          style: TextStyle(
             color: Colors.white,
-            fontSize: 16,
+            fontSize: healthSp(context, 16),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w500,
             height: 1,
@@ -419,9 +419,9 @@ class _HealthConnectScreenState extends State<HealthConnectScreen> {
         Text(
           _isConnected ? '$_providerLabel · 연동됨' : _providerLabel,
           textAlign: TextAlign.center,
-          style: const TextStyle(
+          style: TextStyle(
             color: Color(0xFF898383),
-            fontSize: 12,
+            fontSize: healthSp(context, 12),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w500,
           ),
@@ -445,8 +445,8 @@ class _HealthConnectScreenState extends State<HealthConnectScreen> {
       ),
       child: Text(
         message,
-        style: const TextStyle(
-          fontSize: 12,
+        style: TextStyle(
+          fontSize: healthSp(context, 12),
           color: Color(0xFF555555),
           height: 1.45,
         ),
@@ -480,8 +480,8 @@ class _HealthConnectScreenState extends State<HealthConnectScreen> {
         children: [
           Text(
             _savedToServer ? '오늘 기록에 저장됨' : '동기화 미리보기 (오늘)',
-            style: const TextStyle(
-              fontSize: 13,
+            style: TextStyle(
+              fontSize: healthSp(context, 13),
               fontFamily: 'Gmarket Sans TTF',
               fontWeight: FontWeight.w700,
             ),
@@ -577,8 +577,8 @@ class _HealthConnectScreenState extends State<HealthConnectScreen> {
       padding: const EdgeInsets.only(top: 8, bottom: 4),
       child: Text(
         title,
-        style: const TextStyle(
-          fontSize: 12,
+        style: TextStyle(
+          fontSize: healthSp(context, 12),
           fontFamily: 'Gmarket Sans TTF',
           fontWeight: FontWeight.w700,
           color: Color(0xFF333333),
@@ -592,7 +592,10 @@ class _HealthConnectScreenState extends State<HealthConnectScreen> {
       padding: const EdgeInsets.only(bottom: 2),
       child: Text(
         '$label: $value',
-        style: const TextStyle(fontSize: 12, color: Color(0xFF555555)),
+        style: TextStyle(
+          fontSize: healthSp(context, 12),
+          color: Color(0xFF555555),
+        ),
       ),
     );
   }
@@ -602,7 +605,10 @@ class _HealthConnectScreenState extends State<HealthConnectScreen> {
       padding: const EdgeInsets.only(bottom: 2),
       child: Text(
         text,
-        style: const TextStyle(fontSize: 11, color: Color(0xFF999999)),
+        style: TextStyle(
+          fontSize: healthSp(context, 11),
+          color: Color(0xFF999999),
+        ),
       ),
     );
   }

@@ -42,8 +42,8 @@ class HealthStatusLabel extends StatelessWidget {
         textScaler: TextScaler.noScaling,
         style: TextStyle(
           color: _textColor,
-          fontSize: fontSize,
-          fontFamily: 'Inter',
+          fontSize: healthSp(context, fontSize),
+          fontFamily: 'Gmarket Sans TTF',
           fontWeight: FontWeight.w500,
         ),
       ),

@@ -375,7 +375,7 @@ class _TodayMealItemCard extends StatelessWidget {
         child: Container(
           decoration: BoxDecoration(
             borderRadius: radius,
-            border: Border.all(color: const Color(0xFFEAEAEA)),
+            border: Border.all(color: healthCardBorder),
             color: _hasMeal ? null : const Color(0xFFE2E2E2),
           ),
           child: Stack(

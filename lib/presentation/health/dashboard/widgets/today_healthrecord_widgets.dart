@@ -353,7 +353,7 @@ Widget _buildMainCardIcon(BuildContext context, String assetPath) {
       color: Colors.white,
       borderRadius: BorderRadius.circular(healthDp(context, 15)),
       border: Border.all(
-        color: const Color(0x7FD2D2D2),
+        color: healthDividerBorder,
         width: 0.5,
       ),
     ),
@@ -397,7 +397,7 @@ Widget _buildRecordCard(
           color: Colors.white,
           borderRadius: BorderRadius.circular(healthDp(context, 10)),
           border: Border.all(
-            color: const Color(0x7FD2D2D2),
+            color: healthDividerBorder,
             width: 0.5,
           ),
         ),
@@ -470,7 +470,7 @@ Widget _buildRecordCard(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFF0F0F0)),
+        border: Border.all(color: healthCardBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -590,9 +590,7 @@ Widget _buildStepsCard(
             dashboardLayout ? healthDp(context, 10) : 18,
           ),
           border: Border.all(
-            color: dashboardLayout
-                ? const Color(0xFFD9D9D9)
-                : const Color(0xFFF0F0F0),
+            color: healthCardBorder,
             width: dashboardLayout ? 0.5 : 1,
           ),
         ),
@@ -664,9 +662,7 @@ Widget _buildStepsCard(
           dashboardLayout ? healthDp(context, 10) : healthDp(context, 18),
         ),
         border: Border.all(
-          color: dashboardLayout
-              ? const Color(0xFFD9D9D9)
-              : const Color(0xFFF0F0F0),
+          color: healthCardBorder,
           width: dashboardLayout ? 0.5 : 1,
         ),
       ),
@@ -779,7 +775,7 @@ Widget _buildBottomRecordCard(
           color: Colors.white,
           borderRadius: BorderRadius.circular(healthDp(context, 10)),
           border: Border.all(
-            color: const Color(0x7FD2D2D2),
+            color: healthDividerBorder,
             width: 0.5,
           ),
         ),
@@ -841,7 +837,7 @@ Widget _buildBottomRecordCard(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFF0F0F0)),
+        border: Border.all(color: healthCardBorder),
       ),
       child: Column(
         children: [

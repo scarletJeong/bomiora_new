@@ -365,11 +365,11 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           '하루 걸음 수',
           style: TextStyle(
             color: Colors.black,
-            fontSize: 16,
+            fontSize: healthSp(context, 16),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w700,
           ),
@@ -380,7 +380,7 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
           height: wheelViewportH,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(healthDp(context, 7)),
-            border: Border.all(color: const Color(0x7FD2D2D2)),
+            border: Border.all(color: healthDividerBorder),
             color: Colors.white,
           ),
           child: GestureDetector(
