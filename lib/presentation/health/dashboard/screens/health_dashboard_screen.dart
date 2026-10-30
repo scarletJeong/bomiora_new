@@ -54,6 +54,11 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
   double bmi = 0.0;
 
   bool isLoading = true;
+  bool _loggedOut = false;
+  bool _loadFailed = false;
+  bool _hasSnapshot = false;
+  DateTime? _snapshotDate;
+  int _loadGeneration = 0;
   DateTime selectedDate = DateTime.now();
 
   int consumedCalories = 0;
@@ -116,22 +121,43 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
     }
   }
 
+  bool _snapshotMatchesSelection() =>
+      _hasSnapshot &&
+      _snapshotDate != null &&
+      _isSameDay(_snapshotDate!, selectedDate);
+
+  Future<void> _openLogin() async {
+    await Navigator.pushNamed(
+      context,
+      '/login',
+      arguments: const {'returnTo': '/health'},
+    );
+    if (!mounted) return;
+    await _loadData();
+  }
+
   Future<void> _loadData({
     bool showBlockingLoader = true,
     bool forceRefresh = false,
     bool includeDashboard = true,
     bool includeFood = true,
   }) async {
+    final generation = ++_loadGeneration;
     if (showBlockingLoader) {
       setState(() => isLoading = true);
     }
 
     try {
       final user = await AuthService.getUser();
+      if (!mounted || generation != _loadGeneration) return;
 
       if (user == null) {
         setState(() {
           currentUser = null;
+          _loggedOut = true;
+          _loadFailed = false;
+          _hasSnapshot = false;
+          _snapshotDate = null;
           latestWeightRecord = null;
           latestBloodPressureRecord = null;
           latestBloodSugarRecord = null;
@@ -175,7 +201,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
           mbId: userId,
           date: selectedDate,
         );
-        if (cached != null && mounted) {
+        if (cached != null && mounted && generation == _loadGeneration) {
           _applyHealthDashboard(user, cached);
         }
       }
@@ -186,6 +212,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
                 mbId: userId,
                 date: selectedDate,
                 forceRefresh: forceRefresh,
+                surfaceFailure: true,
               )
             : Future<HealthDashboardPayload?>.value(null),
         includeFood
@@ -193,9 +220,14 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
                 userId,
                 selectedDate,
                 forceRefresh: forceRefresh,
+                surfaceFailure: true,
               )
             : Future<List<FoodRecordSummary>?>.value(null),
       ]);
+      if (!mounted || generation != _loadGeneration) return;
+      if (includeDashboard && results[0] == null) {
+        throw StateError('health dashboard load failed');
+      }
       final dashboard = includeDashboard
           ? results[0] as HealthDashboardPayload?
           : null;
@@ -235,6 +267,14 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
 
       setState(() {
         currentUser = user;
+        _loggedOut = false;
+        if (includeDashboard) {
+          _hasSnapshot = true;
+          _snapshotDate = selectedDate;
+          _loadFailed = false;
+        } else if (_snapshotMatchesSelection()) {
+          _loadFailed = false;
+        }
         if (includeDashboard) {
           latestWeightRecord = weightRecord;
           latestBloodPressureRecord = bloodPressureRecord;
@@ -297,8 +337,13 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
 
         isLoading = false;
       });
-    } catch (e) {
-      setState(() => isLoading = false);
+    } catch (_) {
+      if (!mounted || generation != _loadGeneration) return;
+      setState(() {
+        isLoading = false;
+        _loggedOut = false;
+        _loadFailed = true;
+      });
     }
   }
 
@@ -342,7 +387,6 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
       }
       heartRate = heartRateRecord?.heartRate ?? 0;
       steps = dashboard.steps?.totalSteps ?? 0;
-      isLoading = false;
     });
   }
 
@@ -455,71 +499,98 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
-                                      HealthDateSelector(
-                                        selectedDate: selectedDate,
-                                        onDateChanged: (newDate) {
-                                          setState(() {
-                                            selectedDate = newDate;
-                                          });
-                                          _loadData();
-                                        },
-                                        monthTextColor: const Color(0xFF898686),
-                                        selectedTextColor:
-                                            const Color(0xFFFF5A8D),
-                                        unselectedTextColor:
-                                            const Color(0xFFB7B7B7),
-                                        iconColor: const Color(0xFF898686),
-                                        topGapBase: 10,
-                                      ),
-                                      SizedBox(height: healthDp(context, 14)),
-                                      _buildBodyMetricsSection(),
-                                      SizedBox(height: healthDp(context, 14)),
-                                      TodayMealSection(
-                                        consumedCalories: consumedCalories,
-                                        targetCalories: targetCalories,
-                                        totalCarbs: totalCarbs,
-                                        totalProtein: totalProtein,
-                                        totalFat: totalFat,
-                                        totalOther: totalOther,
-                                        mealCalories: mealCalories,
-                                        mealHasRecord: mealHasRecord,
-                                        mealImagePaths: mealImagePaths,
-                                        selectedDate: selectedDate,
-                                        onBeforeAction:
-                                            _ensureDashboardFeatureAccess,
-                                        onAfterDietReturn: () {
-                                          if (mounted) {
-                                            _loadData(
-                                                showBlockingLoader: false);
-                                          }
-                                        },
-                                      ),
-                                      SizedBox(height: healthDp(context, 14)),
-                                      TodayHealthRecordSection(
-                                        selectedDate: selectedDate,
-                                        onBeforeAction:
-                                            _ensureDashboardFeatureAccess,
-                                        onAfterReturn: () {
-                                          if (mounted) {
-                                            _loadData(
-                                                showBlockingLoader: false);
-                                          }
-                                        },
-                                        latestBloodSugarRecord:
-                                            latestBloodSugarRecord,
-                                        latestBloodPressureRecord:
-                                            latestBloodPressureRecord,
-                                        latestStepsRecord: latestStepsRecord,
-                                        latestHeartRateRecord:
-                                            latestHeartRateRecord,
-                                        latestMenstrualCycleRecord:
-                                            latestMenstrualCycleRecord,
-                                        latestHealthGoal: latestHealthGoal,
-                                        systolicBP: systolicBP,
-                                        diastolicBP: diastolicBP,
-                                        steps: steps,
-                                        heartRate: heartRate,
-                                      ),
+                                      if (_loggedOut)
+                                        _buildRecordGate(
+                                          message: '로그인하면 오늘 기록을 볼 수 있습니다',
+                                          actionLabel: '로그인',
+                                          onPressed: _openLogin,
+                                        )
+                                      else ...[
+                                        HealthDateSelector(
+                                          selectedDate: selectedDate,
+                                          onDateChanged: (newDate) {
+                                            setState(() {
+                                              selectedDate = newDate;
+                                            });
+                                            _loadData();
+                                          },
+                                          monthTextColor:
+                                              const Color(0xFF898686),
+                                          selectedTextColor:
+                                              const Color(0xFFFF5A8D),
+                                          unselectedTextColor:
+                                              const Color(0xFFB7B7B7),
+                                          iconColor: const Color(0xFF898686),
+                                          topGapBase: 10,
+                                        ),
+                                        SizedBox(
+                                            height: healthDp(context, 14)),
+                                        if (_loadFailed)
+                                          _buildRecordGate(
+                                            message: '기록을 불러오지 못했습니다',
+                                            actionLabel: '다시 시도',
+                                            onPressed: () {
+                                              _loadData(
+                                                showBlockingLoader:
+                                                    !_snapshotMatchesSelection(),
+                                                forceRefresh: true,
+                                              );
+                                            },
+                                          ),
+                                        if (_snapshotMatchesSelection()) ...[
+                                          _buildBodyMetricsSection(),
+                                          SizedBox(
+                                              height: healthDp(context, 14)),
+                                          TodayMealSection(
+                                            consumedCalories: consumedCalories,
+                                            targetCalories: targetCalories,
+                                            totalCarbs: totalCarbs,
+                                            totalProtein: totalProtein,
+                                            totalFat: totalFat,
+                                            totalOther: totalOther,
+                                            mealCalories: mealCalories,
+                                            mealHasRecord: mealHasRecord,
+                                            mealImagePaths: mealImagePaths,
+                                            selectedDate: selectedDate,
+                                            onBeforeAction:
+                                                _ensureDashboardFeatureAccess,
+                                            onAfterDietReturn: () {
+                                              if (mounted) {
+                                                _loadData(
+                                                    showBlockingLoader: false);
+                                              }
+                                            },
+                                          ),
+                                          SizedBox(
+                                              height: healthDp(context, 14)),
+                                          TodayHealthRecordSection(
+                                            selectedDate: selectedDate,
+                                            onBeforeAction:
+                                                _ensureDashboardFeatureAccess,
+                                            onAfterReturn: () {
+                                              if (mounted) {
+                                                _loadData(
+                                                    showBlockingLoader: false);
+                                              }
+                                            },
+                                            latestBloodSugarRecord:
+                                                latestBloodSugarRecord,
+                                            latestBloodPressureRecord:
+                                                latestBloodPressureRecord,
+                                            latestStepsRecord:
+                                                latestStepsRecord,
+                                            latestHeartRateRecord:
+                                                latestHeartRateRecord,
+                                            latestMenstrualCycleRecord:
+                                                latestMenstrualCycleRecord,
+                                            latestHealthGoal: latestHealthGoal,
+                                            systolicBP: systolicBP,
+                                            diastolicBP: diastolicBP,
+                                            steps: steps,
+                                            heartRate: heartRate,
+                                          ),
+                                        ],
+                                      ],
                                     ],
                                   ),
                                 ),
@@ -547,6 +618,62 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
     final w = MediaQuery.sizeOf(context).width.clamp(narrow, wide);
     final t = (w - narrow) / (wide - narrow);
     return gapAtNarrow + (gapAtWide - gapAtNarrow) * t;
+  }
+
+  Widget _buildRecordGate({
+    required String message,
+    required String actionLabel,
+    required VoidCallback onPressed,
+  }) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        healthDp(context, 10),
+        healthDp(context, 28),
+        healthDp(context, 10),
+        healthDp(context, 36),
+      ),
+      child: Column(
+        children: [
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            textScaler: TextScaler.noScaling,
+            style: TextStyle(
+              color: const Color(0xFF898686),
+              fontSize: healthSp(context, 14),
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w500,
+              height: 1.5,
+            ),
+          ),
+          SizedBox(height: healthDp(context, 16)),
+          SizedBox(
+            width: double.infinity,
+            height: healthDp(context, 44),
+            child: ElevatedButton(
+              onPressed: onPressed,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFF5A8D),
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(healthDp(context, 10)),
+                ),
+              ),
+              child: Text(
+                actionLabel,
+                textScaler: TextScaler.noScaling,
+                style: TextStyle(
+                  fontSize: healthSp(context, 14),
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildProfileAvatar(BuildContext context) {

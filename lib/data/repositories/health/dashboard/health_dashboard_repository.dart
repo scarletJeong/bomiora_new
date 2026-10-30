@@ -147,6 +147,7 @@ class HealthDashboardRepository {
     required String mbId,
     required DateTime date,
     bool forceRefresh = false,
+    bool surfaceFailure = false,
   }) async {
     final dateStr = date.toIso8601String().split('T')[0];
     final key = '${mbId.trim()}|$dateStr';
@@ -158,15 +159,17 @@ class HealthDashboardRepository {
       return _cache[key];
     }
 
-    final pending = _inFlight[key];
+    final flightKey = surfaceFailure ? '$key|strict' : key;
+    final pending = _inFlight[flightKey];
     if (pending != null) return pending;
 
     final request = _fetchDashboard(
       mbId: mbId,
       date: date,
       dateStr: dateStr,
+      surfaceFailure: surfaceFailure,
     );
-    _inFlight[key] = request;
+    _inFlight[flightKey] = request;
     try {
       final result = await request;
       if (result != null) {
@@ -178,7 +181,7 @@ class HealthDashboardRepository {
       }
       return _cache[key] ?? result;
     } finally {
-      _inFlight.remove(key);
+      _inFlight.remove(flightKey);
     }
   }
 
@@ -186,6 +189,7 @@ class HealthDashboardRepository {
     required String mbId,
     required DateTime date,
     required String dateStr,
+    bool surfaceFailure = false,
   }) async {
     try {
       final response = await ApiClient.get(
@@ -195,21 +199,32 @@ class HealthDashboardRepository {
       if (response.statusCode == 404) {
         return _fetchLegacyDashboard(mbId: mbId, date: date);
       }
-      if (response.statusCode != 200)
+      if (response.statusCode != 200) {
+        if (surfaceFailure) {
+          throw StateError('health dashboard load failed');
+        }
         return _fetchLegacyDashboard(mbId: mbId, date: date);
+      }
 
       final body = json.decode(response.body) as Map<String, dynamic>?;
       if (body == null || body['success'] != true) {
+        if (surfaceFailure) {
+          throw StateError('health dashboard load failed');
+        }
         return _fetchLegacyDashboard(mbId: mbId, date: date);
       }
 
       final data = body['data'];
       if (data is! Map<String, dynamic>) {
+        if (surfaceFailure) {
+          throw StateError('health dashboard load failed');
+        }
         return _fetchLegacyDashboard(mbId: mbId, date: date);
       }
 
       return _parseBundle(mbId, data);
     } catch (_) {
+      if (surfaceFailure) rethrow;
       return _fetchLegacyDashboard(mbId: mbId, date: date);
     }
   }

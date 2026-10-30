@@ -600,15 +600,31 @@ class FoodRepository {
     String mbId,
     DateTime date, {
     bool forceRefresh = false,
+    bool surfaceFailure = false,
   }) async {
     final trimmedMbId = mbId.trim();
-    if (trimmedMbId.isEmpty) return [];
+    if (trimmedMbId.isEmpty) {
+      if (surfaceFailure) {
+        throw StateError('food records load failed');
+      }
+      return [];
+    }
     final key = '$trimmedMbId|${_localDateYmd(date)}';
     final cachedAt = _recordsCacheAt[key];
     if (!forceRefresh &&
         cachedAt != null &&
         DateTime.now().difference(cachedAt) < _recordsCacheTtl) {
       return List<FoodRecordSummary>.from(_recordsCache[key] ?? const []);
+    }
+    if (surfaceFailure) {
+      final records = await _fetchRecordsForDate(
+        trimmedMbId,
+        date,
+        surfaceFailure: true,
+      );
+      _recordsCache[key] = List<FoodRecordSummary>.from(records);
+      _recordsCacheAt[key] = DateTime.now();
+      return List<FoodRecordSummary>.from(records);
     }
     final pending = _recordsInFlight[key];
     if (pending != null) return pending;
@@ -625,7 +641,10 @@ class FoodRepository {
   }
 
   static Future<List<FoodRecordSummary>> _fetchRecordsForDate(
-      String mbId, DateTime date) async {
+    String mbId,
+    DateTime date, {
+    bool surfaceFailure = false,
+  }) async {
     try {
       final dateStr = _localDateYmd(date);
       final endpoint =
@@ -634,6 +653,9 @@ class FoodRepository {
         endpoint,
       );
       if (response.statusCode != 200) {
+        if (surfaceFailure) {
+          throw StateError('food records load failed');
+        }
         return [];
       }
       final body = _decodeResponseBody(response.body);
@@ -657,6 +679,7 @@ class FoodRepository {
       }
       return records;
     } catch (e, st) {
+      if (surfaceFailure) rethrow;
       return [];
     }
   }
