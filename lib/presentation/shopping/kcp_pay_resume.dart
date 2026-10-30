@@ -10,33 +10,92 @@ import 'screens/kcp_pay_webview_screen.dart';
 
 /// 새로고침으로 결제 화면이 사라져도, 진행 중이던 결제 토큰으로 결과를 이어서 확인한다.
 class KcpPayResume {
+  static const _mobilePollInterval = Duration(milliseconds: 800);
+  static const _mobilePollTimeout = Duration(seconds: 90);
+
   static Future<void> tryResume(BuildContext context) async {
     if (!kIsWeb) return;
     final token = readKcpPayToken();
     if (token == null || token.isEmpty || !context.mounted) return;
 
-    Map<String, dynamic>? data;
+    final data = await _fetchResult(token);
+    if (!context.mounted) return;
+    if (data == null) return;
+
+    if (_isGone(data)) {
+      clearKcpPayToken();
+      return;
+    }
+
+    if (await _handleTerminalResult(context, data)) return;
+
+    final status = (data['status'] ?? '').toString();
+    // 모바일: 결제창이 탭을 바꾸므로 WebView를 다시 열지 않고 결과만 폴링한다.
+    if (status == 'pending' && _isMobileWidth(context)) {
+      await _awaitMobilePendingResult(context, token);
+      return;
+    }
+
+    if (!context.mounted) return;
+    final result = await Navigator.of(context).push<Map<String, dynamic>>(
+      PageRouteBuilder(
+        opaque: true,
+        fullscreenDialog: true,
+        pageBuilder: (context, animation, secondaryAnimation) {
+          return KcpPayWebViewScreen(token: token);
+        },
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+      ),
+    );
+    if (!context.mounted || result == null) return;
+    if (result['success'] == true) {
+      _openComplete(context, (result['order_id'] ?? '').toString());
+    }
+  }
+
+  static bool _isMobileWidth(BuildContext context) =>
+      MediaQuery.sizeOf(context).width <= 650;
+
+  static bool _isGone(Map<String, dynamic> data) => data['_gone'] == true;
+
+  /// 결과 API 한 번. 404는 `{_gone: true}`, 네트워크 오류는 null.
+  static Future<Map<String, dynamic>?> _fetchResult(String token) async {
     try {
       final response = await ApiClient.get(ApiEndpoints.kcpPayResult(token));
-      if (!context.mounted) return;
       if (response.statusCode == 404) {
-        clearKcpPayToken();
-        return;
+        return <String, dynamic>{'_gone': true};
       }
       final decoded = jsonDecode(response.body);
       if (decoded is Map) {
-        data = Map<String, dynamic>.from(decoded);
+        return Map<String, dynamic>.from(decoded);
       }
-    } catch (_) {
-      return;
-    }
-    if (data == null || !context.mounted) return;
+    } catch (_) {}
+    return null;
+  }
 
+  /// success / failed / expired / 가상계좌 pending 완료를 처리하면 true.
+  static Future<bool> _handleTerminalResult(
+    BuildContext context,
+    Map<String, dynamic> data,
+  ) async {
     final status = (data['status'] ?? '').toString();
     if (data['success'] == true || status == 'success') {
       _openComplete(context, (data['order_id'] ?? '').toString());
-      return;
+      return true;
     }
+
+    // 웹뷰와 동일: pending 이어도 가상계좌 발급 완료면 성공으로 본다.
+    if (status == 'pending') {
+      final resCd = (data['res_cd'] ?? '').toString().trim();
+      final orderId = (data['order_id'] ?? '').toString().trim();
+      if (resCd == '0000' && orderId.isNotEmpty) {
+        _openComplete(context, orderId);
+        return true;
+      }
+    }
+
     if (status == 'failed' || status == 'expired') {
       clearKcpPayToken();
       if (status == 'failed' && context.mounted) {
@@ -56,31 +115,53 @@ class KcpPayResume {
           ),
         );
       }
-      return;
+      return true;
+    }
+    return false;
+  }
+
+  /// 모바일 pending: 토큰 유지 + 결과 폴링. WebView 재오픈 없음.
+  static Future<void> _awaitMobilePendingResult(
+    BuildContext context,
+    String token,
+  ) async {
+    final started = DateTime.now();
+    while (context.mounted &&
+        DateTime.now().difference(started) < _mobilePollTimeout) {
+      await Future<void>.delayed(_mobilePollInterval);
+      if (!context.mounted) return;
+
+      final data = await _fetchResult(token);
+      if (!context.mounted) return;
+      if (data == null) continue;
+      if (_isGone(data)) {
+        clearKcpPayToken();
+        return;
+      }
+      if (await _handleTerminalResult(context, data)) return;
     }
 
-    // 모바일은 결제창이 현재 탭을 바꾸므로, 결과 없이 돌아오면 다시 열지 않는다.
-    if (status == 'pending' && MediaQuery.sizeOf(context).width <= 650) {
-      clearKcpPayToken();
-      return;
-    }
-
-    final result = await Navigator.of(context).push<Map<String, dynamic>>(
-      PageRouteBuilder(
-        opaque: true,
-        fullscreenDialog: true,
-        pageBuilder: (context, animation, secondaryAnimation) {
-          return KcpPayWebViewScreen(token: token);
-        },
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          return FadeTransition(opacity: animation, child: child);
-        },
+    // 시간 초과: 토큰은 남겨 다음 진입에서 다시 확인. 주문내역으로 안내.
+    if (!context.mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        content: const Text(
+          '결제 결과를 아직 확인하지 못했습니다.\n주문내역에서 상태를 확인해 주세요.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('확인'),
+          ),
+        ],
       ),
     );
-    if (!context.mounted || result == null) return;
-    if (result['success'] == true) {
-      _openComplete(context, (result['order_id'] ?? '').toString());
-    }
+    if (!context.mounted) return;
+    Navigator.of(context).pushNamedAndRemoveUntil(
+      '/order',
+      (route) => route.isFirst,
+    );
   }
 
   static void _openComplete(BuildContext context, String orderId) {
