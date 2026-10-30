@@ -50,7 +50,11 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
   Timer? _filterDebounce;
 
   static const Color _kPink = Color(0xFFFF5A8D);
+  static const Color _kPinkSoft = Color(0x19FF5A8D);
+  static const Color _kSurface = Color(0xFFFFFFFF);
+  static const Color _kPlaceholder = Color(0xFFE8E8E8);
   static const Color _kBorder = Color(0x7FD2D2D2);
+  static const Color _kBorderSoft = Color(0x4CD2D2D2);
   static const Color _kBorderStrong = Color(0xFFD2D2D2);
   static const Color _kMuted = Color(0xFF898686);
   static const Color _kMuted2 = Color(0xFF898383);
@@ -253,7 +257,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(healthDp(context, 10)),
           ),
-          backgroundColor: Colors.white,
+          backgroundColor: _kSurface,
         ),
         child: _isLoading
             ? SizedBox(
@@ -367,11 +371,11 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
       width: double.infinity,
       padding: EdgeInsets.all(healthDp(context, 10)),
       decoration: ShapeDecoration(
-        color: Colors.white,
+        color: _kSurface,
         shape: RoundedRectangleBorder(
           side: BorderSide(
             width: healthDp(context, 1),
-            color: const Color(0xFFD2D2D2),
+            color: _kBorderStrong,
           ),
           borderRadius: BorderRadius.circular(healthDp(context, 12)),
         ),
@@ -382,7 +386,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
           Text(
             label,
             style: TextStyle(
-              color: const Color(0xFF1A1A1E),
+              color: _kInk,
               fontSize: healthSp(context, 12),
               fontFamily: 'Gmarket Sans TTF',
               fontWeight: FontWeight.w500,
@@ -497,11 +501,11 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
 
   Widget _imagePlaceholder() {
     return const ColoredBox(
-      color: Color(0xFFE8E8E8),
+      color: _kPlaceholder,
       child: Center(
         child: Icon(
           Icons.image_outlined,
-          color: Color(0xFF898686),
+          color: _kMuted,
         ),
       ),
     );
@@ -798,7 +802,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                 vertical: healthDp(context, 5.5),
               ),
               decoration: ShapeDecoration(
-                color: const Color(0x19FF5A8D),
+                color: _kPinkSoft,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(healthDp(context, 20)),
                 ),
@@ -864,7 +868,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
       width: double.infinity,
       padding: EdgeInsets.all(healthDp(context, 14)),
       decoration: ShapeDecoration(
-        color: Colors.white,
+        color: _kSurface,
         shape: RoundedRectangleBorder(
           side: BorderSide(width: healthDp(context, 1), color: _kBorder),
           borderRadius: BorderRadius.circular(healthDp(context, 12)),
@@ -888,7 +892,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
         vertical: healthDp(context, 20),
       ),
       decoration: ShapeDecoration(
-        color: Colors.white,
+        color: _kSurface,
         shape: RoundedRectangleBorder(
           side: BorderSide(width: healthDp(context, 1), color: _kBorder),
           borderRadius: BorderRadius.circular(healthDp(context, 10)),
@@ -936,7 +940,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
               vertical: healthDp(context, 10),
             ),
             decoration: ShapeDecoration(
-              color: Colors.white,
+              color: _kSurface,
               shape: RoundedRectangleBorder(
                 side: BorderSide(width: healthDp(context, 1), color: _kBorder),
                 borderRadius: BorderRadius.circular(healthDp(context, 12)),
@@ -995,7 +999,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                           listThumb,
                           fit: BoxFit.cover,
                           errorBuilder: (_, __, ___) => Container(
-                            color: const Color(0x4CD2D2D2),
+                            color: _kBorderSoft,
                             child: Icon(
                               Icons.image_outlined,
                               size: healthDp(context, 18),
@@ -1004,7 +1008,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                           ),
                         )
                       : Container(
-                          color: const Color(0x4CD2D2D2),
+                          color: _kBorderSoft,
                           alignment: Alignment.center,
                           child: Icon(
                             Icons.image_outlined,
@@ -1097,7 +1101,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
         height: fieldH,
         padding: EdgeInsets.zero,
         borderRadius: radius,
-        fillColor: Colors.white,
+        fillColor: _kSurface,
         builder: (focusNode) => Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
@@ -1220,7 +1224,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
         child: DefaultTextStyle.merge(
           style: const TextStyle(fontFamily: 'Gmarket Sans TTF', color: _kInk),
           child: MobileAppLayoutWrapper(
-            backgroundColor: Colors.white,
+            backgroundColor: _kSurface,
             appBar: HealthAppBar(
               title: '내 리뷰',
               leadingIconSize: healthDp(context, 16),
