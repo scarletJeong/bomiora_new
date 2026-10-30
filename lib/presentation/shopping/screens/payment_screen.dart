@@ -129,7 +129,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
   int _extraShipping = 0;
   double _pointRate = 1;
   int _shippingQuoteGen = 0;
-  bool _shippingCouponDismissed = false;
 
   List<Coupon> _loadedCoupons = [];
   List<Coupon> _applicableCoupons = [];
@@ -422,27 +421,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
     if (_couponPointDisabled && _applicableCoupons.isNotEmpty) {
       debugPrint('[결제쿠폰] 적용 가능한 쿠폰이 있어도 인플루언서 상품만 있으면 쿠폰 선택 영역이 숨겨집니다.');
     }
-  }
-
-  /// 배송비가 생기면 배송비 쿠폰을 총액에 바로 붙인다.
-  /// 사용자가 삭제한 뒤에는 다시 넣지 않는다.
-  void _maybeAutoSelectShippingCoupon() {
-    if (_shippingCouponDismissed) return;
-    if (_couponPointDisabled) return;
-    if (_baseShipping <= 0) return;
-    if (_selectedCoupons.any((coupon) => coupon.method == 3)) return;
-    Coupon? best;
-    var bestDiscount = 0;
-    for (final coupon in _applicableCoupons) {
-      if (coupon.method != 3) continue;
-      final discount = _shippingDiscountFor(coupon);
-      if (discount > bestDiscount) {
-        best = coupon;
-        bestDiscount = discount;
-      }
-    }
-    if (best == null || bestDiscount <= 0) return;
-    _selectedCoupons.add(best);
   }
 
   int get _purchaseAmount =>
@@ -777,7 +755,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
       _extraShipping = quote.extraShipping < 0 ? 0 : quote.extraShipping;
       _pointRate = quote.pointRate;
       _syncCouponLists();
-      _maybeAutoSelectShippingCoupon();
     });
     return quote;
   }
@@ -2364,7 +2341,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
     setState(() {
       if (method == 3) {
-        _shippingCouponDismissed = false;
         _selectedCoupons.removeWhere((coupon) => coupon.method == 3);
         _selectedCoupons.add(picked);
       } else if (method == 1) {
@@ -2456,7 +2432,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
           InkWell(
             onTap: () {
               setState(() {
-                if (coupon.method == 3) _shippingCouponDismissed = true;
                 _selectedCoupons.removeWhere((c) => c.no == coupon.no);
                 if (_usedPoint > _maxUsablePointHundreds) {
                   _usedPoint = _maxUsablePointHundreds;
