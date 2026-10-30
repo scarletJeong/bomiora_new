@@ -282,11 +282,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   bool _isCouponApplicable(Coupon coupon) {
     if (!coupon.isAvailable) return false;
+    // 인플루언서 상품만 있으면 상품·카테고리·주문·배송비 쿠폰 전부 불가
+    if (_couponPointDisabled) return false;
     if (coupon.method == 3) {
       if (_baseShipping <= 0) return false;
       return _shippingCouponGoodsAmount >= coupon.minimum;
     }
-    if (_couponPointDisabled) return false;
     switch (coupon.method) {
       case 0:
         if (_nonInfluencerAmount < coupon.minimum) return false;
@@ -335,6 +336,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
       if (coupon.isUsed) return '이미 사용 (주문 ${coupon.orderId})';
       return '사용 기간 아님 (${coupon.formattedDateRange})';
     }
+    if (_couponPointDisabled) {
+      return '인플루언서 상품만 있어 쿠폰/포인트 제외';
+    }
     if (coupon.method == 3) {
       if (_baseShipping <= 0) return '배송비가 0원';
       if (_shippingCouponGoodsAmount < coupon.minimum) {
@@ -342,7 +346,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
       }
       return '';
     }
-    if (_couponPointDisabled) return '인플루언서 상품만 있어 상품 쿠폰 제외';
     switch (coupon.method) {
       case 0:
         if (_nonInfluencerAmount < coupon.minimum) {
@@ -424,6 +427,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
   /// 사용자가 삭제한 뒤에는 다시 넣지 않는다.
   void _maybeAutoSelectShippingCoupon() {
     if (_shippingCouponDismissed) return;
+    if (_couponPointDisabled) return;
     if (_baseShipping <= 0) return;
     if (_selectedCoupons.any((coupon) => coupon.method == 3)) return;
     Coupon? best;
@@ -443,8 +447,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
   int get _purchaseAmount =>
       widget.cartItems.fold(0, (sum, item) => sum + item.ctPrice);
 
-  /// 배송비 쿠폰 최소 금액. 일반 상품과 처방 상품의 라인 금액 합이다.
+  /// 배송비 쿠폰 최소 금액. 일반·처방 상품 중 인플루언서가 아닌 라인 금액 합.
   int get _shippingCouponGoodsAmount => widget.cartItems.fold<int>(0, (sum, item) {
+        if (_isInfluencerCartItem(item)) return sum;
         final kind = item.ctKind.toLowerCase();
         if (kind.isNotEmpty && kind != 'general' && kind != 'prescription') {
           return sum;
@@ -468,7 +473,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   String get _couponPointNotice {
     if (_isInfluencerOnly) {
-      return '인플루언서 상품에는 상품 쿠폰과 포인트를 쓸 수 없습니다.';
+      return '인플루언서 상품에는 쿠폰(배송비 포함)과 포인트를 쓸 수 없습니다.';
     }
     if (_hasInfluencerItems) {
       return '인플루언서 상품에는 쿠폰/포인트가 적용되지 않습니다.';
@@ -533,6 +538,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   /// 배송비 쿠폰은 기본 배송비만 기준으로 깎고, 상품 쿠폰 한도와 더하지 않는다.
   int _shippingDiscountFor(Coupon coupon) {
+    if (_couponPointDisabled) return 0;
     final base = _baseShipping;
     if (base <= 0 || _shippingCouponGoodsAmount < coupon.minimum) return 0;
     var discount = coupon.price;
@@ -557,6 +563,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   int get _shippingCouponDiscount {
+    if (_couponPointDisabled) return 0;
     final raw = _selectedCoupons
         .where((coupon) => coupon.method == 3)
         .fold<int>(0, (sum, coupon) => sum + _shippingDiscountFor(coupon));
