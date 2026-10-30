@@ -2392,46 +2392,6 @@ class _WeightListScreenState extends State<WeightListScreen>
   }
 }
 
-/// 체중 확대 화면 레이아웃 정렬용 임시 범례 (심박 확대와 동일 스타일)
-class _WeightExpandTempLegend extends StatelessWidget {
-  final Color color;
-  final String label;
-  final bool compact;
-
-  const _WeightExpandTempLegend({
-    required this.color,
-    required this.label,
-    this.compact = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final dot = compact ? 8.0 : 12.0;
-    final gap = compact ? 3.0 : 5.0;
-    final fontSize = compact ? 9.0 : 12.0;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: dot,
-          height: dot,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        ),
-        SizedBox(width: gap),
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: fontSize,
-            fontFamily: 'Gmarket Sans TTF',
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 /// 목표체중 라벨 아래, 차트 쪽을 가리키는 아래방향 삼각형(채움).
 class _GoalTargetDownTrianglePainter extends CustomPainter {
   const _GoalTargetDownTrianglePainter({required this.color});
