@@ -241,28 +241,9 @@ class _BomioraAppState extends State<BomioraApp> {
         },
         '/point': (context) => const PointScreen(),
         '/order': (context) => const DeliveryListScreen(),
-        // 레거시: `/order-detail` (ID 없음). 가능하면 arguments의 주문번호로 상세를 연다.
-        // 정상 진입은 `/order-detail/:odId` (onGenerateRoute).
-        '/order-detail': (context) {
-          final args = ModalRoute.of(context)?.settings.arguments;
-          var orderNumber = '';
-          OrderDetailModel? initialOrder;
-          if (args is Map) {
-            orderNumber =
-                (args['orderNumber'] ?? args['odId'] ?? '').toString().trim();
-            final preview = args['initialOrder'];
-            if (preview is OrderDetailModel) {
-              initialOrder = preview;
-            }
-          }
-          return DeliveryDetailScreen(
-            orderNumber: orderNumber,
-            initialOrder: initialOrder,
-            returnToOrderList: args is Map &&
-                (args['returnToOrderList'] == true ||
-                    args['fromPaymentComplete'] == true),
-          );
-        },
+        // `/order-detail` 를 routes에 두면 새로고침 시
+        // `/order-detail/:odId` 보다 먼저 주문번호 없는 화면이 열리고
+        // 그 화면이 주문 목록으로 바꿔 버린다. 상세는 onGenerateRoute만 연다.
         '/announcement': (context) => const AnnouncementListScreen(),
         '/event': (context) => const EventListScreen(),
         '/faq': (context) => const FaqListScreen(),
