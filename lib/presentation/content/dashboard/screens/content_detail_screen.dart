@@ -10,6 +10,7 @@ import '../../../../data/services/wish_service.dart';
 import '../../../common/navigation/board_list_navigation.dart';
 import '../../../common/widgets/app_network_image.dart';
 import '../../../common/widgets/centered_empty_state.dart';
+import '../../../common/widgets/login_required_dialog.dart';
 import '../../../common/widgets/article_adjacent_nav.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
@@ -168,11 +169,30 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
     } catch (_) {}
   }
 
+  /// 로그인 세션이 없으면 공통 로그인 안내를 띄우고 null을 반환한다.
+  Future<String?> _requireMemberId(String message) async {
+    var mbId = _userId?.trim() ?? '';
+    if (mbId.isEmpty) {
+      try {
+        mbId = (await AuthService.getUser())?.id.trim() ?? '';
+      } catch (_) {}
+      if (mbId.isNotEmpty && mounted) {
+        setState(() => _userId = mbId);
+      }
+    }
+    if (mbId.isEmpty) {
+      if (!mounted) return null;
+      await showLoginRequiredDialog(context, message: message);
+      return null;
+    }
+    return mbId;
+  }
+
   Future<void> _toggleWish() async {
     final id = _currentContentId;
     if (id == null || _wishBusy) return;
-    final mbId = _userId;
-    if (mbId == null || mbId.isEmpty) return;
+    final mbId = await _requireMemberId('찜하기는 로그인 후 이용할 수 있습니다.');
+    if (mbId == null || !mounted) return;
 
     _wishLoadToken++;
     final prev = _isWished == true;
@@ -200,8 +220,8 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
   Future<void> _onRecommend() async {
     final id = _currentContentId;
     if (id == null || _recommendBusy) return;
-    final mbId = _userId;
-    if (mbId == null || mbId.isEmpty) return;
+    final mbId = await _requireMemberId('추천은 로그인 후 이용할 수 있습니다.');
+    if (mbId == null || !mounted) return;
 
     final prevRecommended = _userRecommended == true;
     final prevCount = _recommendCount;
