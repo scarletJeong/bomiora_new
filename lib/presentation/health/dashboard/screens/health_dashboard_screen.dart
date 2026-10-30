@@ -77,6 +77,13 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
     'Snack': 0,
   };
 
+  final Map<String, bool> mealHasRecord = {
+    'Breakfast': false,
+    'Lunch': false,
+    'Dinner': false,
+    'Snack': false,
+  };
+
   final Map<String, List<String>> mealImagePaths = {
     'Breakfast': const [],
     'Lunch': const [],
@@ -144,6 +151,10 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
           mealCalories['Lunch'] = 0;
           mealCalories['Dinner'] = 0;
           mealCalories['Snack'] = 0;
+          mealHasRecord['Breakfast'] = false;
+          mealHasRecord['Lunch'] = false;
+          mealHasRecord['Dinner'] = false;
+          mealHasRecord['Snack'] = false;
           mealImagePaths['Breakfast'] = const [];
           mealImagePaths['Lunch'] = const [];
           mealImagePaths['Dinner'] = const [];
@@ -273,6 +284,10 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
           mealCalories['Lunch'] = lunch?.calories ?? 0;
           mealCalories['Dinner'] = dinner?.calories ?? 0;
           mealCalories['Snack'] = snack?.calories ?? 0;
+          mealHasRecord['Breakfast'] = breakfast != null;
+          mealHasRecord['Lunch'] = lunch != null;
+          mealHasRecord['Dinner'] = dinner != null;
+          mealHasRecord['Snack'] = snack != null;
           mealImagePaths['Breakfast'] = breakfast?.imagePaths ?? const [];
           mealImagePaths['Lunch'] = lunch?.imagePaths ?? const [];
           mealImagePaths['Dinner'] = dinner?.imagePaths ?? const [];
@@ -466,6 +481,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
                                         totalFat: totalFat,
                                         totalOther: totalOther,
                                         mealCalories: mealCalories,
+                                        mealHasRecord: mealHasRecord,
                                         mealImagePaths: mealImagePaths,
                                         selectedDate: selectedDate,
                                         onBeforeAction:

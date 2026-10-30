@@ -18,10 +18,13 @@ import '../widgets/food_input_widgets.dart';
 
 /// 오늘의 식사 화면
 class TodayDietScreen extends StatefulWidget {
-  const TodayDietScreen({super.key, this.initialDate});
+  const TodayDietScreen({super.key, this.initialDate, this.initialMeal});
 
   /// 건강 대시보드 등에서 열 때 해당 날짜로 맞춤
   final DateTime? initialDate;
+
+  /// 대시보드 끼니 카드에서 열 때 펼칠 끼니 (`아침`/`점심`/`저녁`/`간식`)
+  final String? initialMeal;
 
   @override
   State<TodayDietScreen> createState() => _TodayDietScreenState();
@@ -33,6 +36,12 @@ class _TodayDietScreenState extends State<TodayDietScreen>
 
   /// 열린 칼로리 검색 블록의 식사 타입 ('아침' | '점심' | '저녁' | '간식'), null이면 모두 닫힘
   String? _expandedMealKey;
+  final Map<String, GlobalKey> _mealSectionKeys = {
+    '아침': GlobalKey(),
+    '점심': GlobalKey(),
+    '저녁': GlobalKey(),
+    '간식': GlobalKey(),
+  };
 
   UserModel? _currentUser;
   int totalCalories = 0;
@@ -108,6 +117,19 @@ class _TodayDietScreenState extends State<TodayDietScreen>
     final d = widget.initialDate;
     selectedDate =
         d != null ? DateTime(d.year, d.month, d.day) : DateTime.now();
+    final meal = widget.initialMeal;
+    if (meal != null && _mealSectionKeys.containsKey(meal)) {
+      _expandedMealKey = meal;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final target = _mealSectionKeys[meal]?.currentContext;
+        if (target == null || !mounted) return;
+        Scrollable.ensureVisible(
+          target,
+          alignment: 0.15,
+          duration: const Duration(milliseconds: 250),
+        );
+      });
+    }
     _loadUser().then((_) => _loadMealData());
   }
 
@@ -195,105 +217,52 @@ class _TodayDietScreenState extends State<TodayDietScreen>
                 SizedBox(height: healthDp(context, 10)),
                 _buildMacroLegendRow(context),
                 SizedBox(height: healthDp(context, 14)),
-                _buildMealDetailCard(
-                  context,
-                  title: '아침',
-                  kcal: _recordFor('아침')?.calories ?? 0,
-                  carb: _recordFor('아침')?.carbs?.toStringAsFixed(1) ?? '-',
-                  protein: _recordFor('아침')?.protein?.toStringAsFixed(1) ?? '-',
-                  fat: _recordFor('아침')?.fat?.toStringAsFixed(1) ?? '-',
-                  other: _recordFor('아침')?.other?.toStringAsFixed(1) ?? '-',
-                  mealRecord: _recordFor('아침'),
-                  onTap: () => _toggleFoodSearchFor('아침'),
-                ),
-                if (_expandedMealKey == '아침') ...[
-                  SizedBox(height: healthDp(context, 5)),
-                  CalorieSearchBlock(
-                    mealKey: '아침',
-                    selectedDate: selectedDate,
-                    mbId: _currentUser?.id ?? '',
-                    foodRecordId: _recordFor('아침')?.id ?? '',
-                    mealImagePaths: _recordFor('아침')?.imagePaths ?? const [],
-                    addedItems: _recordFor('아침')?.items ?? [],
-                    onItemAdded: _onFoodItemAdded,
-                  ),
-                ],
+                _mealSection(context, '아침'),
                 SizedBox(height: healthDp(context, 14)),
-                _buildMealDetailCard(
-                  context,
-                  title: '점심',
-                  kcal: _recordFor('점심')?.calories ?? 0,
-                  carb: _recordFor('점심')?.carbs?.toStringAsFixed(1) ?? '-',
-                  protein: _recordFor('점심')?.protein?.toStringAsFixed(1) ?? '-',
-                  fat: _recordFor('점심')?.fat?.toStringAsFixed(1) ?? '-',
-                  other: _recordFor('점심')?.other?.toStringAsFixed(1) ?? '-',
-                  mealRecord: _recordFor('점심'),
-                  onTap: () => _toggleFoodSearchFor('점심'),
-                ),
-                if (_expandedMealKey == '점심') ...[
-                  SizedBox(height: healthDp(context, 5)),
-                  CalorieSearchBlock(
-                    mealKey: '점심',
-                    selectedDate: selectedDate,
-                    mbId: _currentUser?.id ?? '',
-                    foodRecordId: _recordFor('점심')?.id ?? '',
-                    mealImagePaths: _recordFor('점심')?.imagePaths ?? const [],
-                    addedItems: _recordFor('점심')?.items ?? [],
-                    onItemAdded: _onFoodItemAdded,
-                  ),
-                ],
+                _mealSection(context, '점심'),
                 SizedBox(height: healthDp(context, 14)),
-                _buildMealDetailCard(
-                  context,
-                  title: '저녁',
-                  kcal: _recordFor('저녁')?.calories ?? 0,
-                  carb: _recordFor('저녁')?.carbs?.toStringAsFixed(1) ?? '-',
-                  protein: _recordFor('저녁')?.protein?.toStringAsFixed(1) ?? '-',
-                  fat: _recordFor('저녁')?.fat?.toStringAsFixed(1) ?? '-',
-                  other: _recordFor('저녁')?.other?.toStringAsFixed(1) ?? '-',
-                  mealRecord: _recordFor('저녁'),
-                  onTap: () => _toggleFoodSearchFor('저녁'),
-                ),
-                if (_expandedMealKey == '저녁') ...[
-                  SizedBox(height: healthDp(context, 5)),
-                  CalorieSearchBlock(
-                    mealKey: '저녁',
-                    selectedDate: selectedDate,
-                    mbId: _currentUser?.id ?? '',
-                    foodRecordId: _recordFor('저녁')?.id ?? '',
-                    mealImagePaths: _recordFor('저녁')?.imagePaths ?? const [],
-                    addedItems: _recordFor('저녁')?.items ?? [],
-                    onItemAdded: _onFoodItemAdded,
-                  ),
-                ],
+                _mealSection(context, '저녁'),
                 SizedBox(height: healthDp(context, 14)),
-                _buildMealDetailCard(
-                  context,
-                  title: '간식',
-                  kcal: _recordFor('간식')?.calories ?? 0,
-                  carb: _recordFor('간식')?.carbs?.toStringAsFixed(1) ?? '-',
-                  protein: _recordFor('간식')?.protein?.toStringAsFixed(1) ?? '-',
-                  fat: _recordFor('간식')?.fat?.toStringAsFixed(1) ?? '-',
-                  other: _recordFor('간식')?.other?.toStringAsFixed(1) ?? '-',
-                  mealRecord: _recordFor('간식'),
-                  onTap: () => _toggleFoodSearchFor('간식'),
-                ),
-                if (_expandedMealKey == '간식') ...[
-                  SizedBox(height: healthDp(context, 5)),
-                  CalorieSearchBlock(
-                    mealKey: '간식',
-                    selectedDate: selectedDate,
-                    mbId: _currentUser?.id ?? '',
-                    foodRecordId: _recordFor('간식')?.id ?? '',
-                    mealImagePaths: _recordFor('간식')?.imagePaths ?? const [],
-                    addedItems: _recordFor('간식')?.items ?? [],
-                    onItemAdded: _onFoodItemAdded,
-                  ),
-                ],
+                _mealSection(context, '간식'),
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _mealSection(BuildContext context, String mealKey) {
+    final record = _recordFor(mealKey);
+    return KeyedSubtree(
+      key: _mealSectionKeys[mealKey],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildMealDetailCard(
+            context,
+            title: mealKey,
+            kcal: record?.calories ?? 0,
+            carb: record?.carbs?.toStringAsFixed(1) ?? '-',
+            protein: record?.protein?.toStringAsFixed(1) ?? '-',
+            fat: record?.fat?.toStringAsFixed(1) ?? '-',
+            other: record?.other?.toStringAsFixed(1) ?? '-',
+            mealRecord: record,
+            onTap: () => _toggleFoodSearchFor(mealKey),
+          ),
+          if (_expandedMealKey == mealKey) ...[
+            SizedBox(height: healthDp(context, 5)),
+            CalorieSearchBlock(
+              mealKey: mealKey,
+              selectedDate: selectedDate,
+              mbId: _currentUser?.id ?? '',
+              foodRecordId: record?.id ?? '',
+              mealImagePaths: record?.imagePaths ?? const [],
+              addedItems: record?.items ?? [],
+              onItemAdded: _onFoodItemAdded,
+            ),
+          ],
+        ],
       ),
     );
   }

@@ -17,6 +17,7 @@ class TodayMealSection extends StatelessWidget {
     required this.totalFat,
     required this.totalOther,
     required this.mealCalories,
+    required this.mealHasRecord,
     required this.mealImagePaths,
     required this.selectedDate,
     required this.onBeforeAction,
@@ -30,26 +31,30 @@ class TodayMealSection extends StatelessWidget {
   final num totalFat;
   final num totalOther;
   final Map<String, int> mealCalories;
+  final Map<String, bool> mealHasRecord;
   final Map<String, List<String>> mealImagePaths;
   final DateTime selectedDate;
   final Future<bool> Function() onBeforeAction;
   final VoidCallback onAfterDietReturn;
 
+  Future<void> _openDiet(BuildContext context, String? meal) async {
+    if (!await onBeforeAction()) return;
+    if (!context.mounted) return;
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => TodayDietScreen(
+          initialDate: selectedDate,
+          initialMeal: meal,
+        ),
+      ),
+    );
+    onAfterDietReturn();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () async {
-        if (!await onBeforeAction()) return;
-        if (!context.mounted) return;
-        await Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => TodayDietScreen(initialDate: selectedDate),
-          ),
-        );
-        onAfterDietReturn();
-      },
-      child: Container(
+    return Container(
         padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -58,6 +63,12 @@ class TodayMealSection extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => _openDiet(context, null),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -159,6 +170,9 @@ class TodayMealSection extends StatelessWidget {
                 _LegendDot('기타', const Color(0xFFE2E2E2)),
               ],
             ),
+                ],
+              ),
+            ),
             SizedBox(height: healthDp(context, 14)),
             Row(
               children: [
@@ -167,7 +181,9 @@ class TodayMealSection extends StatelessWidget {
                     key: const ValueKey('dashboard-meal-breakfast'),
                     mealName: '아침',
                     calories: mealCalories['Breakfast'] ?? 0,
+                    hasRecord: mealHasRecord['Breakfast'] ?? false,
                     imagePaths: mealImagePaths['Breakfast'] ?? const [],
+                    onTap: () => _openDiet(context, '아침'),
                   ),
                 ),
                 SizedBox(width: healthDp(context, 6)),
@@ -176,7 +192,9 @@ class TodayMealSection extends StatelessWidget {
                     key: const ValueKey('dashboard-meal-lunch'),
                     mealName: '점심',
                     calories: mealCalories['Lunch'] ?? 0,
+                    hasRecord: mealHasRecord['Lunch'] ?? false,
                     imagePaths: mealImagePaths['Lunch'] ?? const [],
+                    onTap: () => _openDiet(context, '점심'),
                   ),
                 ),
                 SizedBox(width: healthDp(context, 6)),
@@ -185,7 +203,9 @@ class TodayMealSection extends StatelessWidget {
                     key: const ValueKey('dashboard-meal-dinner'),
                     mealName: '저녁',
                     calories: mealCalories['Dinner'] ?? 0,
+                    hasRecord: mealHasRecord['Dinner'] ?? false,
                     imagePaths: mealImagePaths['Dinner'] ?? const [],
+                    onTap: () => _openDiet(context, '저녁'),
                   ),
                 ),
                 SizedBox(width: healthDp(context, 6)),
@@ -194,14 +214,15 @@ class TodayMealSection extends StatelessWidget {
                     key: const ValueKey('dashboard-meal-snack'),
                     mealName: '간식',
                     calories: mealCalories['Snack'] ?? 0,
+                    hasRecord: mealHasRecord['Snack'] ?? false,
                     imagePaths: mealImagePaths['Snack'] ?? const [],
+                    onTap: () => _openDiet(context, '간식'),
                   ),
                 ),
               ],
             ),
           ],
         ),
-      ),
     );
   }
 }
@@ -317,11 +338,15 @@ class _TodayMealItemCard extends StatelessWidget {
     super.key,
     required this.mealName,
     required this.calories,
+    required this.hasRecord,
+    required this.onTap,
     this.imagePaths = const [],
   });
 
   final String mealName;
   final int calories;
+  final bool hasRecord;
+  final VoidCallback onTap;
   final List<String> imagePaths;
 
   /// 대시보드 카드는 대표(첫 번째) 사진 1장만 표시
@@ -336,12 +361,14 @@ class _TodayMealItemCard extends StatelessWidget {
 
   bool get _hasValidImage => _representativeImagePath != null;
 
-  bool get _hasMeal => calories > 0 || _hasValidImage;
+  bool get _hasMeal => hasRecord || calories > 0 || _hasValidImage;
 
   @override
   Widget build(BuildContext context) {
     final radius = BorderRadius.circular(healthDp(context, 10));
-    return AspectRatio(
+    return GestureDetector(
+      onTap: onTap,
+      child: AspectRatio(
       aspectRatio: 75 / 96,
       child: ClipRRect(
         borderRadius: radius,
@@ -438,6 +465,7 @@ class _TodayMealItemCard extends StatelessWidget {
             ],
           ),
         ),
+      ),
       ),
     );
   }
