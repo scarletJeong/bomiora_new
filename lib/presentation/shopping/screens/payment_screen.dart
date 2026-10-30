@@ -338,9 +338,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   bool _isInfluencerCartItem(CartItem item) => item.ctMbInf.trim().isNotEmpty;
 
+  /// 인플루언서 제외 상품 금액(쿠폰·포인트 기준). 라인 결제액 합.
   int get _nonInfluencerAmount => widget.cartItems
       .where((item) => !_isInfluencerCartItem(item))
-      .fold<int>(0, (sum, item) => sum + item.ctPrice);
+      .fold<int>(0, (sum, item) => sum + item.lineAmount);
 
   bool get _hasInfluencerItems => widget.cartItems.any(_isInfluencerCartItem);
 
@@ -481,7 +482,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
     var total = 0;
     for (final item in widget.cartItems) {
       if (_isInfluencerCartItem(item)) continue;
-      final share = (eligibleBase * item.ctPrice / nonInfTotal).floor();
+      final share = (eligibleBase * item.lineAmount / nonInfTotal).floor();
       final rate = _pointRateForItem(item);
       total += (share * rate / 100).floor();
     }
@@ -838,14 +839,14 @@ class _PaymentScreenState extends State<PaymentScreen> {
         return widget.cartItems
             .where((item) =>
                 isEligibleItem(item) && item.itId == coupon.target.trim())
-            .fold<int>(0, (sum, item) => sum + item.ctPrice);
+            .fold<int>(0, (sum, item) => sum + item.lineAmount);
       case 1:
         if (coupon.target.trim().isEmpty) return _nonInfluencerAmount;
         return widget.cartItems
             .where((item) =>
                 isEligibleItem(item) &&
                 item.matchesCategoryTarget(coupon.target))
-            .fold<int>(0, (sum, item) => sum + item.ctPrice);
+            .fold<int>(0, (sum, item) => sum + item.lineAmount);
       case 2:
         return _nonInfluencerAmount;
       case 3:
