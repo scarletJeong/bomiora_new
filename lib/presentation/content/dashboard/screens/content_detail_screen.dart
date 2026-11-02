@@ -524,7 +524,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
     if (_title.isEmpty) return const SizedBox.shrink();
     return Text(
       _title,
-      textAlign: TextAlign.start,
+      textAlign: TextAlign.center,
       style: TextStyle(
         color: const Color(0xFF1A1A1A),
         fontSize: healthSp(context, 16),
