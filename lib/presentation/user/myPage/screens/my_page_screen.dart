@@ -555,7 +555,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: Colors.black,
+                        color: const Color(0xFF1A1A1E),
                         fontSize: healthSp(context, 16),
                         fontWeight: FontWeight.w500,
                         height: 1,
