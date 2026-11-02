@@ -633,7 +633,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
       }
       return Text(
         bodyText,
-        textAlign: TextAlign.center,
+        textAlign: TextAlign.start,
         style: TextStyle(
           color: _textDark,
           fontSize: healthSp(context, 14),
@@ -658,7 +658,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
           fontWeight: FontWeight.w500,
           lineHeight: const LineHeight(1.43),
           letterSpacing: healthSp(context, -0.56),
-          textAlign: TextAlign.center,
+          textAlign: TextAlign.start,
           color: _textDark,
           whiteSpace: WhiteSpace.pre,
         );
