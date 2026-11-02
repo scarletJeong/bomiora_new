@@ -153,12 +153,6 @@ class _ContentListScreenState extends State<ContentListScreen> {
         _isLoading = false;
       }
     });
-    if (reset && imageCount > 0) {
-      Future<void>.delayed(const Duration(seconds: 20), () {
-        if (!mounted || waitId != _imageWaitId || !_isLoading) return;
-        setState(() => _isLoading = false);
-      });
-    }
   }
 
   void _onListImageSettled(int waitId) {
