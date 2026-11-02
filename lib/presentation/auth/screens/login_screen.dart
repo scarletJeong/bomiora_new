@@ -369,8 +369,6 @@ class _LoginScreenState extends State<LoginScreen> {
             NodeValueParser.asString(userJson['id']) ??
             '';
         userJson['id'] = userId;
-        // 비밀번호 저장
-        userJson['password'] = _passwordController.text;
 
         final user = UserModel.fromJson(userJson);
 

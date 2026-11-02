@@ -14,6 +14,7 @@ import '../../../shopping/wish/screens/wish_list_screen.dart';
 import 'refund_account_screen.dart';
 import '../widgets/my_page_common.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
+import '../../../common/widgets/app_toast_overlay.dart';
 
 class MyPageScreen extends StatefulWidget {
   const MyPageScreen({super.key});
@@ -23,10 +24,6 @@ class MyPageScreen extends StatefulWidget {
 }
 
 class _MyPageScreenState extends State<MyPageScreen> {
-  static const String _influencerWebBase = 'https://bomiora0.mycafe24.com';
-  static const String _influencerAutoLoginUrl =
-      '$_influencerWebBase/inf_adm/app_auto_login.php';
-
   UserModel? _currentUser;
   bool _orderLoading = false;
   bool _couponLoading = false;
@@ -205,23 +202,20 @@ class _MyPageScreenState extends State<MyPageScreen> {
   }
 
   Future<void> _openInfluencerAdmin() async {
-    final user = _currentUser ?? await AuthService.getUser();
-    final password = user?.password?.trim() ?? '';
-    final mbId = user?.id.trim() ?? '';
-
-    final Uri uri;
-    if (mbId.isNotEmpty && password.isNotEmpty) {
-      uri = Uri.parse(_influencerAutoLoginUrl).replace(
-        queryParameters: {
-          'mb_id': mbId,
-          'mb_password': password,
-        },
+    final result = await AuthService.issueInfluencerLoginToken();
+    final loginUrl = result['loginUrl']?.toString() ?? '';
+    if (result['success'] == true && loginUrl.isNotEmpty) {
+      await launchUrl(
+        Uri.parse(loginUrl),
+        mode: LaunchMode.externalApplication,
       );
-    } else {
-      uri = Uri.parse('$_influencerWebBase/inf_adm/influencer_exhaustion_list.php');
+      return;
     }
-
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!mounted) return;
+    AppToastOverlay.show(
+      context,
+      result['message']?.toString() ?? '인플루언서 페이지를 열 수 없습니다.',
+    );
   }
 
   @override

@@ -441,7 +441,6 @@ class _SignupScreenState extends State<SignupScreen> {
             NodeValueParser.asString(userJson['id']) ??
             '';
         userJson['id'] = userId;
-        userJson['password'] = _passwordController.text;
 
         final user = UserModel.fromJson(userJson);
         final token = NodeValueParser.asString(dataMap['token']);

@@ -111,8 +111,14 @@ class AuthService {
     if (userJson != null) {
       try {
         final userData = json.decode(userJson);
-        final user = UserModel.fromJson(userData);
+        final raw = userData is Map
+            ? Map<String, dynamic>.from(userData)
+            : <String, dynamic>{};
+        final user = UserModel.fromJson(raw);
         _memoryUser = user;
+        if (raw.containsKey('password')) {
+          await prefs.setString(_userKey, json.encode(user.toJson()));
+        }
         return user;
       } catch (e) {
         return null;
@@ -418,6 +424,40 @@ class AuthService {
       return {
         'success': false,
         'message': '네트워크 오류가 발생했습니다.',
+      };
+    }
+  }
+
+  /// Cafe24 인플루언서(/inf_adm/) 일회용 로그인 URL 발급
+  static Future<Map<String, dynamic>> issueInfluencerLoginToken() async {
+    try {
+      final user = await getUser();
+      if (user == null) {
+        return {'success': false, 'message': '로그인이 필요합니다.'};
+      }
+      if (!user.isInfluencer) {
+        return {'success': false, 'message': '인플루언서 권한이 없습니다.'};
+      }
+
+      final response = await ApiClient.post(
+        ApiEndpoints.influencerLoginToken,
+        {'mbId': user.id, 'mb_id': user.id},
+      );
+      final data = json.decode(response.body);
+      final loginUrl = data['loginUrl']?.toString() ?? '';
+      final ok = response.statusCode == 200 &&
+          data['success'] == true &&
+          loginUrl.isNotEmpty;
+      return {
+        'success': ok,
+        'loginUrl': loginUrl,
+        'message': data['message']?.toString() ??
+            (ok ? '' : '인플루언서 로그인 토큰 발급에 실패했습니다.'),
+      };
+    } catch (_) {
+      return {
+        'success': false,
+        'message': '인플루언서 페이지 연결에 실패했습니다.',
       };
     }
   }

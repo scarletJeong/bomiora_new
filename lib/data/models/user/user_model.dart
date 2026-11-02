@@ -8,7 +8,6 @@ class UserModel {
   /// 닉네임 마지막 변경일 (`mb_nick_date`, YYYY-MM-DD 등)
   final String? nicknameChangedAt;
   final String? phone;
-  final String? password; // 비밀번호 저장
   final String? profileImage; // 프로필 이미지 경로/URL
   /// 회원 생년월일(가능한 포맷: YYYYMMDD / yyyy-MM-dd 등)
   final String? birthDate;
@@ -24,7 +23,6 @@ class UserModel {
     this.nickname,
     this.nicknameChangedAt,
     this.phone,
-    this.password,
     this.profileImage,
     this.birthDate,
     this.sex,
@@ -60,7 +58,6 @@ class UserModel {
         NodeValueParser.asString(normalized['phone']) ??
         NodeValueParser.asString(normalized['mb_phone']) ??
         NodeValueParser.asString(normalized['mb_hp']);
-    final password = NodeValueParser.asString(normalized['password']);
     final profileImage =
         NodeValueParser.asString(normalized['profileImage']) ??
         NodeValueParser.asString(normalized['profile_img']);
@@ -84,7 +81,6 @@ class UserModel {
       nickname: nickname,
       nicknameChangedAt: nicknameChangedAt,
       phone: phone,
-      password: password,
       profileImage: profileImage,
       birthDate: birthDate,
       sex: sex,
@@ -100,7 +96,6 @@ class UserModel {
       if (nickname != null) 'nickname': nickname,
       if (nicknameChangedAt != null) 'nicknameChangedAt': nicknameChangedAt,
       'phone': phone,
-      if (password != null) 'password': password,
       if (profileImage != null) 'profileImage': profileImage,
       if (birthDate != null) 'birthDate': birthDate,
       if (sex != null) 'sex': sex,
@@ -116,7 +111,6 @@ class UserModel {
     String? nickname,
     String? nicknameChangedAt,
     String? phone,
-    String? password,
     String? profileImage,
     String? birthDate,
     String? sex,
@@ -129,7 +123,6 @@ class UserModel {
       nickname: nickname ?? this.nickname,
       nicknameChangedAt: nicknameChangedAt ?? this.nicknameChangedAt,
       phone: phone ?? this.phone,
-      password: password ?? this.password,
       profileImage: profileImage ?? this.profileImage,
       birthDate: birthDate ?? this.birthDate,
       sex: sex ?? this.sex,

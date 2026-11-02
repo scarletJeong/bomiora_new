@@ -387,9 +387,6 @@ class QaService {
             'ca_name': primaryType,
           if (detailType != null && detailType.isNotEmpty) 'wr_6': detailType,
           if (imagePayloads.isNotEmpty) 'images': imagePayloads,
-          'wr_password': (user.password != null && user.password!.isNotEmpty)
-              ? user.password
-              : user.id,
           'wr_5': phoneNumber,
           'wr_option': 'secret',
         },
