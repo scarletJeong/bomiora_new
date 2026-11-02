@@ -277,13 +277,12 @@ class ContentService {
     }
   }
 
-  /// [mbId]·[pfNo]가 있으면 서버에 `user_recommended` 여부를 함께 조회(문진 프로필당 글당 1회).
+  /// [mbId]가 있으면 서버에 `user_recommended` 여부를 함께 조회(회원당 글당 1회).
   static Future<Map<String, dynamic>> getContentDetail(
     int id, {
     String? mbId,
-    int? pfNo,
   }) async {
-    final key = '$id|${(mbId ?? '').trim()}|${pfNo ?? 0}';
+    final key = '$id|${(mbId ?? '').trim()}';
     final cachedAt = _detailCacheAt[key];
     if (cachedAt != null &&
         DateTime.now().difference(cachedAt) < _detailCacheTtl) {
@@ -292,7 +291,7 @@ class ContentService {
     final pending = _detailInFlight[key];
     if (pending != null) return pending;
 
-    final request = _fetchContentDetail(id, mbId: mbId, pfNo: pfNo);
+    final request = _fetchContentDetail(id, mbId: mbId);
     _detailInFlight[key] = request;
     try {
       final result = await request;
@@ -309,17 +308,12 @@ class ContentService {
   static Future<Map<String, dynamic>> _fetchContentDetail(
     int id, {
     String? mbId,
-    int? pfNo,
   }) async {
     try {
       final q = <String>[];
       final m = (mbId ?? '').trim();
       if (m.isNotEmpty) {
         q.add('mb_id=${Uri.encodeQueryComponent(m)}');
-        final p = pfNo ?? 0;
-        if (p > 0) {
-          q.add('pf_no=$p');
-        }
       }
       final query = q.isNotEmpty ? '?${q.join('&')}' : '';
       final endpoint = '${ApiEndpoints.getContentDetail}/$id$query';
@@ -366,7 +360,6 @@ class ContentService {
   static Future<Map<String, dynamic>> recommendContent(
     int id, {
     required String mbId,
-    int pfNo = 0,
     bool? recommended,
     int? recommendCount,
   }) async {
@@ -382,7 +375,6 @@ class ContentService {
         ApiEndpoints.contentRecommend(id),
         <String, dynamic>{
           'mb_id': mbId,
-          'pf_no': pfNo,
           if (recommended != null) 'recommended': recommended,
           if (recommendCount != null) 'recommend_count': recommendCount,
         },

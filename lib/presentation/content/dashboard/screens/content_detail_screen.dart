@@ -121,7 +121,6 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
     }
 
     String? mbId = _userId ?? AuthService.currentUser?.id;
-    const int pfNo = 0;
     if (mbId == null) {
       try {
         mbId = (await AuthService.getUser())?.id;
@@ -136,7 +135,6 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
     final result = await ContentService.getContentDetail(
       id,
       mbId: mbId,
-      pfNo: pfNo,
     );
     if (!mounted) return;
     if (result['success'] == true) {
@@ -251,7 +249,6 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
       final r = await ContentService.recommendContent(
         id,
         mbId: mbId,
-        pfNo: 0,
         recommended: nextRecommended,
         recommendCount: nextCount,
       );
