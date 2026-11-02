@@ -31,7 +31,7 @@ class _ContentListScreenState extends State<ContentListScreen> {
 
   static const Color _textDark = Color(0xFF1A1A1A);
   static const Color _textMuted = Color(0xFF898686);
-  static const Color _pink = Color(0xFFFF5B8C);
+  static const Color _pink = Color(0xFFFF5A8D);
   static const Color _chipInactive = Color(0xFF898686);
 
   int _tabIndex = 0;
@@ -241,7 +241,7 @@ class _ContentListScreenState extends State<ContentListScreen> {
                               width: 36,
                               height: 36,
                               child: CircularProgressIndicator(
-                                color: Color(0xFFFF5B8C),
+                                color: Color(0xFFFF5A8D),
                               ),
                             ),
                           ),
@@ -322,7 +322,7 @@ class _ContentListScreenState extends State<ContentListScreen> {
                 width: 36,
                 height: 36,
                 child: CircularProgressIndicator(
-                  color: Color(0xFFFF5B8C),
+                  color: Color(0xFFFF5A8D),
                 ),
               ),
             ),
@@ -669,7 +669,7 @@ class _ContentListScreenState extends State<ContentListScreen> {
                   height: healthDp(context, 18),
                   child: const CircularProgressIndicator(
                     strokeWidth: 2,
-                    color: Color(0xFFFF5B8C),
+                    color: Color(0xFFFF5A8D),
                   ),
                 )
               else
