@@ -7,7 +7,6 @@ import '../../common/widgets/app_network_image.dart';
 import '../../common/widgets/centered_empty_state.dart';
 import '../../common/widgets/web_dragscroll.dart';
 import '../../health/health_common/health_responsive_scale.dart';
-import '../../content/dashboard/screens/content_detail_screen.dart';
 import 'btn_more.dart';
 import 'home_big_card.dart';
 import 'home_section_widgets.dart';
@@ -118,11 +117,19 @@ class _GuidebookSectionState extends State<GuidebookSection> {
                         titleH: titleH,
                         item: it,
                         onTap: () {
-                          Navigator.push(
+                          final idRaw = it['id'];
+                          final id = idRaw is num
+                              ? idRaw.toInt()
+                              : int.tryParse('$idRaw');
+                          if (id == null) return;
+                          final cat = (it['category'] ?? '').toString().trim();
+                          Navigator.pushNamed(
                             context,
-                            MaterialPageRoute(
-                              builder: (_) => ContentDetailScreen.fromArgs(it),
-                            ),
+                            '/content/detail',
+                            arguments: {
+                              'id': id,
+                              if (cat.isNotEmpty) 'category': cat,
+                            },
                           );
                         },
                       );
