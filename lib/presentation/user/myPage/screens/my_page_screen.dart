@@ -28,46 +28,108 @@ class _MyPageScreenState extends State<MyPageScreen> {
       '$_influencerWebBase/inf_adm/app_auto_login.php';
 
   UserModel? _currentUser;
-  bool _statsLoading = false;
+  bool _orderLoading = false;
+  bool _couponLoading = false;
+  bool _pointLoading = false;
+  bool _orderFailed = false;
+  bool _couponFailed = false;
+  bool _pointFailed = false;
   int _orderCount = 0;
   int _couponCount = 0;
   int _pointBalance = 0;
 
+  void _clearStatFailures() {
+    _orderLoading = false;
+    _couponLoading = false;
+    _pointLoading = false;
+    _orderFailed = false;
+    _couponFailed = false;
+    _pointFailed = false;
+  }
+
   Future<void> _loadMyPageStats() async {
+    await Future.wait([
+      _loadOrderCount(),
+      _loadCouponCount(),
+      _loadPointBalance(),
+    ]);
+  }
+
+  Future<void> _loadOrderCount() async {
     final u = _currentUser;
-    if (u == null) {
-      if (mounted) {
-        setState(() => _statsLoading = false);
-      }
-      return;
-    }
-
+    if (u == null) return;
+    setState(() => _orderLoading = true);
     try {
-      final results = await Future.wait([
-        OrderService.prefetchOrderList(u.id),
-        CouponService.getAvailableCouponCount(u.id),
-        PointService.getUserPoint(u.id),
-      ]);
-
-      if (!mounted) return;
-
-      final orderResult = results[0] as Map<String, dynamic>;
-      final couponCount = results[1] as int;
-      final point = results[2] as int?;
-
+      final result = await OrderService.prefetchOrderList(u.id);
+      if (!mounted || _currentUser?.id != u.id) return;
+      final ok = result['success'] == true;
       setState(() {
-        _orderCount = OrderService.countOpenOrderHistory(orderResult);
-        _couponCount = couponCount;
-        _pointBalance = point ?? 0;
-        _statsLoading = false;
+        if (ok) {
+          _orderCount = OrderService.countOpenOrderHistory(result);
+          _orderFailed = false;
+        } else {
+          _orderFailed = true;
+        }
+        _orderLoading = false;
       });
-    } catch (e) {
-      if (!mounted) return;
+    } catch (_) {
+      if (!mounted || _currentUser?.id != u.id) return;
       setState(() {
-        _orderCount = 0;
-        _couponCount = 0;
-        _pointBalance = 0;
-        _statsLoading = false;
+        _orderFailed = true;
+        _orderLoading = false;
+      });
+    }
+  }
+
+  Future<void> _loadCouponCount() async {
+    final u = _currentUser;
+    if (u == null) return;
+    setState(() => _couponLoading = true);
+    try {
+      final count = await CouponService.getAvailableCouponCount(
+        u.id,
+        surfaceFailure: true,
+      );
+      if (!mounted || _currentUser?.id != u.id) return;
+      setState(() {
+        if (count == null) {
+          _couponFailed = true;
+        } else {
+          _couponCount = count;
+          _couponFailed = false;
+        }
+        _couponLoading = false;
+      });
+    } catch (_) {
+      if (!mounted || _currentUser?.id != u.id) return;
+      setState(() {
+        _couponFailed = true;
+        _couponLoading = false;
+      });
+    }
+  }
+
+  Future<void> _loadPointBalance() async {
+    final u = _currentUser;
+    if (u == null) return;
+    setState(() => _pointLoading = true);
+    try {
+      final point = await PointService.getUserPoint(u.id);
+      if (!mounted || _currentUser?.id != u.id) return;
+      setState(() {
+        if (point == null) {
+          _pointFailed = true;
+        } else {
+          _pointBalance = point;
+          _pointFailed = false;
+        }
+        _pointLoading = false;
+      });
+    } catch (_) {
+      if (!mounted || _currentUser?.id != u.id) return;
+      setState(() {
+        _pointFailed = true;
+        _pointLoading = false;
       });
     }
   }
@@ -80,7 +142,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
       _orderCount = 0;
       _couponCount = 0;
       _pointBalance = 0;
-      _statsLoading = false;
+      _clearStatFailures();
     });
     Navigator.pushNamedAndRemoveUntil(
       context,
@@ -113,14 +175,19 @@ class _MyPageScreenState extends State<MyPageScreen> {
     if (user == null) {
       setState(() {
         _currentUser = null;
-        _statsLoading = false;
+        _clearStatFailures();
       });
       return;
     }
 
     setState(() {
       _currentUser = user;
-      _statsLoading = true;
+      _orderLoading = true;
+      _couponLoading = true;
+      _pointLoading = true;
+      _orderFailed = false;
+      _couponFailed = false;
+      _pointFailed = false;
     });
     AuthService.prefetchMemberLists(user.id);
     await Future.wait([
@@ -532,10 +599,21 @@ class _MyPageScreenState extends State<MyPageScreen> {
   }
 
   Widget _buildStatsRow() {
-    final orderVal = _statsLoading ? '…' : '$_orderCount';
-    final couponVal = _statsLoading ? '…' : '$_couponCount';
-    final pointVal =
-        _statsLoading ? '…' : PointService.formatPoint(_pointBalance);
+    final orderVal = _orderLoading
+        ? '…'
+        : _orderFailed
+            ? '다시 시도'
+            : '$_orderCount';
+    final couponVal = _couponLoading
+        ? '…'
+        : _couponFailed
+            ? '다시 시도'
+            : '$_couponCount';
+    final pointVal = _pointLoading
+        ? '…'
+        : _pointFailed
+            ? '다시 시도'
+            : PointService.formatPoint(_pointBalance);
 
     Widget statCard({
       required String icon,
@@ -654,9 +732,13 @@ class _MyPageScreenState extends State<MyPageScreen> {
           iconWidth375: 32,
           iconHeight375: 32,
           value: orderVal,
-          unit: '건',
+          unit: _orderFailed ? '' : '건',
           label: '주문/배송내역',
-          onTap: () => Navigator.pushNamed(context, '/order'),
+          onTap: _orderLoading
+              ? () {}
+              : _orderFailed
+                  ? _loadOrderCount
+                  : () => Navigator.pushNamed(context, '/order'),
         ),
         SizedBox(width: healthDp(context, 14)),
         statCard(
@@ -664,9 +746,13 @@ class _MyPageScreenState extends State<MyPageScreen> {
           iconWidth375: 32,
           iconHeight375: 32,
           value: couponVal,
-          unit: '장',
+          unit: _couponFailed ? '' : '장',
           label: '쿠폰',
-          onTap: () => Navigator.pushNamed(context, '/coupon'),
+          onTap: _couponLoading
+              ? () {}
+              : _couponFailed
+                  ? _loadCouponCount
+                  : () => Navigator.pushNamed(context, '/coupon'),
         ),
         SizedBox(width: healthDp(context, 14)),
         statCard(
@@ -674,9 +760,13 @@ class _MyPageScreenState extends State<MyPageScreen> {
           iconWidth375: 32,
           iconHeight375: 32,
           value: pointVal,
-          unit: 'P',
+          unit: _pointFailed ? '' : 'P',
           label: '포인트',
-          onTap: () => Navigator.pushNamed(context, '/point'),
+          onTap: _pointLoading
+              ? () {}
+              : _pointFailed
+                  ? _loadPointBalance
+                  : () => Navigator.pushNamed(context, '/point'),
         ),
       ],
     );

@@ -44,8 +44,13 @@ class PointService {
     _pointInFlight[id] = request;
     try {
       final result = await request;
-      _pointCache[id] = result;
-      _pointCacheAt[id] = DateTime.now();
+      if (result != null) {
+        _pointCache[id] = result;
+        _pointCacheAt[id] = DateTime.now();
+      } else {
+        _pointCache.remove(id);
+        _pointCacheAt.remove(id);
+      }
       return result;
     } finally {
       _pointInFlight.remove(id);

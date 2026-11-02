@@ -32,7 +32,7 @@ class CouponService {
     final pending = _tabsInFlight[id];
     if (!forceRefresh && pending != null) return pending;
 
-    final request = _fetchCouponTabs(id);
+    final request = _fetchCouponTabs(id).then(_couponTabsOrEmpty);
     _tabsInFlight[id] = request;
     try {
       final result = await request;
@@ -50,7 +50,21 @@ class CouponService {
     }
   }
 
-  static Future<Map<String, List<Coupon>>> _fetchCouponTabs(String userId) async {
+  static Map<String, List<Coupon>> _couponTabsOrEmpty(
+    Map<String, List<Coupon>>? tabs,
+  ) {
+    return tabs ??
+        {
+          'available': <Coupon>[],
+          'used': <Coupon>[],
+          'expired': <Coupon>[],
+        };
+  }
+
+  static Future<Map<String, List<Coupon>>?> _fetchCouponTabs(
+    String userId, {
+    bool surfaceFailure = false,
+  }) async {
     try {
       final response = await ApiClient.get(ApiEndpoints.couponTabs(userId));
       if (response.statusCode == 200) {
@@ -71,6 +85,7 @@ class CouponService {
         }
       }
     } catch (_) {}
+    if (surfaceFailure) return null;
     return {
       'available': <Coupon>[],
       'used': <Coupon>[],
@@ -102,9 +117,27 @@ class CouponService {
     }
   }
 
-  /// 사용 가능한 쿠폰 개수 (쿠폰 화면 '사용가능한 쿠폰'과 동일 기준)
-  static Future<int> getAvailableCouponCount(String userId) async {
-    final tabs = await getCouponTabs(userId, forceRefresh: true);
+  /// 사용 가능한 쿠폰 개수 (쿠폰 화면 '사용가능한 쿠폰'과 동일 기준).
+  /// [surfaceFailure]가 참이면 조회 실패는 null이고, 성공한 빈 목록은 0이다.
+  static Future<int?> getAvailableCouponCount(
+    String userId, {
+    bool surfaceFailure = false,
+  }) async {
+    final id = userId.trim();
+    if (!surfaceFailure) {
+      final tabs = await getCouponTabs(id, forceRefresh: true);
+      return (tabs['available'] ?? const <Coupon>[]).length;
+    }
+    final tabs = await _fetchCouponTabs(id, surfaceFailure: true);
+    if (tabs == null) return null;
+    _tabsCache[id] = {
+      'available': List<Coupon>.from(tabs['available'] ?? const []),
+      'used': List<Coupon>.from(tabs['used'] ?? const []),
+      'expired': List<Coupon>.from(tabs['expired'] ?? const []),
+    };
+    _tabsCacheAt[id] = DateTime.now();
+    _availableCache[id] = List<Coupon>.from(tabs['available'] ?? const []);
+    _availableCacheAt[id] = DateTime.now();
     return (tabs['available'] ?? const <Coupon>[]).length;
   }
 
