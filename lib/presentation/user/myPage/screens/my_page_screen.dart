@@ -575,7 +575,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
             await _loadCurrentUser();
           },
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFFFF3787),
+            backgroundColor: const Color(0xFFFF5A8D),
             padding: EdgeInsets.symmetric(
               horizontal: healthDp(context, 14),
               vertical: healthDp(context, 10),
