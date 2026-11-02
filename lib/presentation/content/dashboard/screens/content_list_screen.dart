@@ -17,7 +17,7 @@ import '../../../common/widgets/app_footer.dart';
 import '../../../common/widgets/scroll_reveal_top_overlay.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 
-/// 콘텐츠 목록 (카테고리 칩, 검색, 리스트, 글쓰기 FAB)
+/// 콘텐츠 목록 (카테고리 칩, 검색, 리스트)
 class ContentListScreen extends StatefulWidget {
   const ContentListScreen({super.key});
 
