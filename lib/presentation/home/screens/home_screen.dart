@@ -125,14 +125,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _precacheGuidebookThumbs() async {
     final result = await ContentService.getHomePreviewList();
-    if (!mounted || result['success'] != true) return;
-    final raw = result['data'];
-    if (raw is! List || raw.isEmpty) return;
+    if (!mounted || result.failed || result.items.isEmpty) return;
 
     final layout = HomeBigCardLayout.fromWidth(MediaQuery.sizeOf(context).width);
     final jobs = <Future<void>>[];
-    for (final item in raw.take(3)) {
-      if (item is! Map) continue;
+    for (final item in result.items.take(3)) {
       final url = ContentService.resolveThumbnailUrl(
         item['thumbnail_url']?.toString(),
         fallback: '',

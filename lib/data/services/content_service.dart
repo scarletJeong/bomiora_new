@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import '../../core/load/list_load.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_endpoints.dart';
 import '../../core/utils/image_url_helper.dart';
@@ -198,21 +199,21 @@ class ContentService {
     return fallback;
   }
 
-  static Future<Map<String, dynamic>>? _homePreviewInflight;
-  static Map<String, dynamic>? _homePreviewCache;
+  static Future<ListLoad<Map<String, dynamic>>>? _homePreviewInflight;
+  static ListLoad<Map<String, dynamic>>? _homePreviewCache;
 
   /// 메인 「건강 컨텐츠」 3건. 스플래시와 홈이 같은 요청을 나눠 쓰지 않도록 묶는다.
-  static Future<Map<String, dynamic>> getHomePreviewList() {
+  static Future<ListLoad<Map<String, dynamic>>> getHomePreviewList() {
     final cached = _homePreviewCache;
     if (cached != null) return Future.value(cached);
     final inflight = _homePreviewInflight;
     if (inflight != null) return inflight;
-    late final Future<Map<String, dynamic>> future;
+    late final Future<ListLoad<Map<String, dynamic>>> future;
     future = getContentList(page: 1, size: 3).then((result) {
       if (identical(_homePreviewInflight, future)) {
         _homePreviewInflight = null;
       }
-      if (result['success'] == true) {
+      if (!result.failed) {
         _homePreviewCache = result;
       }
       return result;
@@ -221,7 +222,7 @@ class ContentService {
     return future;
   }
 
-  static Future<Map<String, dynamic>> getContentList({
+  static Future<ListLoad<Map<String, dynamic>>> getContentList({
     int page = 1,
     int size = 20,
     String? query,
@@ -244,20 +245,15 @@ class ContentService {
       final endpoint = '${ApiEndpoints.getContentList}?${params.join('&')}';
       final response = await ApiClient.get(endpoint);
       if (response.statusCode != 200) {
-        return {
-          'success': false,
-          'message': '콘텐츠 목록을 불러오지 못했습니다.',
-          'data': <Map<String, dynamic>>[],
-          'categories': <String>[],
-          'pagination': const <String, dynamic>{},
-        };
+        return ListLoad.failure();
       }
 
-      final body = json.decode(response.body) as Map<String, dynamic>;
+      final decoded = json.decode(response.body);
+      if (decoded is! Map || decoded['success'] != true) {
+        return ListLoad.failure();
+      }
+      final body = Map<String, dynamic>.from(decoded);
       final dataRaw = body['data'];
-      final categoryRaw = body['categories'];
-      final paginationRaw = body['pagination'];
-
       final data = <Map<String, dynamic>>[];
       if (dataRaw is List) {
         for (final item in dataRaw) {
@@ -269,30 +265,15 @@ class ContentService {
         }
       }
 
-      final categories = <String>[];
-      if (categoryRaw is List) {
-        for (final item in categoryRaw) {
-          final text = item?.toString().trim() ?? '';
-          if (text.isNotEmpty) categories.add(text);
-        }
-      }
-
-      return {
-        'success': body['success'] == true,
-        'data': data,
-        'categories': categories,
-        'pagination': paginationRaw is Map
-            ? Map<String, dynamic>.from(paginationRaw)
-            : <String, dynamic>{},
-      };
-    } catch (e) {
-      return {
-        'success': false,
-        'message': '콘텐츠 목록 조회 오류: $e',
-        'data': <Map<String, dynamic>>[],
-        'categories': <String>[],
-        'pagination': const <String, dynamic>{},
-      };
+      final paginationRaw = body['pagination'];
+      final pagination = paginationRaw is Map
+          ? Map<String, dynamic>.from(paginationRaw)
+          : const <String, dynamic>{};
+      final totalRaw = pagination['total'];
+      final total = totalRaw is num ? totalRaw.toInt() : data.length;
+      return ListLoad.success(data, total: total);
+    } catch (_) {
+      return ListLoad.failure();
     }
   }
 

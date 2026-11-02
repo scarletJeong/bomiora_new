@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../../core/constants/app_assets.dart';
+import '../../../../core/load/list_load.dart';
 import '../../../../core/utils/image_url_helper.dart';
 import '../../../../data/repositories/content/content_category_catalog.dart';
 import '../../../../data/services/content_service.dart';
@@ -9,6 +10,7 @@ import '../../../common/widgets/appbar_menutap.dart';
 import '../../../common/widgets/app_network_image.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
 import '../../../common/widgets/centered_empty_state.dart';
+import '../../../common/widgets/load_failure_notice.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/navi_bar.dart';
 import '../../../common/widgets/app_footer.dart';
@@ -45,6 +47,8 @@ class _ContentListScreenState extends State<ContentListScreen> {
   static const int _pageSize = 5;
   bool _isLoading = true;
   bool _isLoadingMore = false;
+  bool _loadFailed = false;
+  bool _loadMoreFailed = false;
   int _imageWaitId = 0;
   int _pendingImages = 0;
   int _settledImages = 0;
@@ -97,13 +101,18 @@ class _ContentListScreenState extends State<ContentListScreen> {
     if (reset) {
       setState(() {
         _isLoading = true;
-        _page = 1;
+        _isLoadingMore = false;
+        _loadFailed = false;
+        _loadMoreFailed = false;
         _pendingImages = 0;
         _settledImages = 0;
       });
     } else {
-      if (_isLoadingMore || _posts.length >= _totalCount) return;
-      setState(() => _isLoadingMore = true);
+      if (_isLoadingMore || _loadFailed || _posts.length >= _totalCount) return;
+      setState(() {
+        _isLoadingMore = true;
+        _loadMoreFailed = false;
+      });
     }
 
     final selectedCategory =
@@ -118,31 +127,31 @@ class _ContentListScreenState extends State<ContentListScreen> {
       query: _searchController.text,
     );
     if (!mounted || waitId != _imageWaitId) return;
-    final data =
-        (result['data'] as List?)?.whereType<Map<String, dynamic>>().toList() ??
-            const <Map<String, dynamic>>[];
-    final pagination =
-        result['pagination'] as Map<String, dynamic>? ?? const {};
-    final total = pagination['total'] is num
-        ? (pagination['total'] as num).toInt()
-        : data.length;
-    final imageCount = reset
-        ? data.where((item) => _imageUrlOf(item).isNotEmpty).length
+    final applied = AppliedListLoad.merge(
+      incoming: result,
+      currentItems: _posts,
+      currentTotal: _totalCount,
+      replace: reset,
+    );
+    final imageCount = reset && !result.failed
+        ? applied.items.where((item) => _imageUrlOf(item).isNotEmpty).length
         : 0;
     setState(() {
-      if (reset) {
-        _posts = data;
-        _page = 1;
+      _posts = applied.items;
+      _loadFailed = applied.showFailure && !applied.failureBelow;
+      _loadMoreFailed = applied.failureBelow;
+      _isLoadingMore = false;
+      if (!result.failed) {
+        _totalCount = applied.total;
+        _page = reset ? 1 : nextPage;
+      }
+      if (reset && !result.failed) {
         _pendingImages = imageCount;
         _settledImages = 0;
         _isLoading = imageCount > 0;
       } else {
-        _posts = [..._posts, ...data];
-        _page = nextPage;
         _isLoading = false;
       }
-      _totalCount = total;
-      _isLoadingMore = false;
     });
     if (reset && imageCount > 0) {
       Future<void>.delayed(const Duration(seconds: 20), () {
@@ -168,7 +177,11 @@ class _ContentListScreenState extends State<ContentListScreen> {
   }
 
   bool get _showLoadMore =>
-      !_isLoading && _posts.isNotEmpty && _posts.length < _totalCount;
+      !_isLoading &&
+      !_loadFailed &&
+      !_loadMoreFailed &&
+      _posts.isNotEmpty &&
+      _posts.length < _totalCount;
 
   Future<void> _onSearchSubmitted() async {
     await _loadPosts();
@@ -240,13 +253,27 @@ class _ContentListScreenState extends State<ContentListScreen> {
                         right: 0,
                         top: _topControlsExtent(context),
                         bottom: 0,
-                        child: IgnorePointer(
-                          child: Center(
-                            child: _hasActiveSearch
-                                ? _buildEmptySearchResult(context)
-                                : _buildEmptyPostsState(context),
-                          ),
-                        ),
+                        child: _loadFailed
+                            ? Center(
+                                child: Padding(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: healthDp(context, 20),
+                                  ),
+                                  child: LoadFailureNotice(
+                                    message: '목록을 불러오지 못했습니다',
+                                    onRetry: () {
+                                      _loadPosts();
+                                    },
+                                  ),
+                                ),
+                              )
+                            : IgnorePointer(
+                                child: Center(
+                                  child: _hasActiveSearch
+                                      ? _buildEmptySearchResult(context)
+                                      : _buildEmptyPostsState(context),
+                                ),
+                              ),
                       ),
                   ],
                 ),
@@ -306,6 +333,20 @@ class _ContentListScreenState extends State<ContentListScreen> {
             child: SizedBox.shrink(),
           )
         else ...[
+          if (_loadFailed)
+            SliverPadding(
+              padding: EdgeInsets.symmetric(
+                horizontal: healthDp(context, 20),
+              ),
+              sliver: SliverToBoxAdapter(
+                child: LoadFailureNotice(
+                  message: '목록을 불러오지 못했습니다',
+                  onRetry: () {
+                    _loadPosts();
+                  },
+                ),
+              ),
+            ),
           SliverPadding(
             padding: EdgeInsets.symmetric(
               horizontal: healthDp(context, 20),
@@ -324,7 +365,19 @@ class _ContentListScreenState extends State<ContentListScreen> {
               ),
             ),
           ),
-          if (_showLoadMore)
+          if (_loadMoreFailed)
+            SliverPadding(
+              padding: EdgeInsets.symmetric(
+                horizontal: healthDp(context, 20),
+              ),
+              sliver: SliverToBoxAdapter(
+                child: LoadFailureNotice(
+                  message: '목록을 불러오지 못했습니다',
+                  onRetry: _loadMorePosts,
+                ),
+              ),
+            )
+          else if (_showLoadMore)
             SliverPadding(
               padding: EdgeInsets.fromLTRB(
                 healthDp(context, 20),
@@ -560,23 +613,24 @@ class _ContentListScreenState extends State<ContentListScreen> {
       children: [
         Container(height: dividerH, color: const Color(0x7FD2D2D2)),
         SizedBox(height: healthDp(context, 5)),
-        Text.rich(
-          TextSpan(
-            children: [
-              TextSpan(text: '총 ', style: countStyle),
-              TextSpan(
-                text: '$_totalCount',
-                style: TextStyle(
-                  color: const Color(0xFFFF5A8D),
-                  fontSize: healthSp(context, 12),
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w500,
+        if (!(_loadFailed && _posts.isEmpty))
+          Text.rich(
+            TextSpan(
+              children: [
+                TextSpan(text: '총 ', style: countStyle),
+                TextSpan(
+                  text: '$_totalCount',
+                  style: TextStyle(
+                    color: const Color(0xFFFF5A8D),
+                    fontSize: healthSp(context, 12),
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
-              ),
-              TextSpan(text: '건', style: countStyle),
-            ],
+                TextSpan(text: '건', style: countStyle),
+              ],
+            ),
           ),
-        ),
         SizedBox(height: healthDp(context, 5)),
         Container(height: dividerH, color: const Color(0x7FD2D2D2)),
       ],

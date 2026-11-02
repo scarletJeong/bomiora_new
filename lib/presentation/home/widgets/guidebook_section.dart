@@ -29,9 +29,8 @@ class _GuidebookSectionState extends State<GuidebookSection> {
 
   Future<List<Map<String, dynamic>>> _loadLatest() async {
     final result = await ContentService.getHomePreviewList();
-    if (result['success'] == true) {
-      final list = (result['data'] as List<Map<String, dynamic>>?) ?? const [];
-      return list.take(3).toList();
+    if (!result.failed) {
+      return result.items.take(3).toList();
     }
     return const [];
   }

@@ -10,6 +10,7 @@ import '../../../../data/services/wish_service.dart';
 import '../../../common/navigation/board_list_navigation.dart';
 import '../../../common/widgets/app_network_image.dart';
 import '../../../common/widgets/centered_empty_state.dart';
+import '../../../common/widgets/load_failure_notice.dart';
 import '../../../common/widgets/login_required_dialog.dart';
 import '../../../common/widgets/article_adjacent_nav.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
@@ -48,8 +49,8 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
   String? _nextTitle;
   int? _nextId;
   bool _isLoading = true;
+  bool _loadFailed = false;
   int? _currentContentId;
-  String? _fetchError;
 
   bool? _isWished;
   int _wishLoadToken = 0;
@@ -80,16 +81,13 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
   }
 
   void _applyDetailResult(Map<String, dynamic> result, int id) {
-    if (result['success'] != true) {
-      _fetchError = result['message']?.toString();
-      return;
-    }
+    if (result['success'] != true) return;
     final data = result['data'] as Map<String, dynamic>? ?? const {};
     final prev = result['prev'] as Map<String, dynamic>?;
     final next = result['next'] as Map<String, dynamic>?;
     final rc = data['recommend_count'];
     final recCount = rc is num ? rc.toInt() : int.tryParse('$rc') ?? 0;
-    _fetchError = null;
+    _loadFailed = false;
     _categoryLabel = data['category']?.toString().trim() ?? '';
     _title = data['title']?.toString().trim() ?? '';
     _bodyHtml = data['content_html']?.toString() ?? '';
@@ -118,7 +116,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
     } else if (mounted && !_isLoading) {
       setState(() {
         _isLoading = true;
-        _fetchError = null;
+        _loadFailed = false;
       });
     }
 
@@ -141,14 +139,28 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
       pfNo: pfNo,
     );
     if (!mounted) return;
-    if (result['success'] == true || _title.isEmpty) {
+    if (result['success'] == true) {
       setState(() {
         _applyDetailResult(result, id);
+        _loadFailed = false;
         _isLoading = false;
       });
     } else {
-      setState(() => _isLoading = false);
+      setState(() {
+        _loadFailed = true;
+        _isLoading = false;
+      });
     }
+  }
+
+  Future<void> _retryDetail() async {
+    final id = widget.contentId;
+    if (id == null || _isLoading) return;
+    setState(() {
+      _isLoading = true;
+      _loadFailed = false;
+    });
+    await _fetchDetail(id);
   }
 
   Future<void> _loadWishState(int id, String mbId) async {
@@ -293,18 +305,20 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
       );
     }
 
-    if (_fetchError != null && !_isLoading) {
+    if (_loadFailed && _title.isEmpty && !_isLoading) {
       return MobileAppLayoutWrapper(
         appBar: HealthAppBar(
           title: _appBarTitle,
         ),
         backgroundColor: Colors.white,
-        child: CenteredEmptyState(
-          iconWidget: CenteredEmptyState.assetIcon(
-            context,
-            AppAssets.emptyContentIcon,
+        child: Center(
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: healthDp(context, 20)),
+            child: LoadFailureNotice(
+              message: '콘텐츠를 불러오지 못했습니다',
+              onRetry: _retryDetail,
+            ),
           ),
-          message: '등록된 콘텐츠가 없습니다.',
         ),
       );
     }
@@ -332,6 +346,13 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      if (_loadFailed) ...[
+                        LoadFailureNotice(
+                          message: '콘텐츠를 불러오지 못했습니다',
+                          onRetry: _retryDetail,
+                        ),
+                        SizedBox(height: healthDp(context, 8)),
+                      ],
                       _buildArticleHeader(context),
                       SizedBox(height: healthDp(context, 20)),
                       Container(
