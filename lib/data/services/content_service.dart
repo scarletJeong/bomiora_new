@@ -4,15 +4,16 @@ import '../../core/load/list_load.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_endpoints.dart';
 import '../../core/utils/image_url_helper.dart';
+import '../models/content/content_post.dart';
 
 class ContentService {
   static const Duration _detailCacheTtl = Duration(minutes: 2);
-  static final Map<String, Map<String, dynamic>> _detailCache = {};
+  static final Map<String, ContentDetailResult> _detailCache = {};
   static final Map<String, DateTime> _detailCacheAt = {};
-  static final Map<String, Future<Map<String, dynamic>>> _detailInFlight = {};
+  static final Map<String, Future<ContentDetailResult>> _detailInFlight = {};
 
-  static Map<String, dynamic>? peekDetail(int id) {
-    Map<String, dynamic>? best;
+  static ContentDetailResult? peekDetail(int id) {
+    ContentDetailResult? best;
     DateTime? bestAt;
     final prefix = '$id|';
     for (final key in _detailCache.keys) {
@@ -26,7 +27,7 @@ class ContentService {
     }
     if (best == null || bestAt == null) return null;
     if (DateTime.now().difference(bestAt) >= _detailCacheTtl) return null;
-    return Map<String, dynamic>.from(best);
+    return best;
   }
 
   static void rememberRecommend({
@@ -38,12 +39,14 @@ class ContentService {
     for (final key in _detailCache.keys) {
       if (!key.startsWith(prefix)) continue;
       final cached = _detailCache[key];
-      if (cached == null) continue;
-      final data = cached['data'];
-      if (data is Map) {
-        data['user_recommended'] = recommended;
-        data['recommend_count'] = count;
-      }
+      final post = cached?.post;
+      if (cached == null || post == null) continue;
+      _detailCache[key] = cached.copyWith(
+        post: post.copyWith(
+          userRecommended: recommended,
+          recommendCount: count,
+        ),
+      );
     }
   }
 
@@ -199,16 +202,16 @@ class ContentService {
     return fallback;
   }
 
-  static Future<ListLoad<Map<String, dynamic>>>? _homePreviewInflight;
-  static ListLoad<Map<String, dynamic>>? _homePreviewCache;
+  static Future<ListLoad<ContentPost>>? _homePreviewInflight;
+  static ListLoad<ContentPost>? _homePreviewCache;
 
   /// 메인 「건강 컨텐츠」 3건. 스플래시와 홈이 같은 요청을 나눠 쓰지 않도록 묶는다.
-  static Future<ListLoad<Map<String, dynamic>>> getHomePreviewList() {
+  static Future<ListLoad<ContentPost>> getHomePreviewList() {
     final cached = _homePreviewCache;
     if (cached != null) return Future.value(cached);
     final inflight = _homePreviewInflight;
     if (inflight != null) return inflight;
-    late final Future<ListLoad<Map<String, dynamic>>> future;
+    late final Future<ListLoad<ContentPost>> future;
     future = getContentList(page: 1, size: 3).then((result) {
       if (identical(_homePreviewInflight, future)) {
         _homePreviewInflight = null;
@@ -222,7 +225,7 @@ class ContentService {
     return future;
   }
 
-  static Future<ListLoad<Map<String, dynamic>>> getContentList({
+  static Future<ListLoad<ContentPost>> getContentList({
     int page = 1,
     int size = 20,
     String? query,
@@ -254,13 +257,11 @@ class ContentService {
       }
       final body = Map<String, dynamic>.from(decoded);
       final dataRaw = body['data'];
-      final data = <Map<String, dynamic>>[];
+      final data = <ContentPost>[];
       if (dataRaw is List) {
         for (final item in dataRaw) {
-          if (item is Map<String, dynamic>) {
-            data.add(item);
-          } else if (item is Map) {
-            data.add(Map<String, dynamic>.from(item));
+          if (item is Map) {
+            data.add(ContentPost.fromJson(Map<String, dynamic>.from(item)));
           }
         }
       }
@@ -278,7 +279,7 @@ class ContentService {
   }
 
   /// [mbId]가 있으면 서버에 `user_recommended` 여부를 함께 조회(회원당 글당 1회).
-  static Future<Map<String, dynamic>> getContentDetail(
+  static Future<ContentDetailResult> getContentDetail(
     int id, {
     String? mbId,
   }) async {
@@ -286,7 +287,7 @@ class ContentService {
     final cachedAt = _detailCacheAt[key];
     if (cachedAt != null &&
         DateTime.now().difference(cachedAt) < _detailCacheTtl) {
-      return Map<String, dynamic>.from(_detailCache[key]!);
+      return _detailCache[key]!;
     }
     final pending = _detailInFlight[key];
     if (pending != null) return pending;
@@ -295,8 +296,8 @@ class ContentService {
     _detailInFlight[key] = request;
     try {
       final result = await request;
-      if (result['success'] == true) {
-        _detailCache[key] = Map<String, dynamic>.from(result);
+      if (result.success) {
+        _detailCache[key] = result;
         _detailCacheAt[key] = DateTime.now();
       }
       return result;
@@ -305,7 +306,7 @@ class ContentService {
     }
   }
 
-  static Future<Map<String, dynamic>> _fetchContentDetail(
+  static Future<ContentDetailResult> _fetchContentDetail(
     int id, {
     String? mbId,
   }) async {
@@ -319,40 +320,29 @@ class ContentService {
       final endpoint = '${ApiEndpoints.getContentDetail}/$id$query';
       final response = await ApiClient.get(endpoint);
       if (response.statusCode != 200) {
-        return {
-          'success': false,
-          'message': '콘텐츠 상세를 불러오지 못했습니다.',
-          'data': <String, dynamic>{},
-          'prev': null,
-          'next': null,
-        };
+        return const ContentDetailResult(success: false);
       }
 
-      final body = json.decode(response.body) as Map<String, dynamic>;
+      final decoded = json.decode(response.body);
+      if (decoded is! Map) {
+        return const ContentDetailResult(success: false);
+      }
+      final body = Map<String, dynamic>.from(decoded);
+      if (body['success'] != true) {
+        return const ContentDetailResult(success: false);
+      }
       final data = body['data'] is Map
           ? Map<String, dynamic>.from(body['data'] as Map)
           : <String, dynamic>{};
-      final prev = body['prev'] is Map
-          ? Map<String, dynamic>.from(body['prev'] as Map)
-          : null;
-      final next = body['next'] is Map
-          ? Map<String, dynamic>.from(body['next'] as Map)
-          : null;
 
-      return {
-        'success': body['success'] == true,
-        'data': data,
-        'prev': prev,
-        'next': next,
-      };
-    } catch (e) {
-      return {
-        'success': false,
-        'message': '콘텐츠 상세 조회 오류: $e',
-        'data': <String, dynamic>{},
-        'prev': null,
-        'next': null,
-      };
+      return ContentDetailResult(
+        success: true,
+        post: ContentPost.fromJson(data),
+        previous: ContentNeighbor.fromDynamic(body['prev']),
+        next: ContentNeighbor.fromDynamic(body['next']),
+      );
+    } catch (_) {
+      return const ContentDetailResult(success: false);
     }
   }
 

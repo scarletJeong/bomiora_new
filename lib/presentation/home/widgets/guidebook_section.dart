@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_assets.dart';
+import '../../../data/models/content/content_post.dart';
 import '../../../data/services/content_service.dart';
 import '../../common/widgets/app_clickable.dart';
 import '../../common/widgets/app_network_image.dart';
@@ -19,7 +20,7 @@ class GuidebookSection extends StatefulWidget {
 }
 
 class _GuidebookSectionState extends State<GuidebookSection> {
-  late final Future<List<Map<String, dynamic>>> _future;
+  late final Future<List<ContentPost>> _future;
 
   @override
   void initState() {
@@ -27,7 +28,7 @@ class _GuidebookSectionState extends State<GuidebookSection> {
     _future = _loadLatest();
   }
 
-  Future<List<Map<String, dynamic>>> _loadLatest() async {
+  Future<List<ContentPost>> _loadLatest() async {
     final result = await ContentService.getHomePreviewList();
     if (!result.failed) {
       return result.items.take(3).toList();
@@ -62,7 +63,7 @@ class _GuidebookSectionState extends State<GuidebookSection> {
           SizedBox(height: healthDp(context, 20)),
           SizedBox(
             height: listH,
-            child: FutureBuilder<List<Map<String, dynamic>>>(
+            child: FutureBuilder<List<ContentPost>>(
               future: _future,
               builder: (context, snapshot) {
                 final items = snapshot.data ?? const [];
@@ -116,12 +117,9 @@ class _GuidebookSectionState extends State<GuidebookSection> {
                         titleH: titleH,
                         item: it,
                         onTap: () {
-                          final idRaw = it['id'];
-                          final id = idRaw is num
-                              ? idRaw.toInt()
-                              : int.tryParse('$idRaw');
+                          final id = it.id;
                           if (id == null) return;
-                          final cat = (it['category'] ?? '').toString().trim();
+                          final cat = it.category;
                           Navigator.pushNamed(
                             context,
                             '/content/detail',
@@ -147,7 +145,7 @@ class _GuidebookSectionState extends State<GuidebookSection> {
 class _GuidebookCard extends StatelessWidget {
   final HomeBigCardLayout m;
   final double titleH;
-  final Map<String, dynamic> item;
+  final ContentPost item;
   final VoidCallback? onTap;
 
   const _GuidebookCard({
@@ -161,8 +159,8 @@ class _GuidebookCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final title = _t(item['title']?.toString());
-    final thumbRaw = item['thumbnail_url']?.toString();
+    final title = _t(item.title);
+    final thumbRaw = item.thumbnailUrl;
     final thumb = ContentService.resolveThumbnailUrl(thumbRaw, fallback: '');
 
     return SizedBox(

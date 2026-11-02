@@ -7,6 +7,7 @@ import '../../../core/constants/app_assets.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../data/models/announcement/announcement_model.dart';
+import '../../../data/models/content/content_post.dart';
 import '../../../data/models/event/event_model.dart';
 import '../../../data/models/product/product_model.dart';
 import '../../../data/services/content_service.dart';
@@ -50,7 +51,7 @@ class _SearchListScreenState extends State<SearchListScreen> {
   List<Product> _store = const [];
   List<EventModel> _events = const [];
   List<AnnouncementModel> _announcements = const [];
-  List<Map<String, dynamic>> _content = const [];
+  List<ContentPost> _content = const <ContentPost>[];
   bool _loading = true;
   bool _initialLoad = true;
   String? _error;
@@ -108,7 +109,7 @@ class _SearchListScreenState extends State<SearchListScreen> {
         _store = const [];
         _events = const [];
         _announcements = const [];
-        _content = const [];
+        _content = const <ContentPost>[];
         _loading = false;
         _initialLoad = false;
         _error = null;
@@ -141,7 +142,7 @@ class _SearchListScreenState extends State<SearchListScreen> {
         _store = const [];
         _events = const [];
         _announcements = const [];
-        _content = const [];
+        _content = const <ContentPost>[];
         _loading = false;
         _initialLoad = false;
         _error = e.toString();
@@ -177,11 +178,10 @@ class _SearchListScreenState extends State<SearchListScreen> {
     Navigator.pushNamed(context, route);
   }
 
-  void _openContent(Map<String, dynamic> item) {
-    final idRaw = item['id'];
-    final id = idRaw is num ? idRaw.toInt() : int.tryParse('$idRaw');
+  void _openContent(ContentPost item) {
+    final id = item.id;
     if (id == null) return;
-    final cat = (item['category'] ?? '').toString().trim();
+    final cat = item.category;
     Navigator.pushNamed(
       context,
       '/content/detail',
@@ -540,8 +540,8 @@ class _SearchListScreenState extends State<SearchListScreen> {
     );
   }
 
-  Widget _buildContentListRow(Map<String, dynamic> item) {
-    final title = item['title']?.toString().trim() ?? '';
+  Widget _buildContentListRow(ContentPost item) {
+    final title = item.title;
     return _buildThumbListRow(
       title: title,
       imageUrl: _contentThumb(item),
@@ -674,9 +674,8 @@ class _SearchListScreenState extends State<SearchListScreen> {
     );
   }
 
-  String _contentThumb(Map<String, dynamic> item) {
-    final raw = item['thumbnail_url']?.toString();
-    return ContentService.resolveThumbnailUrl(raw, fallback: '');
+  String _contentThumb(ContentPost item) {
+    return ContentService.resolveThumbnailUrl(item.thumbnailUrl, fallback: '');
   }
 }
 

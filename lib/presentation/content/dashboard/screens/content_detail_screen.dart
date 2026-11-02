@@ -4,6 +4,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../../core/constants/app_assets.dart';
 import '../../../../core/utils/image_url_helper.dart';
+import '../../../../data/models/content/content_post.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/services/content_service.dart';
 import '../../../../data/services/wish_service.dart';
@@ -80,29 +81,23 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
     super.dispose();
   }
 
-  void _applyDetailResult(Map<String, dynamic> result, int id) {
-    if (result['success'] != true) return;
-    final data = result['data'] as Map<String, dynamic>? ?? const {};
-    final prev = result['prev'] as Map<String, dynamic>?;
-    final next = result['next'] as Map<String, dynamic>?;
-    final rc = data['recommend_count'];
-    final recCount = rc is num ? rc.toInt() : int.tryParse('$rc') ?? 0;
+  void _applyDetailResult(ContentDetailResult result, int id) {
+    final post = result.post;
+    if (!result.success || post == null) return;
     _loadFailed = false;
-    _categoryLabel = data['category']?.toString().trim() ?? '';
-    _title = data['title']?.toString().trim() ?? '';
-    _bodyHtml = data['content_html']?.toString() ?? '';
-    _thumbnailUrl = data['thumbnail_url']?.toString().trim() ?? '';
-    _currentContentId = _toInt(data['id']) ?? id;
-    _prevTitle = prev?['title']?.toString();
-    _prevId = _toInt(prev?['id']);
-    _nextTitle = next?['title']?.toString();
-    _nextId = _toInt(next?['id']);
-    _recommendCount = recCount;
-    if (data.containsKey('user_recommended')) {
-      final ur = data['user_recommended'];
-      _userRecommended = ur is bool
-          ? ur
-          : ur == true || ur == 1 || ur == '1' || ur == 'true';
+    _categoryLabel = post.category;
+    _title = post.title;
+    _bodyHtml = post.contentHtml;
+    _thumbnailUrl = post.thumbnailUrl;
+    _currentContentId = post.id ?? id;
+    _prevTitle = result.previous?.title;
+    _prevId = result.previous?.id;
+    _nextTitle = result.next?.title;
+    _nextId = result.next?.id;
+    _recommendCount = post.recommendCount;
+    final recommended = post.userRecommended;
+    if (recommended != null) {
+      _userRecommended = recommended;
     }
   }
 
@@ -137,7 +132,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
       mbId: mbId,
     );
     if (!mounted) return;
-    if (result['success'] == true) {
+    if (result.success) {
       setState(() {
         _applyDetailResult(result, id);
         _loadFailed = false;
@@ -279,8 +274,6 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
       if (mounted) setState(() => _recommendBusy = false);
     }
   }
-
-  int? _toInt(dynamic v) => v is num ? v.toInt() : int.tryParse('$v');
 
   String get _appBarTitle => _categoryLabel.trim();
 

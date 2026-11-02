@@ -3,6 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../../../../core/constants/app_assets.dart';
 import '../../../../core/utils/image_url_helper.dart';
 import '../../../../core/utils/node_value_parser.dart';
+import '../../../../data/models/content/content_post.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/services/wish_service.dart';
 import '../../../../data/services/content_service.dart';
@@ -38,7 +39,7 @@ class _WishListScreenState extends State<WishListScreen> {
   int _selectedTabIndex = 0;
 
   /// 콘텐츠 찜 항목 메타 캐시 (bm_content)
-  final Map<int, Map<String, dynamic>> _contentCache = {};
+  final Map<int, ContentPost> _contentCache = {};
   final Set<int> _contentLoadingIds = {};
   /// 목록·상세 모두 제목이 없는 글. 다시 그리지 않는다.
   final Set<int> _missingContentIds = {};
@@ -729,7 +730,7 @@ class _WishListScreenState extends State<WishListScreen> {
     final cached = _contentIdFromWish(item) == null
         ? null
         : _contentCache[_contentIdFromWish(item)!];
-    final fromCache = (cached?['title'] ?? '').toString().trim();
+    final fromCache = cached?.title.trim() ?? '';
     if (fromCache.isNotEmpty) return fromCache;
     return (item['title'] ?? '').toString().trim();
   }
@@ -744,17 +745,15 @@ class _WishListScreenState extends State<WishListScreen> {
       final showingAll = _visibleCount >= beforeCount;
       try {
         final r = await ContentService.getContentDetail(contentId);
-        final data = (r['data'] is Map)
-            ? Map<String, dynamic>.from(r['data'] as Map)
-            : <String, dynamic>{};
-        final title = (data['title'] ?? '').toString().trim();
+        final post = r.post;
+        final title = post?.title.trim() ?? '';
         if (!mounted) return;
         setState(() {
-          if (title.isEmpty || r['success'] != true) {
+          if (title.isEmpty || !r.success || post == null) {
             _missingContentIds.add(contentId);
             _contentCache.remove(contentId);
           } else {
-            _contentCache[contentId] = data;
+            _contentCache[contentId] = post;
             _missingContentIds.remove(contentId);
             if (showingAll && _selectedTabIndex == 2) {
               _visibleCount = _contentWishes.length;
@@ -775,12 +774,14 @@ class _WishListScreenState extends State<WishListScreen> {
     final idStr = contentId?.toString() ?? (item['it_id']?.toString() ?? '');
     final cached = contentId != null ? _contentCache[contentId] : null;
 
-    final category = (cached?['category'] ?? item['category'] ?? '').toString().trim();
+    final cachedCategory = cached?.category.trim() ?? '';
+    final category = cachedCategory.isNotEmpty
+        ? cachedCategory
+        : (item['category'] ?? '').toString().trim();
     final title = _contentTitleOf(item);
     final thumbRaw = (item['thumbnail'] ??
             item['thumbnail_url'] ??
-            cached?['thumbnail'] ??
-            cached?['thumbnail_url'])
+            cached?.thumbnailUrl)
         ?.toString();
     final resolvedThumb = ContentService.resolveThumbnailUrl(
       thumbRaw,

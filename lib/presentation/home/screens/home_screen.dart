@@ -131,7 +131,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final jobs = <Future<void>>[];
     for (final item in result.items.take(3)) {
       final url = ContentService.resolveThumbnailUrl(
-        item['thumbnail_url']?.toString(),
+        item.thumbnailUrl,
         fallback: '',
       );
       if (url.isEmpty) continue;

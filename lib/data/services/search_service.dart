@@ -3,6 +3,7 @@ import 'dart:convert';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_endpoints.dart';
 import '../models/announcement/announcement_model.dart';
+import '../models/content/content_post.dart';
 import '../models/event/event_model.dart';
 import '../models/product/product_model.dart';
 
@@ -12,7 +13,7 @@ class SearchResult {
   final List<Product> storeProducts;
   final List<EventModel> events;
   final List<AnnouncementModel> announcements;
-  final List<Map<String, dynamic>> contents;
+  final List<ContentPost> contents;
 
   const SearchResult({
     required this.query,
@@ -71,11 +72,8 @@ class SearchService {
     return _textMatchesQuery(product.name, query);
   }
 
-  static bool _contentTitleMatchesQuery(
-    Map<String, dynamic> item,
-    String query,
-  ) {
-    return _textMatchesQuery(item['title']?.toString(), query);
+  static bool _contentTitleMatchesQuery(ContentPost item, String query) {
+    return _textMatchesQuery(item.title, query);
   }
 
   static bool _eventTitleMatchesQuery(EventModel event, String query) {
@@ -98,8 +96,8 @@ class SearchService {
         .toList(growable: false);
   }
 
-  static List<Map<String, dynamic>> _filterContentsByTitle(
-    List<Map<String, dynamic>> items,
+  static List<ContentPost> _filterContentsByTitle(
+    List<ContentPost> items,
     String query,
   ) {
     return items
@@ -179,7 +177,7 @@ class SearchService {
         storeProducts: [],
         events: [],
         announcements: [],
-        contents: [],
+        contents: <ContentPost>[],
       );
     }
 
@@ -225,7 +223,9 @@ class SearchService {
 
     final apiRxItems = _parseProductsExcludingInfluencer(rx['items']);
     final apiStoreItems = _parseProductsExcludingInfluencer(store['items']);
-    final contentItems = _asMapList(content['items']);
+    final contentItems = _asMapList(content['items'])
+        .map(ContentPost.fromJson)
+        .toList(growable: false);
     final apiEventItems = _parseEvents(event['items']);
     final apiAnnouncementItems = _parseAnnouncements(announcement['items']);
 

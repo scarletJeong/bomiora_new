@@ -4,6 +4,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../../../../core/constants/app_assets.dart';
 import '../../../../core/load/list_load.dart';
 import '../../../../core/utils/image_url_helper.dart';
+import '../../../../data/models/content/content_post.dart';
 import '../../../../data/repositories/content/content_category_catalog.dart';
 import '../../../../data/services/content_service.dart';
 import '../../../common/widgets/appbar_menutap.dart';
@@ -41,7 +42,7 @@ class _ContentListScreenState extends State<ContentListScreen> {
       ContentCategoryCatalog.categories();
   final TextEditingController _searchController = TextEditingController();
   List<String> _categories = const [];
-  List<Map<String, dynamic>> _posts = const [];
+  List<ContentPost> _posts = const [];
   int _totalCount = 0;
   int _page = 1;
   static const int _pageSize = 5;
@@ -686,18 +687,17 @@ class _ContentListScreenState extends State<ContentListScreen> {
 
   Widget _buildListCard(
     BuildContext context,
-    Map<String, dynamic> item, {
+    ContentPost item, {
     bool waitForImage = false,
   }) {
-    final idRaw = item['id'];
-    final contentId = idRaw is num ? idRaw.toInt() : int.tryParse('$idRaw');
-    final title = item['title']?.toString().trim() ?? '';
+    final contentId = item.id;
+    final title = item.title;
     final imageUrl = _imageUrlOf(item);
     final waitId = _imageWaitId;
     return GestureDetector(
       onTap: () {
         if (contentId == null) return;
-        final cat = (item['category'] ?? '').toString().trim();
+        final cat = item.category;
         Navigator.pushNamed(
           context,
           '/content/detail',
@@ -770,10 +770,10 @@ class _ContentListScreenState extends State<ContentListScreen> {
     );
   }
 
-  String _imageUrlOf(Map<String, dynamic> item) {
+  String _imageUrlOf(ContentPost item) {
     return _resolveContentImageUrl(
-      thumbnail: item['thumbnail_url'],
-      contentHtml: item['content_html'],
+      thumbnail: item.thumbnailUrl,
+      contentHtml: item.contentHtml,
     );
   }
 
