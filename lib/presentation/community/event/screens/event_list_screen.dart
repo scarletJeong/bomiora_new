@@ -29,7 +29,7 @@ class _EventListScreenState extends State<EventListScreen> {
   static const int _pageSize = 5;
   int _visibleCount = _pageSize;
   bool _isLoading = true;
-  String? _errorMessage;
+  bool _loadFailed = false;
   List<EventModel> _activeEvents = [];
   List<EventModel> _endedEvents = [];
 
@@ -42,7 +42,7 @@ class _EventListScreenState extends State<EventListScreen> {
   Future<void> _loadEvents() async {
     setState(() {
       _isLoading = true;
-      _errorMessage = null;
+      _loadFailed = false;
     });
     try {
       final result = await Future.wait([
@@ -64,7 +64,7 @@ class _EventListScreenState extends State<EventListScreen> {
       );
       if (!mounted) return;
       setState(() {
-        _errorMessage = '이벤트를 불러오는데 실패했습니다: $e';
+        _loadFailed = true;
         _isLoading = false;
       });
     }
@@ -127,7 +127,7 @@ class _EventListScreenState extends State<EventListScreen> {
                 ],
               ),
             ),
-            if (!_isLoading && (_errorMessage != null || events.isEmpty))
+            if (!_isLoading && (_loadFailed || events.isEmpty))
               PageCenteredEmptyOverlay(child: _buildEmptyMessage(context)),
           ],
         ),
@@ -205,7 +205,7 @@ class _EventListScreenState extends State<EventListScreen> {
         child: CircularProgressIndicator(color: _kPink),
       );
     }
-    if (_errorMessage != null || events.isEmpty) {
+    if (_loadFailed || events.isEmpty) {
       return const SizedBox.shrink();
     }
 

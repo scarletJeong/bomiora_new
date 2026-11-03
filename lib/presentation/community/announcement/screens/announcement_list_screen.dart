@@ -32,7 +32,7 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
   bool _loading = false;
   bool _loadingMore = false;
   String _query = '';
-  String? _error;
+  bool _loadFailed = false;
   int _page = 1;
   int _total = 0;
   List<AnnouncementModel> _items = const [];
@@ -62,7 +62,7 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
     } else {
       setState(() {
         _loading = true;
-        _error = null;
+        _loadFailed = false;
       });
     }
 
@@ -96,9 +96,7 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
       );
       if (!mounted) return;
       if (!append) {
-        setState(() {
-          _error = reason;
-        });
+        setState(() => _loadFailed = true);
       }
     }
 
@@ -122,7 +120,7 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final showEmpty = !_loading && (_error != null || _items.isEmpty);
+    final showEmpty = !_loading && (_loadFailed || _items.isEmpty);
     return MobileAppLayoutWrapper(
       appBar: const HealthAppBar(title: '공지사항'),
       resizeToAvoidBottomInset: false,

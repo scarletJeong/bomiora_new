@@ -36,7 +36,6 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
   static const Color _kPink = Color(0xFFFF5A8D);
 
   bool _loading = true;
-  String? _error;
   AnnouncementModel? _item;
   Map<String, dynamic>? _prev;
   Map<String, dynamic>? _next;
@@ -48,10 +47,7 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
   }
 
   Future<void> _load() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+    setState(() => _loading = true);
 
     final result = await AnnouncementService.getAnnouncementDetail(
       widget.announcementId,
@@ -94,7 +90,7 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
       );
       if (!mounted) return;
       setState(() {
-        _error = reason;
+        _item = null;
         _loading = false;
       });
     }
@@ -106,7 +102,7 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
       appBar: const HealthAppBar(title: '공지사항'),
       child: _loading
           ? const Center(child: CircularProgressIndicator())
-          : _error != null || _item == null
+          : _item == null
               ? CenteredEmptyState(
                   iconWidget: CenteredEmptyState.assetIcon(
                     context,

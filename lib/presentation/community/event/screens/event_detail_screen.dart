@@ -32,7 +32,6 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
 
   EventModel? _event;
   bool _isLoading = true;
-  String? _errorMessage;
   List<EventModel> _allEvents = [];
   final ScrollController _scrollController = ScrollController();
 
@@ -49,10 +48,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   }
 
   Future<void> _loadEventDetail() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+    setState(() => _isLoading = true);
 
     try {
       final result = await Future.wait([
@@ -68,7 +64,6 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
 
       if (event != null && event.isEnded) {
         setState(() {
-          _errorMessage = '종료된 이벤트입니다.';
           _event = null;
           _allEvents = active;
           _isLoading = false;
@@ -89,7 +84,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         );
         if (!mounted) return;
         setState(() {
-          _errorMessage = '이벤트를 찾을 수 없습니다.';
+          _event = null;
           _isLoading = false;
         });
       }
@@ -104,7 +99,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       if (!mounted) return;
 
       setState(() {
-        _errorMessage = '이벤트를 불러오는데 실패했습니다: $e';
+        _event = null;
         _isLoading = false;
       });
     }
@@ -124,16 +119,6 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   Widget _buildBody(BuildContext context) {
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
-    }
-
-    if (_errorMessage != null) {
-      return CenteredEmptyState(
-        iconWidget: CenteredEmptyState.assetIcon(
-          context,
-          AppAssets.emptyEventIcon,
-        ),
-        message: '이벤트가 없습니다.',
-      );
     }
 
     if (_event == null) {
