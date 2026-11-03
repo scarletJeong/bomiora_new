@@ -7,6 +7,7 @@ import '../../../../data/services/auth_service.dart';
 import '../../../../data/services/event_service.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
 import '../../../common/navigation/board_list_navigation.dart';
+import '../../../common/widgets/app_network_image.dart';
 import '../../../common/widgets/article_adjacent_nav.dart';
 import '../../../common/widgets/centered_empty_state.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
@@ -192,8 +193,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               if (imageUrl != null)
                 ClipRRect(
                   borderRadius: BorderRadius.circular(healthDp(context, 10)),
-                  child: Image.network(
-                    imageUrl,
+                  child: AppNetworkImage(
+                    url: imageUrl,
                     fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) => Container(
                       height: healthDp(context, 240),

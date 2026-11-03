@@ -6,6 +6,7 @@ import '../../../../data/models/event/event_model.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/services/event_service.dart';
 import '../../../common/widgets/app_clickable.dart';
+import '../../../common/widgets/app_network_image.dart';
 import '../../../common/widgets/centered_empty_state.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
@@ -318,11 +319,12 @@ class _EventListScreenState extends State<EventListScreen> {
                         borderRadius: imageRadius,
                         child: imageUrl == null
                             ? const ColoredBox(color: Color(0xFFF4F4F4))
-                            : Image.network(
-                                imageUrl,
+                            : AppNetworkImage(
+                                url: imageUrl,
                                 fit: BoxFit.cover,
                                 width: double.infinity,
                                 height: healthDp(context, 200),
+                                decodeHeightLogical: healthDp(context, 200),
                                 errorBuilder: (_, __, ___) =>
                                     const ColoredBox(color: Color(0xFFF4F4F4)),
                               ),

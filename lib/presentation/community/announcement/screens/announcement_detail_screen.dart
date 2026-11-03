@@ -158,8 +158,8 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
                     if (hasImage)
                       ClipRRect(
                         borderRadius: BorderRadius.circular(healthDp(context, 12)),
-                        child: Image.network(
-                          ImageUrlHelper.getImageUrl(item.imagePath),
+                        child: AppNetworkImage(
+                          url: ImageUrlHelper.getImageUrl(item.imagePath),
                           fit: BoxFit.cover,
                           errorBuilder: (_, __, ___) => Container(
                             height: healthDp(context, 180),
