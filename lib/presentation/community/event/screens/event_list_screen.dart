@@ -11,7 +11,6 @@ import '../../../common/widgets/centered_empty_state.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
-import 'event_detail_screen.dart';
 
 class EventListScreen extends StatefulWidget {
   const EventListScreen({super.key});
@@ -288,13 +287,7 @@ class _EventListScreenState extends State<EventListScreen> {
     return AppClickable(
       onTap: ended
           ? null
-          : () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => EventDetailScreen(wrId: event.wrId),
-                  settings: RouteSettings(name: '/event/${event.wrId}'),
-                ),
-              ),
+          : () => Navigator.pushNamed(context, '/event/${event.wrId}'),
       child: DecoratedBox(
         decoration: ShapeDecoration(
           color: Colors.white,
@@ -325,6 +318,7 @@ class _EventListScreenState extends State<EventListScreen> {
                                 width: double.infinity,
                                 height: healthDp(context, 200),
                                 decodeHeightLogical: healthDp(context, 200),
+                                preferHtmlElementOnWeb: false,
                                 errorBuilder: (_, __, ___) =>
                                     const ColoredBox(color: Color(0xFFF4F4F4)),
                               ),

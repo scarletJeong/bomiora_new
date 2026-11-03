@@ -314,13 +314,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       }
     }
     if (target == null || target.isEnded) return;
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (_) => EventDetailScreen(wrId: wrId),
-        settings: RouteSettings(name: '/event/$wrId'),
-      ),
-    );
+    Navigator.pushReplacementNamed(context, '/event/$wrId');
   }
 
   List<EventModel> get _navEvents =>

@@ -12,7 +12,6 @@ import '../../../common/widgets/centered_empty_state.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
 import '../../../common/widgets/app_clickable.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
-import 'announcement_detail_screen.dart';
 
 class AnnouncementListScreen extends StatefulWidget {
   const AnnouncementListScreen({super.key});
@@ -329,12 +328,9 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
     return Padding(
       padding: EdgeInsets.only(bottom: healthDp(context, 14)),
       child: AppClickable(
-        onTap: () => Navigator.push(
+        onTap: () => Navigator.pushNamed(
           context,
-          MaterialPageRoute(
-            builder: (_) => AnnouncementDetailScreen(announcementId: item.id),
-            settings: RouteSettings(name: '/announcement/${item.id}'),
-          ),
+          '/announcement/${item.id}',
         ),
         child: Container(
           padding: EdgeInsets.all(healthDp(context, 16)),

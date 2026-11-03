@@ -411,12 +411,6 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
 
   void _moveToAdjacent(int? id) {
     if (id == null || id <= 0) return;
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (_) => AnnouncementDetailScreen(announcementId: id),
-        settings: RouteSettings(name: '/announcement/$id'),
-      ),
-    );
+    Navigator.pushReplacementNamed(context, '/announcement/$id');
   }
 }
