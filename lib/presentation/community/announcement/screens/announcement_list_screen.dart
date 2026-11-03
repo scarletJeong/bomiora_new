@@ -28,15 +28,17 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
   static const Color _kPink = Color(0xFFFF5A8D);
 
   final TextEditingController _searchController = TextEditingController();
-  final int _size = 6;
+  static const int _size = 5;
 
   bool _loading = false;
+  bool _loadingMore = false;
   String _query = '';
   String? _error;
   int _page = 1;
   int _total = 0;
-  int _totalPages = 1;
   List<AnnouncementModel> _items = const [];
+
+  bool get _hasMore => _items.length < _total;
 
   void _submitSearch() {
     _load(page: 1, query: _searchController.text.trim());
@@ -54,13 +56,18 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
     super.dispose();
   }
 
-  Future<void> _load({int? page, String? query}) async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+  Future<void> _load({int? page, String? query, bool append = false}) async {
+    if (append) {
+      if (_loading || _loadingMore || !_hasMore) return;
+      setState(() => _loadingMore = true);
+    } else {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+    }
 
-    final targetPage = page ?? _page;
+    final targetPage = page ?? (append ? _page + 1 : _page);
     final targetQuery = query ?? _query;
     final result = await AnnouncementService.getAnnouncements(
       page: targetPage,
@@ -72,11 +79,11 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
     if (result['success'] == true) {
       final loaded = (result['items'] as List<AnnouncementModel>?) ?? [];
       setState(() {
-        _items = loaded;
+        _items = append ? _appendById(_items, loaded) : loaded;
         _total = (result['total'] as num?)?.toInt() ?? 0;
         _page = (result['page'] as num?)?.toInt() ?? targetPage;
-        _totalPages = ((result['totalPages'] as num?)?.toInt() ?? 1).clamp(1, 9999);
         _query = targetQuery;
+        if (append) _loadingMore = false;
       });
     } else {
       final reason =
@@ -89,12 +96,29 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
         detail: {'page': targetPage, 'query': targetQuery},
       );
       if (!mounted) return;
-      setState(() {
-        _error = reason;
-      });
+      if (!append) {
+        setState(() {
+          _error = reason;
+        });
+      }
     }
 
-    setState(() => _loading = false);
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      _loadingMore = false;
+    });
+  }
+
+  List<AnnouncementModel> _appendById(
+    List<AnnouncementModel> current,
+    List<AnnouncementModel> incoming,
+  ) {
+    final seen = current.map((item) => item.id).toSet();
+    return [
+      ...current,
+      ...incoming.where((item) => seen.add(item.id)),
+    ];
   }
 
   @override
@@ -156,8 +180,7 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
                               ..._items.map(
                                 (item) => _buildNoticeCard(context, item),
                               ),
-                              SizedBox(height: healthDp(context, 16)),
-                              _buildPagination(context),
+                              if (_hasMore) _buildMoreButton(context),
                             ]),
                           ),
                         ),
@@ -372,53 +395,36 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
     );
   }
 
-  Widget _buildPagination(BuildContext context) {
-    final startPage = ((_page - 1) ~/ 6) * 6 + 1;
-    final endPage = (startPage + 5).clamp(1, _totalPages);
-    final pages = List<int>.generate(endPage - startPage + 1, (i) => startPage + i);
-
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        IconButton(
-          onPressed: _page > 1 ? () => _load(page: _page - 1) : null,
-          icon: const Icon(Icons.chevron_left_rounded),
+  Widget _buildMoreButton(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(top: healthDp(context, 2)),
+      child: TextButton(
+        onPressed: _loadingMore ? null : () => _load(append: true),
+        style: TextButton.styleFrom(
+          foregroundColor: _kPink,
+          overlayColor: Colors.transparent,
+          minimumSize: Size(double.infinity, healthDp(context, 36)),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         ),
-        ...pages.map((p) => Padding(
-              padding: EdgeInsets.symmetric(horizontal: healthDp(context, 2)),
-              child: AppClickable(
-                onTap: p == _page ? null : () => _load(page: p),
-                child: Container(
-                  width: healthDp(context, 30),
-                  height: healthDp(context, 30),
-                  alignment: Alignment.center,
-                  decoration: ShapeDecoration(
-                    color: p == _page ? _kPink : Colors.white,
-                    shape: RoundedRectangleBorder(
-                      side: BorderSide(
-                        width: p == _page ? 0 : healthDp(context, 1),
-                        color: const Color(0x7FD2D2D2),
-                      ),
-                      borderRadius: BorderRadius.circular(healthDp(context, 7)),
-                    ),
-                  ),
-                  child: Text(
-                    '$p',
-                    style: TextStyle(
-                      color: p == _page ? Colors.white : const Color(0xFF898383),
-                      fontSize: healthSp(context, 14),
-                      fontFamily: 'Pretendard Variable',
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
+        child: _loadingMore
+            ? SizedBox(
+                width: healthDp(context, 16),
+                height: healthDp(context, 16),
+                child: const CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: _kPink,
+                ),
+              )
+            : Text(
+                '더보기',
+                style: TextStyle(
+                  color: _kPink,
+                  fontSize: healthSp(context, 13),
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w500,
                 ),
               ),
-            )),
-        IconButton(
-          onPressed: _page < _totalPages ? () => _load(page: _page + 1) : null,
-          icon: const Icon(Icons.chevron_right_rounded),
-        ),
-      ],
+      ),
     );
   }
 
