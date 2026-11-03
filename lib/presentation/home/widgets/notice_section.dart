@@ -1,20 +1,47 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_assets.dart';
+import '../../../core/logging/failure_log.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../data/models/announcement/announcement_model.dart';
 import '../../../data/services/announcement_service.dart';
+import '../../../data/services/auth_service.dart';
 import '../../common/widgets/centered_empty_state.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import 'home_section_widgets.dart';
 
-class NoticeSection extends StatelessWidget {
+class NoticeSection extends StatefulWidget {
   const NoticeSection({super.key});
+
+  @override
+  State<NoticeSection> createState() => _NoticeSectionState();
+}
+
+class _NoticeSectionState extends State<NoticeSection> {
+  late final Future<Map<String, dynamic>> _future = _load();
+
+  Future<Map<String, dynamic>> _load() async {
+    final result = await AnnouncementService.getAnnouncements(page: 1, size: 3);
+    if (result['success'] != true) {
+      final user = await AuthService.getUser();
+      await FailureLog.record(
+        code: 'home.announcement',
+        mbId: user?.id ?? '',
+        reason: result['message']?.toString() ?? '공지사항 목록을 불러오지 못했습니다.',
+        detail: {
+          'page': 1,
+          'size': 3,
+          if (result['statusCode'] != null) 'statusCode': result['statusCode'],
+        },
+      );
+    }
+    return result;
+  }
 
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<Map<String, dynamic>>(
-      future: AnnouncementService.getAnnouncements(page: 1, size: 3),
+      future: _future,
       builder: (context, snapshot) {
         final items =
             (snapshot.data?['items'] as List<AnnouncementModel>?) ?? const [];

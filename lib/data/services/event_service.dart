@@ -65,7 +65,18 @@ class EventService {
       if (response.statusCode == 304 || response.body.trim().isEmpty) {
         return _activeCache ?? const [];
       }
+      if (response.statusCode != 200) {
+        throw Exception('진행중인 이벤트 목록 HTTP ${response.statusCode}');
+      }
       final responseData = json.decode(response.body);
+      if (responseData is Map && responseData['success'] != true) {
+        final message = responseData['message']?.toString().trim() ?? '';
+        throw Exception(
+          message.isEmpty
+              ? '진행중인 이벤트 목록 조회에 실패했습니다.'
+              : '진행중인 이벤트 목록: $message',
+        );
+      }
       final list = _parseEventList(responseData);
       _activeCache = list;
       _activeCacheAt = DateTime.now();

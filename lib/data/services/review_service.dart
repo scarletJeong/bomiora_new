@@ -143,7 +143,8 @@ class ReviewService {
       }
       return {
         'success': false,
-        'message': '메인 리뷰를 불러올 수 없습니다.',
+        'message': '메인 리뷰를 불러올 수 없습니다. (HTTP ${response.statusCode})',
+        'statusCode': response.statusCode,
         'reviews': <MainHomeReviewModel>[],
       };
     } catch (e) {

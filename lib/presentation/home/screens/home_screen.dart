@@ -8,7 +8,7 @@ import '../../common/widgets/centered_empty_state.dart';
 import '../../../core/constants/app_assets.dart';
 import '../../../data/models/home/banner_model.dart';
 import '../../../data/models/product/product_model.dart';
-import '../../../data/repositories/product/product_category_catalog.dart';
+import '../../../core/logging/failure_log.dart';
 import '../../../data/repositories/product/product_repository.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/community_prefetch.dart';
@@ -99,7 +99,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _selectedTabIndex = 0;
   int _tabsRequestToken = 0;
   bool _tabsLoading = true;
-  String? _tabsError;
+  bool _categoryListFailed = false;
   final Map<String, List<Product>> _productsByCategory = {};
   bool _categoryLoading = false;
 
@@ -263,13 +263,13 @@ class _HomeScreenState extends State<HomeScreen> {
     final requestToken = ++_tabsRequestToken;
     setState(() {
       _tabsLoading = true;
-      _tabsError = null;
+      _categoryListFailed = false;
     });
 
     try {
       final results = await Future.wait([
-        ProductCategoryCatalog.prescriptionCategories(),
-        ProductCategoryCatalog.generalCategories(),
+        ProductRepository.getCategoriesWithProducts(productKind: 'prescription'),
+        ProductRepository.getCategoriesWithProducts(productKind: 'general'),
       ]);
       if (!mounted || requestToken != _tabsRequestToken) return;
 
@@ -280,13 +280,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
       setState(() {
         _tabsLoading = false;
-        if (tabs.isEmpty) {
-          _tabs = const [];
-          _tabsError = '카테고리를 불러오지 못했습니다.';
-        } else {
-          _tabs = tabs;
+        _categoryListFailed = false;
+        _tabs = tabs;
+        if (tabs.isNotEmpty) {
           _selectedTabIndex = _selectedTabIndex.clamp(0, tabs.length - 1);
-          _tabsError = null;
         }
       });
 
@@ -294,12 +291,23 @@ class _HomeScreenState extends State<HomeScreen> {
         _prefetchCategoryProducts(tabs);
         _loadProductsForCurrentTab();
       }
-    } catch (_) {
+    } catch (e) {
+      final user = await AuthService.getUser();
+      await FailureLog.record(
+        code: 'home.category',
+        mbId: user?.id ?? '',
+        reason: e.toString(),
+        detail: const {'source': 'categories-with-products'},
+      );
       if (!mounted || requestToken != _tabsRequestToken) return;
       setState(() {
         _tabsLoading = false;
-        _tabs = const [];
-        _tabsError = '카테고리를 불러오지 못했습니다.';
+        _categoryListFailed = true;
+        _tabs = _buildHomeTabs(
+          prescription: const [],
+          general: const [],
+        );
+        _selectedTabIndex = 0;
       });
     }
   }
@@ -408,6 +416,7 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
     setState(() => _selectedTabIndex = index);
+    if (_categoryListFailed) return;
     _loadProductsForCurrentTab();
   }
 
@@ -632,8 +641,8 @@ class _HomeScreenState extends State<HomeScreen> {
         child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
       );
     }
-    if (_tabsError != null || _tabs.isEmpty) {
-      return const SizedBox.shrink();
+    if (_tabs.isEmpty) {
+      return _buildCategoryUnavailable(context);
     }
 
     final hPad = healthDp(context, 20);
@@ -705,6 +714,53 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _buildCategoryUnavailable(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: healthDp(context, 20)),
+          child: const HomeSectionTitleRow(
+            line1: '건강을',
+            line2: '채우는 시간',
+          ),
+        ),
+        SizedBox(height: healthDp(context, 20)),
+        _buildCategoryEmptyProducts(context),
+      ],
+    );
+  }
+
+  Widget _buildCategoryEmptyProducts(BuildContext context) {
+    final layout = HomeBigCardLayout.fromWidth(MediaQuery.sizeOf(context).width);
+    final emptyH = layout.imageH + layout.columnGap + layout.titleFs * 1.25;
+    return SizedBox(
+      height: emptyH,
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CenteredEmptyState.assetIcon(
+              context,
+              AppAssets.emptyCategoryIcon,
+              slot: 65,
+            ),
+            SizedBox(height: healthDp(context, 8)),
+            Text(
+              '등록된 상품이 없습니다.',
+              style: TextStyle(
+                color: const Color(0x665B3F43),
+                fontSize: healthSp(context, 12),
+                fontFamily: 'Gmarket Sans TTF',
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildCategoryCarousel({
     required List<Product> products,
     required List<Product> displayProducts,
@@ -721,34 +777,8 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       );
     }
-    if (products.isEmpty) {
-      final layout = HomeBigCardLayout.fromWidth(MediaQuery.sizeOf(context).width);
-      final emptyH = layout.imageH + layout.columnGap + layout.titleFs * 1.25;
-      return SizedBox(
-        height: emptyH,
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CenteredEmptyState.assetIcon(
-                context,
-                AppAssets.emptyCategoryIcon,
-                slot: 65,
-              ),
-              SizedBox(height: healthDp(context, 8)),
-              Text(
-                '등록된 상품이 없습니다.',
-                style: TextStyle(
-                  color: const Color(0x665B3F43),
-                  fontSize: healthSp(context, 12),
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w400,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
+    if (_categoryListFailed || products.isEmpty) {
+      return _buildCategoryEmptyProducts(context);
     }
 
     return _horizontalProductRow(

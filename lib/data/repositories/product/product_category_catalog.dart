@@ -21,9 +21,14 @@ class ProductCategoryCatalog {
     }
 
     final request = () async {
-      final fromApi = await ProductRepository.getCategoriesWithProducts(
-        productKind: 'general',
-      );
+      List<ProductCategoryItem> fromApi = const [];
+      try {
+        fromApi = await ProductRepository.getCategoriesWithProducts(
+          productKind: 'general',
+        );
+      } catch (_) {
+        fromApi = const [];
+      }
       _generalCache = fromApi.isNotEmpty
           ? fromApi
           : List<ProductCategoryItem>.from(productGeneralCategoryListFallback);
@@ -50,9 +55,14 @@ class ProductCategoryCatalog {
     }
 
     final request = () async {
-      final fromApi = await ProductRepository.getCategoriesWithProducts(
-        productKind: 'prescription',
-      );
+      List<ProductCategoryItem> fromApi = const [];
+      try {
+        fromApi = await ProductRepository.getCategoriesWithProducts(
+          productKind: 'prescription',
+        );
+      } catch (_) {
+        fromApi = const [];
+      }
       _prescriptionCache = fromApi.isNotEmpty
           ? fromApi
           : List<ProductCategoryItem>.from(

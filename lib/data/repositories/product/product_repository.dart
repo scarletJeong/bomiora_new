@@ -279,15 +279,33 @@ class ProductRepository {
         ApiEndpoints.categoriesWithProducts(productKind),
       );
 
-      if (response.statusCode != 200) return [];
-
-      final data = json.decode(response.body);
-      if (data is! Map || data['success'] != true || data['data'] == null) {
-        return [];
+      if (response.statusCode != 200) {
+        throw Exception(
+          '카테고리 목록 조회 실패 ($productKind): HTTP ${response.statusCode}',
+        );
       }
 
+      final data = json.decode(response.body);
+      if (data is! Map) {
+        throw Exception(
+          '카테고리 목록 응답 형식이 올바르지 않습니다. ($productKind)',
+        );
+      }
+      if (data['success'] != true) {
+        final message = data['message']?.toString().trim() ?? '';
+        throw Exception(
+          message.isEmpty
+              ? '카테고리 목록 조회 실패 ($productKind)'
+              : '카테고리 목록 조회 실패 ($productKind): $message',
+        );
+      }
       final raw = data['data'];
-      if (raw is! List) return [];
+      if (raw == null) return [];
+      if (raw is! List) {
+        throw Exception(
+          '카테고리 목록 응답 형식이 올바르지 않습니다. ($productKind)',
+        );
+      }
 
       final out = <ProductCategoryItem>[];
       for (final item in raw) {
@@ -319,7 +337,9 @@ class ProductRepository {
       });
       return out;
     } catch (e) {
-      return [];
+      final text = e.toString();
+      if (text.contains('카테고리 목록')) rethrow;
+      throw Exception('카테고리 목록 조회 실패 ($productKind): $e');
     }
   }
 }

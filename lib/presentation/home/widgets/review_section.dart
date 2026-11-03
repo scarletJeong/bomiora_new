@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_assets.dart';
+import '../../../core/logging/failure_log.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../data/models/review/main_home_review_model.dart';
+import '../../../data/services/auth_service.dart';
 import '../../../data/services/review_service.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../review/screens/review_best_screen.dart';
@@ -91,6 +93,18 @@ class _ReviewSectionState extends State<ReviewSection> {
 
   Future<void> _load() async {
     final result = await ReviewService.getMainHomeReviews(size: _fetchSize);
+    if (result['success'] != true) {
+      final user = await AuthService.getUser();
+      await FailureLog.record(
+        code: 'home.review',
+        mbId: user?.id ?? '',
+        reason: result['message']?.toString() ?? '메인 리뷰를 불러올 수 없습니다.',
+        detail: {
+          'size': _fetchSize,
+          if (result['statusCode'] != null) 'statusCode': result['statusCode'],
+        },
+      );
+    }
     if (!mounted) return;
     setState(() {
       _loading = false;

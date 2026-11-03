@@ -1,15 +1,25 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_assets.dart';
+import '../../../core/logging/failure_log.dart';
+import '../../../core/network/api_endpoints.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../data/models/event/event_model.dart';
+import '../../../data/services/auth_service.dart';
 import '../../../data/services/event_service.dart';
 import '../../common/widgets/centered_empty_state.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import 'home_section_widgets.dart';
 
-class EventSection extends StatelessWidget {
+class EventSection extends StatefulWidget {
   const EventSection({super.key});
+
+  @override
+  State<EventSection> createState() => _EventSectionState();
+}
+
+class _EventSectionState extends State<EventSection> {
+  late final Future<List<EventModel>> _future = _load();
 
   String _eventDateText(EventModel item) {
     final created = DateDisplayFormatter.tryParseYmdFlexible(item.wrDatetime);
@@ -20,10 +30,25 @@ class EventSection extends StatelessWidget {
         .replaceAll('.', '-');
   }
 
+  Future<List<EventModel>> _load() async {
+    try {
+      return await EventService.getActiveEvents();
+    } catch (e) {
+      final user = await AuthService.getUser();
+      await FailureLog.record(
+        code: 'home.event',
+        mbId: user?.id ?? '',
+        reason: e.toString(),
+        detail: {'api': ApiEndpoints.getActiveEvents},
+      );
+      return const [];
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<List<EventModel>>(
-      future: EventService.getActiveEvents(),
+      future: _future,
       builder: (context, snapshot) {
         final items = snapshot.data ?? const <EventModel>[];
         final topItems = items.take(3).toList();

@@ -54,7 +54,9 @@ class AnnouncementService {
       if (response.statusCode != 200) {
         return {
           'success': false,
-          'message': '공지사항 목록을 불러오지 못했습니다.',
+          'message':
+              '공지사항 목록을 불러오지 못했습니다. (HTTP ${response.statusCode})',
+          'statusCode': response.statusCode,
           'items': <AnnouncementModel>[],
           'total': 0,
           'page': page,
