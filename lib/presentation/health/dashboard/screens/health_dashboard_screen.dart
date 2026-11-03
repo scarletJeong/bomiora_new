@@ -54,7 +54,6 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
   double bmi = 0.0;
 
   bool isLoading = true;
-  bool _loggedOut = false;
   bool _loadFailed = false;
   bool _hasSnapshot = false;
   DateTime? _snapshotDate;
@@ -126,16 +125,6 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
       _snapshotDate != null &&
       _isSameDay(_snapshotDate!, selectedDate);
 
-  Future<void> _openLogin() async {
-    await Navigator.pushNamed(
-      context,
-      '/login',
-      arguments: const {'returnTo': '/health'},
-    );
-    if (!mounted) return;
-    await _loadData();
-  }
-
   Future<void> _loadData({
     bool showBlockingLoader = true,
     bool forceRefresh = false,
@@ -154,10 +143,9 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
       if (user == null) {
         setState(() {
           currentUser = null;
-          _loggedOut = true;
           _loadFailed = false;
-          _hasSnapshot = false;
-          _snapshotDate = null;
+          _hasSnapshot = true;
+          _snapshotDate = selectedDate;
           latestWeightRecord = null;
           latestBloodPressureRecord = null;
           latestBloodSugarRecord = null;
@@ -267,7 +255,6 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
 
       setState(() {
         currentUser = user;
-        _loggedOut = false;
         if (includeDashboard) {
           _hasSnapshot = true;
           _snapshotDate = selectedDate;
@@ -341,7 +328,6 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
       if (!mounted || generation != _loadGeneration) return;
       setState(() {
         isLoading = false;
-        _loggedOut = false;
         _loadFailed = true;
       });
     }
@@ -447,7 +433,14 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
                   ],
                 ),
               )
-            : RefreshIndicator(
+            : LayoutBuilder(
+                builder: (context, constraints) {
+                  final shortSheet =
+                      _loadFailed && !_snapshotMatchesSelection();
+                  final viewportHeight = constraints.maxHeight.isFinite
+                      ? constraints.maxHeight
+                      : MediaQuery.sizeOf(context).height;
+                  return RefreshIndicator(
                 color: const Color(0xFFFF5A8D),
                 onRefresh: () => _loadData(
                   showBlockingLoader: false,
@@ -455,7 +448,9 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
                 ),
                 child: SingleChildScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
-                  child: Column(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minHeight: viewportHeight),
+                    child: Column(
                     children: [
                       Stack(
                         clipBehavior: Clip.none,
@@ -480,32 +475,38 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
                               Transform.translate(
                                 offset: const Offset(0, -36),
                                 child: Container(
+                                  constraints: shortSheet
+                                      ? BoxConstraints(
+                                          minHeight: _shortSheetMinHeight(
+                                            context,
+                                            viewportHeight,
+                                          ),
+                                        )
+                                      : null,
                                   margin: const EdgeInsets.only(top: 0),
                                   padding: EdgeInsets.fromLTRB(
                                     healthDp(context, 18),
                                     0,
                                     healthDp(context, 18),
-                                    0,
+                                    shortSheet ? 36 : 0,
                                   ),
                                   decoration: BoxDecoration(
                                     color: Colors.white,
-                                    borderRadius: BorderRadius.all(
-                                      Radius.circular(
+                                    borderRadius: BorderRadius.vertical(
+                                      top: Radius.circular(
                                         healthDp(context, 50),
                                       ),
+                                      bottom: shortSheet
+                                          ? Radius.zero
+                                          : Radius.circular(
+                                              healthDp(context, 50),
+                                            ),
                                     ),
                                   ),
                                   child: Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
-                                      if (_loggedOut)
-                                        _buildRecordGate(
-                                          message: '로그인하면 오늘 기록을 볼 수 있습니다',
-                                          actionLabel: '로그인',
-                                          onPressed: _openLogin,
-                                        )
-                                      else ...[
                                         HealthDateSelector(
                                           selectedDate: selectedDate,
                                           onDateChanged: (newDate) {
@@ -590,7 +591,6 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
                                             heartRate: heartRate,
                                           ),
                                         ],
-                                      ],
                                     ],
                                   ),
                                 ),
@@ -601,10 +601,28 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
                       ),
                     ],
                   ),
-                ),
+                    ),
+                  ),
+                );
+                },
               ),
       ),
     );
+  }
+
+  /// 짧은 안내만 있을 때 흰 영역이 화면 중간에서 끊기지 않게 아래로 채운다.
+  double _shortSheetMinHeight(BuildContext context, double viewportHeight) {
+    final topInset = healthStatusBarTopInset(context);
+    final gap = _headerToWhiteCardGap(context);
+    final header = healthDp(context, 20) +
+        healthDp(context, 62) +
+        healthDp(context, 24 + 8 + 4) +
+        healthSp(context, 14) +
+        healthDp(context, 8 + 20 + 35);
+    final beforeSheet = topInset + header + gap - 36;
+    final remaining = viewportHeight - beforeSheet + 36;
+    final floor = healthDp(context, 280);
+    return remaining < floor ? floor : remaining;
   }
 
   /// 핑크 헤더 하단과 흰 카드(라운드) 시작 사이 세로 간격.
@@ -786,6 +804,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
                 style: OutlinedButton.styleFrom(
                   side: const BorderSide(color: Colors.white70),
                   foregroundColor: Colors.white,
+                  overlayColor: Colors.transparent,
                   minimumSize: Size(0, healthDp(context, 20)),
                   fixedSize: Size.fromHeight(healthDp(context, 20)),
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -810,7 +829,8 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFFF5A8D),
                   foregroundColor: Colors.white,
-                  elevation: 0,
+                  overlayColor: Colors.transparent,
+                  shadowColor: Colors.transparent,
                   minimumSize: Size(0, healthDp(context, 20)),
                   fixedSize: Size.fromHeight(healthDp(context, 20)),
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -822,6 +842,8 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
                       const VisualDensity(horizontal: -2, vertical: -2),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(999)),
+                ).copyWith(
+                  elevation: const WidgetStatePropertyAll(0),
                 ),
                 child: Text('연동하기 >',
                     style: TextStyle(
