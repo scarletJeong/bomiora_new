@@ -2,10 +2,11 @@ import 'dart:async';
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/logging/failure_log.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../data/models/home/banner_model.dart';
+import '../../../data/services/auth_service.dart';
 import '../../../data/services/banner_service.dart';
 import '../../common/widgets/app_network_image.dart';
 import '../../health/health_common/health_responsive_scale.dart';
@@ -28,7 +29,6 @@ class BannerSlider extends StatefulWidget {
 }
 
 class _BannerSliderState extends State<BannerSlider> {
-  static const Color _fallbackColor = Color(0xFFFF5A8D);
   static const Duration _autoSlideInterval = Duration(seconds: 4);
 
   int _currentIndex = 0;
@@ -38,6 +38,7 @@ class _BannerSliderState extends State<BannerSlider> {
   late PageController _pageController;
   late Future<List<BannerModel>> _bannersFuture;
   bool _primarySettledNotified = false;
+  final Set<String> _loggedImageUrls = {};
 
   @override
   void initState() {
@@ -79,9 +80,25 @@ class _BannerSliderState extends State<BannerSlider> {
     future.then((banners) {
       if (!mounted || token != _bannerListenToken) return;
       final visible = _visibleBanners(banners);
+      if (visible.isEmpty) {
+        unawaited(
+          _logBanner(
+            banners.isEmpty
+                ? '배너 목록이 비어 있습니다.'
+                : '이미지 주소가 있는 배너가 없습니다.',
+            {'received': banners.length},
+          ),
+        );
+      }
       _syncAutoSlide(visible.isEmpty ? 1 : visible.length);
-    }, onError: (_, __) {
+    }, onError: (Object error, StackTrace _) {
       if (!mounted || token != _bannerListenToken) return;
+      unawaited(
+        _logBanner(
+          '배너 목록을 불러오지 못했습니다.',
+          {'error': error.toString()},
+        ),
+      );
       _syncAutoSlide(1);
     });
   }
@@ -114,7 +131,11 @@ class _BannerSliderState extends State<BannerSlider> {
   }
 
   List<BannerModel> _visibleBanners(List<BannerModel> apiBanners) {
-    return apiBanners.where((b) => b.imageUrl.trim().isNotEmpty).toList();
+    return apiBanners
+        .where(
+          (b) => ImageUrlHelper.resolveBannerImageUrl(b.imageUrl).isNotEmpty,
+        )
+        .toList();
   }
 
   bool _isInAppHost(String host) {
@@ -142,39 +163,79 @@ class _BannerSliderState extends State<BannerSlider> {
     return path;
   }
 
+  Future<void> _logBanner(
+    String reason,
+    Map<String, Object?> detail,
+  ) async {
+    final user = await AuthService.getUser();
+    await FailureLog.record(
+      code: 'home.banner',
+      mbId: user?.id ?? '',
+      reason: reason,
+      detail: detail,
+    );
+  }
+
+  void _logImageFailure(String url, Object error) {
+    if (!_loggedImageUrls.add(url)) return;
+    unawaited(
+      _logBanner(
+        '배너 이미지를 불러오지 못했습니다.',
+        {'url': url, 'error': error.toString()},
+      ),
+    );
+  }
+
   Future<void> _onTapBanner(BannerModel banner) async {
     final raw = banner.linkUrl.trim();
     if (raw.isEmpty) return;
 
     final uri = Uri.tryParse(raw);
-    if (uri == null) return;
-
-    if (raw.startsWith('/') || _isInAppHost(uri.host)) {
-      final route = raw.startsWith('/') ? raw : _inAppRoute(uri);
-      if (route == '/' || route.isEmpty) return;
-      if (!context.mounted) return;
-      try {
-        await Navigator.pushNamed(context, route);
-        return;
-      } catch (_) {}
+    if (uri == null) {
+      await _logBanner('배너 링크 형식이 올바르지 않습니다.', {'url': raw});
+      return;
     }
 
-    final target = uri.hasScheme
-        ? uri
-        : Uri.parse('https://bomiora.net${raw.startsWith('/') ? raw : '/$raw'}');
-    await launchUrl(
-      target,
-      mode: LaunchMode.platformDefault,
-      webOnlyWindowName: '_self',
-    );
+    final inApp = raw.startsWith('/') || _isInAppHost(uri.host);
+    if (!inApp) {
+      await _logBanner('배너 링크가 앱 화면이 아닙니다.', {'url': raw});
+      return;
+    }
+
+    final route = raw.startsWith('/') ? raw : _inAppRoute(uri);
+    if (route == '/' || route.isEmpty) {
+      await _logBanner('배너 링크에 이동할 화면이 없습니다.', {'url': raw});
+      return;
+    }
+    if (!context.mounted) return;
+    try {
+      await Navigator.pushNamed(context, route);
+    } catch (e) {
+      await _logBanner(
+        '등록된 화면이 없습니다.',
+        {'url': raw, 'route': route, 'error': e.toString()},
+      );
+    }
   }
 
-  Widget _buildFallbackPage(double bannerH) {
+  Widget _buildFallbackPage(BuildContext context, double bannerH) {
     return ColoredBox(
-      color: _fallbackColor,
+      color: const Color(0xFFF6F6F6),
       child: SizedBox(
         width: double.infinity,
         height: bannerH,
+        child: Center(
+          child: Text(
+            '이미지가 로드되지 않았습니다',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: const Color(0xFF898686),
+              fontSize: healthSp(context, 14),
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -188,7 +249,7 @@ class _BannerSliderState extends State<BannerSlider> {
     final imageUrl = ImageUrlHelper.resolveBannerImageUrl(banner.imageUrl);
     final bannerW = MediaQuery.sizeOf(context).width;
     final image = imageUrl.isEmpty
-        ? _buildFallbackPage(bannerH)
+        ? _buildFallbackPage(context, bannerH)
         : AppNetworkImage(
             url: imageUrl,
             fit: BoxFit.fill,
@@ -196,8 +257,12 @@ class _BannerSliderState extends State<BannerSlider> {
             height: bannerH,
             decodeWidthLogical: bannerW,
             decodeHeightLogical: bannerH,
+            preferHtmlElementOnWeb: false,
             onSettled: onSettled,
-            errorBuilder: (_, __, ___) => _buildFallbackPage(bannerH),
+            errorBuilder: (_, error, __) {
+              _logImageFailure(imageUrl, error);
+              return _buildFallbackPage(context, bannerH);
+            },
           );
 
     if (banner.linkUrl.trim().isEmpty) return image;
@@ -274,7 +339,7 @@ class _BannerSliderState extends State<BannerSlider> {
                   itemCount: pageCount,
                   itemBuilder: (context, index) {
                     if (banners.isEmpty) {
-                      return _buildFallbackPage(bannerH);
+                      return _buildFallbackPage(context, bannerH);
                     }
                     return _buildImagePage(
                       context,
