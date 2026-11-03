@@ -7,7 +7,6 @@ import '../../../data/models/review/main_home_review_model.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/review_service.dart';
 import '../../health/health_common/health_responsive_scale.dart';
-import '../../review/screens/review_best_screen.dart';
 import '../../common/widgets/app_clickable.dart';
 import '../../common/widgets/centered_empty_state.dart';
 import 'home_section_widgets.dart';
@@ -138,14 +137,7 @@ class _ReviewSectionState extends State<ReviewSection> {
           if (!_loading && _reviews.isNotEmpty) ...[
           SizedBox(height: healthDp(context, 48)),
           AppClickable(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute<void>(
-                  builder: (_) => const ReviewBestScreen(),
-                ),
-              );
-            },
+            onTap: () => Navigator.pushNamed(context, '/review/best'),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
@@ -258,14 +250,10 @@ class _ReviewSectionState extends State<ReviewSection> {
             ? ImageUrlHelper.getImageUrl(r.productImage)
             : null;
         return AppClickable(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute<void>(
-                builder: (_) => ReviewBestScreen(initialMrNo: r.mrNo),
-              ),
-            );
-          },
+          onTap: () => Navigator.pushNamed(
+            context,
+            '/review/best?mr=${r.mrNo}',
+          ),
           child: _ReviewCard(
             layout: layout,
             titleLine: r.reviewerName,

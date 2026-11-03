@@ -51,6 +51,7 @@ import 'presentation/community/faq/screens/faq_list_screen.dart';
 import 'presentation/content/dashboard/screens/content_list_screen.dart';
 import 'presentation/content/dashboard/screens/content_detail_screen.dart';
 import 'presentation/home/search/search_list_screen.dart';
+import 'presentation/review/screens/review_best_screen.dart';
 import 'presentation/common/widgets/dropdown_btn.dart';
 import 'core/utils/inf_code_tracker.dart';
 
@@ -444,6 +445,21 @@ class _BomioraAppState extends State<BomioraApp> {
               ),
             );
           }
+        }
+
+        // 홈 베스트 리뷰: /review/best?mr=리뷰번호
+        if (uri.path == '/review/best') {
+          final raw = uri.queryParameters['mr'];
+          final mrNo = int.tryParse((raw ?? '').trim());
+          return MaterialPageRoute(
+            builder: (context) => ReviewBestScreen(
+              initialMrNo: mrNo != null && mrNo > 0 ? mrNo : null,
+            ),
+            settings: RouteSettings(
+              name: routeName,
+              arguments: settings.arguments,
+            ),
+          );
         }
 
         // 검색 결과: /search?q=검색어 (새로고침·공유용)
