@@ -684,7 +684,9 @@ class _WishListScreenState extends State<WishListScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _wishCardImage(
-            imageUrl: ImageUrlHelper.getImageUrl(productImage),
+            imageUrl: ImageUrlHelper.productGridThumbUrl(
+              ImageUrlHelper.getImageUrl(productImage),
+            ),
             fit: BoxFit.fill,
             width: cardW,
             height: imageH,

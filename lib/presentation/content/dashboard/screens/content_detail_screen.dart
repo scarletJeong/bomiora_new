@@ -574,7 +574,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
               : targetWidth;
           final height = healthDp(context, 200);
           return Align(
-            alignment: Alignment.centerLeft,
+            alignment: Alignment.center,
             child: ClipRRect(
               borderRadius: BorderRadius.circular(healthDp(context, 10)),
               child: AppNetworkImage(
@@ -649,13 +649,16 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
                   final url = ImageUrlHelper.toWebSafeImageUrl(rawSrc);
                   return Padding(
                     padding: EdgeInsets.only(bottom: healthDp(context, 8)),
-                    child: AppNetworkImage(
-                      url: url,
-                      width: maxWidth,
-                      fit: BoxFit.fitWidth,
-                      alignment: Alignment.topCenter,
-                      decodeWidthLogical: maxWidth,
-                      errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                    child: Align(
+                      alignment: Alignment.center,
+                      child: AppNetworkImage(
+                        url: url,
+                        width: maxWidth,
+                        fit: BoxFit.fitWidth,
+                        alignment: Alignment.center,
+                        decodeWidthLogical: maxWidth,
+                        errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                      ),
                     ),
                   );
                 },
@@ -699,6 +702,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
               'img': Style(
                 width: Width(maxWidth),
                 display: Display.block,
+                alignment: Alignment.center,
                 whiteSpace: WhiteSpace.normal,
                 margin: Margins.symmetric(vertical: healthDp(context, 8)),
               ),

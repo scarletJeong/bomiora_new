@@ -787,12 +787,14 @@ class _ContentListScreenState extends State<ContentListScreen> {
       fallback: '',
     );
     if (resolvedThumbnail.isNotEmpty) {
-      return resolvedThumbnail;
+      return ImageUrlHelper.contentListThumbUrl(resolvedThumbnail, width: 480);
     }
-    return ContentService.resolveDisplayImageUrl(
+    final display = ContentService.resolveDisplayImageUrl(
       thumbnail: rawThumbnail,
       contentHtml: contentHtml?.toString(),
       fallback: ImageUrlHelper.placeholdCo(321, 200),
     );
+    if (display.contains('placehold.co')) return display;
+    return ImageUrlHelper.contentListThumbUrl(display, width: 480);
   }
 }

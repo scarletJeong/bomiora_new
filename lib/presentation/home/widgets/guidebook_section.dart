@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_assets.dart';
 import '../../../data/models/content/content_post.dart';
+import '../../../core/utils/image_url_helper.dart';
 import '../../../data/services/content_service.dart';
 import '../../common/widgets/app_clickable.dart';
 import '../../common/widgets/app_network_image.dart';
@@ -161,7 +162,10 @@ class _GuidebookCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final title = _t(item.title);
     final thumbRaw = item.thumbnailUrl;
-    final thumb = ContentService.resolveThumbnailUrl(thumbRaw, fallback: '');
+    final resolved = ContentService.resolveThumbnailUrl(thumbRaw, fallback: '');
+    final thumb = resolved.isEmpty
+        ? ''
+        : ImageUrlHelper.contentListThumbUrl(resolved, width: 480);
 
     return SizedBox(
       width: m.cardW,
