@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_endpoints.dart';
 import '../../core/utils/node_value_parser.dart';
+import '../models/recent/recent_view_item.dart';
 import '../repositories/product/product_repository.dart';
 import '../services/auth_service.dart';
 
@@ -16,32 +17,28 @@ class RecentViewService {
   /// [recordView] 호출 시 증가 — 드로어 등에서 목록 갱신용
   static final ValueNotifier<int> revision = ValueNotifier(0);
 
-  static List<Map<String, dynamic>>? _memList;
+  static List<RecentViewItem>? _memList;
+  static bool _memHasListPriceKey = false;
   static DateTime? _memAt;
   static int _memLimit = 0;
   static const Duration _memTtl = Duration(seconds: 45);
 
   static void _notifyRevision() {
     _memList = null;
+    _memHasListPriceKey = false;
     _memAt = null;
     revision.value++;
   }
 
-  /// 드로어·마이페이지 등에서 최근 본 상품 목록 조회
-  static Future<List<Map<String, dynamic>>> getRecentList({
+  /// 드로어에서 최근 본 상품 목록 조회
+  static Future<List<RecentViewItem>> getRecentList({
     int limit = 4,
   }) async {
     final safeLimit = limit.clamp(1, 20);
 
     final now = DateTime.now();
-    final cacheHasListPrice = _memList != null &&
-        _memList!.any(
-          (item) =>
-              item.containsKey('originalPrice') ||
-              item.containsKey('it_cust_price'),
-        );
     if (_memList != null &&
-        cacheHasListPrice &&
+        _memHasListPriceKey &&
         _memAt != null &&
         _memLimit >= safeLimit &&
         now.difference(_memAt!) < _memTtl) {
@@ -53,22 +50,31 @@ class RecentViewService {
       if (user != null && user.id.trim().isNotEmpty) {
         final server = await _fetchFromServer(user.id, safeLimit);
         if (server.isNotEmpty) {
-          final enriched = _enrichWithProductPreview(server);
-          _memList = enriched;
-          _memAt = now;
-          _memLimit = safeLimit;
-          return enriched;
+          return _remember(server, safeLimit, now);
         }
       }
     } catch (_) {}
 
-    final local = _enrichWithProductPreview(
-      (await _getLocalList()).take(safeLimit).toList(),
+    final local = (await _getLocalList()).take(safeLimit).toList();
+    return _remember(local, safeLimit, now);
+  }
+
+  static List<RecentViewItem> _remember(
+    List<Map<String, dynamic>> source,
+    int safeLimit,
+    DateTime now,
+  ) {
+    final enriched = _enrichWithProductPreview(source);
+    _memHasListPriceKey = enriched.any(
+      (item) =>
+          item.containsKey('originalPrice') ||
+          item.containsKey('it_cust_price'),
     );
-    _memList = local;
+    final items = enriched.map(RecentViewItem.fromMap).toList();
+    _memList = items;
     _memAt = now;
     _memLimit = safeLimit;
-    return local;
+    return items;
   }
 
   static bool _hasPositivePrice(Map<String, dynamic> item, List<String> keys) {

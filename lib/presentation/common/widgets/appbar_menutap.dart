@@ -3,7 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/constants/app_assets.dart';
-import '../../../core/utils/node_value_parser.dart';
+import '../../../data/models/recent/recent_view_item.dart';
 import '../../../data/models/user/user_model.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/prescription_purchase_history_service.dart';
@@ -43,7 +43,7 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
   UserModel? _user;
   bool _isTelemedicineExpanded = false;
   bool _isHealthcareStoreExpanded = false;
-  List<Map<String, dynamic>> _recentProducts = [];
+  List<RecentViewItem> _recentProducts = [];
   bool _isLoadingRecent = false;
   List<ProductCategoryItem> _generalCategories =
       List<ProductCategoryItem>.from(productGeneralCategoryListFallback);
@@ -96,15 +96,11 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
     });
   }
 
-  void _openRecentProduct(BuildContext context, Map<String, dynamic> item) {
-    final itId = NodeValueParser.asString(item['it_id'])?.trim() ?? '';
+  void _openRecentProduct(BuildContext context, RecentViewItem item) {
+    final itId = item.itId.trim();
     if (itId.isEmpty) return;
 
-    final kind = (NodeValueParser.asString(item['it_kind']) ??
-            NodeValueParser.asString(item['product_kind']) ??
-            '')
-        .trim()
-        .toLowerCase();
+    final kind = item.kind.trim().toLowerCase();
 
     _closeDrawerOnly(context);
     if (kind == 'general') {
@@ -1261,9 +1257,9 @@ class _SubLink extends StatelessWidget {
 }
 
 class _RecentProductsGrid extends StatelessWidget {
-  final List<Map<String, dynamic>> items;
+  final List<RecentViewItem> items;
   final bool isLoading;
-  final void Function(Map<String, dynamic> item) onTapProduct;
+  final void Function(RecentViewItem item) onTapProduct;
 
   const _RecentProductsGrid({
     required this.items,
@@ -1294,7 +1290,7 @@ class _RecentProductsGrid extends StatelessWidget {
     }
 
     final display = items.take(4).toList();
-    final rows = <List<Map<String, dynamic>>>[];
+    final rows = <List<RecentViewItem>>[];
     for (var i = 0; i < display.length; i += 2) {
       final end = (i + 2 <= display.length) ? i + 2 : display.length;
       rows.add(display.sublist(i, end));

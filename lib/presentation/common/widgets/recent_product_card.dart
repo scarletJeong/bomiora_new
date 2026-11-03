@@ -1,17 +1,15 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/utils/image_url_helper.dart';
-import '../../../core/utils/node_value_parser.dart';
 import '../../../core/utils/price_formatter.dart';
-import '../../../data/models/product/product_model.dart';
-import '../../../data/repositories/product/product_repository.dart';
+import '../../../data/models/recent/recent_view_item.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 
 /// 사이드 메뉴 등에서 쓰는 최근 본 상품 카드
 class RecentProductCard extends StatelessWidget {
   static const String _fontFamily = 'Gmarket Sans TTF';
 
-  final Map<String, dynamic> item;
+  final RecentViewItem item;
   final VoidCallback onTap;
 
   const RecentProductCard({
@@ -20,45 +18,13 @@ class RecentProductCard extends StatelessWidget {
     required this.onTap,
   });
 
-  String get _title =>
-      NodeValueParser.asString(item['product_name'])?.trim() ??
-      NodeValueParser.asString(item['it_name'])?.trim() ??
-      '상품';
+  String get _title => item.name.trim().isEmpty ? '상품' : item.name.trim();
 
-  String get _brand {
-    final raw = NodeValueParser.asString(item['it_subject']) ??
-        NodeValueParser.asString(item['itSubject']) ??
-        NodeValueParser.asString(item['it_maker']) ??
-        NodeValueParser.asString(item['it_brand']) ??
-        '';
-    return raw.trim();
-  }
+  String get _brand => item.brand.trim();
 
-  Product? get _preview {
-    final id = NodeValueParser.asString(item['it_id'])?.trim() ?? '';
-    if (id.isEmpty) return null;
-    return ProductRepository.getProductPreview(id);
-  }
+  int get _salePrice => item.salePrice;
 
-  int get _salePrice {
-    final fromItem = _firstWon([
-      'it_price',
-      'product_price',
-      'price',
-    ]);
-    if (fromItem > 0) return fromItem;
-    return _preview?.price ?? 0;
-  }
-
-  int get _listPrice {
-    final fromItem = _firstWon([
-      'it_cust_price',
-      'originalPrice',
-      'original_price',
-    ]);
-    if (fromItem > 0) return fromItem;
-    return _preview?.originalPrice ?? 0;
-  }
+  int get _listPrice => item.listPrice;
 
   /// MD Pick과 동일: (정가 it_cust_price - 판매가 it_price) / 정가
   int get _discountPercent {
@@ -70,31 +36,7 @@ class RecentProductCard extends StatelessWidget {
 
   String get _price => '${PriceFormatter.format(_salePrice)}원';
 
-  int _firstWon(List<String> keys) {
-    for (final key in keys) {
-      final n = _parseWon(item[key]);
-      if (n != null && n > 0) return n;
-    }
-    return 0;
-  }
-
-  static int? _parseWon(dynamic raw) {
-    final normalized = NodeValueParser.normalize(raw);
-    if (normalized == null) return null;
-    if (normalized is int) return normalized;
-    if (normalized is num) return normalized.round();
-    final text = normalized.toString().replaceAll(',', '').trim();
-    if (text.isEmpty || text == 'null') return null;
-    return int.tryParse(text) ?? double.tryParse(text)?.round();
-  }
-
-  String get _imageUrl {
-    final raw = NodeValueParser.asString(item['image_url']) ??
-        NodeValueParser.asString(item['it_img']) ??
-        NodeValueParser.asString(item['it_img1']) ??
-        '';
-    return raw.trim();
-  }
+  String get _imageUrl => item.imageUrl.trim();
 
   @override
   Widget build(BuildContext context) {
