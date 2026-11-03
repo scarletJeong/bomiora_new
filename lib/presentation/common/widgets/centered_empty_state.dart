@@ -50,7 +50,7 @@ class CenteredEmptyState extends StatelessWidget {
         fontSize: healthSp(context, 12),
         fontFamily: 'Gmarket Sans TTF',
         fontWeight: FontWeight.w300,
-        color: const Color(0xFFB0B0B0),
+        color: const Color(0xFFC0C0C0),
         height: 1.0,
       );
 
