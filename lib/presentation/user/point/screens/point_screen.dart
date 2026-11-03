@@ -164,6 +164,23 @@ class _PointScreenState extends State<PointScreen> {
   }
 
   Widget _buildContent() {
+    if (_currentUser == null) {
+      return CenteredEmptyState(
+        iconWidget: CenteredEmptyState.assetIcon(
+          context,
+          AppAssets.emptyPointIcon,
+        ),
+        message: '로그인 후 이용 가능합니다.',
+        trailing: CenteredEmptyState.loginButtonTrailing(
+          context,
+          onPressed: () async {
+            await Navigator.pushNamed(context, '/login');
+            if (!mounted) return;
+            await _loadData();
+          },
+        ),
+      );
+    }
     final showEmpty = _displayedHistory.isEmpty;
     return Stack(
       fit: StackFit.expand,
@@ -202,12 +219,8 @@ class _PointScreenState extends State<PointScreen> {
                 context,
                 AppAssets.emptyPointIcon,
               ),
-              message: _currentUser == null
-                  ? '로그인 후 이용 가능합니다.'
-                  : '포인트 내역이 없습니다.',
-              trailing: _currentUser == null
-                  ? null
-                  : [
+              message: '포인트 내역이 없습니다.',
+              trailing: [
                       Text(
                         '첫 구매를 하거나 리뷰를 남기면\n포인트가 쌓여요',
                         textAlign: TextAlign.center,

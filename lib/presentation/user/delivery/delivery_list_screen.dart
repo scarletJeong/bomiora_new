@@ -45,6 +45,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
   List<OrderListModel> _allOrders = []; // 전체 주문 데이터
   List<OrderListModel> _displayedOrders = []; // 화면에 표시할 주문 데이터
   bool _isLoading = false;
+  bool _loggedOut = false;
   int _ordersLoadGen = 0;
   String _selectedProductType = DeliveryProductType.prescription;
   String _selectedStatus = 'all';
@@ -120,11 +121,13 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
       final user = await AuthService.getUser();
       if (user == null) {
         setState(() {
+          _loggedOut = true;
           _allOrders = [];
           _displayedOrders = [];
         });
         return;
       }
+      _loggedOut = false;
       final userId = user.id;
       
       // 전체 주문 데이터 조회 (기간: 전체, 상태: 전체)
@@ -390,6 +393,9 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
   }
 
   Widget _buildBody() {
+    if (_loggedOut && !_isLoading) {
+      return _buildEmptyStateContent();
+    }
     // 필터를 스크롤 밖에 두면 세로 스크롤과 탭/칩 제스처가 경쟁하지 않음
     final showEmpty = !_isLoading && _displayedOrders.isEmpty;
     return Stack(
@@ -1201,6 +1207,23 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
   }
 
   Widget _buildEmptyStateContent() {
+    if (_loggedOut) {
+      return CenteredEmptyState(
+        iconWidget: CenteredEmptyState.assetIcon(
+          context,
+          AppAssets.emptyDeliveryIcon,
+        ),
+        message: '로그인 후 이용 가능합니다.',
+        trailing: CenteredEmptyState.loginButtonTrailing(
+          context,
+          onPressed: () async {
+            await Navigator.pushNamed(context, '/login');
+            if (!mounted) return;
+            await _loadOrders(force: true);
+          },
+        ),
+      );
+    }
     final statusText = _selectedStatus == 'all'
         ? '주문'
         : _getStatusText(_selectedStatus);

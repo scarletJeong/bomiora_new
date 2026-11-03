@@ -194,7 +194,27 @@ class _CouponScreenState extends State<CouponScreen> {
         ),
         child: ColoredBox(
           color: Colors.white,
-          child: Stack(
+          child: ValueListenableBuilder<bool>(
+            valueListenable: _isLoading,
+            builder: (context, loading, _) {
+              if (!loading && _currentUser == null) {
+                return CenteredEmptyState(
+                  iconWidget: CenteredEmptyState.assetIcon(
+                    context,
+                    AppAssets.emptyCouponIcon,
+                  ),
+                  message: '로그인 후 이용 가능합니다.',
+                  trailing: CenteredEmptyState.loginButtonTrailing(
+                    context,
+                    onPressed: () async {
+                      await Navigator.pushNamed(context, '/login');
+                      if (!mounted) return;
+                      await _loadData();
+                    },
+                  ),
+                );
+              }
+              return Stack(
             children: [
               Positioned.fill(child: _buildPageCenteredEmpty()),
               Padding(
@@ -229,6 +249,8 @@ class _CouponScreenState extends State<CouponScreen> {
                 ),
               ),
             ],
+          );
+            },
           ),
         ),
       ),

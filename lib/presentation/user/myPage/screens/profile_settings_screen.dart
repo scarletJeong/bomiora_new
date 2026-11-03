@@ -8,6 +8,7 @@ import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 import '../widgets/my_page_common.dart';
+import '../../../common/widgets/centered_empty_state.dart';
 import '../../../../core/constants/app_assets.dart';
 import '../../../../data/repositories/auth/auth_repository.dart';
 import '../../../../data/services/auth_service.dart';
@@ -25,6 +26,7 @@ class ProfileSettingsScreen extends StatefulWidget {
 
 class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   UserModel? _currentUser;
+  bool _profileReady = false;
 
   // 회원정보 입력 컨트롤러
   final TextEditingController _nicknameController = TextEditingController();
@@ -92,12 +94,19 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   Future<void> _loadCurrentUser() async {
     final user = await AuthService.getUser();
     if (!mounted) return;
+    if (user == null) {
+      setState(() {
+        _profileReady = true;
+        _currentUser = null;
+      });
+      return;
+    }
 
-    // 콘솔에 현재 사용자 정보 출력
-    final phone = (user?.phone ?? '').replaceAll(RegExp(r'[^0-9]'), '');
+    final phone = (user.phone ?? '').replaceAll(RegExp(r'[^0-9]'), '');
     setState(() {
+      _profileReady = true;
       _currentUser = user;
-      _originalNickname = user?.nickname ?? '';
+      _originalNickname = user.nickname ?? '';
       _nicknameController.text = _originalNickname;
 
       if (phone.length >= 10) {
@@ -555,8 +564,25 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
 
   Widget _buildPersonalInfoBody() {
     // 사용자 정보가 로드되지 않았으면 로딩 표시
-    if (_currentUser == null) {
+    if (!_profileReady) {
       return const MyPageLoadingIndicator();
+    }
+    if (_currentUser == null) {
+      return CenteredEmptyState(
+        iconWidget: CenteredEmptyState.assetIcon(
+          context,
+          AppAssets.emptySettingIcon,
+        ),
+        message: '로그인 후 이용 가능합니다.',
+        trailing: CenteredEmptyState.loginButtonTrailing(
+          context,
+          onPressed: () async {
+            await Navigator.pushNamed(context, '/login');
+            if (!mounted) return;
+            await _loadCurrentUser();
+          },
+        ),
+      );
     }
 
     Widget phoneSegment({

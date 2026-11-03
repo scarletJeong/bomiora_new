@@ -308,7 +308,7 @@ class _WishListScreenState extends State<WishListScreen> {
         context,
         AppAssets.emptyWishlistIcon,
       ),
-      message: '로그인 후 이용가능합니다.',
+      message: '로그인 후 이용 가능합니다.',
       trailing: CenteredEmptyState.loginButtonTrailing(
         context,
         onPressed: () async {
