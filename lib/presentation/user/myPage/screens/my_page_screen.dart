@@ -201,6 +201,12 @@ class _MyPageScreenState extends State<MyPageScreen> {
     setState(() => _currentUser = refreshed);
   }
 
+  Future<void> _openStatsDetail(String route) async {
+    await Navigator.pushNamed(context, route);
+    if (!mounted || _currentUser == null) return;
+    await _loadMyPageStats();
+  }
+
   Future<void> _openInfluencerAdmin() async {
     final result = await AuthService.issueInfluencerLoginToken();
     final loginUrl = result['loginUrl']?.toString() ?? '';
@@ -732,7 +738,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
               ? () {}
               : _orderFailed
                   ? _loadOrderCount
-                  : () => Navigator.pushNamed(context, '/order'),
+                  : () => _openStatsDetail('/order'),
         ),
         SizedBox(width: healthDp(context, 14)),
         statCard(
@@ -746,7 +752,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
               ? () {}
               : _couponFailed
                   ? _loadCouponCount
-                  : () => Navigator.pushNamed(context, '/coupon'),
+                  : () => _openStatsDetail('/coupon'),
         ),
         SizedBox(width: healthDp(context, 14)),
         statCard(
@@ -760,7 +766,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
               ? () {}
               : _pointFailed
                   ? _loadPointBalance
-                  : () => Navigator.pushNamed(context, '/point'),
+                  : () => _openStatsDetail('/point'),
         ),
       ],
     );

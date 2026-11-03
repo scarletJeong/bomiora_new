@@ -287,6 +287,14 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     AppToastOverlay.show(context, '닉네임은 6개월에 1번만 변경 가능합니다.');
   }
 
+  void _showSaveFailure(Object? message, String fallback) {
+    final text = message?.toString().trim() ?? '';
+    AppToastOverlay.showAlert(
+      context,
+      text.isEmpty ? fallback : text,
+    );
+  }
+
   String _formatPhoneForApi(String phoneDigits) {
     if (phoneDigits.length == 11) {
       return '${phoneDigits.substring(0, 3)}-${phoneDigits.substring(3, 7)}-${phoneDigits.substring(7)}';
@@ -477,8 +485,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
       return;
     }
 
+    var profileSaved = false;
     try {
-      var saved = !_nicknameReady && !_phoneReady;
       if (_nicknameReady || _phoneReady) {
         final phone = _phoneReady
             ? (_otpVerifiedDigits ?? _digitsOnly(_enteredPhoneDigits))
@@ -499,10 +507,12 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
             _showNicknameChangeLimitToast();
             _nicknameController.text = _originalNickname;
             if (mounted) setState(() {});
+          } else {
+            _showSaveFailure(result['message'], '프로필 수정에 실패했습니다.');
           }
           return;
         }
-        saved = true;
+        profileSaved = true;
       }
 
       if (_passwordReady) {
@@ -512,17 +522,24 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         );
         if (!mounted) return;
         if (pwResult['success'] != true) {
+          if (profileSaved) await _loadCurrentUser();
+          if (!mounted) return;
+          _showSaveFailure(pwResult['message'], '비밀번호 변경에 실패했습니다.');
           return;
         }
         _newPasswordController.clear();
         _confirmPasswordController.clear();
-        saved = true;
+        profileSaved = true;
       }
 
-      if (saved) {
+      if (profileSaved) {
         await _loadCurrentUser();
       }
-    } catch (e) {}
+    } catch (_) {
+      if (profileSaved && mounted) await _loadCurrentUser();
+      if (!mounted) return;
+      AppToastOverlay.showAlert(context, '저장하지 못했습니다.');
+    }
   }
 
   @override
