@@ -14,6 +14,16 @@ class SearchResult {
   final List<EventModel> events;
   final List<AnnouncementModel> announcements;
   final List<ContentPost> contents;
+  final bool prescriptionHasMore;
+  final bool storeHasMore;
+  final bool eventHasMore;
+  final bool announcementHasMore;
+  final bool contentHasMore;
+  final int prescriptionTotal;
+  final int storeTotal;
+  final int eventTotal;
+  final int announcementTotal;
+  final int contentTotal;
 
   const SearchResult({
     required this.query,
@@ -22,6 +32,16 @@ class SearchResult {
     required this.events,
     required this.announcements,
     required this.contents,
+    this.prescriptionHasMore = false,
+    this.storeHasMore = false,
+    this.eventHasMore = false,
+    this.announcementHasMore = false,
+    this.contentHasMore = false,
+    this.prescriptionTotal = 0,
+    this.storeTotal = 0,
+    this.eventTotal = 0,
+    this.announcementTotal = 0,
+    this.contentTotal = 0,
   });
 }
 
@@ -137,12 +157,12 @@ class SearchService {
 
   static Future<SearchResult> searchAll(
     String query, {
-    int rxLimit = 20,
-    int storeLimit = 20,
-    int contentLimit = 20,
+    int limit = 5,
+    String? section,
+    int offset = 0,
   }) {
     final q = query.trim();
-    final key = '${q.toLowerCase()}|$rxLimit|$storeLimit|$contentLimit';
+    final key = '${q.toLowerCase()}|$limit|${section ?? ''}|$offset';
     final cached = _cache[key];
     if (cached != null && DateTime.now().difference(cached.$1) < _cacheTtl) {
       return Future.value(cached.$2);
@@ -152,9 +172,9 @@ class SearchService {
 
     final request = _searchAllNetwork(
       q,
-      rxLimit: rxLimit,
-      storeLimit: storeLimit,
-      contentLimit: contentLimit,
+      limit: limit,
+      section: section,
+      offset: offset,
     );
     _inFlight[key] = request;
     return request.then((result) {
@@ -163,11 +183,22 @@ class SearchService {
     }).whenComplete(() => _inFlight.remove(key));
   }
 
+  static int _sectionTotal(Map<String, dynamic> section, int visibleCount) {
+    final raw = section['total'] ?? section['count'];
+    if (raw is int) return raw;
+    if (raw is num) return raw.toInt();
+    return int.tryParse('$raw') ?? visibleCount;
+  }
+
+  static bool _sectionHasMore(Map<String, dynamic> section) {
+    return section['hasMore'] == true;
+  }
+
   static Future<SearchResult> _searchAllNetwork(
     String query, {
-    int rxLimit = 20,
-    int storeLimit = 20,
-    int contentLimit = 20,
+    int limit = 5,
+    String? section,
+    int offset = 0,
   }) async {
     final q = query.trim();
     if (q.isEmpty) {
@@ -181,8 +212,19 @@ class SearchService {
       );
     }
 
-    final endpoint = '${ApiEndpoints.search}?q=${Uri.encodeQueryComponent(q)}'
-        '&rxLimit=$rxLimit&storeLimit=$storeLimit&contentLimit=$contentLimit';
+    final params = <String, String>{
+      'q': q,
+      'limit': '$limit',
+    };
+    final sectionName = (section ?? '').trim();
+    if (sectionName.isNotEmpty) {
+      params['section'] = sectionName;
+      params['offset'] = '$offset';
+    }
+    final endpoint = Uri(
+      path: ApiEndpoints.search,
+      queryParameters: params,
+    ).toString();
 
     final responseFuture = ApiClient.get(endpoint);
     final response = await responseFuture;
@@ -242,6 +284,16 @@ class SearchService {
       events: mergedEvents,
       announcements: mergedAnnouncements,
       contents: filteredContentItems,
+      prescriptionHasMore: _sectionHasMore(rx),
+      storeHasMore: _sectionHasMore(store),
+      eventHasMore: _sectionHasMore(event),
+      announcementHasMore: _sectionHasMore(announcement),
+      contentHasMore: _sectionHasMore(content),
+      prescriptionTotal: _sectionTotal(rx, apiRxItems.length),
+      storeTotal: _sectionTotal(store, apiStoreItems.length),
+      eventTotal: _sectionTotal(event, apiEventItems.length),
+      announcementTotal: _sectionTotal(announcement, apiAnnouncementItems.length),
+      contentTotal: _sectionTotal(content, contentItems.length),
     );
   }
 }

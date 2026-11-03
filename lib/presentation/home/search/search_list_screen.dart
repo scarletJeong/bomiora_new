@@ -52,9 +52,22 @@ class _SearchListScreenState extends State<SearchListScreen> {
   List<EventModel> _events = const [];
   List<AnnouncementModel> _announcements = const [];
   List<ContentPost> _content = const <ContentPost>[];
+  bool _rxHasMore = false;
+  bool _storeHasMore = false;
+  bool _eventHasMore = false;
+  bool _announcementHasMore = false;
+  bool _contentHasMore = false;
+  int _rxTotal = 0;
+  int _storeTotal = 0;
+  int _eventTotal = 0;
+  int _announcementTotal = 0;
+  int _contentTotal = 0;
+  String? _loadingSection;
   bool _loading = true;
   bool _initialLoad = true;
   String? _error;
+
+  static const int _pageSize = 5;
 
   double _hPad(BuildContext context) => healthDp(context, 20);
 
@@ -110,6 +123,17 @@ class _SearchListScreenState extends State<SearchListScreen> {
         _events = const [];
         _announcements = const [];
         _content = const <ContentPost>[];
+        _rxHasMore = false;
+        _storeHasMore = false;
+        _eventHasMore = false;
+        _announcementHasMore = false;
+        _contentHasMore = false;
+        _rxTotal = 0;
+        _storeTotal = 0;
+        _eventTotal = 0;
+        _announcementTotal = 0;
+        _contentTotal = 0;
+        _loadingSection = null;
         _loading = false;
         _initialLoad = false;
         _error = null;
@@ -124,7 +148,7 @@ class _SearchListScreenState extends State<SearchListScreen> {
 
     try {
       if (!mounted) return;
-      final result = await SearchService.searchAll(q);
+      final result = await SearchService.searchAll(q, limit: _pageSize);
       if (!mounted || requestId != _searchRequestId) return;
       setState(() {
         _rx = result.prescriptionProducts;
@@ -132,6 +156,17 @@ class _SearchListScreenState extends State<SearchListScreen> {
         _events = result.events;
         _announcements = result.announcements;
         _content = result.contents;
+        _rxHasMore = result.prescriptionHasMore;
+        _storeHasMore = result.storeHasMore;
+        _eventHasMore = result.eventHasMore;
+        _announcementHasMore = result.announcementHasMore;
+        _contentHasMore = result.contentHasMore;
+        _rxTotal = result.prescriptionTotal;
+        _storeTotal = result.storeTotal;
+        _eventTotal = result.eventTotal;
+        _announcementTotal = result.announcementTotal;
+        _contentTotal = result.contentTotal;
+        _loadingSection = null;
         _loading = false;
         _initialLoad = false;
       });
@@ -143,6 +178,17 @@ class _SearchListScreenState extends State<SearchListScreen> {
         _events = const [];
         _announcements = const [];
         _content = const <ContentPost>[];
+        _rxHasMore = false;
+        _storeHasMore = false;
+        _eventHasMore = false;
+        _announcementHasMore = false;
+        _contentHasMore = false;
+        _rxTotal = 0;
+        _storeTotal = 0;
+        _eventTotal = 0;
+        _announcementTotal = 0;
+        _contentTotal = 0;
+        _loadingSection = null;
         _loading = false;
         _initialLoad = false;
         _error = e.toString();
@@ -150,12 +196,103 @@ class _SearchListScreenState extends State<SearchListScreen> {
     }
   }
 
+  int _loadedCount(String section) {
+    switch (section) {
+      case 'prescription':
+        return _rx.length;
+      case 'store':
+        return _store.length;
+      case 'event':
+        return _events.length;
+      case 'announcement':
+        return _announcements.length;
+      case 'content':
+        return _content.length;
+      default:
+        return 0;
+    }
+  }
+
+  List<T> _appendById<T>(
+    List<T> current,
+    List<T> incoming,
+    Object? Function(T item) idOf,
+  ) {
+    final seen = <Object?>{for (final item in current) idOf(item)};
+    final next = List<T>.of(current);
+    for (final item in incoming) {
+      if (seen.add(idOf(item))) next.add(item);
+    }
+    return next;
+  }
+
+  Future<void> _loadMore(String section) async {
+    if (_loading || _loadingSection != null) return;
+    final q = _queryController.text.trim();
+    if (q.isEmpty) return;
+    final requestId = _searchRequestId;
+    final offset = _loadedCount(section);
+    setState(() => _loadingSection = section);
+    try {
+      final result = await SearchService.searchAll(
+        q,
+        limit: _pageSize,
+        section: section,
+        offset: offset,
+      );
+      if (!mounted || requestId != _searchRequestId) return;
+      setState(() {
+        switch (section) {
+          case 'prescription':
+            _rx = _appendById(_rx, result.prescriptionProducts, (item) => item.id);
+            _rxHasMore = result.prescriptionProducts.isEmpty
+                ? false
+                : result.prescriptionHasMore;
+            _rxTotal = result.prescriptionTotal;
+          case 'store':
+            _store = _appendById(
+              _store,
+              result.storeProducts,
+              (item) => item.id,
+            );
+            _storeHasMore =
+                result.storeProducts.isEmpty ? false : result.storeHasMore;
+            _storeTotal = result.storeTotal;
+          case 'event':
+            _events = _appendById(_events, result.events, (item) => item.wrId);
+            _eventHasMore =
+                result.events.isEmpty ? false : result.eventHasMore;
+            _eventTotal = result.eventTotal;
+          case 'announcement':
+            _announcements = _appendById(
+              _announcements,
+              result.announcements,
+              (item) => item.id,
+            );
+            _announcementHasMore = result.announcements.isEmpty
+                ? false
+                : result.announcementHasMore;
+            _announcementTotal = result.announcementTotal;
+          case 'content':
+            _content = _appendById(_content, result.contents, (item) => item.id);
+            _contentHasMore =
+                result.contents.isEmpty ? false : result.contentHasMore;
+            _contentTotal = result.contentTotal;
+        }
+        _loadingSection = null;
+      });
+    } catch (_) {
+      if (!mounted || requestId != _searchRequestId) return;
+      setState(() => _loadingSection = null);
+    }
+  }
+
   int get _total =>
-      _rx.length +
-      _store.length +
-      _events.length +
-      _announcements.length +
-      _content.length;
+      _rxTotal +
+      _storeTotal +
+      _eventTotal +
+      _announcementTotal +
+      _contentTotal;
 
   void _openEvent(EventModel event) {
     if (event.isEnded) return;
@@ -266,32 +403,51 @@ class _SearchListScreenState extends State<SearchListScreen> {
 
     void addSection({
       required String title,
+      required String section,
+      required int count,
       required List<Widget> items,
+      required bool hasMore,
     }) {
       if (items.isEmpty) return;
-      children.add(_buildSectionHeader(title, items.length));
+      children.add(_buildSectionHeader(title, count));
       children.addAll(items);
+      if (hasMore) children.add(_buildMoreButton(section));
     }
 
     addSection(
       title: '비대면 진료',
+      section: 'prescription',
+      count: _rxTotal,
       items: _rx.map((p) => _buildProductListRow(p, general: false)).toList(),
+      hasMore: _rxHasMore,
     );
     addSection(
       title: '스토어',
+      section: 'store',
+      count: _storeTotal,
       items: _store.map((p) => _buildProductListRow(p, general: true)).toList(),
+      hasMore: _storeHasMore,
     );
     addSection(
       title: '이벤트',
+      section: 'event',
+      count: _eventTotal,
       items: _events.map(_buildEventListRow).toList(),
+      hasMore: _eventHasMore,
     );
     addSection(
       title: '공지사항',
+      section: 'announcement',
+      count: _announcementTotal,
       items: _announcements.map(_buildAnnouncementListRow).toList(),
+      hasMore: _announcementHasMore,
     );
     addSection(
       title: '콘텐츠',
+      section: 'content',
+      count: _contentTotal,
       items: _content.map(_buildContentListRow).toList(),
+      hasMore: _contentHasMore,
     );
 
     return children;
@@ -330,6 +486,45 @@ class _SearchListScreenState extends State<SearchListScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildMoreButton(String section) {
+    final loading = _loadingSection == section;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        _hPad(context),
+        healthDp(context, 4),
+        _hPad(context),
+        healthDp(context, 12),
+      ),
+      child: TextButton(
+        onPressed: loading ? null : () => _loadMore(section),
+        style: TextButton.styleFrom(
+          foregroundColor: _pink,
+          overlayColor: Colors.transparent,
+          minimumSize: Size(double.infinity, healthDp(context, 36)),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
+        child: loading
+            ? SizedBox(
+                width: healthDp(context, 16),
+                height: healthDp(context, 16),
+                child: const CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: _pink,
+                ),
+              )
+            : Text(
+                '더보기',
+                style: TextStyle(
+                  color: _pink,
+                  fontSize: healthSp(context, 13),
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
       ),
     );
   }
