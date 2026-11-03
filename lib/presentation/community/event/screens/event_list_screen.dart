@@ -26,7 +26,8 @@ class _EventListScreenState extends State<EventListScreen> {
   static const Color _kPink = Color(0xFFFF5A8D);
 
   int _selectedTab = 0; // 0: 진행중, 1: 종료
-  int _visibleCount = 3;
+  static const int _pageSize = 5;
+  int _visibleCount = _pageSize;
   bool _isLoading = true;
   String? _errorMessage;
   List<EventModel> _activeEvents = [];
@@ -142,7 +143,7 @@ class _EventListScreenState extends State<EventListScreen> {
         child: AppClickable(
           onTap: () => setState(() {
             _selectedTab = index;
-            _visibleCount = 3;
+            _visibleCount = _pageSize;
           }),
           child: Container(
             padding: EdgeInsets.only(bottom: healthDp(context, 10)),
@@ -237,12 +238,7 @@ class _EventListScreenState extends State<EventListScreen> {
         Text(
           emptyLabel,
           textAlign: TextAlign.center,
-          style: TextStyle(
-            color: const Color(0xFFC0C0C0),
-            fontSize: healthSp(context, 14),
-            fontFamily: _font,
-            fontWeight: FontWeight.w500,
-          ),
+          style: CenteredEmptyState.defaultMessageStyle(context),
         ),
       ],
     );
@@ -250,7 +246,7 @@ class _EventListScreenState extends State<EventListScreen> {
 
   Widget _buildMoreButton(BuildContext context) {
     return AppClickable(
-      onTap: () => setState(() => _visibleCount += 3),
+      onTap: () => setState(() => _visibleCount += _pageSize),
       child: Container(
         width: double.infinity,
         height: healthDp(context, 40),
