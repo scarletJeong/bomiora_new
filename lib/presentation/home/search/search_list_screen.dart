@@ -51,7 +51,6 @@ class _SearchListScreenState extends State<SearchListScreen> {
   static const Color _titleDark = Color(0xFF1F2937);
 
   late final TextEditingController _queryController;
-  Timer? _debounce;
   int _searchRequestId = 0;
 
   List<Product> _rx = const [];
@@ -82,7 +81,6 @@ class _SearchListScreenState extends State<SearchListScreen> {
   void initState() {
     super.initState();
     _queryController = TextEditingController(text: widget.initialQuery.trim());
-    _queryController.addListener(_onQueryChanged);
     final initial = _queryController.text.trim();
     if (initial.isNotEmpty) {
       unawaited(RecentSearchService.addQuery(initial));
@@ -92,22 +90,12 @@ class _SearchListScreenState extends State<SearchListScreen> {
 
   @override
   void dispose() {
-    _debounce?.cancel();
-    _queryController.removeListener(_onQueryChanged);
     final lastQuery = _queryController.text.trim();
     if (lastQuery.isNotEmpty) {
       unawaited(RecentSearchService.addQuery(lastQuery));
     }
     _queryController.dispose();
     super.dispose();
-  }
-
-  void _onQueryChanged() {
-    _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 180), () {
-      if (!mounted) return;
-      _runSearch(_queryController.text);
-    });
   }
 
   Future<void> _commitSearch(String raw) async {
