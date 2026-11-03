@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../../core/constants/app_assets.dart';
+import '../../../../core/logging/failure_log.dart';
 import '../../../../core/utils/date_formatter.dart';
 import '../../../../data/models/announcement/announcement_model.dart';
 import '../../../../data/services/announcement_service.dart';
+import '../../../../data/services/auth_service.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/centered_empty_state.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
@@ -77,8 +79,18 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
         _query = targetQuery;
       });
     } else {
+      final reason =
+          result['message']?.toString() ?? '공지사항을 불러오지 못했습니다.';
+      final user = await AuthService.getUser();
+      await FailureLog.record(
+        code: 'announcement.list',
+        mbId: user?.id ?? '',
+        reason: reason,
+        detail: {'page': targetPage, 'query': targetQuery},
+      );
+      if (!mounted) return;
       setState(() {
-        _error = result['message']?.toString() ?? '공지사항을 불러오지 못했습니다.';
+        _error = reason;
       });
     }
 
@@ -87,24 +99,23 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final showEmpty = !_loading && (_error != null || _items.isEmpty);
     return MobileAppLayoutWrapper(
       appBar: const HealthAppBar(title: '공지사항'),
+      resizeToAvoidBottomInset: false,
       child: Stack(
         fit: StackFit.expand,
         children: [
-          RefreshIndicator(
-        onRefresh: () => _load(page: 1),
-        child: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            SliverPadding(
-              padding: EdgeInsets.fromLTRB(
-                healthDp(context, 20),
-                healthDp(context, 10),
-                healthDp(context, 20),
-                healthDp(context, 10),
-              ),
-              sliver: SliverToBoxAdapter(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: EdgeInsets.fromLTRB(
+                  healthDp(context, 20),
+                  healthDp(context, 10),
+                  healthDp(context, 20),
+                  healthDp(context, 10),
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -114,38 +125,49 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
                   ],
                 ),
               ),
-            ),
-            if (_loading)
-              const SliverFillRemaining(
-                hasScrollBody: false,
-                child: Center(child: CircularProgressIndicator()),
-              )
-            else if (_error != null || _items.isEmpty)
-              const SliverFillRemaining(
-                hasScrollBody: false,
-                child: SizedBox.shrink(),
-              )
-            else
-              SliverPadding(
-                padding: EdgeInsets.fromLTRB(
-                  healthDp(context, 20),
-                  0,
-                  healthDp(context, 20),
-                  healthDp(context, 48),
-                ),
-                sliver: SliverList(
-                  delegate: SliverChildListDelegate([
-                    ..._items.map((item) => _buildNoticeCard(context, item)),
-                    SizedBox(height: healthDp(context, 16)),
-                    _buildPagination(context),
-                  ]),
+              Expanded(
+                child: RefreshIndicator(
+                  onRefresh: () => _load(page: 1),
+                  child: CustomScrollView(
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.manual,
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    slivers: [
+                      if (_loading)
+                        const SliverFillRemaining(
+                          hasScrollBody: false,
+                          child: Center(child: CircularProgressIndicator()),
+                        )
+                      else if (showEmpty)
+                        const SliverFillRemaining(
+                          hasScrollBody: false,
+                          child: SizedBox.shrink(),
+                        )
+                      else
+                        SliverPadding(
+                          padding: EdgeInsets.fromLTRB(
+                            healthDp(context, 20),
+                            0,
+                            healthDp(context, 20),
+                            healthDp(context, 48),
+                          ),
+                          sliver: SliverList(
+                            delegate: SliverChildListDelegate([
+                              ..._items.map(
+                                (item) => _buildNoticeCard(context, item),
+                              ),
+                              SizedBox(height: healthDp(context, 16)),
+                              _buildPagination(context),
+                            ]),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
-          ],
-        ),
+            ],
           ),
-          if (!_loading && (_error != null || _items.isEmpty))
-            PageCenteredEmptyOverlay(child: _buildEmpty(context)),
+          if (showEmpty) PageCenteredEmptyOverlay(child: _buildEmpty(context)),
         ],
       ),
     );

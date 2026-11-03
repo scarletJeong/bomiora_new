@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_assets.dart';
+import '../../../../core/logging/failure_log.dart';
 import '../../../../core/utils/date_formatter.dart';
 import '../../../../data/models/event/event_model.dart';
+import '../../../../data/services/auth_service.dart';
 import '../../../../data/services/event_service.dart';
 import '../../../common/widgets/app_clickable.dart';
 import '../../../common/widgets/centered_empty_state.dart';
@@ -53,6 +55,12 @@ class _EventListScreenState extends State<EventListScreen> {
         _isLoading = false;
       });
     } catch (e) {
+      final user = await AuthService.getUser();
+      await FailureLog.record(
+        code: 'event.list',
+        mbId: user?.id ?? '',
+        reason: e.toString(),
+      );
       if (!mounted) return;
       setState(() {
         _errorMessage = '이벤트를 불러오는데 실패했습니다: $e';

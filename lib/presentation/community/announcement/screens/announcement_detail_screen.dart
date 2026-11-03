@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
 
 import '../../../../core/constants/app_assets.dart';
+import '../../../../core/logging/failure_log.dart';
 import '../../../../core/utils/image_url_helper.dart';
 import '../../../../core/utils/node_value_parser.dart';
 import '../../../../data/models/announcement/announcement_model.dart';
 import '../../../../data/services/announcement_service.dart';
+import '../../../../data/services/auth_service.dart';
 import '../../../../data/services/content_service.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
 import '../../../common/navigation/board_list_navigation.dart';
@@ -81,8 +83,18 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
         });
       }
     } else {
+      final reason =
+          result['message']?.toString() ?? '공지사항을 불러오지 못했습니다.';
+      final user = await AuthService.getUser();
+      await FailureLog.record(
+        code: 'announcement.detail',
+        mbId: user?.id ?? '',
+        reason: reason,
+        detail: {'id': widget.announcementId},
+      );
+      if (!mounted) return;
       setState(() {
-        _error = result['message']?.toString() ?? '공지사항을 불러오지 못했습니다.';
+        _error = reason;
         _loading = false;
       });
     }

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_assets.dart';
+import '../../../../core/logging/failure_log.dart';
 import '../../../../core/utils/date_formatter.dart';
 import '../../../../data/models/event/event_model.dart';
+import '../../../../data/services/auth_service.dart';
 import '../../../../data/services/event_service.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
 import '../../../common/navigation/board_list_navigation.dart';
@@ -77,12 +79,27 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
           _isLoading = false;
         });
       } else {
+        final user = await AuthService.getUser();
+        await FailureLog.record(
+          code: 'event.detail',
+          mbId: user?.id ?? '',
+          reason: '이벤트를 찾을 수 없습니다.',
+          detail: {'id': widget.wrId},
+        );
+        if (!mounted) return;
         setState(() {
           _errorMessage = '이벤트를 찾을 수 없습니다.';
           _isLoading = false;
         });
       }
     } catch (e) {
+      final user = await AuthService.getUser();
+      await FailureLog.record(
+        code: 'event.detail',
+        mbId: user?.id ?? '',
+        reason: e.toString(),
+        detail: {'id': widget.wrId},
+      );
       if (!mounted) return;
 
       setState(() {
