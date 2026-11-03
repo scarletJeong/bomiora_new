@@ -273,15 +273,8 @@ class _BomioraAppState extends State<BomioraApp> {
         '/coupon': (context) => const CouponScreen(),
         '/my_reviews': (context) => const MyReviewsScreen(),
         '/profile': (context) => const HealthProfileListScreen(),
-        '/qna': (context) => const QaListScreen(),
-        '/qna-detail': (context) {
-          final args = ModalRoute.of(context)?.settings.arguments
-              as Map<String, dynamic>?;
-          final wrId = int.tryParse(args?['wrId']?.toString() ?? '') ?? 0;
-          return QaDetailScreen(wrId: wrId);
-        },
+        '/qa': (context) => const QaListScreen(),
         '/cancel-member': (context) => const CancelMemberScreen(),
-        '/customer-service': (context) => const QaListScreen(),
         '/kcp-pay': (context) {
           final args = ModalRoute.of(context)?.settings.arguments
               as Map<String, dynamic>?;
@@ -486,6 +479,22 @@ class _BomioraAppState extends State<BomioraApp> {
               arguments: settings.arguments,
             ),
           );
+        }
+
+        // 1:1 문의 상세: /qa/:id
+        if (uri.pathSegments.length == 2 &&
+            uri.pathSegments[0] == 'qa' &&
+            uri.pathSegments[1].trim().isNotEmpty) {
+          final id = int.tryParse(uri.pathSegments[1]);
+          if (id != null && id > 0) {
+            return MaterialPageRoute(
+              builder: (context) => QaDetailScreen(wrId: id),
+              settings: RouteSettings(
+                name: routeName,
+                arguments: settings.arguments,
+              ),
+            );
+          }
         }
 
         // 공지 상세: /announcement/:id

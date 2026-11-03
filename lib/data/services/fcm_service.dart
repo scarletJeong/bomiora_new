@@ -314,12 +314,9 @@ class FCMService {
             data['wr_id']?.toString() ?? data['id']?.toString() ?? '';
         final contactWrId = int.tryParse(contactRaw);
         if (contactWrId != null && contactWrId > 0) {
-          nav.pushNamed(
-            '/qna-detail',
-            arguments: {'wrId': contactWrId},
-          );
+          nav.pushNamed('/qa/$contactWrId');
         } else {
-          nav.pushNamed('/qna');
+          nav.pushNamed('/qa');
         }
         break;
       default:

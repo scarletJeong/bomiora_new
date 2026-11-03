@@ -188,13 +188,9 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
       case 'qna':
         final wrId = int.tryParse(linkId);
         if (wrId != null && wrId > 0) {
-          Navigator.pushNamed(
-            context,
-            '/qna-detail',
-            arguments: {'wrId': wrId},
-          );
+          Navigator.pushNamed(context, '/qa/$wrId');
         } else {
-          Navigator.pushNamed(context, '/qna');
+          Navigator.pushNamed(context, '/qa');
         }
         break;
       case 'point':

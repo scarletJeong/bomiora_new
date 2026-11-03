@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'qa_write_screen.dart';
-import 'qa_detail_screen.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/centered_empty_state.dart';
 import '../../common/widgets/scroll_reveal_top_overlay.dart';
@@ -159,12 +158,7 @@ class QaListScreenState extends State<QaListScreen> {
     if (!mounted) return;
     if (result is int && result > 0) {
       _loadContacts(preserveScroll: true);
-      await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => QaDetailScreen(wrId: result),
-        ),
-      );
+      await Navigator.pushNamed(context, '/qa/$result');
       if (mounted) _loadContacts(preserveScroll: true);
     } else if (result == true) {
       await _loadContacts();
@@ -264,12 +258,7 @@ class QaListScreenState extends State<QaListScreen> {
       borderRadius: r,
       onDelete: () => _deleteInquiry(item),
       onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => QaDetailScreen(wrId: item.wrId),
-          ),
-        ).then((_) {
+        Navigator.pushNamed(context, '/qa/${item.wrId}').then((_) {
           if (!mounted) return;
           _loadContacts(preserveScroll: true);
         });

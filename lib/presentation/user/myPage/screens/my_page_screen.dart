@@ -8,7 +8,6 @@ import '../../../../data/services/coupon_service.dart';
 import '../../../../data/services/point_service.dart';
 import '../../../../data/models/user/user_model.dart';
 import 'profile_settings_screen.dart';
-import '../../../customer_service/screens/qa_list_screen.dart';
 import 'address_list_screen.dart';
 import '../../../shopping/wish/screens/wish_list_screen.dart';
 import 'refund_account_screen.dart';
@@ -300,14 +299,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                           SizedBox(height: healthDp(context, 20)),
                           MyPageLineMenuItem(
                             title: '1:1 문의',
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (context) =>
-                                        const QaListScreen()),
-                              );
-                            },
+                            onTap: () => Navigator.pushNamed(context, '/qa'),
                           ),
                           SizedBox(height: healthDp(context, 20)),
                           MyPageLineMenuItem(

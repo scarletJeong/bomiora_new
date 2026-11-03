@@ -13,7 +13,6 @@ import '../../shopping/screens/cart_integration_screen.dart';
 import '../../../data/repositories/product/product_category_catalog.dart';
 import '../../shopping/utils/get_product.dart';
 import '../../health/health_common/health_responsive_scale.dart';
-import '../../customer_service/screens/qa_list_screen.dart';
 import 'app_toast_overlay.dart';
 import '../navigation/app_bar_nav_guard.dart';
 import 'cart_dropdown_menu.dart';
@@ -203,12 +202,7 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
 
   void _openContactList(BuildContext context) {
     _closeDrawerOnly(context);
-    Navigator.push(
-      context,
-      MaterialPageRoute<void>(
-        builder: (_) => const QaListScreen(),
-      ),
-    );
+    Navigator.pushNamed(context, '/qa');
   }
 
   Widget _buildShortcutGrid(BuildContext context) {
