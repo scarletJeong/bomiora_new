@@ -33,6 +33,7 @@ class _BannerSliderState extends State<BannerSlider> {
 
   int _currentIndex = 0;
   int _pageCount = 1;
+  int _bannerListenToken = 0;
   Timer? _autoSlideTimer;
   late PageController _pageController;
   late Future<List<BannerModel>> _bannersFuture;
@@ -44,6 +45,7 @@ class _BannerSliderState extends State<BannerSlider> {
     _pageController = PageController();
     _bannersFuture =
         widget.bannersFuture ?? BannerService.fetchMobileBanners();
+    _listenBanners(_bannersFuture);
   }
 
   void _notifyPrimarySettled() {
@@ -58,14 +60,29 @@ class _BannerSliderState extends State<BannerSlider> {
     if (widget.bannersFuture != null &&
         widget.bannersFuture != oldWidget.bannersFuture) {
       _bannersFuture = widget.bannersFuture!;
+      _listenBanners(_bannersFuture);
     }
   }
 
   @override
   void reassemble() {
     super.reassemble();
+    final next = BannerService.fetchMobileBanners();
     setState(() {
-      _bannersFuture = BannerService.fetchMobileBanners();
+      _bannersFuture = next;
+    });
+    _listenBanners(next);
+  }
+
+  void _listenBanners(Future<List<BannerModel>> future) {
+    final token = ++_bannerListenToken;
+    future.then((banners) {
+      if (!mounted || token != _bannerListenToken) return;
+      final visible = _visibleBanners(banners);
+      _syncAutoSlide(visible.isEmpty ? 1 : visible.length);
+    }, onError: (_, __) {
+      if (!mounted || token != _bannerListenToken) return;
+      _syncAutoSlide(1);
     });
   }
 
@@ -205,7 +222,6 @@ class _BannerSliderState extends State<BannerSlider> {
           snapshot.data ?? const <BannerModel>[],
         );
         final pageCount = banners.isEmpty ? 1 : banners.length;
-        _syncAutoSlide(pageCount);
 
         WidgetsBinding.instance.addPostFrameCallback((_) {
           _notifyPrimarySettled();
