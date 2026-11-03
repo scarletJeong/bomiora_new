@@ -65,11 +65,7 @@ class _SearchPopupDialogState extends State<_SearchPopupDialog> {
     if (!mounted) return;
     final nav = Navigator.of(context, rootNavigator: true);
     nav.pop();
-    nav.push<void>(
-      MaterialPageRoute<void>(
-        builder: (_) => SearchListScreen(initialQuery: q),
-      ),
-    );
+    nav.pushNamed<void>(searchResultLocation(q));
   }
 
   Future<void> _onTapRecent(String q) async {

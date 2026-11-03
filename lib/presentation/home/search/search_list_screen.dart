@@ -21,6 +21,13 @@ import '../../health/health_common/health_responsive_scale.dart';
 import '../../health/health_common/widgets/health_app_bar.dart';
 import '../../health/health_common/widgets/health_focus_outline_box.dart';
 
+/// 검색 결과 주소. 검색어가 있으면 `/search?q=검색어`.
+String searchResultLocation(String query) {
+  final q = query.trim();
+  if (q.isEmpty) return '/search';
+  return Uri(path: '/search', queryParameters: {'q': q}).toString();
+}
+
 /// 통합 검색 결과 — 카테고리별 리스트.
 class SearchListScreen extends StatefulWidget {
   const SearchListScreen({
@@ -105,6 +112,12 @@ class _SearchListScreenState extends State<SearchListScreen> {
 
   Future<void> _commitSearch(String raw) async {
     final q = raw.trim();
+    final next = searchResultLocation(q);
+    final current = ModalRoute.of(context)?.settings.name;
+    if (current != null && current != next) {
+      Navigator.of(context).pushReplacementNamed<void, void>(next);
+      return;
+    }
     if (q.isEmpty) {
       await _runSearch(q);
       return;
@@ -766,7 +779,7 @@ class _SearchListScreenState extends State<SearchListScreen> {
           '검색어를 다시 입력해주세요.',
           textAlign: TextAlign.center,
           style: TextStyle(
-            color: const Color(0xFFB0B0B0),
+            color: const Color(0xFFC0C0C0),
             fontSize: healthSp(context, 12),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w300,

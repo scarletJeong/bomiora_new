@@ -446,6 +446,20 @@ class _BomioraAppState extends State<BomioraApp> {
           }
         }
 
+        // 검색 결과: /search?q=검색어 (새로고침·공유용)
+        if (uri.path == '/search') {
+          final args = settings.arguments as Map<String, dynamic>?;
+          final query = uri.queryParameters['q'] ??
+              (args?['query'] ?? '').toString();
+          return MaterialPageRoute(
+            builder: (context) => SearchListScreen(initialQuery: query),
+            settings: RouteSettings(
+              name: routeName,
+              arguments: settings.arguments,
+            ),
+          );
+        }
+
         // 이벤트 상세: /event/:id
         if (uri.pathSegments.length == 2 &&
             uri.pathSegments[0] == 'event' &&
