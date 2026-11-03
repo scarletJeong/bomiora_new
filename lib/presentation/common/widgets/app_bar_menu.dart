@@ -12,6 +12,7 @@ import '../../shopping/screens/cart_integration_screen.dart';
 import '../../home/search/search_popup.dart';
 import '../navigation/app_bar_nav_guard.dart';
 import 'cart_dropdown_menu.dart';
+import 'navi_bar.dart';
 
 /// 홈: 검색·알림·장바구니 / 마이페이지: 장바구니·설정
 enum AppBarMenuActionsStyle { home, myPage }
@@ -419,7 +420,7 @@ class _AppBarMenuState extends State<AppBarMenu> {
                           if (scaffold?.isDrawerOpen ?? false) {
                             scaffold!.closeDrawer();
                           }
-                          Navigator.of(context).popUntil((route) => route.isFirst);
+                          goNamedKeepingExisting(context, '/home');
                         },
                         child: SizedBox(
                           width: logoW,

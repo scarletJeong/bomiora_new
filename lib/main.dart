@@ -58,6 +58,68 @@ import 'core/utils/inf_code_tracker.dart';
 /// 개발용: 앱 시작 시 로그인 화면을 먼저 표시
 const bool kDevForceLoginScreenFirst = false;
 
+Map<String, WidgetBuilder> _appRoutes = {};
+Route<dynamic>? Function(RouteSettings settings)? _appOnGenerateRoute;
+
+Widget _rootEntry() {
+  if (kDevForceLoginScreenFirst) return const LoginScreen();
+  if (kIsWeb && (readKcpPayToken() ?? '').isNotEmpty) {
+    return const KcpPayResumeSplash();
+  }
+  return const SplashScreen();
+}
+
+bool _isAppHomePath(String name) {
+  final path = Uri.tryParse(name)?.path ?? name;
+  return path.isEmpty || path == '/' || path == '/home';
+}
+
+Route<dynamic> _livingHomeRoute() {
+  return MaterialPageRoute<void>(
+    settings: const RouteSettings(name: '/home'),
+    builder: (_) => _rootEntry(),
+  );
+}
+
+Route<dynamic>? _routeForName(String name) {
+  final generated = _appOnGenerateRoute?.call(RouteSettings(name: name));
+  if (generated != null) return generated;
+  final builder = _appRoutes[name];
+  if (builder == null) return null;
+  return MaterialPageRoute<dynamic>(
+    settings: RouteSettings(name: name),
+    builder: builder,
+  );
+}
+
+/// `/` 와 `/home` 은 스플래시가 준비하는 같은 홈이다.
+/// 그 외 주소는 그 홈 위에 기존과 같이 쌓는다.
+List<Route<dynamic>> _appInitialRoutes(String initialRouteName) {
+  if (_isAppHomePath(initialRouteName)) return [_livingHomeRoute()];
+
+  final uri = Uri.tryParse(initialRouteName);
+  final path = (uri?.path ?? initialRouteName).isEmpty
+      ? '/'
+      : (uri?.path ?? initialRouteName);
+  final fullName = initialRouteName.contains('?') ? initialRouteName : path;
+  final full = _routeForName(fullName);
+  if (full == null) return [_livingHomeRoute()];
+
+  final routes = <Route<dynamic>>[_livingHomeRoute()];
+  final parts = path.split('/').where((part) => part.isNotEmpty).toList();
+  var acc = '';
+  for (var i = 0; i < parts.length; i++) {
+    acc = '$acc/${parts[i]}';
+    if (i == parts.length - 1) {
+      routes.add(full);
+      break;
+    }
+    final route = _routeForName(acc);
+    if (route != null) routes.add(route);
+  }
+  return routes;
+}
+
 /// Flutter web hot restart / WebView 종료 시 엔진이 이미 dispose된
 /// EngineFlutterView를 계속 그리면서 window.dart:99 assertion이 매 프레임
 /// 반복되는 것을 막는다.
@@ -173,12 +235,7 @@ class _BomioraAppState extends State<BomioraApp> {
         Locale('ko', 'KR'),
         Locale('en', 'US'),
       ],
-      home: kDevForceLoginScreenFirst
-          ? const LoginScreen()
-          : (kIsWeb && (readKcpPayToken() ?? '').isNotEmpty)
-              ? const KcpPayResumeSplash()
-              : const SplashScreen(),
-      routes: {
+      routes: _appRoutes = {
         '/login': (context) => const LoginScreen(),
         '/find-account': (context) {
           final args = ModalRoute.of(context)?.settings.arguments
@@ -284,7 +341,8 @@ class _BomioraAppState extends State<BomioraApp> {
           );
         },
       },
-      onGenerateRoute: (settings) {
+      onGenerateInitialRoutes: _appInitialRoutes,
+      onGenerateRoute: _appOnGenerateRoute = (settings) {
         // 동적 라우트 처리
         final routeName = settings.name ?? '';
         final uri = Uri.parse(routeName);

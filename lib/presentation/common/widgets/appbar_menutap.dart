@@ -17,6 +17,7 @@ import '../../customer_service/screens/qa_list_screen.dart';
 import 'app_toast_overlay.dart';
 import '../navigation/app_bar_nav_guard.dart';
 import 'cart_dropdown_menu.dart';
+import 'navi_bar.dart';
 import 'recent_product_card.dart';
 
 /// AppBar 햄버거 메뉴에서 공통으로 사용하는 Drawer (Figma 사이드 메뉴 스타일)
@@ -253,7 +254,7 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
             label: '홈',
             onTap: () {
               _closeDrawerOnly(context);
-              Navigator.of(context).popUntil((route) => route.isFirst);
+              goNamedKeepingExisting(context, '/home');
             },
           ),
           _DrawerShortcutData(
@@ -299,7 +300,7 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
             label: '마이페이지',
             onTap: () {
               _closeDrawerOnly(context);
-              Navigator.pushReplacementNamed(context, '/my_page');
+              goNamedKeepingExisting(context, '/my_page');
             },
           ),
           _DrawerShortcutData(

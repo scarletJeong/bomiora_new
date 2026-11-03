@@ -18,19 +18,31 @@ bool isWideSideNavLayout(BuildContext context) {
   return layoutWindowWidth(context) >= kFooterBarWideBreakpoint;
 }
 
+bool _isLivingHomeRouteName(String? name) {
+  return name == '/home' || name == '/' || name == '/enter-home';
+}
+
 void goNamedKeepingExisting(
   BuildContext context,
   String routeName, {
   Object? arguments,
 }) {
   final current = ModalRoute.of(context)?.settings.name;
-  if (current == routeName && arguments == null) return;
+  if (arguments == null &&
+      (current == routeName ||
+          (routeName == '/home' && _isLivingHomeRouteName(current)))) {
+    return;
+  }
 
   if (arguments == null) {
     final navigator = Navigator.of(context);
     var found = false;
     navigator.popUntil((route) {
-      if (route.settings.name == routeName) {
+      final name = route.settings.name;
+      final matches = routeName == '/home'
+          ? _isLivingHomeRouteName(name)
+          : name == routeName;
+      if (matches) {
         found = true;
         return true;
       }

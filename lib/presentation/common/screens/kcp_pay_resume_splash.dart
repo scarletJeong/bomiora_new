@@ -63,7 +63,10 @@ class _KcpPayResumeSplashState extends State<KcpPayResumeSplash>
     if (!mounted || _left) return;
     if (ModalRoute.of(context)?.isCurrent != true) return;
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute<void>(builder: (_) => const SplashScreen()),
+      MaterialPageRoute<void>(
+        settings: const RouteSettings(name: '/home'),
+        builder: (_) => const SplashScreen(),
+      ),
     );
   }
 
