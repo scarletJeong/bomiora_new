@@ -152,7 +152,9 @@ class CouponService {
     final pending = _availableInFlight[id];
     if (pending != null) return pending;
 
-    final request = _fetchAvailableCoupons(id);
+    final request = _fetchAvailableCoupons(id).then(
+      (value) => value ?? <Coupon>[],
+    );
     _availableInFlight[id] = request;
     try {
       final result = await request;
@@ -164,24 +166,46 @@ class CouponService {
     }
   }
 
-  static Future<List<Coupon>> _fetchAvailableCoupons(String userId) async {
+  /// 탈퇴 안내처럼 실패와 0장을 나눠야 할 때 사용한다.
+  /// 성공한 빈 목록은 0, 조회 실패는 null이다.
+  static Future<int?> countAvailableCoupons(
+    String userId, {
+    bool surfaceFailure = false,
+  }) async {
+    if (!surfaceFailure) {
+      final coupons = await getAvailableCoupons(userId);
+      return coupons.length;
+    }
+    final coupons = await _fetchAvailableCoupons(userId, surfaceFailure: true);
+    if (coupons == null) return null;
+    final id = userId.trim();
+    _availableCache[id] = coupons;
+    _availableCacheAt[id] = DateTime.now();
+    return coupons.length;
+  }
+
+  static Future<List<Coupon>?> _fetchAvailableCoupons(
+    String userId, {
+    bool surfaceFailure = false,
+  }) async {
     try {
       final response = await ApiClient.get(ApiEndpoints.availableCoupons(userId));
       
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         
-        if (data['success'] == true && data['data'] != null) {
-          final List<dynamic> couponsJson = data['data'];
-          return couponsJson
-              .map((json) => Coupon.fromJson(json))
-              .toList();
+        if (data is Map && data['success'] == true) {
+          final raw = data['data'];
+          if (raw == null) return <Coupon>[];
+          if (raw is List) {
+            return raw.map((json) => Coupon.fromJson(json)).toList();
+          }
         }
       }
       
-      return [];
+      return surfaceFailure ? null : <Coupon>[];
     } catch (e) {
-      return [];
+      return surfaceFailure ? null : <Coupon>[];
     }
   }
 

@@ -19,9 +19,18 @@ class CancelMemberScreen extends StatefulWidget {
 
 class _CancelMemberScreenState extends State<CancelMemberScreen> {
   bool _agreed = false;
-  bool _isLoadingStats = true;
+  bool _couponLoading = true;
+  bool _pointLoading = true;
+  bool _couponFailed = false;
+  bool _pointFailed = false;
   int _pointBalance = 0;
   int _couponCount = 0;
+
+  bool get _statsReady =>
+      !_couponLoading &&
+      !_pointLoading &&
+      !_couponFailed &&
+      !_pointFailed;
 
   @override
   void initState() {
@@ -31,38 +40,86 @@ class _CancelMemberScreenState extends State<CancelMemberScreen> {
   }
 
   Future<void> _loadWithdrawStats() async {
-    try {
-      final user = await AuthService.getUser();
-      if (!mounted) return;
-
-      if (user == null) {
-        setState(() {
-          _pointBalance = 0;
-          _couponCount = 0;
-          _isLoadingStats = false;
-        });
-        return;
-      }
-
-      final results = await Future.wait([
-        PointService.getUserPoint(user.id),
-        CouponService.getAvailableCoupons(user.id),
-      ]);
-
-      if (!mounted) return;
-      final point = results[0] as int?;
-      final coupons = results[1] as List<dynamic>;
+    final user = await AuthService.getUser();
+    if (!mounted) return;
+    if (user == null) {
       setState(() {
-        _pointBalance = point ?? 0;
-        _couponCount = coupons.length;
-        _isLoadingStats = false;
+        _couponFailed = true;
+        _pointFailed = true;
+        _couponLoading = false;
+        _pointLoading = false;
+      });
+      return;
+    }
+    await Future.wait([
+      _loadCouponCount(),
+      _loadPointBalance(),
+    ]);
+  }
+
+  Future<void> _loadCouponCount() async {
+    final user = await AuthService.getUser();
+    if (!mounted) return;
+    if (user == null) {
+      setState(() {
+        _couponFailed = true;
+        _couponLoading = false;
+      });
+      return;
+    }
+    setState(() => _couponLoading = true);
+    try {
+      final count = await CouponService.countAvailableCoupons(
+        user.id,
+        surfaceFailure: true,
+      );
+      if (!mounted) return;
+      setState(() {
+        if (count == null) {
+          _couponFailed = true;
+        } else {
+          _couponCount = count;
+          _couponFailed = false;
+        }
+        _couponLoading = false;
       });
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _pointBalance = 0;
-        _couponCount = 0;
-        _isLoadingStats = false;
+        _couponFailed = true;
+        _couponLoading = false;
+      });
+    }
+  }
+
+  Future<void> _loadPointBalance() async {
+    final user = await AuthService.getUser();
+    if (!mounted) return;
+    if (user == null) {
+      setState(() {
+        _pointFailed = true;
+        _pointLoading = false;
+      });
+      return;
+    }
+    setState(() => _pointLoading = true);
+    try {
+      final point = await PointService.getUserPoint(user.id);
+      if (!mounted) return;
+      setState(() {
+        if (point == null) {
+          _pointFailed = true;
+        } else {
+          _pointBalance = point;
+          _pointFailed = false;
+        }
+        _pointLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _pointFailed = true;
+        _pointLoading = false;
       });
     }
   }
@@ -149,18 +206,26 @@ class _CancelMemberScreenState extends State<CancelMemberScreen> {
                     Expanded(
                       child: _MetricCard(
                         title: 'COUPONS',
-                        valueText: _isLoadingStats ? '...' : '$_couponCount',
-                        unitText: '장',
+                        valueText: _couponLoading
+                            ? '…'
+                            : _couponFailed
+                                ? '다시 시도'
+                                : '$_couponCount',
+                        unitText: _couponFailed ? '' : '장',
+                        onTap: _couponFailed ? _loadCouponCount : null,
                       ),
                     ),
                     SizedBox(width: healthDp(context, 16)),
                     Expanded(
                       child: _MetricCard(
                         title: 'MY POINTS',
-                        valueText: _isLoadingStats
-                            ? '...'
-                            : PointService.formatPoint(_pointBalance),
-                        unitText: 'P',
+                        valueText: _pointLoading
+                            ? '…'
+                            : _pointFailed
+                                ? '다시 시도'
+                                : PointService.formatPoint(_pointBalance),
+                        unitText: _pointFailed ? '' : 'P',
+                        onTap: _pointFailed ? _loadPointBalance : null,
                       ),
                     ),
                   ],
@@ -308,7 +373,7 @@ class _CancelMemberScreenState extends State<CancelMemberScreen> {
                       child: SizedBox(
                         height: healthDp(context, 40),
                         child: ElevatedButton(
-                          onPressed: _agreed ? _onNextStep : null,
+                          onPressed: _agreed && _statsReady ? _onNextStep : null,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFFFF5A8D),
                             disabledBackgroundColor: const Color(0xFFD2D2D2),
@@ -347,15 +412,20 @@ class _MetricCard extends StatelessWidget {
     required this.title,
     required this.valueText,
     required this.unitText,
+    this.onTap,
   });
 
   final String title;
   final String valueText;
   final String unitText;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
       padding: EdgeInsets.all(healthDp(context, 16)),
       decoration: ShapeDecoration(
         color: const Color(0x0CFF5C8F),
@@ -410,6 +480,7 @@ class _MetricCard extends StatelessWidget {
             ],
           ),
         ],
+      ),
       ),
     );
   }
