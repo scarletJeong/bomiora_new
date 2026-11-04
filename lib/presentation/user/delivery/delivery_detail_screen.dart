@@ -924,16 +924,64 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
   }
 
   Future<void> _trackDelivery() async {
-    if (_orderDetail == null) return;
-    
-    final companyName = _orderDetail!.deliveryCompany;
-    final trackingNumber = _orderDetail!.trackingNumber;
-    
-    if (companyName == null || companyName.isEmpty) return;
-    if (trackingNumber == null || trackingNumber.isEmpty) return;
-    if (!DeliveryTracker.isSupported(companyName)) return;
+    final order = _orderDetail;
+    final odId = order?.odId ?? '';
+    try {
+      if (order == null) {
+        await _notifyTrackingFailure(odId, '주문 정보가 없습니다.');
+        return;
+      }
+      final company = order.deliveryCompany?.trim() ?? '';
+      final tracking = order.trackingNumber?.trim() ?? '';
+      if (company.isEmpty) {
+        await _notifyTrackingFailure(odId, '택배사 정보가 없습니다.');
+        return;
+      }
+      if (tracking.isEmpty) {
+        await _notifyTrackingFailure(
+          odId,
+          '운송장 번호가 없습니다.',
+          company: company,
+        );
+        return;
+      }
+      if (!DeliveryTracker.isSupported(company)) {
+        await _notifyTrackingFailure(
+          odId,
+          '지원하지 않는 택배사입니다.',
+          company: company,
+        );
+        return;
+      }
+      final opened = await DeliveryTracker.openTrackingPage(company, tracking);
+      if (!opened) {
+        await _notifyTrackingFailure(
+          odId,
+          '배송 조회 페이지를 열지 못했습니다.',
+          company: company,
+        );
+      }
+    } catch (e) {
+      await _notifyTrackingFailure(odId, e.toString());
+    }
+  }
 
-    await DeliveryTracker.openTrackingPage(companyName, trackingNumber);
+  Future<void> _notifyTrackingFailure(
+    String odId,
+    String reason, {
+    String? company,
+  }) async {
+    await FailureLog.record(
+      code: 'order.tracking',
+      mbId: AuthService.currentUser?.id ?? '',
+      reason: reason,
+      detail: {
+        'odId': odId,
+        if (company != null && company.isNotEmpty) 'company': company,
+      },
+    );
+    if (!mounted) return;
+    AppToastOverlay.show(context, '배송 조회를 실패했습니다.');
   }
 
   Future<({List<CartItem> items, List<int> ctIds})?> _addOrderProductsToCart({

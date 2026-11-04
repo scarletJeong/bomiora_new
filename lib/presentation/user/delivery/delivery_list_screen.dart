@@ -1718,48 +1718,100 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
     );
   }
 
-  /// 주문 취소
   /// 배송 조회
   Future<void> _trackDelivery(String odId) async {
     try {
-      // 로그인 확인
       final user = await AuthService.getUser();
       if (user == null) {
+        await _notifyTrackingFailure(odId, '로그인 정보가 없습니다.');
         return;
       }
-      final userId = user.id;
-      
-      // 주문 상세 정보 조회
+
       final result = await OrderService.getOrderDetail(
         odId: odId,
-        mbId: userId,
+        mbId: user.id,
       );
-      
       if (result['success'] != true) {
+        await _notifyTrackingFailure(
+          odId,
+          result['message']?.toString() ?? '주문 정보를 불러오지 못했습니다.',
+          mbId: user.id,
+        );
         return;
       }
-      
+
       final orderDetail = result['order'] as OrderDetailModel;
-      final companyName = orderDetail.deliveryCompany;
-      final trackingNumber = orderDetail.trackingNumber;
-      
-      // 택배사와 운송장번호 확인
-      if (companyName == null || companyName.isEmpty) {
-        return;
-      }
-      
-      if (trackingNumber == null || trackingNumber.isEmpty) {
-        return;
-      }
-      
-      // 지원하는 택배사인지 확인
-      if (!DeliveryTracker.isSupported(companyName)) {
-        return;
-      }
-      
-      // 배송 조회 페이지 열기
-      await DeliveryTracker.openTrackingPage(companyName, trackingNumber);
-    } catch (e) {}
+      final opened = await _openCourierTracking(
+        odId: odId,
+        mbId: user.id,
+        companyName: orderDetail.deliveryCompany,
+        trackingNumber: orderDetail.trackingNumber,
+      );
+      if (!opened) return;
+    } catch (e) {
+      await _notifyTrackingFailure(odId, e.toString());
+    }
+  }
+
+  Future<bool> _openCourierTracking({
+    required String odId,
+    required String mbId,
+    required String? companyName,
+    required String? trackingNumber,
+  }) async {
+    final company = companyName?.trim() ?? '';
+    final tracking = trackingNumber?.trim() ?? '';
+    if (company.isEmpty) {
+      await _notifyTrackingFailure(odId, '택배사 정보가 없습니다.', mbId: mbId);
+      return false;
+    }
+    if (tracking.isEmpty) {
+      await _notifyTrackingFailure(
+        odId,
+        '운송장 번호가 없습니다.',
+        mbId: mbId,
+        company: company,
+      );
+      return false;
+    }
+    if (!DeliveryTracker.isSupported(company)) {
+      await _notifyTrackingFailure(
+        odId,
+        '지원하지 않는 택배사입니다.',
+        mbId: mbId,
+        company: company,
+      );
+      return false;
+    }
+    final opened = await DeliveryTracker.openTrackingPage(company, tracking);
+    if (!opened) {
+      await _notifyTrackingFailure(
+        odId,
+        '배송 조회 페이지를 열지 못했습니다.',
+        mbId: mbId,
+        company: company,
+      );
+    }
+    return opened;
+  }
+
+  Future<void> _notifyTrackingFailure(
+    String odId,
+    String reason, {
+    String? mbId,
+    String? company,
+  }) async {
+    await FailureLog.record(
+      code: 'order.tracking',
+      mbId: mbId ?? AuthService.currentUser?.id ?? '',
+      reason: reason,
+      detail: {
+        'odId': odId,
+        if (company != null && company.isNotEmpty) 'company': company,
+      },
+    );
+    if (!mounted) return;
+    AppToastOverlay.show(context, '배송 조회를 실패했습니다.');
   }
 
   /// 배송확정 (구매 확정)
