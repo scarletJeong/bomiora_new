@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/services.dart';
+import '../../../../core/logging/failure_log.dart';
 import '../../../../core/navigation/app_navigator_key.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../data/models/cart/cart_item_model.dart';
@@ -795,20 +796,44 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
           ? PaymentPrefetchData.load(user.id)
           : Future<PaymentPrefetchData?>.value(null);
       final profileSaveFuture = _profileSaveFuture;
+      Object? profileError;
+      final profileFuture = profileSaveFuture == null
+          ? Future<bool>.value(true)
+          : profileSaveFuture.then<bool>((saved) {
+              if (!saved) profileError = 'success != true';
+              return saved;
+            }).catchError((Object e) {
+              profileError = e;
+              return false;
+            });
 
       final responseFuture =
           ApiClient.post('/api/cart/healthprofile', requestData);
       final waited = await Future.wait<Object?>([
         responseFuture,
         prefetchFuture,
-        if (profileSaveFuture != null)
-          profileSaveFuture.catchError((_) => false),
+        profileFuture,
       ]);
       final response = waited[0] as http.Response;
       final prefetch = waited[1] as PaymentPrefetchData?;
+      final profileSaved = waited[2] as bool;
+
+      if (!profileSaved) {
+        await _notifySubmitFailure(
+          code: 'prescription.profile',
+          toast: '문진표를 저장하지 못했습니다.',
+          reason: profileError?.toString() ?? '문진표 저장 실패',
+        );
+        return;
+      }
 
       if (response.statusCode != 200 && response.statusCode != 201) {
-        throw Exception('healthprofile 요청 실패 (status=${response.statusCode})');
+        await _notifySubmitFailure(
+          code: 'prescription.reserve',
+          toast: '예약을 저장하지 못했습니다.',
+          reason: 'status=${response.statusCode}',
+        );
+        return;
       }
 
       Map<String, dynamic>? responseData;
@@ -816,7 +841,12 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
         responseData = json.decode(response.body) as Map<String, dynamic>?;
       } catch (_) {}
 
-      if (responseData != null && responseData['success'] == false) {
+      if (responseData == null || responseData['success'] != true) {
+        await _notifySubmitFailure(
+          code: 'prescription.reserve',
+          toast: '예약을 저장하지 못했습니다.',
+          reason: responseData?['message']?.toString() ?? 'success != true',
+        );
         return;
       }
 
@@ -876,14 +906,33 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
           );
         }
       });
-    } catch (_) {
-      // ignored
+    } catch (e) {
+      await _notifySubmitFailure(
+        code: 'prescription.reserve',
+        toast: '예약을 저장하지 못했습니다.',
+        reason: e.toString(),
+      );
     } finally {
       if (mounted) {
         setState(() => _isSubmitting = false);
         _syncProgressAndProceed();
       }
     }
+  }
+
+  Future<void> _notifySubmitFailure({
+    required String code,
+    required String toast,
+    required String reason,
+  }) async {
+    final user = await AuthService.getUser();
+    await FailureLog.record(
+      code: code,
+      mbId: user?.id ?? '',
+      reason: reason,
+    );
+    if (!mounted) return;
+    AppToastOverlay.showAlert(context, toast);
   }
 
   Future<void> _showRefundPolicyPopup() async {

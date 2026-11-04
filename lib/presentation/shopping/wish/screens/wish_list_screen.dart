@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../../../core/constants/app_assets.dart';
+import '../../../../core/logging/failure_log.dart';
 import '../../../../core/utils/image_url_helper.dart';
 import '../../../../core/utils/node_value_parser.dart';
 import '../../../../data/models/content/content_post.dart';
@@ -9,7 +10,9 @@ import '../../../../data/services/wish_service.dart';
 import '../../../../data/services/content_service.dart';
 import '../../../common/widgets/app_network_image.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
+import '../../../common/widgets/app_toast_overlay.dart';
 import '../../../common/widgets/centered_empty_state.dart';
+import '../../../common/widgets/load_failure_notice.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
 
@@ -32,7 +35,7 @@ class _WishListScreenState extends State<WishListScreen> {
 
   List<Map<String, dynamic>> _wishList = [];
   bool _isLoading = true;
-  String? _errorMessage;
+  bool _loadFailed = false;
   bool _requiresLogin = false;
   int _visibleCount = _pageSize;
   /// 0: 비대면 진료, 1: 스토어, 2: 콘텐츠
@@ -146,7 +149,7 @@ class _WishListScreenState extends State<WishListScreen> {
       _wishList = list;
       _selectTabIfCurrentEmpty();
       if (showSpinner) _isLoading = false;
-      _errorMessage = null;
+      _loadFailed = false;
       _requiresLogin = false;
       _syncVisibleCount();
     });
@@ -174,7 +177,7 @@ class _WishListScreenState extends State<WishListScreen> {
       if (user == null) {
         setState(() {
           _requiresLogin = true;
-          _errorMessage = null;
+          _loadFailed = false;
           _isLoading = false;
         });
         return;
@@ -183,10 +186,10 @@ class _WishListScreenState extends State<WishListScreen> {
       final cached = WishService.peekWishList(user.id);
       if (cached != null) {
         await _applyWishRows(cached, showSpinner: true);
-      } else {
+      } else if (_wishList.isEmpty) {
         setState(() {
           _isLoading = true;
-          _errorMessage = null;
+          _loadFailed = false;
           _requiresLogin = false;
         });
       }
@@ -195,22 +198,49 @@ class _WishListScreenState extends State<WishListScreen> {
         if (!mounted) return;
         await _applyWishRows(raw, showSpinner: true);
       } catch (e) {
-        if (cached != null) return;
+        if (_wishList.isNotEmpty) {
+          await _notifyWishLoadFailure(e);
+          return;
+        }
         rethrow;
       }
     } catch (e) {
       if (!mounted) return;
       final message = e.toString();
-      setState(() {
-        if (message.contains('로그인')) {
+      if (message.contains('로그인')) {
+        setState(() {
           _requiresLogin = true;
-          _errorMessage = null;
-        } else {
-          _errorMessage = '찜 목록을 불러오는데 실패했습니다: $e';
-        }
+          _loadFailed = false;
+          _isLoading = false;
+        });
+        return;
+      }
+      await FailureLog.record(
+        code: 'wish.list',
+        mbId: AuthService.currentUser?.id ?? '',
+        reason: message,
+      );
+      if (!mounted) return;
+      setState(() {
+        _loadFailed = _wishList.isEmpty;
+        _requiresLogin = false;
         _isLoading = false;
       });
+      if (_wishList.isNotEmpty) {
+        AppToastOverlay.showAlert(context, '찜 목록을 불러오지 못했습니다.');
+      }
     }
+  }
+
+  Future<void> _notifyWishLoadFailure(Object error) async {
+    await FailureLog.record(
+      code: 'wish.list',
+      mbId: AuthService.currentUser?.id ?? '',
+      reason: error.toString(),
+    );
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+    AppToastOverlay.showAlert(context, '찜 목록을 불러오지 못했습니다.');
   }
 
   void _loadMore() {
@@ -236,7 +266,7 @@ class _WishListScreenState extends State<WishListScreen> {
     WishService.removeFromLocalList(id);
     try {
       await WishService.removeFromWish(id);
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       setState(() {
         final i = index > _wishList.length ? _wishList.length : index;
@@ -244,6 +274,13 @@ class _WishListScreenState extends State<WishListScreen> {
         _syncVisibleCount();
       });
       WishService.restoreLocalListItem(index, removed);
+      await FailureLog.record(
+        code: 'wish.remove',
+        mbId: AuthService.currentUser?.id ?? '',
+        reason: e.toString(),
+      );
+      if (!mounted) return;
+      AppToastOverlay.showAlert(context, '찜을 삭제하지 못했습니다.');
     }
   }
 
@@ -283,22 +320,17 @@ class _WishListScreenState extends State<WishListScreen> {
                   )
                 : (_requiresLogin || AuthService.currentUser == null)
                     ? _buildLoginMessage()
-                    : _errorMessage != null
-                        ? _buildError()
+                    : _loadFailed && _wishList.isEmpty
+                        ? Center(
+                            child: LoadFailureNotice(
+                              message: '찜 목록을 불러오지 못했습니다.',
+                              onRetry: _loadWishList,
+                            ),
+                          )
                         : _buildContent(),
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildError() {
-    return CenteredEmptyState(
-      iconWidget: CenteredEmptyState.assetIcon(
-        context,
-        AppAssets.emptyWishlistIcon,
-      ),
-      message: _emptyMessageForTab(),
     );
   }
 
