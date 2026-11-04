@@ -130,7 +130,7 @@ class _Cancel2MemberScreenState extends State<Cancel2MemberScreen> {
                 ),
                 SizedBox(height: healthDp(context, 10)),
                 Text(
-                  '보미오라를 떠나시는 이유를 알려주시면 \n더 나은 서비스로보답하겠습니다',
+                  '보미오라를 떠나시는 이유를 알려주시면 \n더 나은 서비스로 보답하겠습니다',
                   textAlign: TextAlign.left,
                   style: TextStyle(
                     color: const Color(0xFF898686),
