@@ -46,10 +46,9 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
   bool _isHealthcareStoreExpanded = false;
   List<RecentViewItem> _recentProducts = [];
   bool _isLoadingRecent = false;
-  List<ProductCategoryItem> _generalCategories =
-      List<ProductCategoryItem>.from(productGeneralCategoryListFallback);
-  List<ProductCategoryItem> _prescriptionCategories =
-      List<ProductCategoryItem>.from(productPrescriptionCategoryListFallback);
+  bool _sawDrawerOpen = false;
+  List<ProductCategoryItem> _generalCategories = const [];
+  List<ProductCategoryItem> _prescriptionCategories = const [];
 
   @override
   void initState() {
@@ -69,10 +68,21 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
     _loadRecentProducts();
   }
 
-  Future<void> _loadShopCategories() async {
+  void _scheduleDrawerOpenCheck() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final open = Scaffold.maybeOf(context)?.isDrawerOpen ?? false;
+      if (open && !_sawDrawerOpen) {
+        _loadShopCategories(forceRefresh: true);
+      }
+      _sawDrawerOpen = open;
+    });
+  }
+
+  Future<void> _loadShopCategories({bool forceRefresh = false}) async {
     final results = await Future.wait([
-      ProductCategoryCatalog.generalCategories(),
-      ProductCategoryCatalog.prescriptionCategories(),
+      ProductCategoryCatalog.generalCategories(forceRefresh: forceRefresh),
+      ProductCategoryCatalog.prescriptionCategories(forceRefresh: forceRefresh),
     ]);
     if (!mounted) return;
     setState(() {
@@ -134,9 +144,8 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
   Future<void> _openPrescriptionTopCategory(BuildContext context) async {
     final cats = await ProductCategoryCatalog.prescriptionCategories();
     if (!mounted) return;
-    final top = cats.isNotEmpty
-        ? cats.first
-        : productPrescriptionCategoryListFallback.first;
+    if (cats.isEmpty) return;
+    final top = cats.first;
     _popAndPushNamed(
       context,
       '/product/',
@@ -163,9 +172,8 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
   Future<void> _openHealthcareStoreTopCategory(BuildContext context) async {
     final cats = await ProductCategoryCatalog.generalCategories();
     if (!mounted) return;
-    final top = cats.isNotEmpty
-        ? cats.first
-        : productGeneralCategoryListFallback.first;
+    if (cats.isEmpty) return;
+    final top = cats.first;
     _popAndPushNamed(
       context,
       '/product-general/',
@@ -304,6 +312,7 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
 
   @override
   Widget build(BuildContext context) {
+    _scheduleDrawerOpenCheck();
     final theme = Theme.of(context);
     return Theme(
       data: theme.copyWith(

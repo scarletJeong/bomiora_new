@@ -1,7 +1,9 @@
+import '../../../core/logging/failure_log.dart';
+import '../../services/auth_service.dart';
 import 'product_repository.dart';
 import '../../../presentation/shopping/utils/get_product.dart';
 
-/// 웹 `get_categories_with_products()` — 판매 중 상품이 있는 카테고리 (메모리 캐시)
+/// 판매 중 상품이 있는 분류. 서버 조회가 성공한 목록만 메모리에 둔다.
 class ProductCategoryCatalog {
   ProductCategoryCatalog._();
 
@@ -12,71 +14,68 @@ class ProductCategoryCatalog {
 
   static Future<List<ProductCategoryItem>> generalCategories({
     bool forceRefresh = false,
-  }) async {
-    if (!forceRefresh && _generalCache != null) {
-      return _generalCache!;
-    }
-    if (!forceRefresh && _generalInFlight != null) {
-      return _generalInFlight!;
-    }
-
-    final request = () async {
-      List<ProductCategoryItem> fromApi = const [];
-      try {
-        fromApi = await ProductRepository.getCategoriesWithProducts(
-          productKind: 'general',
-        );
-      } catch (_) {
-        fromApi = const [];
-      }
-      _generalCache = fromApi.isNotEmpty
-          ? fromApi
-          : List<ProductCategoryItem>.from(productGeneralCategoryListFallback);
-      return _generalCache!;
-    }();
-    _generalInFlight = request;
-    try {
-      return await request;
-    } finally {
-      if (identical(_generalInFlight, request)) _generalInFlight = null;
-    }
+  }) {
+    return _load(
+      productKind: 'general',
+      forceRefresh: forceRefresh,
+      readCache: () => _generalCache,
+      writeCache: (value) => _generalCache = value,
+      readInFlight: () => _generalInFlight,
+      writeInFlight: (value) => _generalInFlight = value,
+    );
   }
 
   static Future<List<ProductCategoryItem>> prescriptionCategories({
     bool forceRefresh = false,
+  }) {
+    return _load(
+      productKind: 'prescription',
+      forceRefresh: forceRefresh,
+      readCache: () => _prescriptionCache,
+      writeCache: (value) => _prescriptionCache = value,
+      readInFlight: () => _prescriptionInFlight,
+      writeInFlight: (value) => _prescriptionInFlight = value,
+    );
+  }
+
+  static Future<List<ProductCategoryItem>> _load({
+    required String productKind,
+    required bool forceRefresh,
+    required List<ProductCategoryItem>? Function() readCache,
+    required void Function(List<ProductCategoryItem>?) writeCache,
+    required Future<List<ProductCategoryItem>>? Function() readInFlight,
+    required void Function(Future<List<ProductCategoryItem>>?) writeInFlight,
   }) async {
-    if (!forceRefresh &&
-        _prescriptionCache != null &&
-        _prescriptionCache!.isNotEmpty) {
-      return _prescriptionCache!;
-    }
-    if (!forceRefresh && _prescriptionInFlight != null) {
-      return _prescriptionInFlight!;
+    final pending = readInFlight();
+    if (pending != null) return pending;
+    if (!forceRefresh && readCache() != null) {
+      return readCache()!;
     }
 
     final request = () async {
-      List<ProductCategoryItem> fromApi = const [];
       try {
-        fromApi = await ProductRepository.getCategoriesWithProducts(
-          productKind: 'prescription',
+        final fromApi = await ProductRepository.getCategoriesWithProducts(
+          productKind: productKind,
         );
-      } catch (_) {
-        fromApi = const [];
+        writeCache(fromApi);
+        return fromApi;
+      } catch (e) {
+        writeCache(null);
+        final user = await AuthService.getUser();
+        await FailureLog.record(
+          code: 'product.category',
+          mbId: user?.id ?? '',
+          reason: e.toString(),
+          detail: {'productKind': productKind},
+        );
+        return const <ProductCategoryItem>[];
       }
-      _prescriptionCache = fromApi.isNotEmpty
-          ? fromApi
-          : List<ProductCategoryItem>.from(
-              productPrescriptionCategoryListFallback,
-            );
-      return _prescriptionCache!;
     }();
-    _prescriptionInFlight = request;
+    writeInFlight(request);
     try {
       return await request;
     } finally {
-      if (identical(_prescriptionInFlight, request)) {
-        _prescriptionInFlight = null;
-      }
+      if (identical(readInFlight(), request)) writeInFlight(null);
     }
   }
 
