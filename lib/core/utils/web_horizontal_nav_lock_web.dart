@@ -83,9 +83,12 @@ void _onTouchMove(html.Event event) {
   final originX = _touchX;
   final originY = _touchY;
   if (touch == null || originX == null || originY == null) return;
-  final dx = (touch.client.x - originX).abs();
-  final dy = (touch.client.y - originY).abs();
-  if (!_blockHistoryForTouch && dx >= 8 && dx > dy) {
+  final rawDx = touch.client.x - originX;
+  final dx = rawDx.abs();
+  // 휴대폰 브라우저는 세로로 스크롤하다 옆으로 조금 밀려도 히스토리 뒤로가기를 연다.
+  // 마우스는 이 이벤트가 없어서 데스크톱 막대 조작은 그대로다.
+  final fromLeftEdge = originX <= 28 && rawDx > 0;
+  if (!_blockHistoryForTouch && (fromLeftEdge || dx >= 8)) {
     _blockHistoryForTouch = true;
   }
   if (_blockHistoryForTouch) {
