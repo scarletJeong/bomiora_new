@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../../data/repositories/auth/auth_repository.dart';
 import '../../../data/services/auth_service.dart';
@@ -856,6 +856,16 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  void _reportSocialLoginFailure(
+    String provider,
+    Object error,
+    StackTrace stack,
+  ) {
+    debugPrint('[$provider] 로그인 실패: $error\n$stack');
+    if (!mounted) return;
+    AppToastOverlay.show(context, '$provider 로그인에 실패했습니다.');
+  }
+
   Future<void> _handleKakaoLogin() async {
     setState(() {
       _isLoading = true;
@@ -885,9 +895,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
       final kakaoData = kakaoResult['data'] as Map<String, dynamic>;
       await _completeKakaoLoginFromData(kakaoData);
-    } catch (e) {
-      if (!mounted) return;
-      AppToastOverlay.show(context, '카카오 로그인 오류: $e');
+    } catch (e, stack) {
+      _reportSocialLoginFailure('카카오', e, stack);
     } finally {
       if (mounted) {
         setState(() {
@@ -931,9 +940,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
       final kakaoData = kakaoResult['data'] as Map<String, dynamic>;
       await _completeKakaoLoginFromData(kakaoData);
-    } catch (e) {
-      if (!mounted) return;
-      AppToastOverlay.show(context, '카카오 로그인 오류: $e');
+    } catch (e, stack) {
+      _reportSocialLoginFailure('카카오', e, stack);
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -1006,9 +1014,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
       final naverData = naverResult['data'] as Map<String, dynamic>;
       await _completeNaverLoginFromData(naverData);
-    } catch (e) {
-      if (!mounted) return;
-      AppToastOverlay.show(context, '네이버 로그인 오류: $e');
+    } catch (e, stack) {
+      _reportSocialLoginFailure('네이버', e, stack);
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -1099,9 +1106,8 @@ class _LoginScreenState extends State<LoginScreen> {
         identityToken: appleData['identityToken']?.toString(),
         authorizationCode: appleData['authorizationCode']?.toString(),
       );
-    } catch (e) {
-      if (!mounted) return;
-      AppToastOverlay.show(context, 'Apple 로그인 오류: $e');
+    } catch (e, stack) {
+      _reportSocialLoginFailure('Apple', e, stack);
     } finally {
       if (mounted) {
         setState(() {
@@ -1142,9 +1148,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
       final naverData = naverResult['data'] as Map<String, dynamic>;
       await _completeNaverLoginFromData(naverData);
-    } catch (e) {
-      if (!mounted) return;
-      AppToastOverlay.show(context, '네이버 로그인 오류: $e');
+    } catch (e, stack) {
+      _reportSocialLoginFailure('네이버', e, stack);
     } finally {
       if (mounted) {
         setState(() {
