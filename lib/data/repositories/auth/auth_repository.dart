@@ -655,21 +655,21 @@ class AuthRepository {
         final data = decoded is Map<String, dynamic>
             ? decoded
             : <String, dynamic>{};
+        final message = data['message']?.toString().trim() ?? '';
         return {
           'success': data['success'],
           'data': data,
-          'error': _asErrorMessage(data['message']),
+          'error': message.isEmpty ? null : message,
         };
       }
 
-      String errorMessage = '서버 오류: ${response.statusCode}';
+      String? errorMessage;
       try {
         final errorData = json.decode(response.body);
         if (errorData is Map<String, dynamic>) {
-          errorMessage = _asErrorMessage(
-            errorData['message'] ?? errorData['error'],
-            fallback: errorMessage,
-          );
+          final raw = errorData['message'] ?? errorData['error'];
+          final message = raw?.toString().trim() ?? '';
+          if (message.isNotEmpty) errorMessage = message;
         }
       } catch (_) {}
 
@@ -677,11 +677,9 @@ class AuthRepository {
         'success': false,
         'error': errorMessage,
       };
-    } catch (e) {
-      return {
-        'success': false,
-        'error': '회원가입 중 오류가 발생했습니다: $e',
-      };
+    } catch (_) {
+      // 연결 실패는 화면 catch에서 통신 실패 문구를 보여 준다.
+      rethrow;
     }
   }
 }

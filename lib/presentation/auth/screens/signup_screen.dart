@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../core/logging/failure_log.dart';
 import '../../../core/utils/node_value_parser.dart';
 import '../../../core/validation/app_password_validator.dart';
 import '../../../data/models/user/user_model.dart';
@@ -404,6 +405,24 @@ class _SignupScreenState extends State<SignupScreen> {
     }
   }
 
+  Future<void> _reportSignupFailure(
+    String message, {
+    required String reason,
+  }) async {
+    await FailureLog.record(
+      code: 'auth.signup',
+      mbId: '',
+      reason: reason,
+      detail: {'email': _emailController.text.trim()},
+    );
+    if (!mounted) return;
+    await AppAlertDialog.show(
+      context,
+      title: '회원가입',
+      message: message,
+    );
+  }
+
   Future<void> _handleAgreementNext(Map<String, bool> agreements) async {
     if (_certName == null || _certPhone == null) return;
 
@@ -454,16 +473,21 @@ class _SignupScreenState extends State<SignupScreen> {
           (route) => false,
         );
       } else {
-        final errorMessage = result['error']?.toString() ?? '회원가입에 실패했습니다.';
-        if (_isDuplicateEmailMessage(errorMessage) ||
-            _isDuplicateCertMessage(errorMessage)) {
+        final raw = result['error']?.toString().trim() ?? '';
+        if (_isDuplicateEmailMessage(raw) || _isDuplicateCertMessage(raw)) {
           await AppAlertDialog.showAlreadyRegisteredThenLogin(context);
           return;
         }
+        final errorMessage =
+            raw.isEmpty ? '회원가입에 실패했습니다.' : raw;
+        await _reportSignupFailure(errorMessage, reason: errorMessage);
       }
     } catch (e) {
       if (!mounted) return;
-      debugPrint('❌ [SIGNUP] 회원가입 오류: $e');
+      await _reportSignupFailure(
+        '회원가입 요청에 실패했습니다. 다시 시도해 주세요.',
+        reason: e.toString(),
+      );
     } finally {
       if (mounted) {
         setState(() {
