@@ -10,8 +10,8 @@ import 'widgets/reservation_time_change_popup.dart';
 import '../review/review_write_screen.dart';
 import '../review/review_write_general_screen.dart';
 import '../../../data/services/delivery_service.dart';
+import '../../../data/services/order_cart_add.dart';
 import '../../../data/services/auth_service.dart';
-import '../../../data/services/cart_service.dart';
 import '../../../data/services/review_service.dart';
 import '../../../core/navigation/app_action_gate.dart';
 import '../../../data/models/delivery/delivery_model.dart';
@@ -1658,64 +1658,33 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
       return;
     }
 
-    final defaultKind =
-        order.isPrescriptionOrder ? 'prescription' : 'general';
-    String? sharedOdId;
-
-    for (final product in products) {
-      if (product.itId.trim().isEmpty) continue;
-
-      final qty = product.ctQty > 0 ? product.ctQty : 1;
-      var kind =
-          (product.ctKind ?? product.itKind ?? defaultKind).trim();
-      if (kind.toLowerCase().startsWith('supply_add|')) {
-        kind = defaultKind;
-      }
-      if (kind.isEmpty) kind = defaultKind;
-
-      final price = product.ctPrice > 0
-          ? product.ctPrice
-          : (product.totalPrice > 0 ? product.totalPrice : 0);
-      final optionText = (product.ctOption ?? '').trim();
-      final optionId = (product.ioId ?? '').trim();
-      final parentItId = (product.parent ?? '').trim();
-
-      final result = await CartService.addToCart(
-        productId: product.itId,
-        quantity: qty,
-        price: price,
-        optionId: optionId.isEmpty ? null : optionId,
-        optionText: optionText.isEmpty ? null : optionText,
-        optionPrice: product.ioPrice,
-        ioType: product.ioType,
-        odId: sharedOdId,
-        ctKind: kind,
-        parentItId: parentItId.isEmpty ? null : parentItId,
-        ctStatus: '쇼핑',
-      );
-
-      if (result['success'] != true) {
-        if (!mounted) return;
-        AppToastOverlay.show(
-          context,
-          result['message']?.toString() ?? '장바구니 담기에 실패했습니다.',
-        );
-        return;
-      }
-
-      final data = result['data'];
-      if (data is Map) {
-        final map = Map<String, dynamic>.from(data);
-        sharedOdId ??= (map['od_id'] ?? map['odId'])?.toString();
-      }
-    }
-
+    final added = await OrderCartAdd.addProducts(
+      products: products,
+      prescription: order.isPrescriptionOrder,
+    );
     if (!mounted) return;
-    AppToastOverlay.show(context, '장바구니에 담았습니다.');
+    if (!_showReorderResult(added)) return;
     await CartNavigation.openCart(
       context,
       prescriptionTab: order.isPrescriptionOrder,
     );
+  }
+
+  bool _showReorderResult(OrderCartAddResult result) {
+    switch (result.status) {
+      case OrderCartAddStatus.needsLogin:
+        AppToastOverlay.show(context, '로그인이 필요합니다.');
+        return false;
+      case OrderCartAddStatus.failed:
+        AppToastOverlay.show(context, '장바구니 담기에 실패했습니다.');
+        return false;
+      case OrderCartAddStatus.partialLeft:
+        AppToastOverlay.show(context, '일부 상품이 장바구니에 남아 있습니다.');
+        return false;
+      case OrderCartAddStatus.success:
+        AppToastOverlay.show(context, '장바구니에 담았습니다.');
+        return true;
+    }
   }
 
   /// 배송 조회

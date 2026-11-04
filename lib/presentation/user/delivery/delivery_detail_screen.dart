@@ -8,6 +8,7 @@ import '../../../data/models/delivery/delivery_model.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/cart_service.dart';
 import '../../../data/services/delivery_service.dart';
+import '../../../data/services/order_cart_add.dart';
 import '../../../data/services/review_service.dart';
 import '../../../utils/delivery_tracker.dart';
 import '../../../core/constants/app_assets.dart';
@@ -984,9 +985,7 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
     AppToastOverlay.show(context, '배송 조회를 실패했습니다.');
   }
 
-  Future<({List<CartItem> items, List<int> ctIds})?> _addOrderProductsToCart({
-    required bool selectForCheckout,
-  }) async {
+  Future<OrderCartAddResult?> _addOrderProductsToCart() async {
     final order = _orderDetail;
     if (order == null || order.products.isEmpty) {
       if (mounted) {
@@ -995,70 +994,33 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
       return null;
     }
 
-    final user = await AuthService.getUser();
-    if (user == null) {
-      if (mounted) {
+    final result = await OrderCartAdd.addProducts(
+      products: order.products,
+      prescription: order.isPrescriptionOrder,
+    );
+    if (!mounted) return null;
+    if (!_showReorderResult(result)) return null;
+    return result;
+  }
+
+  bool _showReorderResult(OrderCartAddResult result) {
+    switch (result.status) {
+      case OrderCartAddStatus.needsLogin:
         AppToastOverlay.show(context, '로그인이 필요합니다.');
-      }
-      return null;
+        return false;
+      case OrderCartAddStatus.failed:
+        AppToastOverlay.show(context, '장바구니 담기에 실패했습니다.');
+        return false;
+      case OrderCartAddStatus.partialLeft:
+        AppToastOverlay.show(context, '일부 상품이 장바구니에 남아 있습니다.');
+        return false;
+      case OrderCartAddStatus.success:
+        return true;
     }
-
-    final addedItems = <CartItem>[];
-    final addedCtIds = <int>[];
-    String? sharedOdId;
-
-    for (final product in order.products) {
-      final qty = product.ctQty > 0 ? product.ctQty : 1;
-      final kind = (product.ctKind ?? product.itKind ?? 'prescription').trim();
-      final price = product.ctPrice > 0
-          ? product.ctPrice
-          : (product.totalPrice > 0 ? product.totalPrice : 0);
-      final optionText = (product.ctOption ?? '').trim();
-      final optionId = (product.ioId ?? '').trim();
-
-      final result = await CartService.addToCart(
-        productId: product.itId,
-        quantity: qty,
-        price: price,
-        optionId: optionId.isEmpty ? null : optionId,
-        optionText: optionText.isEmpty ? null : optionText,
-        optionPrice: product.ioPrice,
-        ioType: product.ioType,
-        odId: sharedOdId,
-        ctKind: kind.isEmpty ? 'prescription' : kind,
-        ctStatus: '쇼핑',
-      );
-
-      if (result['success'] != true) {
-        if (mounted) {
-          AppToastOverlay.show(
-            context,
-            result['message']?.toString() ?? '장바구니 담기에 실패했습니다.',
-          );
-        }
-        return null;
-      }
-
-      final data = result['data'];
-      if (data is Map) {
-        final map = Map<String, dynamic>.from(data);
-        final cartItem = CartItem.fromJson(map);
-        addedItems.add(cartItem);
-        final ctId = CartService.ctIdFromCartResponseData(map);
-        if (ctId != null) addedCtIds.add(ctId);
-        sharedOdId ??= (map['od_id'] ?? map['odId'])?.toString();
-      }
-    }
-
-    if (selectForCheckout && addedCtIds.isNotEmpty) {
-      await CartService.ensureCartItemsSelected(addedCtIds);
-    }
-
-    return (items: addedItems, ctIds: addedCtIds);
   }
 
   Future<void> _reAddPrescriptionToCart() async {
-    final result = await _addOrderProductsToCart(selectForCheckout: false);
+    final result = await _addOrderProductsToCart();
     if (result == null || !mounted) return;
     AppToastOverlay.show(context, '장바구니에 담았습니다.');
     await CartNavigation.openCart(
@@ -1068,8 +1030,12 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
   }
 
   Future<void> _rebookPrescription() async {
-    final result = await _addOrderProductsToCart(selectForCheckout: true);
+    final result = await _addOrderProductsToCart();
     if (result == null || !mounted) return;
+    if (result.ctIds.isNotEmpty) {
+      await CartService.ensureCartItemsSelected(result.ctIds);
+    }
+    if (!mounted || result.items.isEmpty) return;
 
     final items = result.items;
     final main = items.firstWhere(
