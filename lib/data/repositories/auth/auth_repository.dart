@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
+import '../../../core/logging/failure_log.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_endpoints.dart';
 
@@ -511,22 +512,52 @@ class AuthRepository {
         };
       }
 
+      final raw = _asErrorMessage(
+        data['message'] ?? data['error'],
+        fallback: '인증번호 발송에 실패했습니다. (${response.statusCode})',
+      );
       return {
         'success': false,
         'data': data,
         'code': data['code']?.toString(),
         'retryAfterSec': data['retryAfterSec'],
-        'error': _asErrorMessage(
-          data['message'] ?? data['error'],
-          fallback: '인증번호 발송에 실패했습니다. (${response.statusCode})',
-        ),
+        'error': await _safeOtpSendError(raw),
       };
     } catch (e) {
       return {
         'success': false,
-        'error': '인증번호 발송 중 오류가 발생했습니다: $e',
+        'error': await _safeOtpSendError('인증번호 발송 중 오류가 발생했습니다: $e'),
       };
     }
+  }
+
+  /// 알림톡 업체 코드나 예외 문자열은 로그로만 남기고, 화면에는 짧은 한글만 준다.
+  static Future<String> _safeOtpSendError(String raw) async {
+    final text = raw.trim();
+    final shown = _otpSendUserMessage(text);
+    if (shown != text) {
+      await FailureLog.record(
+        code: 'auth.otpSend',
+        mbId: '',
+        reason: text.isEmpty ? 'empty' : text,
+      );
+    }
+    return shown;
+  }
+
+  static String _otpSendUserMessage(String text) {
+    final lower = text.toLowerCase();
+    if (lower.contains('invalidphonenumber') || lower.contains('k102')) {
+      return '휴대폰 번호를 올바르게 입력해 주세요.';
+    }
+    final technical = text.isEmpty ||
+        RegExp(r'\bK\d{3}\b').hasMatch(text) ||
+        text.contains('Exception') ||
+        text.contains('Error:') ||
+        !RegExp(r'[가-힣]').hasMatch(text) ||
+        RegExp(r'\(\d{3}\)\s*$').hasMatch(text);
+    if (technical) return '인증번호 발송에 실패했습니다.';
+    return text;
   }
 
   static Future<Map<String, dynamic>> otpVerify({

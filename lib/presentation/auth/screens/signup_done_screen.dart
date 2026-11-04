@@ -6,7 +6,6 @@ import '../../../data/services/pending_product_checkout.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../health/health_common/widgets/health_app_bar.dart';
-import '../../user/healthprofile/screens/health_profile_list_screen.dart';
 
 class SignupDoneScreen extends StatelessWidget {
   const SignupDoneScreen({super.key});
@@ -17,20 +16,24 @@ class SignupDoneScreen extends StatelessWidget {
         .pushNamedAndRemoveUntil('/enter-home', (route) => false);
   }
 
+  void _leaveDone(BuildContext context, String routeName) {
+    Navigator.of(context).pushNamedAndRemoveUntil(routeName, (route) => false);
+  }
+
   void _goHealthDashboard(BuildContext context) {
-    Navigator.of(context).pushNamed('/health');
+    _leaveDone(context, '/health');
   }
 
   void _goHealthQuestionnaire(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (context) => const HealthProfileListScreen()),
-    );
+    _leaveDone(context, '/profile');
   }
 
   void _goShoppingMall(BuildContext context) {
-    if (PendingProductCheckout.navigateAfterAuth(context)) return;
-    Navigator.of(context)
-        .pushNamedAndRemoveUntil('/enter-home', (route) => false);
+    _leaveDone(context, '/product-general/');
+  }
+
+  void _goPrescription(BuildContext context) {
+    _leaveDone(context, '/product');
   }
 
   @override
@@ -113,11 +116,12 @@ class SignupDoneScreen extends StatelessWidget {
                           onTap: () => _goHealthQuestionnaire(context),
                         ),
                         SizedBox(height: healthDp(context, 10)),
-                        const _BenefitCard(
+                        _BenefitCard(
                           title: '비대면 진료',
                           subtitle: '집에서 편하게 받는 진료',
                           iconAsset: AppAssets.signupCompleteHealthProduct,
-                          iconBackground: Color(0xFFECFDF5),
+                          iconBackground: const Color(0xFFECFDF5),
+                          onTap: () => _goPrescription(context),
                         ),
                         SizedBox(height: healthDp(context, 10)),
                         _BenefitCard(
