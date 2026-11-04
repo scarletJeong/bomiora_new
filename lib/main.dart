@@ -89,11 +89,53 @@ Route<dynamic> _livingHomeRoute() {
 Route<dynamic>? _routeForName(String name) {
   final generated = _appOnGenerateRoute?.call(RouteSettings(name: name));
   if (generated != null) return generated;
-  final builder = _appRoutes[name];
+  final path = Uri.tryParse(name)?.path;
+  final lookup = (path == null || path.isEmpty) ? name : path;
+  final builder = _appRoutes[lookup];
   if (builder == null) return null;
   return MaterialPageRoute<dynamic>(
     settings: RouteSettings(name: name),
     builder: builder,
+  );
+}
+
+Route<dynamic>? _socialSignupRoute(RouteSettings settings) {
+  final uri = Uri.tryParse(settings.name ?? '');
+  if (uri?.path != '/social-signup') return null;
+
+  final args = settings.arguments as Map<String, dynamic>?;
+  final raw = (args?['provider'] ?? uri?.queryParameters['provider'] ?? 'kakao')
+      .toString()
+      .trim()
+      .toLowerCase();
+  final provider = raw == 'naver' || raw == 'apple' ? raw : 'kakao';
+
+  String? queryValue(String key) {
+    final fromRoute = uri?.queryParameters[key];
+    if (fromRoute != null && fromRoute.isNotEmpty) return fromRoute;
+    final fromBase = Uri.base.queryParameters[key];
+    if (fromBase != null && fromBase.isNotEmpty) return fromBase;
+    return null;
+  }
+
+  return MaterialPageRoute<dynamic>(
+    settings: RouteSettings(
+      name: '/social-signup?provider=$provider',
+      arguments: settings.arguments,
+    ),
+    builder: (context) => SocialSignupScreen(
+      provider: provider,
+      identifier: (args?['identifier'] ?? '').toString(),
+      email: args?['email']?.toString() ??
+          (args == null ? queryValue('email') : null),
+      nickname: args?['nickname']?.toString(),
+      name: args?['name']?.toString(),
+      gender: args?['gender']?.toString(),
+      birthday: args?['birthday']?.toString(),
+      profileImageUrl: args?['profileImageUrl']?.toString(),
+      identityToken: args?['identityToken']?.toString(),
+      authorizationCode: args?['authorizationCode']?.toString(),
+    ),
   );
 }
 
@@ -336,22 +378,6 @@ class _BomioraAppState extends State<BomioraApp> {
           return SignupScreen(certInfo: args);
         },
         '/signup-done': (context) => const SignupDoneScreen(),
-        '/social-signup': (context) {
-          final args = ModalRoute.of(context)?.settings.arguments
-              as Map<String, dynamic>?;
-          return SocialSignupScreen(
-            provider: (args?['provider'] ?? 'kakao').toString(),
-            identifier: (args?['identifier'] ?? '').toString(),
-            email: args?['email']?.toString(),
-            nickname: args?['nickname']?.toString(),
-            name: args?['name']?.toString(),
-            gender: args?['gender']?.toString(),
-            birthday: args?['birthday']?.toString(),
-            profileImageUrl: args?['profileImageUrl']?.toString(),
-            identityToken: args?['identityToken']?.toString(),
-            authorizationCode: args?['authorizationCode']?.toString(),
-          );
-        },
       },
       onGenerateInitialRoutes: _appInitialRoutes,
       onGenerateRoute: _appOnGenerateRoute = (settings) {
@@ -359,6 +385,9 @@ class _BomioraAppState extends State<BomioraApp> {
         final routeName = settings.name ?? '';
         final uri = Uri.parse(routeName);
         InfCodeTracker.captureFromUri(uri);
+
+        final socialSignup = _socialSignupRoute(settings);
+        if (socialSignup != null) return socialSignup;
 
         // KCP 본인인증: 원래 화면이 비치는 딤 오버레이 스타일로 표시
         if (routeName == '/kcp-cert') {

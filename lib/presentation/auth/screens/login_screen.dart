@@ -790,9 +790,10 @@ class _LoginScreenState extends State<LoginScreen> {
     Map<String, dynamic>? prefill,
   }) async {
     final p = prefill != null ? NodeValueParser.normalizeMap(prefill) : null;
+    final safeProvider = provider.trim().toLowerCase();
     await Navigator.pushNamed(
       context,
-      '/social-signup',
+      '/social-signup?provider=$safeProvider',
       arguments: {
         'provider': provider,
         'identifier': identifier,
