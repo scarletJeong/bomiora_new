@@ -79,7 +79,11 @@ class _Cancel2MemberScreenState extends State<Cancel2MemberScreen> {
 
       await AuthService.logout();
       if (!mounted) return;
-      Navigator.pushReplacementNamed(context, '/withdraw/done');
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        '/withdraw/done',
+        (route) => false,
+      );
     } catch (_) {
       if (!mounted) return;
       AppToastOverlay.show(context, '회원 탈퇴 중 오류가 발생했습니다.');
