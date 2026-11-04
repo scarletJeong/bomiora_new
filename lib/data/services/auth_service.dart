@@ -138,8 +138,8 @@ class AuthService {
   static Future<void> logout() async {
     final userId = (_memoryUser?.id ?? '').trim();
     _sessionEpoch++;
+    final epoch = _sessionEpoch;
     _memoryUser = null;
-    _bumpSessionTick();
 
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -148,6 +148,11 @@ class AuthService {
       await prefs.remove(_userKey);
       await prefs.remove(_tokenKey);
     } catch (_) {}
+
+    if (_sessionEpoch == epoch) {
+      _memoryUser = null;
+    }
+    _bumpSessionTick();
 
     try {
       if (userId.isNotEmpty) {

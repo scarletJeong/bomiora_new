@@ -52,6 +52,7 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
   @override
   void initState() {
     super.initState();
+    AuthService.sessionTick.addListener(_onSessionTick);
     RecentViewService.revision.addListener(_onRecentViewChanged);
     _refreshUser().then((_) => _loadRecentProducts());
     _loadShopCategories();
@@ -59,8 +60,14 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
 
   @override
   void dispose() {
+    AuthService.sessionTick.removeListener(_onSessionTick);
     RecentViewService.revision.removeListener(_onRecentViewChanged);
     super.dispose();
+  }
+
+  void _onSessionTick() {
+    _refreshUser();
+    _loadRecentProducts(forceRefresh: true);
   }
 
   void _onRecentViewChanged() {
@@ -73,6 +80,7 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
       final open = Scaffold.maybeOf(context)?.isDrawerOpen ?? false;
       if (open && !_sawDrawerOpen) {
         _loadShopCategories(forceRefresh: true);
+        _refreshUser();
         _loadRecentProducts(forceRefresh: true);
       }
       _sawDrawerOpen = open;
