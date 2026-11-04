@@ -241,7 +241,7 @@ class _BenefitCard extends StatelessWidget {
                   Text(
                     title,
                     style: TextStyle(
-                      color: const Color(0xFF1E293B),
+                      color: const Color(0xFF1A1A1A),
                       fontSize: healthSp(context, 16),
                       fontFamily: 'Gmarket Sans TTF',
                       fontWeight: FontWeight.w500,
@@ -251,7 +251,7 @@ class _BenefitCard extends StatelessWidget {
                   Text(
                     subtitle,
                     style: TextStyle(
-                      color: const Color(0xFF94A3B8),
+                      color: const Color(0xFF898686),
                       fontSize: healthSp(context, 12),
                       fontFamily: 'Gmarket Sans TTF',
                       fontWeight: FontWeight.w300,
