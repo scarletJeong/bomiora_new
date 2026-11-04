@@ -61,7 +61,7 @@ class FindAccountNotFoundScreen extends StatelessWidget {
           child: MobileAppLayoutWrapper(
             backgroundColor: Colors.white,
             appBar: HealthAppBar(
-              title: '아이디/비밀번호찾기',
+              title: '아이디/비밀번호 찾기',
               leadingIconSize: healthDp(context, 24),
             ),
             child: SafeArea(
