@@ -573,6 +573,7 @@ class CartService {
       if (user == null) {
         return {
           'success': false,
+          'needsLogin': true,
           'message': '로그인이 필요합니다.',
           'items': [],
         };
@@ -607,7 +608,7 @@ class CartService {
     } catch (e) {
       return {
         'success': false,
-        'message': '장바구니 조회 중 오류가 발생했습니다: $e',
+        'message': e.toString(),
         'items': [],
       };
     }

@@ -8,10 +8,12 @@ import '../../common/widgets/login_required_dialog.dart';
 import '../../common/widgets/confirm_dialog.dart';
 import '../../common/widgets/app_toast_overlay.dart';
 import '../../common/widgets/centered_empty_state.dart';
+import '../../common/widgets/load_failure_notice.dart';
 import '../../common/widgets/scroll_reveal_top_overlay.dart';
 import '../../../core/constants/app_assets.dart';
 import '../../../data/models/cart/cart_item_model.dart';
 import '../../../data/models/cart/cart_line_group.dart';
+import '../../../core/logging/failure_log.dart';
 import '../../../data/services/cart_service.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../core/utils/price_formatter.dart';
@@ -47,6 +49,7 @@ class _CartScreenState extends State<CartScreen> {
   List<CartItem> cartItems = [];
   bool isLoading = true;
   bool isRefreshing = false; // 새로고침 중인지 (캐시된 데이터 표시 중)
+  bool needsLogin = false;
   String? errorMessage;
   int shippingCost = 0; // 배송비
   int _selectedShippingCost = 0;
@@ -154,14 +157,20 @@ class _CartScreenState extends State<CartScreen> {
   @override
   void initState() {
     super.initState();
+    AuthService.sessionTick.addListener(_onSessionTick);
     _loadCart(forceRefresh: true);
   }
 
   @override
   void dispose() {
+    AuthService.sessionTick.removeListener(_onSessionTick);
     _shippingDebounce?.cancel();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _onSessionTick() {
+    _loadCart(forceRefresh: true);
   }
 
   Future<bool> _ensureLoggedIn({
@@ -174,18 +183,57 @@ class _CartScreenState extends State<CartScreen> {
     return false;
   }
 
+  Future<void> _recordCartLoadFailure(String reason) async {
+    final user = await AuthService.getUser();
+    await FailureLog.record(
+      code: 'cart.list',
+      mbId: user?.id ?? '',
+      reason: reason,
+      detail: const {'kind': 'general'},
+    );
+  }
+
+  Future<void> _applyCartLoadFailure(String reason) async {
+    await _recordCartLoadFailure(reason);
+    if (!mounted) return;
+    final keepItems = cartItems.isNotEmpty;
+    setState(() {
+      isLoading = false;
+      isRefreshing = false;
+      needsLogin = false;
+      errorMessage = keepItems ? null : '장바구니를 불러오지 못했습니다.';
+    });
+    if (keepItems) {
+      AppToastOverlay.showAlert(context, '장바구니를 불러오지 못했습니다.');
+    }
+  }
+
+  void _showLoginRequiredCart() {
+    setState(() {
+      cartItems = [];
+      shippingCost = 0;
+      totalPrice = 0;
+      selectedItems = {};
+      selectAll = false;
+      needsLogin = true;
+      errorMessage = null;
+      isLoading = false;
+      isRefreshing = false;
+    });
+  }
+
   Future<void> _loadCart({
     bool showCachedData = false,
     bool forceRefresh = false,
   }) async {
-    // 캐시된 데이터를 먼저 표시하고 백그라운드에서 갱신하는 모드
-    final hasCachedData = showCachedData && cartItems.isNotEmpty;
+    final keepVisible = showCachedData && cartItems.isNotEmpty;
 
-    if (!hasCachedData) {
+    if (!keepVisible) {
       if (!mounted) return;
       setState(() {
         isLoading = true;
         errorMessage = null;
+        needsLogin = false;
       });
     } else {
       if (!mounted) return;
@@ -199,6 +247,12 @@ class _CartScreenState extends State<CartScreen> {
       final result = await CartService.getCart(forceRefresh: forceRefresh);
       if (!mounted) return;
 
+      final message = result['message']?.toString() ?? '';
+      if (result['needsLogin'] == true) {
+        _showLoginRequiredCart();
+        return;
+      }
+
       if (result['success'] == true) {
         final items = CartService.parseCartItems(result['data']);
         final orderedItems = _preserveCartItemOrder(previousItems, items);
@@ -207,42 +261,21 @@ class _CartScreenState extends State<CartScreen> {
           shippingCost = (result['shipping_cost'] as int?) ?? 0;
           totalPrice = (result['total_price'] as int?) ?? 0;
           _applySelectionFromServer();
-
+          needsLogin = false;
+          errorMessage = null;
           isLoading = false;
           isRefreshing = false;
         });
         unawaited(_refreshSelectedShipping());
-      } else {
-        final message = result['message']?.toString() ?? '';
-        setState(() {
-          if (!hasCachedData) {
-            if (message.contains('로그인')) {
-              cartItems = [];
-              shippingCost = 0;
-              totalPrice = 0;
-              errorMessage = null;
-            } else {
-              errorMessage =
-                  message.isNotEmpty ? message : '장바구니를 불러오는데 실패했습니다.';
-            }
-            isLoading = false;
-          } else {
-            // 캐시된 데이터를 유지하고 에러 무시
-            isRefreshing = false;
-          }
-        });
+        return;
       }
+
+      await _applyCartLoadFailure(
+        message.isNotEmpty ? message : '장바구니를 불러오지 못했습니다.',
+      );
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        if (!hasCachedData) {
-          errorMessage = '장바구니를 불러오는 중 오류가 발생했습니다: $e';
-          isLoading = false;
-        } else {
-          // 캐시된 데이터를 유지하고 에러 무시
-          isRefreshing = false;
-        }
-      });
+      await _applyCartLoadFailure(e.toString());
     }
   }
 
@@ -540,12 +573,39 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   Widget _buildBody(BuildContext context) {
-    if (isLoading) {
+    if (isLoading && cartItems.isEmpty) {
       return _wrapWithOptionalHeader(
         const Center(child: CircularProgressIndicator()),
       );
     }
-    if (errorMessage != null || _displayedCartItems.isEmpty) {
+    if (needsLogin) {
+      return _buildPageCenteredEmpty(
+        CenteredEmptyState(
+          iconWidget: CenteredEmptyState.assetIcon(
+            context,
+            AppAssets.emptyCartGeneralIcon,
+          ),
+          message: '로그인 후 이용 가능합니다.',
+          trailing: CenteredEmptyState.loginButtonTrailing(
+            context,
+            onPressed: () async {
+              await Navigator.pushNamed(context, '/login');
+              if (!mounted) return;
+              await _loadCart(forceRefresh: true);
+            },
+          ),
+        ),
+      );
+    }
+    if (errorMessage != null && _displayedCartItems.isEmpty) {
+      return _buildPageCenteredEmpty(
+        LoadFailureNotice(
+          message: '장바구니를 불러오지 못했습니다.',
+          onRetry: () => _loadCart(forceRefresh: true),
+        ),
+      );
+    }
+    if (_displayedCartItems.isEmpty) {
       return _buildPageCenteredEmpty(
         CenteredEmptyState(
           iconWidget: CenteredEmptyState.assetIcon(
