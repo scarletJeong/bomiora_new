@@ -42,11 +42,16 @@ enum _CardActionStyle { primary, outlinePink, outlineGray }
 
 class _DeliveryListScreenState extends State<DeliveryListScreen> {
   // 주문 데이터
-  List<OrderListModel> _allOrders = []; // 전체 주문 데이터
+  List<OrderListModel> _allOrders = []; // 지금까지 불러온 주문
   List<OrderListModel> _displayedOrders = []; // 화면에 표시할 주문 데이터
   bool _isLoading = false;
+  bool _isLoadingMore = false;
+  bool _hasNext = false;
+  int _nextPage = 0;
+  int _visibleCount = 10;
   bool _loggedOut = false;
   int _ordersLoadGen = 0;
+  static const int _pageSize = 10;
   String _selectedProductType = DeliveryProductType.prescription;
   String _selectedStatus = 'all';
   final ScrollController _scrollController = ScrollController();
@@ -107,65 +112,77 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
     }
   }
 
-  /// 주문 목록 로드 (전체 데이터)
-  Future<void> _loadOrders({bool force = false}) async {
-    if (_isLoading && !force) return;
+  /// 주문 목록. 한 번에 10건만 받고, 더보기로 다음 페이지를 이어 붙인다.
+  Future<void> _loadOrders({bool force = false, bool append = false}) async {
+    if (append) {
+      if (_isLoading || _isLoadingMore || !_hasNext) return;
+    } else if (_isLoading && !force) {
+      return;
+    }
     final gen = ++_ordersLoadGen;
+    final page = append ? _nextPage : 0;
 
     setState(() {
-      _isLoading = true;
+      if (append) {
+        _isLoadingMore = true;
+      } else {
+        _isLoading = true;
+        _isLoadingMore = false;
+      }
     });
     
     try {
-      // 현재 로그인된 사용자 ID 가져오기
       final user = await AuthService.getUser();
       if (user == null) {
         setState(() {
           _loggedOut = true;
           _allOrders = [];
           _displayedOrders = [];
+          _hasNext = false;
+          _nextPage = 0;
         });
         return;
       }
       _loggedOut = false;
       final userId = user.id;
       
-      // 전체 주문 데이터 조회 (기간: 전체, 상태: 전체)
       final result = await OrderService.getOrderList(
         mbId: userId,
-        period: 0, // 전체 기간
-        status: 'all', // 전체 상태
-        page: 0,
-        size: 80,
-        forceRefresh: force,
+        period: 0,
+        status: 'all',
+        page: page,
+        size: _pageSize,
+        forceRefresh: force || append,
       );
       
       if (result['success'] == true) {
         if (gen != _ordersLoadGen) return;
-        final ordersList = result['orders'] ?? [];
-        List<OrderListModel> allOrders = [];
-        if (ordersList is List<OrderListModel>) {
-          allOrders = ordersList;
-        } else if (ordersList is List) {
-          allOrders = ordersList
-              .whereType<Map>()
-              .map((item) => OrderListModel.fromJson(Map<String, dynamic>.from(item)))
-              .toList();
-        }
-        
-        // 날짜순 내림차순 정렬 (최신순)
-        allOrders.sort((a, b) => b.orderDateTime.compareTo(a.orderDateTime));
+        final pageOrders = _ordersFromResult(result['orders']);
+        pageOrders.sort((a, b) => b.orderDateTime.compareTo(a.orderDateTime));
 
         if (!mounted || gen != _ordersLoadGen) return;
         final reviewed = await _reviewedItIdsBeforePaint(
           userId,
-          allOrders,
+          pageOrders,
           result['reviewedByOrder'],
         );
         if (!mounted || gen != _ordersLoadGen) return;
         setState(() {
-          _allOrders = allOrders;
-          _reviewedItIdsByOd = reviewed;
+          if (append) {
+            final seen = _allOrders.map((order) => order.odId).toSet();
+            _allOrders = [
+              ..._allOrders,
+              ...pageOrders.where((order) => seen.add(order.odId)),
+            ];
+            _reviewedItIdsByOd = {..._reviewedItIdsByOd, ...reviewed};
+          } else {
+            _allOrders = pageOrders;
+            _reviewedItIdsByOd = reviewed;
+          }
+          _allOrders.sort((a, b) => b.orderDateTime.compareTo(a.orderDateTime));
+          _nextPage = page + 1;
+          _hasNext = _resultHasNext(result, pageOrders.length);
+          if (!append) _visibleCount = _pageSize;
           _applyFilter();
         });
       }
@@ -174,9 +191,54 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
       if (mounted && gen == _ordersLoadGen) {
         setState(() {
           _isLoading = false;
+          _isLoadingMore = false;
         });
       }
     }
+  }
+
+  List<OrderListModel> _ordersFromResult(dynamic ordersList) {
+    if (ordersList is List<OrderListModel>) return List<OrderListModel>.from(ordersList);
+    if (ordersList is! List) return [];
+    return ordersList
+        .whereType<Map>()
+        .map((item) => OrderListModel.fromJson(Map<String, dynamic>.from(item)))
+        .toList();
+  }
+
+  bool _resultHasNext(Map<String, dynamic> result, int fetchedCount) {
+    if (fetchedCount > _pageSize) return false;
+    final totalPages = int.tryParse('${result['totalPages'] ?? ''}');
+    final currentPage = int.tryParse('${result['currentPage'] ?? ''}');
+    if (totalPages != null && totalPages > 0 && currentPage != null) {
+      return currentPage + 1 < totalPages;
+    }
+    final totalItems = int.tryParse('${result['totalItems'] ?? ''}');
+    if (totalItems != null && totalItems > 0 && currentPage != null) {
+      return (currentPage + 1) * _pageSize < totalItems;
+    }
+    if (result['hasNext'] == true) return true;
+    return fetchedCount >= _pageSize;
+  }
+
+  bool get _canLoadMore =>
+      _displayedOrders.length > _visibleCount || _hasNext;
+
+  List<OrderListModel> get _visibleOrders {
+    if (_displayedOrders.length <= _visibleCount) return _displayedOrders;
+    return _displayedOrders.take(_visibleCount).toList();
+  }
+
+  Future<void> _loadMoreOrders() async {
+    if (_displayedOrders.length > _visibleCount) {
+      setState(() => _visibleCount += _pageSize);
+      return;
+    }
+    if (!_hasNext || _isLoadingMore) return;
+    final before = _allOrders.length;
+    await _loadOrders(append: true);
+    if (!mounted || _allOrders.length <= before) return;
+    setState(() => _visibleCount += _pageSize);
   }
 
   List<String> _stringIds(dynamic value) {
@@ -353,6 +415,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
       setState(() {
         _selectedProductType = productType;
         _selectedStatus = 'all';
+        _visibleCount = _pageSize;
         _applyFilter();
       });
       _scrollToTop();
@@ -366,6 +429,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
       if (!mounted || _selectedStatus == status) return;
       setState(() {
         _selectedStatus = status;
+        _visibleCount = _pageSize;
         _applyFilter();
       });
       _scrollToTop();
@@ -397,7 +461,10 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
       return _buildEmptyStateContent();
     }
     // 필터를 스크롤 밖에 두면 세로 스크롤과 탭/칩 제스처가 경쟁하지 않음
-    final showEmpty = !_isLoading && _displayedOrders.isEmpty;
+    final showEmpty = !_isLoading &&
+        !_isLoadingMore &&
+        _displayedOrders.isEmpty &&
+        !_hasNext;
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -426,9 +493,16 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
                     ),
                   )
                 else if (_displayedOrders.isEmpty)
-                  const SliverFillRemaining(
+                  SliverFillRemaining(
                     hasScrollBody: false,
-                    child: SizedBox.shrink(),
+                    child: _canLoadMore
+                        ? Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: healthDp(context, 27),
+                            ),
+                            child: Center(child: _buildMoreButton()),
+                          )
+                        : const SizedBox.shrink(),
                   )
                 else
                   SliverPadding(
@@ -441,16 +515,26 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
                     sliver: SliverList(
                       delegate: SliverChildBuilderDelegate(
                         (context, index) {
-                          final order = _displayedOrders[index];
+                          final order = _visibleOrders[index];
                           return _buildOrderCard(order);
                         },
-                        childCount: _displayedOrders.length,
+                        childCount: _visibleOrders.length,
                       ),
                     ),
                   ),
-                if (!_isLoading && _displayedOrders.isNotEmpty)
+                if (!_isLoading && _visibleOrders.isNotEmpty)
                   SliverToBoxAdapter(
-                    child: SizedBox(height: healthDp(context, 48)),
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        healthDp(context, 27),
+                        0,
+                        healthDp(context, 27),
+                        healthDp(context, 48),
+                      ),
+                      child: _canLoadMore || _isLoadingMore
+                          ? _buildMoreButton()
+                          : SizedBox(height: healthDp(context, 8)),
+                    ),
                   ),
               ],
             ),
@@ -461,6 +545,51 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
         if (showEmpty)
           PageCenteredEmptyOverlay(child: _buildEmptyStateContent()),
       ],
+    );
+  }
+
+  Widget _buildMoreButton() {
+    if (!_canLoadMore && !_isLoadingMore) return const SizedBox.shrink();
+    return Padding(
+      padding: EdgeInsets.only(top: healthDp(context, 8)),
+      child: Material(
+        color: Colors.white,
+        shape: RoundedRectangleBorder(
+          side: BorderSide(
+            width: healthDp(context, 0.5),
+            color: _kBorder,
+          ),
+          borderRadius: BorderRadius.circular(healthDp(context, 10)),
+        ),
+        child: InkWell(
+          onTap: _isLoadingMore ? null : _loadMoreOrders,
+          borderRadius: BorderRadius.circular(healthDp(context, 10)),
+          child: SizedBox(
+            width: double.infinity,
+            height: healthDp(context, 40),
+            child: Center(
+              child: _isLoadingMore
+                  ? SizedBox(
+                      width: healthDp(context, 18),
+                      height: healthDp(context, 18),
+                      child: const CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: _kPink,
+                      ),
+                    )
+                  : Text(
+                      '더보기',
+                      style: TextStyle(
+                        color: _kMuted,
+                        fontSize: healthSp(context, 14),
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 
