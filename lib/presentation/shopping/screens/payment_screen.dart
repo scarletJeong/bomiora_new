@@ -286,23 +286,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
     if (_couponPointDisabled) return false;
     if (coupon.method == 3) {
       if (_baseShipping <= 0) return false;
-      return _shippingCouponGoodsAmount >= coupon.minimum;
+      if (_shippingCouponGoodsAmount < coupon.minimum) return false;
+      return _shippingDiscountFor(coupon) > 0;
     }
-    switch (coupon.method) {
-      case 0:
-        if (_nonInfluencerAmount < coupon.minimum) return false;
-        return widget.cartItems.any(
-          (item) => !_isInfluencerCartItem(item) && item.itId == coupon.target,
-        );
-      case 1:
-        final categoryAmount = _baseAmountForCoupon(coupon);
-        if (categoryAmount <= 0) return false;
-        if (categoryAmount < coupon.minimum) return false;
-        return true;
-      default:
-        if (_nonInfluencerAmount < coupon.minimum) return false;
-        return true;
-    }
+    // 서버 baseAmountForCoupon: 개별 상품은 그 상품 금액, 카테고리는 그 분류 금액.
+    final base = _baseAmountForCoupon(coupon);
+    if (base <= 0 || base < coupon.minimum) return false;
+    return _discountForCoupon(coupon) > 0;
   }
 
   void _syncCouponLists() {
@@ -311,7 +301,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
         _selectedCoupons.where(_isCouponApplicable).toList();
     // 배송비 변동 등으로 최종액이 3천원 미만이면 쿠폰을 뒤에서부터 해제
     while (_selectedCoupons.isNotEmpty &&
-        !_keepsMinPayable(_selectedCoupons)) {
+        (!_keepsMinPayable(_selectedCoupons) ||
+            !_serverAcceptsCouponTotals(_selectedCoupons))) {
       _selectedCoupons.removeLast();
     }
     if (_couponPointDisabled) {
@@ -361,24 +352,20 @@ class _PaymentScreenState extends State<PaymentScreen> {
     return '';
   }
 
-  List<Map<String, dynamic>> _scaleCouponDiscounts(
-    List<Map<String, dynamic>> items,
-    int cap,
-  ) {
-    final raw = items.fold<int>(0, (sum, e) => sum + (e['discount'] as int));
-    var remain = cap;
-    if (raw <= 0 || raw == remain) return items;
-    for (var i = 0; i < items.length; i++) {
-      final current = items[i]['discount'] as int;
-      if (i == items.length - 1) {
-        items[i]['discount'] = remain < 0 ? 0 : remain;
+  /// 서버는 장당 할인액을 줄여 받지 않는다. 합이 한도를 넘으면 그 조합을 고르지 않는다.
+  bool _serverAcceptsCouponTotals(List<Coupon> coupons) {
+    var product = 0;
+    var shipping = 0;
+    for (final coupon in coupons) {
+      if (coupon.method == 3) {
+        shipping += _shippingDiscountFor(coupon);
       } else {
-        final take = current > remain ? remain : current;
-        items[i]['discount'] = take;
-        remain -= take;
+        product += _discountForCoupon(coupon);
       }
     }
-    return items;
+    if (product > _nonInfluencerAmount) return false;
+    if (shipping > _baseShipping) return false;
+    return true;
   }
 
   List<Map<String, dynamic>> _checkoutCouponPayload() {
@@ -399,10 +386,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
         product.add(row);
       }
     }
-    return [
-      ..._scaleCouponDiscounts(product, _productCouponDiscount),
-      ..._scaleCouponDiscounts(shipping, _shippingCouponDiscount),
-    ];
+    return [...product, ...shipping];
   }
 
   /// 서버 `computeCouponDiscount`와 동일: type=1 비율(+trunc), 아니면 정액, maximum 상한.
@@ -441,11 +425,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   int _productCouponDiscountFor(List<Coupon> coupons) {
     if (_couponPointDisabled) return 0;
-    final raw = coupons
+    return coupons
         .where((coupon) => coupon.method != 3)
         .fold<int>(0, (sum, coupon) => sum + _discountForCoupon(coupon));
-    if (raw <= _nonInfluencerAmount) return raw;
-    return _nonInfluencerAmount;
   }
 
   int _shippingCouponDiscountFor(List<Coupon> coupons) {
@@ -453,8 +435,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
     final raw = coupons
         .where((coupon) => coupon.method == 3)
         .fold<int>(0, (sum, coupon) => sum + _shippingDiscountFor(coupon));
-    if (raw <= _baseShipping) return raw < 0 ? 0 : raw;
-    return _baseShipping;
+    return raw < 0 ? 0 : raw;
   }
 
   int get _productCouponDiscount =>
@@ -2278,8 +2259,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
             _selectedCoupons.where((c) => c.method == 1).length;
         if (categoryCount >= 2) return false;
       }
-      // 카테고리 2장 등 과할인은 허용하되, 최종 결제액 3천원 미만이 되는 조합은 제외
-      return _keepsMinPayable(_selectionAfterPicking(coupon));
+      final next = _selectionAfterPicking(coupon);
+      return _keepsMinPayable(next) && _serverAcceptsCouponTotals(next);
     }).toList();
   }
 
@@ -2290,6 +2271,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
     if (index < 0 || index >= candidates.length) return;
     final picked = candidates[index];
     final next = _selectionAfterPicking(picked);
+    if (!_serverAcceptsCouponTotals(next)) {
+      AppToastOverlay.showAlert(context, '쿠폰 할인 금액이 주문 금액을 넘습니다.');
+      return;
+    }
     if (!_keepsMinPayable(next)) {
       AppToastOverlay.showAlert(
         context,
