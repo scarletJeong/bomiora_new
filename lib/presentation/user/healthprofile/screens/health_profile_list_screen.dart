@@ -172,6 +172,17 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
         appBar: HealthAppBar(
           title: widget.appBarTitle,
           leadingIconSize: healthDp(context, 24),
+          onBack: () {
+            final navigator = Navigator.of(context);
+            if (navigator.canPop()) {
+              navigator.pop();
+              return;
+            }
+            navigator.pushNamedAndRemoveUntil(
+              '/enter-home',
+              (route) => false,
+            );
+          },
           bottom: _isPrescriptionBooking
               ? PreferredSize(
                   preferredSize: const Size.fromHeight(
