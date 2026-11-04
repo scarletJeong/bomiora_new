@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/logging/failure_log.dart';
 import '../../../data/repositories/auth/auth_repository.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../health/health_common/health_responsive_scale.dart';
@@ -63,6 +64,24 @@ class _FindAccountResultScreenState
 
       if (!mounted) return;
 
+      if (result['success'] != true) {
+        if (AuthRepository.isMissingMemberResult(result)) {
+          _goToNotFound();
+          return;
+        }
+        await FailureLog.record(
+          code: 'auth.findId',
+          mbId: '',
+          reason: result['error']?.toString() ?? '',
+        );
+        if (!mounted) return;
+        setState(() {
+          _errorText = '아이디를 찾지 못했습니다. 다시 시도해 주세요.';
+          _isLoading = false;
+        });
+        return;
+      }
+
       final accounts = parseFindIdAccountEmails(result);
 
       if (accounts.isEmpty) {
@@ -77,8 +96,14 @@ class _FindAccountResultScreenState
       });
     } catch (e) {
       if (!mounted) return;
+      await FailureLog.record(
+        code: 'auth.findId',
+        mbId: '',
+        reason: e.toString(),
+      );
+      if (!mounted) return;
       setState(() {
-        _errorText = '아이디 조회 중 오류가 발생했습니다.';
+        _errorText = '아이디를 찾지 못했습니다. 다시 시도해 주세요.';
         _isLoading = false;
       });
     }

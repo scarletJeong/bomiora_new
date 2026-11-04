@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart'
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
+import '../../../core/logging/failure_log.dart';
 import '../../../core/navigation/app_navigator_key.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/utils/web_kcp_popup.dart';
@@ -1186,8 +1187,8 @@ class _KcpCertWebViewScreenState extends State<KcpCertWebViewScreen> {
                 'fromKcp': true,
               },
             );
-          } else {
-            debugPrint('[KCP] _pollKcpResult: find-password 실패 → not-found');
+          } else if (AuthRepository.isMissingMemberResult(result)) {
+            debugPrint('[KCP] _pollKcpResult: find-password 회원 없음 → not-found');
             _pushReplacementNamedAfterFrame(
               '/find-account-not-found',
               {
@@ -1196,6 +1197,21 @@ class _KcpCertWebViewScreenState extends State<KcpCertWebViewScreen> {
                 'mode': 'password',
               },
             );
+          } else {
+            final raw = result['error']?.toString().trim() ?? '';
+            if (result['transportFailure'] == true) {
+              await FailureLog.record(
+                code: 'auth.forgotPassword',
+                mbId: '',
+                reason: raw,
+              );
+            }
+            if (!mounted) return;
+            setState(() {
+              _errorMessage = result['transportFailure'] == true || raw.isEmpty
+                  ? '비밀번호를 찾지 못했습니다. 다시 시도해 주세요.'
+                  : raw;
+            });
           }
           return;
         }

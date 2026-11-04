@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../core/logging/failure_log.dart';
 import '../../../data/repositories/auth/auth_repository.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../health/health_common/health_responsive_scale.dart';
@@ -301,6 +302,17 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
     _startCountdown();
   }
 
+  Future<void> _reportFindFailure({
+    required String code,
+    required String reason,
+  }) {
+    return FailureLog.record(
+      code: code,
+      mbId: '',
+      reason: reason.isEmpty ? code : reason,
+    );
+  }
+
   void _goToFindAccountNotFound([Map<String, dynamic>? arguments]) {
     Navigator.pushReplacementNamed(
       context,
@@ -417,8 +429,17 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
             _selectedFoundAccountIndex = 0;
             _step = _FindAccountStep.result;
           });
-        } else {
+        } else if (AuthRepository.isMissingMemberResult(result)) {
           _goToFindAccountNotFound();
+        } else {
+          await _reportFindFailure(
+            code: 'auth.findId',
+            reason: result['error']?.toString() ?? '',
+          );
+          if (!mounted) return;
+          setState(() {
+            _verificationErrorText = '아이디를 찾지 못했습니다. 다시 시도해 주세요.';
+          });
         }
       } else {
         final identifier = _passwordEmailController.text.trim();
@@ -466,8 +487,7 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
             if (!mounted) return;
             return;
           }
-          if (forgot['error']?.toString().contains('일치') == true ||
-              forgot['error']?.toString().contains('찾을 수 없') == true) {
+          if (AuthRepository.isMissingMemberResult(forgot)) {
             _goToFindAccountNotFound({
               'mode': 'password',
               'email': identifier,
@@ -476,16 +496,33 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
             });
             return;
           }
+          final transport = forgot['transportFailure'] == true;
+          final reason = forgot['error']?.toString().trim() ?? '';
+          if (transport) {
+            await _reportFindFailure(code: 'auth.forgotPassword', reason: reason);
+            if (!mounted) return;
+          }
           setState(() {
-            _emailLookupErrorText = forgot['error']?.toString() ??
-                '등록된 정보와 일치하는 계정을 찾을 수 없습니다.';
+            _emailLookupErrorText = transport || reason.isEmpty
+                ? '비밀번호를 찾지 못했습니다. 다시 시도해 주세요.'
+                : reason;
           });
         }
       }
     } catch (e) {
       if (!mounted) return;
+      final findingId = _selectedTab == _FindAccountTab.id;
+      await _reportFindFailure(
+        code: findingId ? 'auth.findId' : 'auth.forgotPassword',
+        reason: e.toString(),
+      );
+      if (!mounted) return;
       setState(() {
-        _verificationErrorText = '처리 중 오류가 발생했습니다: $e';
+        if (findingId) {
+          _verificationErrorText = '아이디를 찾지 못했습니다. 다시 시도해 주세요.';
+        } else {
+          _emailLookupErrorText = '비밀번호를 찾지 못했습니다. 다시 시도해 주세요.';
+        }
       });
     } finally {
       if (mounted) {

@@ -416,9 +416,16 @@ class AuthRepository {
     } catch (e) {
       return {
         'success': false,
-        'error': '아이디 찾기 중 오류가 발생했습니다: $e',
+        'transportFailure': true,
+        'error': e.toString(),
       };
     }
+  }
+
+  /// 서버가 회원이 없다고 답한 경우만 true. 통신 실패는 false.
+  static bool isMissingMemberResult(Map<String, dynamic> result) {
+    if (result['transportFailure'] == true) return false;
+    return result['error']?.toString().trim() == '일치하는 회원 정보를 찾을 수 없습니다.';
   }
 
   /// 비밀번호 찾기 사전 확인
@@ -466,7 +473,8 @@ class AuthRepository {
     } catch (e) {
       return {
         'success': false,
-        'error': '비밀번호 찾기 중 오류가 발생했습니다: $e',
+        'transportFailure': true,
+        'error': e.toString(),
       };
     }
   }
@@ -617,7 +625,8 @@ class AuthRepository {
     } catch (e) {
       return {
         'success': false,
-        'error': '비밀번호 재설정 중 오류가 발생했습니다: $e',
+        'transportFailure': true,
+        'error': e.toString(),
       };
     }
   }

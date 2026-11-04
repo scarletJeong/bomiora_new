@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/logging/failure_log.dart';
 import '../../../core/validation/app_password_validator.dart';
 import '../../../data/repositories/auth/auth_repository.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
@@ -25,6 +26,7 @@ class _FindPasswordResetScreenState extends State<FindPasswordResetScreen> {
   final FocusNode _passwordFocus = FocusNode();
   final FocusNode _confirmFocus = FocusNode();
   bool _isSubmitting = false;
+  String? _submitError;
   bool _obscureNewPassword = true;
   bool _obscureConfirmPassword = true;
   /// 새 비밀번호 칸을 벗어난 뒤에만 규칙 위반 테두리/안내색 표시
@@ -109,39 +111,69 @@ class _FindPasswordResetScreenState extends State<FindPasswordResetScreen> {
   }
 
   Future<void> _handleSubmit() async {
-    if (!_canSubmit) return;
-    if (!_hasRequiredContext) return;
+    if (_isSubmitting || !_canSubmit || !_hasRequiredContext) return;
+    _isSubmitting = true;
+    setState(() => _submitError = null);
 
-    setState(() {
-      _isSubmitting = true;
-    });
-
-    final result = await AuthRepository.resetPassword(
-      name: _name,
-      phone: _phone,
-      password: _passwordController.text,
-      email: _email.isNotEmpty ? _email : null,
-      identifier: _identifier,
-      otpToken: _fromKcp ? null : _otpToken,
-      fromKcp: _fromKcp,
-      mbDupinfo: _fromKcp && _mbDupinfo.isNotEmpty ? _mbDupinfo : null,
-    );
-
-    if (!mounted) return;
-
-    setState(() {
-      _isSubmitting = false;
-    });
-
-    if (result['success'] == true) {
-      Navigator.pushNamedAndRemoveUntil(
-        context,
-        '/login',
-        (route) => false,
+    var done = false;
+    try {
+      final result = await AuthRepository.resetPassword(
+        name: _name,
+        phone: _phone,
+        password: _passwordController.text,
+        email: _email.isNotEmpty ? _email : null,
+        identifier: _identifier,
+        otpToken: _fromKcp ? null : _otpToken,
+        fromKcp: _fromKcp,
+        mbDupinfo: _fromKcp && _mbDupinfo.isNotEmpty ? _mbDupinfo : null,
       );
-      return;
-    }
 
+      if (!mounted) return;
+
+      if (result['success'] == true) {
+        done = true;
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          '/login',
+          (route) => false,
+        );
+        return;
+      }
+
+      final raw = result['error']?.toString().trim() ?? '';
+      if (result['transportFailure'] == true) {
+        await FailureLog.record(
+          code: 'auth.resetPassword',
+          mbId: '',
+          reason: raw,
+        );
+      }
+      if (!mounted) return;
+      setState(() {
+        _submitError = _resetFailureMessage(result, raw);
+      });
+    } catch (e) {
+      await FailureLog.record(
+        code: 'auth.resetPassword',
+        mbId: '',
+        reason: e.toString(),
+      );
+      if (!mounted) return;
+      setState(() => _submitError = '비밀번호를 변경하지 못했습니다.');
+    } finally {
+      if (mounted && !done) {
+        setState(() => _isSubmitting = false);
+      }
+    }
+  }
+
+  String _resetFailureMessage(Map<String, dynamic> result, String raw) {
+    if (result['transportFailure'] == true ||
+        raw.isEmpty ||
+        raw == '비밀번호 재설정에 실패했습니다') {
+      return '비밀번호를 변경하지 못했습니다.';
+    }
+    return raw;
   }
 
   @override
@@ -231,6 +263,19 @@ class _FindPasswordResetScreenState extends State<FindPasswordResetScreen> {
                         ),
                       ),
                     ),
+                    if (_submitError != null) ...[
+                      Text(
+                        _submitError!,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: _kError,
+                          fontSize: healthSp(context, 13),
+                          fontFamily: 'Gmarket Sans TTF',
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      SizedBox(height: healthDp(context, 12)),
+                    ],
                     SizedBox(height: healthDp(context, 20)),
                     SizedBox(
                       width: double.infinity,
