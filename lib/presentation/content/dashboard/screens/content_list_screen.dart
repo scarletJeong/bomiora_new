@@ -206,7 +206,7 @@ class _ContentListScreenState extends State<ContentListScreen> {
           ),
           drawer: AppBarMenuTapDrawer(
             onHealthDashboardTap: () {
-              Navigator.pushReplacementNamed(context, '/health');
+              Navigator.pushNamed(context, '/health');
             },
           ),
           backgroundColor: Colors.white,
