@@ -348,8 +348,6 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
       _supplyMonthsLabel = only;
     }
 
-    // ignore: avoid_print
-    print('[추가상품] labels=$_supplyStepLabel / $_supplyMonthsLabel');
   }
 
   void _initializeSupplyOptionGroups() {
