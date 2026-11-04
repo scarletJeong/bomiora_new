@@ -57,7 +57,6 @@ class _DeliverySelectListState extends State<DeliverySelectList> {
   static const Color _kGrey60 = Color(0xFF999999);
   static const Color _kGrey55 = Color(0xFF555555);
   static const Color _kMuted = Color(0xFF898686);
-  static const Color _kMutedOpt = Color(0xFF898383);
   static const Color _kBorder = Color(0xFFD2D2D2);
   static const Color _kLine = Color(0xFFF5F5F5);
   static const String _kFont = 'Gmarket Sans TTF';
@@ -336,7 +335,7 @@ class _DeliverySelectListState extends State<DeliverySelectList> {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              color: i == 0 ? _kMuted : _kMutedOpt,
+                              color: _kMuted,
                               fontSize: healthSp(context, 10),
                               fontFamily: _kFont,
                               fontWeight: FontWeight.w500,
