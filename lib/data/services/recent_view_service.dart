@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../core/logging/failure_log.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_endpoints.dart';
 import '../../core/utils/node_value_parser.dart';
@@ -21,6 +22,7 @@ class RecentViewService {
   static bool _memHasListPriceKey = false;
   static DateTime? _memAt;
   static int _memLimit = 0;
+  static int _requestSerial = 0;
   static const Duration _memTtl = Duration(seconds: 45);
 
   static void _notifyRevision() {
@@ -30,14 +32,17 @@ class RecentViewService {
     revision.value++;
   }
 
-  /// 드로어에서 최근 본 상품 목록 조회
+  /// 드로어에서 최근 본 상품 목록 조회.
+  /// 로그인한 회원은 서버 목록만 쓴다. 조회가 실패하면 로컬로 넘기지 않고 빈 목록을 돌려준다.
   static Future<List<RecentViewItem>> getRecentList({
     int limit = 4,
+    bool forceRefresh = false,
   }) async {
     final safeLimit = limit.clamp(1, 20);
 
     final now = DateTime.now();
-    if (_memList != null &&
+    if (!forceRefresh &&
+        _memList != null &&
         _memHasListPriceKey &&
         _memAt != null &&
         _memLimit >= safeLimit &&
@@ -45,18 +50,39 @@ class RecentViewService {
       return _memList!.take(safeLimit).toList();
     }
 
+    final serial = ++_requestSerial;
+    var mbId = '';
     try {
       final user = await AuthService.getUser();
-      if (user != null && user.id.trim().isNotEmpty) {
-        final server = await _fetchFromServer(user.id, safeLimit);
-        if (server.isNotEmpty) {
-          return _remember(server, safeLimit, now);
-        }
+      mbId = user?.id.trim() ?? '';
+      if (mbId.isNotEmpty) {
+        final server = await _fetchFromServer(mbId, _maxLocalItems);
+        if (serial != _requestSerial) return _current(safeLimit);
+        return _remember(server, safeLimit, now);
       }
-    } catch (_) {}
+    } catch (e) {
+      if (serial != _requestSerial) return _current(safeLimit);
+      _memList = null;
+      _memHasListPriceKey = false;
+      _memAt = null;
+      _memLimit = 0;
+      await FailureLog.record(
+        code: 'recent.list',
+        mbId: mbId,
+        reason: e.toString(),
+      );
+      return const [];
+    }
 
-    final local = (await _getLocalList()).take(safeLimit).toList();
+    final local = await _getLocalList();
+    if (serial != _requestSerial) return _current(safeLimit);
     return _remember(local, safeLimit, now);
+  }
+
+  static List<RecentViewItem> _current(int safeLimit) {
+    final cached = _memList;
+    if (cached == null) return const [];
+    return cached.take(safeLimit).toList();
   }
 
   static List<RecentViewItem> _remember(
@@ -65,12 +91,17 @@ class RecentViewService {
     DateTime now,
   ) {
     final enriched = _enrichWithProductPreview(source);
-    _memHasListPriceKey = enriched.any(
-      (item) =>
-          item.containsKey('originalPrice') ||
-          item.containsKey('it_cust_price'),
-    );
-    final items = enriched.map(RecentViewItem.fromMap).toList();
+    final items = enriched
+        .map(RecentViewItem.fromMap)
+        .where((item) => item.isDisplayable)
+        .take(safeLimit)
+        .toList();
+    _memHasListPriceKey = items.isEmpty ||
+        enriched.any(
+          (item) =>
+              item.containsKey('originalPrice') ||
+              item.containsKey('it_cust_price'),
+        );
     _memList = items;
     _memAt = now;
     _memLimit = safeLimit;
@@ -215,13 +246,19 @@ class RecentViewService {
     );
 
     if (response.statusCode != 200 || response.body.trim().isEmpty) {
-      return [];
+      throw Exception(
+        '최근 본 상품 조회 실패 (${response.statusCode})',
+      );
     }
 
     final data = json.decode(response.body);
-    if (data is! Map || data['success'] != true) return [];
+    if (data is! Map || data['success'] != true) {
+      throw Exception('최근 본 상품 조회 실패');
+    }
     final rows = data['data'];
-    if (rows is! List) return [];
+    if (rows is! List) {
+      throw Exception('최근 본 상품 목록 형식 오류');
+    }
 
     return rows
         .map((raw) {

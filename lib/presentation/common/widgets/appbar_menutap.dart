@@ -8,8 +8,6 @@ import '../../../data/models/user/user_model.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/prescription_purchase_history_service.dart';
 import '../../../data/services/recent_view_service.dart';
-import '../../shopping/screens/cart_general_screen.dart' as cart_general;
-import '../../shopping/screens/cart_integration_screen.dart';
 import '../../../data/repositories/product/product_category_catalog.dart';
 import '../../shopping/utils/get_product.dart';
 import '../../health/health_common/health_responsive_scale.dart';
@@ -46,6 +44,7 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
   bool _isHealthcareStoreExpanded = false;
   List<RecentViewItem> _recentProducts = [];
   bool _isLoadingRecent = false;
+  int _recentRequestId = 0;
   bool _sawDrawerOpen = false;
   List<ProductCategoryItem> _generalCategories = const [];
   List<ProductCategoryItem> _prescriptionCategories = const [];
@@ -74,6 +73,7 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
       final open = Scaffold.maybeOf(context)?.isDrawerOpen ?? false;
       if (open && !_sawDrawerOpen) {
         _loadShopCategories(forceRefresh: true);
+        _loadRecentProducts(forceRefresh: true);
       }
       _sawDrawerOpen = open;
     });
@@ -96,13 +96,17 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
     if (mounted) setState(() => _user = u);
   }
 
-  Future<void> _loadRecentProducts() async {
+  Future<void> _loadRecentProducts({bool forceRefresh = false}) async {
     if (!mounted) return;
+    final requestId = ++_recentRequestId;
     setState(() => _isLoadingRecent = true);
-    final items = await RecentViewService.getRecentList(limit: 4);
-    if (!mounted) return;
+    final items = await RecentViewService.getRecentList(
+      limit: 4,
+      forceRefresh: forceRefresh,
+    );
+    if (!mounted || requestId != _recentRequestId) return;
     setState(() {
-      _recentProducts = items;
+      _recentProducts = items.where((item) => item.isDisplayable).toList();
       _isLoadingRecent = false;
     });
   }
@@ -271,12 +275,7 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
             onCartPrescriptionTap: () => _popAndPushNamed(context, '/cart'),
             onCartShoppingTap: () {
               _closeDrawerOnly(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const cart_general.CartScreen(),
-                ),
-              );
+              Navigator.pushNamed(context, '/generalCart');
             },
           ),
         ]),
@@ -905,11 +904,7 @@ class _DrawerShortcutState extends State<_DrawerShortcut> {
       if (scaffold != null && scaffold.isDrawerOpen) {
         scaffold.closeDrawer();
       }
-      navigator.push(
-        MaterialPageRoute<void>(
-          builder: (_) => const CartIntegrationScreen(),
-        ),
-      );
+      navigator.pushNamed('/interCart');
       return;
     }
     _openCartDropdown();
@@ -1293,11 +1288,13 @@ class _RecentProductsGrid extends StatelessWidget {
       );
     }
 
-    if (items.isEmpty) {
+    final display = items
+        .where((item) => item.isDisplayable)
+        .take(4)
+        .toList();
+    if (display.isEmpty) {
       return _buildEmptyMessage(context, '최근에 본 상품이 없습니다.');
     }
-
-    final display = items.take(4).toList();
     final rows = <List<RecentViewItem>>[];
     for (var i = 0; i < display.length; i += 2) {
       final end = (i + 2 <= display.length) ? i + 2 : display.length;

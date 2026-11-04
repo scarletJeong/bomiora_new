@@ -40,6 +40,8 @@ class RecentProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (!item.isDisplayable) return const SizedBox.shrink();
+
     final imageUrl = _imageUrl;
     final discount = _discountPercent;
     final radius = healthDp(context, 10);

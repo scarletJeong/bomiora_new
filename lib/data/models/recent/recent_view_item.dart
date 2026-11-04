@@ -20,6 +20,9 @@ class RecentViewItem {
     required this.listPrice,
   });
 
+  /// 상품 번호와 판매가가 있는 항목만 메뉴에 보여 준다.
+  bool get isDisplayable => itId.trim().isNotEmpty && salePrice > 0;
+
   factory RecentViewItem.fromMap(Map<String, dynamic> item) {
     return RecentViewItem(
       itId: _text(item, const ['it_id']),
