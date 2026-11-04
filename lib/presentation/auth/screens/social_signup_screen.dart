@@ -60,6 +60,7 @@ class _SocialSignupScreenState extends State<SocialSignupScreen> {
   final _hp2Focus = FocusNode();
   final _hp3Focus = FocusNode();
   final _emailFocus = FocusNode();
+  final _codeFocus = FocusNode();
 
   bool _terms = false;
   bool _privacy = false;
@@ -67,6 +68,11 @@ class _SocialSignupScreenState extends State<SocialSignupScreen> {
   bool _appPush = false;
   bool _isLoading = false;
   String? _errorText;
+  String? _emailErrorText;
+  String? _emailSuccessText;
+  String? _verifiedEmail;
+  bool _isCheckingEmail = false;
+  int _emailCheckSeq = 0;
 
   _KakaoSignupStep _kakaoStep = _KakaoSignupStep.phone;
   Timer? _verifyTimer;
@@ -79,10 +85,32 @@ class _SocialSignupScreenState extends State<SocialSignupScreen> {
   bool get _isKakao => widget.provider.toLowerCase() == 'kakao';
   bool get _isNaver => widget.provider.toLowerCase() == 'naver';
   bool get _isApple => widget.provider.toLowerCase() == 'apple';
-  bool get _showEmailField => !_isKakao &&
-      (_isNaver ||
-          _isApple ||
-          (widget.email == null || widget.email!.trim().isEmpty));
+  bool get _usesDesignedSignup => _isKakao || _isNaver;
+
+  /// 네이버가 이메일을 주지 않았을 때만 직접 입력한다.
+  bool get _needsManualEmail =>
+      _isNaver && (widget.email ?? '').trim().isEmpty;
+
+  bool get _showEmailField => !_usesDesignedSignup &&
+      (_isApple || (widget.email == null || widget.email!.trim().isEmpty));
+
+  static final _emailFormat = RegExp(
+    r"^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$",
+  );
+
+  bool _isValidEmailFormat(String email) => _emailFormat.hasMatch(email);
+
+  bool get _isEmailVerified {
+    final email = _emailController.text.trim().toLowerCase();
+    return _verifiedEmail != null && _verifiedEmail == email;
+  }
+
+  bool get _emailReady => !_needsManualEmail || _isEmailVerified;
+
+  bool get _canCheckEmail {
+    if (_isLoading || _isCheckingEmail || _isEmailVerified) return false;
+    return _isValidEmailFormat(_emailController.text.trim());
+  }
 
   String get _phoneDigits =>
       '${_hp1.text.trim()}${_hp2.text.trim()}${_hp3.text.trim()}';
@@ -98,12 +126,20 @@ class _SocialSignupScreenState extends State<SocialSignupScreen> {
       _hp3.text.trim().length == 4;
 
   bool get _confirmOtpActive =>
-      !_kakaoPhoneVerified && _otpToken != null && _otpToken!.isNotEmpty;
+      !_kakaoPhoneVerified &&
+      _otpToken != null &&
+      _otpToken!.isNotEmpty &&
+      _codeController.text.trim().length == 6;
 
   @override
   void initState() {
     super.initState();
-    _emailController = TextEditingController(text: widget.email ?? '');
+    _emailController = TextEditingController(
+      text: _needsManualEmail ? '' : (widget.email ?? ''),
+    );
+    _emailController.addListener(_onEmailChanged);
+    _emailFocus.addListener(_onEmailFocusChanged);
+    _codeFocus.addListener(_onCodeFocusChanged);
   }
 
   @override
@@ -111,13 +147,17 @@ class _SocialSignupScreenState extends State<SocialSignupScreen> {
     _hp1.dispose();
     _hp2.dispose();
     _hp3.dispose();
+    _emailController.removeListener(_onEmailChanged);
     _emailController.dispose();
     _codeController.dispose();
     _verifyTimer?.cancel();
     _hp1Focus.dispose();
     _hp2Focus.dispose();
     _hp3Focus.dispose();
+    _emailFocus.removeListener(_onEmailFocusChanged);
     _emailFocus.dispose();
+    _codeFocus.removeListener(_onCodeFocusChanged);
+    _codeFocus.dispose();
     super.dispose();
   }
 
@@ -158,8 +198,102 @@ class _SocialSignupScreenState extends State<SocialSignupScreen> {
     });
   }
 
+  void _onEmailChanged() {
+    if (!_needsManualEmail || !mounted) return;
+    final email = _emailController.text.trim().toLowerCase();
+    setState(() {
+      if (_verifiedEmail != null && _verifiedEmail != email) {
+        _verifiedEmail = null;
+        _emailSuccessText = null;
+      }
+      if (email.isNotEmpty && !_isValidEmailFormat(email)) {
+        _emailErrorText = '올바른 이메일 형식을 입력해주세요.';
+        _emailSuccessText = null;
+        return;
+      }
+      if (_emailErrorText == '이메일을 입력해주세요.' ||
+          _emailErrorText == '올바른 이메일 형식을 입력해주세요.') {
+        _emailErrorText = null;
+      }
+    });
+  }
+
+  void _onEmailFocusChanged() {
+    if (_emailFocus.hasFocus || !_needsManualEmail || !mounted) return;
+    final email = _emailController.text.trim();
+    setState(() {
+      if (email.isEmpty) {
+        _emailErrorText = '이메일을 입력해주세요.';
+        _emailSuccessText = null;
+        _verifiedEmail = null;
+      } else if (!_isValidEmailFormat(email)) {
+        _emailErrorText = '올바른 이메일 형식을 입력해주세요.';
+        _emailSuccessText = null;
+        _verifiedEmail = null;
+      }
+    });
+  }
+
+  void _onCodeFocusChanged() {
+    if (_codeFocus.hasFocus || !_usesDesignedSignup || !mounted) return;
+    final code = _codeController.text.trim();
+    if (code.isEmpty || _kakaoPhoneVerified || _otpToken == null) return;
+    if (code.length == 6) return;
+    setState(() => _errorText = '인증번호 6자리를 입력해 주세요.');
+  }
+
+  Future<void> _checkEmailDuplicate() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty) {
+      setState(() {
+        _emailErrorText = '이메일을 입력해주세요.';
+        _emailSuccessText = null;
+        _verifiedEmail = null;
+      });
+      return;
+    }
+    if (!_isValidEmailFormat(email)) {
+      setState(() {
+        _emailErrorText = '올바른 이메일 형식을 입력해주세요.';
+        _emailSuccessText = null;
+        _verifiedEmail = null;
+      });
+      return;
+    }
+
+    final seq = ++_emailCheckSeq;
+    setState(() {
+      _isCheckingEmail = true;
+      _emailErrorText = null;
+      _emailSuccessText = null;
+    });
+
+    final result = await AuthRepository.checkEmail(email: email.toLowerCase());
+    if (!mounted || seq != _emailCheckSeq) return;
+
+    setState(() {
+      _isCheckingEmail = false;
+      if (result['exists'] == true) {
+        _emailErrorText = '이미 있는 아이디입니다. 다른 아이디를 입력해 주세요.';
+        _emailSuccessText = null;
+        _verifiedEmail = null;
+        return;
+      }
+      if (result['success'] != true) {
+        _emailErrorText =
+            (result['error'] ?? '아이디 확인 중 오류가 발생했습니다.').toString();
+        _emailSuccessText = null;
+        _verifiedEmail = null;
+        return;
+      }
+      _emailErrorText = null;
+      _emailSuccessText = '사용 가능한 아이디입니다.';
+      _verifiedEmail = email.toLowerCase();
+    });
+  }
+
   void _onKakaoPhoneChanged() {
-    if (!_isKakao) return;
+    if (!_usesDesignedSignup) return;
     final invalidateOtp = !_kakaoPhoneVerified &&
         (_otpToken != null || _otpVerifiedDigits != null || _secondsLeft > 0);
     if (invalidateOtp) _verifyTimer?.cancel();
@@ -263,6 +397,20 @@ class _SocialSignupScreenState extends State<SocialSignupScreen> {
 
   void _goToKakaoAgreement() {
     if (!_kakaoPhoneVerified) return;
+    if (_needsManualEmail && !_isEmailVerified) {
+      final email = _emailController.text.trim();
+      setState(() {
+        _emailSuccessText = null;
+        if (email.isEmpty) {
+          _emailErrorText = '이메일을 입력해주세요.';
+        } else if (!_isValidEmailFormat(email)) {
+          _emailErrorText = '올바른 이메일 형식을 입력해주세요.';
+        } else {
+          _emailErrorText = '이메일 중복확인을 해 주세요.';
+        }
+      });
+      return;
+    }
     setState(() {
       _kakaoStep = _KakaoSignupStep.agreement;
       _errorText = null;
@@ -278,35 +426,47 @@ class _SocialSignupScreenState extends State<SocialSignupScreen> {
   }
 
   Future<void> _submit([Map<String, bool>? agreements]) async {
-    final phoneDigits = _isKakao
+    final phoneDigits = _usesDesignedSignup
         ? (_otpVerifiedDigits ?? '')
         : _phone.replaceAll(RegExp(r'[^0-9]'), '');
     if (phoneDigits.length < 10) {
-      setState(() => _errorText = '휴대폰 번호를 올바르게 입력해 주세요.');
+      setState(() => _errorText = _phoneInvalidMessage);
       return;
     }
-    if (_isKakao && !_kakaoPhoneVerified) {
+    if (_usesDesignedSignup && !_kakaoPhoneVerified) {
       setState(() => _errorText = '인증번호를 확인해 주세요.');
       return;
     }
 
-    final email = _isKakao
-        ? (widget.email ?? '').trim()
-        : _emailController.text.trim();
+    final email = _needsManualEmail
+        ? _emailController.text.trim()
+        : (widget.email ?? _emailController.text).trim();
     if (email.isEmpty) {
       setState(() {
+        if (_needsManualEmail) {
+          _emailErrorText = '이메일을 입력해주세요.';
+          _kakaoStep = _KakaoSignupStep.phone;
+        }
         _errorText = _isKakao
             ? '카카오 이메일 정보를 가져오지 못했습니다.'
-            : '이메일을 입력해 주세요.';
+            : _isNaver
+                ? '네이버 이메일 정보를 가져오지 못했습니다.'
+                : '이메일을 입력해 주세요.';
       });
       return;
     }
-    if (!email.contains('@')) {
-      setState(() => _errorText = '올바른 이메일 형식을 입력해 주세요.');
+    if (!_isValidEmailFormat(email)) {
+      setState(() {
+        if (_needsManualEmail) {
+          _emailErrorText = '올바른 이메일 형식을 입력해주세요.';
+          _kakaoStep = _KakaoSignupStep.phone;
+        }
+        _errorText = '올바른 이메일 형식을 입력해주세요.';
+      });
       return;
     }
 
-    if (!_isKakao && (!_terms || !_privacy)) {
+    if (!_usesDesignedSignup && (!_terms || !_privacy)) {
       setState(() => _errorText = '필수 약관에 동의해 주세요.');
       return;
     }
@@ -378,27 +538,21 @@ class _SocialSignupScreenState extends State<SocialSignupScreen> {
       _isLoading = false;
       _errorText = message;
     });
-    if (_isKakao && _kakaoStep == _KakaoSignupStep.agreement) {
+    if (_usesDesignedSignup && _kakaoStep == _KakaoSignupStep.agreement) {
       AppToastOverlay.show(context, message);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final providerLabel = _isApple
-        ? 'Apple'
-        : _isNaver
-            ? '네이버'
-            : '카카오';
-
     return MobileAppLayoutWrapper(
       backgroundColor: Colors.white,
       appBar: HealthAppBar(
-        title: '$providerLabel 회원가입',
+        title: _isApple ? 'Apple 회원가입' : '소셜 회원가입',
         leadingIconSize: healthDp(context, 24),
-        onBack: _isKakao ? _handleKakaoBack : null,
+        onBack: _usesDesignedSignup ? _handleKakaoBack : null,
       ),
-      child: _isKakao
+      child: _usesDesignedSignup
           ? (_kakaoStep == _KakaoSignupStep.agreement
               ? AgreementWidget(
                   isLoading: _isLoading,
@@ -568,7 +722,8 @@ class _SocialSignupScreenState extends State<SocialSignupScreen> {
   }
 
   Widget _buildKakaoPhoneStep() {
-    final canNext = _kakaoPhoneVerified && !_isLoading;
+    final canNext =
+        _kakaoPhoneVerified && _emailReady && !_isLoading && !_isCheckingEmail;
     final hasError = _errorText != null && _errorText!.isNotEmpty;
     return Column(
       children: [
@@ -592,7 +747,9 @@ class _SocialSignupScreenState extends State<SocialSignupScreen> {
                 ),
                 SizedBox(height: healthDp(context, 5)),
                 Text(
-                  '휴대폰 번호를 인증해 주세요.',
+                  _needsManualEmail
+                      ? '이메일과 휴대폰 번호를 입력해 주세요.'
+                      : '휴대폰 번호를 인증해 주세요.',
                   style: TextStyle(
                     color: const Color(0xFF898686),
                     fontSize: healthSp(context, 16),
@@ -603,6 +760,10 @@ class _SocialSignupScreenState extends State<SocialSignupScreen> {
                   ),
                 ),
                 SizedBox(height: healthDp(context, 30)),
+                if (_needsManualEmail) ...[
+                  _buildManualEmailField(),
+                  SizedBox(height: healthDp(context, 10)),
+                ],
                 Text(
                   '휴대폰 번호',
                   style: _kakaoFieldLabelStyle(),
@@ -653,6 +814,7 @@ class _SocialSignupScreenState extends State<SocialSignupScreen> {
                       Expanded(
                         child: TextField(
                           controller: _codeController,
+                          focusNode: _codeFocus,
                           keyboardType: TextInputType.number,
                           expands: true,
                           maxLines: null,
@@ -663,10 +825,12 @@ class _SocialSignupScreenState extends State<SocialSignupScreen> {
                             LengthLimitingTextInputFormatter(6),
                           ],
                           onChanged: (_) {
-                            if (_errorText != null &&
-                                _errorText != _phoneInvalidMessage) {
-                              setState(() => _errorText = null);
-                            }
+                            setState(() {
+                              if (_errorText != null &&
+                                  _errorText != _phoneInvalidMessage) {
+                                _errorText = null;
+                              }
+                            });
                           },
                           style: _kakaoInputStyle(),
                           decoration: _kakaoInputDecoration(
@@ -785,6 +949,79 @@ class _SocialSignupScreenState extends State<SocialSignupScreen> {
             ),
           ),
         ),
+      ],
+    );
+  }
+
+  Widget _buildManualEmailField() {
+    final hasError = _emailErrorText != null && _emailErrorText!.isNotEmpty;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('이메일', style: _kakaoFieldLabelStyle()),
+        SizedBox(height: healthDp(context, 5)),
+        SizedBox(
+          height: healthDp(context, 40),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _emailController,
+                  focusNode: _emailFocus,
+                  keyboardType: TextInputType.emailAddress,
+                  textInputAction: TextInputAction.done,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  expands: true,
+                  maxLines: null,
+                  textAlignVertical: TextAlignVertical.center,
+                  cursorColor: const Color(0xFF1A1A1A),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'[\x21-\x7E]')),
+                  ],
+                  onSubmitted: (_) {
+                    if (_canCheckEmail) _checkEmailDuplicate();
+                  },
+                  style: _kakaoInputStyle(),
+                  decoration: _kakaoInputDecoration(
+                    hintText: '이메일을 입력해주세요',
+                    hasError: hasError,
+                  ),
+                ),
+              ),
+              SizedBox(width: healthDp(context, 8)),
+              _kakaoSideButton(
+                label: _isCheckingEmail ? '확인 중…' : '중복확인',
+                enabled: _canCheckEmail,
+                onPressed: _checkEmailDuplicate,
+              ),
+            ],
+          ),
+        ),
+        if (hasError) ...[
+          SizedBox(height: healthDp(context, 2)),
+          Text(
+            _emailErrorText!,
+            style: TextStyle(
+              color: const Color(0xFFFF5A8D),
+              fontSize: healthSp(context, 10),
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w300,
+            ),
+          ),
+        ] else if (_emailSuccessText != null) ...[
+          SizedBox(height: healthDp(context, 2)),
+          Text(
+            _emailSuccessText!,
+            style: TextStyle(
+              color: const Color(0xFF16A34A),
+              fontSize: healthSp(context, 10),
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w300,
+            ),
+          ),
+        ],
       ],
     );
   }
