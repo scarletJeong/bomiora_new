@@ -4,8 +4,6 @@ import '../../../data/models/cart/cart_item_model.dart';
 import '../../../data/models/product/product_model.dart';
 import '../../../data/services/cart_service.dart';
 import '../../../data/services/prescription_purchase_history_service.dart';
-import '../screens/cart_general_screen.dart' as cart_general;
-import '../screens/cart_integration_screen.dart';
 
 /// 장바구니 담기 후 바로가기 등 — 구매 이력에 따라 통합/분리 장바구니로 이동.
 class CartNavigation {
@@ -49,15 +47,18 @@ class CartNavigation {
     bool keepFirst(Route<dynamic> route) => route.isFirst;
 
     if (useIntegrated) {
-      final route = MaterialPageRoute<void>(
-        builder: (_) => CartIntegrationScreen(
-          initialTabIndex: prescriptionTab ? 0 : 1,
-        ),
-      );
+      final args = <String, dynamic>{
+        'initialTabIndex': prescriptionTab ? 0 : 1,
+      };
       if (clearStack) {
-        await Navigator.pushAndRemoveUntil<void>(context, route, keepFirst);
+        await Navigator.pushNamedAndRemoveUntil<void>(
+          context,
+          '/interCart',
+          keepFirst,
+          arguments: args,
+        );
       } else {
-        await Navigator.push<void>(context, route);
+        await Navigator.pushNamed<void>(context, '/interCart', arguments: args);
       }
       return;
     }
@@ -75,17 +76,14 @@ class CartNavigation {
       return;
     }
 
-    final generalRoute = MaterialPageRoute<void>(
-      builder: (_) => const cart_general.CartScreen(),
-    );
     if (clearStack) {
-      await Navigator.pushAndRemoveUntil<void>(
+      await Navigator.pushNamedAndRemoveUntil<void>(
         context,
-        generalRoute,
+        '/generalCart',
         keepFirst,
       );
     } else {
-      await Navigator.push<void>(context, generalRoute);
+      await Navigator.pushNamed<void>(context, '/generalCart');
     }
   }
 }

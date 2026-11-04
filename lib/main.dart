@@ -31,6 +31,8 @@ import 'presentation/shopping/screens/bomiora_introduce_screen.dart';
 import 'presentation/shopping/screens/kcp_pay_webview_screen.dart';
 import 'presentation/shopping/screens/payment_complete_screen.dart';
 import 'presentation/shopping/screens/cart_screen.dart';
+import 'presentation/shopping/screens/cart_general_screen.dart' as cart_general;
+import 'presentation/shopping/screens/cart_integration_screen.dart';
 import 'presentation/shopping/wish/screens/wish_list_screen.dart';
 import 'presentation/user/myPage/screens/cancel_member_screen.dart';
 import 'presentation/customer_service/screens/qa_list_screen.dart';
@@ -269,6 +271,16 @@ class _BomioraAppState extends State<BomioraApp> {
         '/my_page': (context) => const MobileLayoutWrapper(initialIndex: 1),
         '/health': (context) => const HealthDashboardScreen(),
         '/cart': (context) => const CartScreen(),
+        '/generalCart': (context) => const cart_general.CartScreen(),
+        '/interCart': (context) {
+          final args = ModalRoute.of(context)?.settings.arguments
+              as Map<String, dynamic>?;
+          final tab = args?['initialTabIndex'];
+          return CartIntegrationScreen(
+            initialTabIndex: tab is int ? tab : 0,
+            backToProductId: args?['backToProductId']?.toString(),
+          );
+        },
         '/bomiora-introduce': (context) => const BomioraIntroduceScreen(),
         '/coupon': (context) => const CouponScreen(),
         '/my_reviews': (context) => const MyReviewsScreen(),

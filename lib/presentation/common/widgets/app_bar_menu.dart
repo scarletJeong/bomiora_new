@@ -7,8 +7,6 @@ import '../../../data/services/prescription_purchase_history_service.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../settings/notification_center_screen.dart';
 import '../../settings/settings_screen.dart';
-import '../../shopping/screens/cart_general_screen.dart' as cart_general;
-import '../../shopping/screens/cart_integration_screen.dart';
 import '../../home/home_refresh.dart';
 import '../../home/search/search_popup.dart';
 import '../navigation/app_bar_nav_guard.dart';
@@ -110,12 +108,7 @@ class _AppBarMenuState extends State<AppBarMenu> {
           await PrescriptionPurchaseHistoryService.shouldUseIntegratedCart();
       if (!mounted) return;
       if (useIntegrated) {
-        await Navigator.push(
-          context,
-          MaterialPageRoute<void>(
-            builder: (_) => const CartIntegrationScreen(),
-          ),
-        );
+        await Navigator.pushNamed(context, '/interCart');
         return;
       }
       _openCartMenu();
@@ -168,12 +161,7 @@ class _AppBarMenuState extends State<AppBarMenu> {
                 },
                 onShoppingTap: () {
                   _removeCartOverlay();
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute<void>(
-                      builder: (_) => const cart_general.CartScreen(),
-                    ),
-                  );
+                  Navigator.pushNamed(context, '/generalCart');
                 },
               ),
             ),
