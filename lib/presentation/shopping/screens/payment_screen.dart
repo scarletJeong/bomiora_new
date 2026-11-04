@@ -99,7 +99,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
   static const _pink = Color(0xFFFF5A8D);
   static const _muted = Color(0xFF898686);
   static const _border = Color(0xFFD2D2D2);
-  static const _figmaPink = Color(0xFFFF5B8C);
   static const _figmaBrown = Color(0xFF584045);
   static const _figmaDark = Color(0xFF1A1B1F);
 
@@ -2334,7 +2333,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 Text(
                   typeLabel,
                   style: TextStyle(
-                    color: _figmaPink,
+                    color: _pink,
                     fontSize: healthSp(context, 12),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w500,

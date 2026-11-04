@@ -69,7 +69,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
   int _productsRequestToken = 0;
 
   static const String _gmarket = 'Gmarket Sans TTF';
-  static const Color _tabPink = Color(0xFFFF5B8C);
+  static const Color _tabPink = Color(0xFFFF5A8D);
   static const Color _tabMuted = Color(0xFF898686);
 
   double _pageHPad(BuildContext context) => healthDp(context, 20);

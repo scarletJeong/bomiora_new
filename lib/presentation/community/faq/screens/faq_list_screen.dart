@@ -21,7 +21,7 @@ class FaqListScreen extends StatefulWidget {
 class _FaqListScreenState extends State<FaqListScreen> {
   static const Color _kText = Color(0xFF1A1A1E);
   static const Color _kMuted = Color(0xFF898686);
-  static const Color _kPink = Color(0xFFFF5B8C);
+  static const Color _kPink = Color(0xFFFF5A8D);
   static const Color _kCountPink = Color(0xFFFF5A8D);
   static const Color _kBorder = Color(0xFFD2D2D2);
 
