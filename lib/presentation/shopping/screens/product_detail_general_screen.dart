@@ -144,15 +144,16 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
     return '/product-general/$id';
   }
 
+  Map<String, Object> get _loginArguments => {
+        'popOnSuccess': true,
+        if (_loginReturnTo != null) 'returnTo': _loginReturnTo!,
+      };
+
   Future<void> _onGuestReviewLoginTap() async {
-    final returnTo = _loginReturnTo;
     await Navigator.pushNamed(
       context,
       '/login',
-      arguments: {
-        if (returnTo != null) 'returnTo': returnTo,
-        'popOnSuccess': true,
-      },
+      arguments: _loginArguments,
     );
     if (!mounted) return;
     await _loadAuthUser();
@@ -484,6 +485,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       await showLoginRequiredDialog(
         context,
         message: '찜하기는 로그인 후 이용할 수 있습니다.',
+        popOnSuccess: true,
         returnTo: _loginReturnTo,
       );
       return;
@@ -1617,6 +1619,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
           await showLoginRequiredDialog(
             context,
             message: '장바구니 담기는 로그인 후 이용할 수 있습니다.',
+            popOnSuccess: true,
             returnTo: _loginReturnTo,
           );
           return;
@@ -1653,6 +1656,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
           await showLoginRequiredDialog(
             context,
             message: '상품 구매는 로그인 후\n이용할 수 있습니다.',
+            popOnSuccess: true,
             returnTo: _loginReturnTo,
           );
           return;
@@ -1679,6 +1683,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       await showLoginRequiredDialog(
         context,
         message: '장바구니 담기와 구매는 로그인 후 이용할 수 있습니다.',
+        popOnSuccess: true,
         returnTo: _loginReturnTo,
       );
       return false;

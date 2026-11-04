@@ -5,6 +5,7 @@ import '../../health/health_common/health_responsive_scale.dart';
 Future<bool> showLoginRequiredDialog(
   BuildContext context, {
   String message = '로그인 후 이용할 수 있습니다.',
+  bool popOnSuccess = false,
   String? returnTo,
 }) async {
   final result = await showDialog<bool>(
@@ -114,16 +115,12 @@ Future<bool> showLoginRequiredDialog(
   );
 
   if (result == true && context.mounted) {
-    final resolvedReturnTo =
-        (returnTo != null && returnTo.isNotEmpty)
-            ? returnTo
-            : ModalRoute.of(context)?.settings.name;
-    Navigator.pushNamed(
+    await Navigator.pushNamed(
       context,
       '/login',
       arguments: {
-        if (resolvedReturnTo != null && resolvedReturnTo.isNotEmpty)
-          'returnTo': resolvedReturnTo,
+        if (popOnSuccess) 'popOnSuccess': true,
+        if (returnTo != null && returnTo.isNotEmpty) 'returnTo': returnTo,
       },
     );
     return true;

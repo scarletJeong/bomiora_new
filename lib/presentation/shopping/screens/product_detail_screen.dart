@@ -138,15 +138,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       _loggedInUser != null && _loggedInUser!.id.trim().isNotEmpty;
 
   Future<void> _onGuestReviewLoginTap() async {
-    final productId = widget.productId.trim();
-    await Navigator.pushNamed(
-      context,
-      '/login',
-      arguments: {
-        if (productId.isNotEmpty) 'returnTo': '/product/$productId',
-        'popOnSuccess': true,
-      },
-    );
+    await Navigator.pushNamed(context, '/login');
     if (!mounted) return;
     await _loadAuthUser();
   }
@@ -501,7 +493,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     final went = await showLoginRequiredDialog(
       context,
       message: message,
-      returnTo: '/product/${_product!.id}',
     );
     if (went != true) {
       PendingProductCheckout.clear();

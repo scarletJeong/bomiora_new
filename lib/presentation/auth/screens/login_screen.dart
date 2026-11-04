@@ -71,9 +71,9 @@ class _LoginScreenState extends State<LoginScreen> {
     super.didChangeDependencies();
     final args = ModalRoute.of(context)?.settings.arguments;
     if (args is Map) {
-      final v = args['returnTo']?.toString();
-      if (v != null && v.isNotEmpty && v != '/login') {
-        _returnTo = v;
+      final backTo = args['returnTo']?.toString();
+      if (backTo != null && backTo.isNotEmpty && backTo != '/login') {
+        _returnTo = backTo;
       }
       if (args['popOnSuccess'] == true) {
         _popOnSuccess = true;
@@ -98,13 +98,21 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  /// 상품 상세에서 연 로그인은 메인으로 바꾸지 않고 그 페이지로 돌아간다.
-  bool _popBackToCaller() {
-    if (!_popOnSuccess || !mounted) return false;
+  /// 처방 결제 이어하기는 그 상품으로, 일반 상품 상세에서 연 로그인은 그 화면으로 돌아간다.
+  /// 그 외에는 홈으로 간다.
+  void _goHomeAfterLogin() {
+    if (!mounted) return;
+    if (PendingProductCheckout.navigateAfterAuth(context)) return;
     final navigator = Navigator.of(context);
-    if (!navigator.canPop()) return false;
-    navigator.pop(true);
-    return true;
+    if (_popOnSuccess && navigator.canPop()) {
+      navigator.pop(true);
+      return;
+    }
+    final backTo = _returnTo?.trim() ?? '';
+    Navigator.of(context).pushNamedAndRemoveUntil(
+      backTo.isEmpty ? '/enter-home' : backTo,
+      (route) => false,
+    );
   }
 
   @override
@@ -387,19 +395,7 @@ class _LoginScreenState extends State<LoginScreen> {
         // 다음 마이크로태스크에서 네비게이션 실행 (더 안전함)
         Future.microtask(() {
           if (!mounted) return;
-          if (PendingProductCheckout.navigateAfterAuth(context)) return;
-          if (_popBackToCaller()) return;
-          try {
-            final navigator = Navigator.of(context);
-            navigator.pushReplacementNamed(_returnTo ?? '/enter-home');
-          } catch (e) {
-            if (mounted) {
-              try {
-                Navigator.of(context)
-                    .pushReplacementNamed(_returnTo ?? '/enter-home');
-              } catch (_) {}
-            }
-          }
+          _goHomeAfterLogin();
         });
       } else {
         if (mounted) {
@@ -813,9 +809,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (!mounted) return;
 
-    if (PendingProductCheckout.navigateAfterAuth(context)) return;
-    if (_popBackToCaller()) return;
-    Navigator.of(context).pushReplacementNamed(_returnTo ?? '/enter-home');
+    _goHomeAfterLogin();
   }
 
   Future<void> _openSocialSignup({
