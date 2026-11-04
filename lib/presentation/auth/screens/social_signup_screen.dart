@@ -243,6 +243,7 @@ class _SocialSignupScreenState extends State<SocialSignupScreen> {
   }
 
   Future<void> _checkEmailDuplicate() async {
+    if (_isCheckingEmail) return;
     final email = _emailController.text.trim();
     if (email.isEmpty) {
       setState(() {
@@ -262,34 +263,40 @@ class _SocialSignupScreenState extends State<SocialSignupScreen> {
     }
 
     final seq = ++_emailCheckSeq;
+    _isCheckingEmail = true;
     setState(() {
-      _isCheckingEmail = true;
       _emailErrorText = null;
       _emailSuccessText = null;
     });
 
-    final result = await AuthRepository.checkEmail(email: email.toLowerCase());
-    if (!mounted || seq != _emailCheckSeq) return;
+    try {
+      final result = await AuthRepository.checkEmail(email: email.toLowerCase());
+      if (!mounted || seq != _emailCheckSeq) return;
 
-    setState(() {
-      _isCheckingEmail = false;
-      if (result['exists'] == true) {
-        _emailErrorText = '이미 있는 아이디입니다. 다른 아이디를 입력해 주세요.';
-        _emailSuccessText = null;
-        _verifiedEmail = null;
-        return;
+      setState(() {
+        _isCheckingEmail = false;
+        if (result['exists'] == true) {
+          _emailErrorText = '이미 있는 아이디입니다. 다른 아이디를 입력해 주세요.';
+          _emailSuccessText = null;
+          _verifiedEmail = null;
+          return;
+        }
+        if (result['success'] != true) {
+          _emailErrorText =
+              (result['error'] ?? '아이디 확인 중 오류가 발생했습니다.').toString();
+          _emailSuccessText = null;
+          _verifiedEmail = null;
+          return;
+        }
+        _emailErrorText = null;
+        _emailSuccessText = '사용 가능한 아이디입니다.';
+        _verifiedEmail = email.toLowerCase();
+      });
+    } finally {
+      if (mounted && _isCheckingEmail && seq == _emailCheckSeq) {
+        setState(() => _isCheckingEmail = false);
       }
-      if (result['success'] != true) {
-        _emailErrorText =
-            (result['error'] ?? '아이디 확인 중 오류가 발생했습니다.').toString();
-        _emailSuccessText = null;
-        _verifiedEmail = null;
-        return;
-      }
-      _emailErrorText = null;
-      _emailSuccessText = '사용 가능한 아이디입니다.';
-      _verifiedEmail = email.toLowerCase();
-    });
+    }
   }
 
   void _onKakaoPhoneChanged() {
@@ -311,14 +318,15 @@ class _SocialSignupScreenState extends State<SocialSignupScreen> {
   }
 
   Future<void> _requestKakaoOtp() async {
+    if (_otpSending) return;
     final digits = _phoneDigits;
     if (!_phoneReadyToSend) {
       setState(() => _errorText = _phoneInvalidMessage);
       return;
     }
 
+    _otpSending = true;
     setState(() {
-      _otpSending = true;
       _errorText = null;
       _otpToken = null;
       _otpVerifiedDigits = null;
@@ -356,6 +364,7 @@ class _SocialSignupScreenState extends State<SocialSignupScreen> {
   }
 
   Future<void> _confirmKakaoOtp() async {
+    if (_otpVerifying) return;
     final token = _otpToken;
     final code = _codeController.text.trim();
     if (token == null || token.isEmpty) {
@@ -367,10 +376,8 @@ class _SocialSignupScreenState extends State<SocialSignupScreen> {
       return;
     }
 
-    setState(() {
-      _otpVerifying = true;
-      _errorText = null;
-    });
+    _otpVerifying = true;
+    setState(() => _errorText = null);
     final verify = await AuthRepository.otpVerify(
       otpToken: token,
       code: code,
@@ -426,6 +433,7 @@ class _SocialSignupScreenState extends State<SocialSignupScreen> {
   }
 
   Future<void> _submit([Map<String, bool>? agreements]) async {
+    if (_isLoading) return;
     final phoneDigits = _usesDesignedSignup
         ? (_otpVerifiedDigits ?? '')
         : _phone.replaceAll(RegExp(r'[^0-9]'), '');
@@ -471,11 +479,11 @@ class _SocialSignupScreenState extends State<SocialSignupScreen> {
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-      _errorText = null;
-    });
+    _isLoading = true;
+    setState(() => _errorText = null);
 
+    var done = false;
+    try {
     final result = await AuthRepository.registerWithSocial(
       provider: widget.provider,
       identifier: widget.identifier,
@@ -527,6 +535,7 @@ class _SocialSignupScreenState extends State<SocialSignupScreen> {
       );
 
       if (!mounted) return;
+      done = true;
       if (PendingProductCheckout.navigateAfterAuth(context)) return;
       Navigator.of(context)
           .pushNamedAndRemoveUntil('/signup-done', (route) => false);
@@ -540,6 +549,21 @@ class _SocialSignupScreenState extends State<SocialSignupScreen> {
     });
     if (_usesDesignedSignup && _kakaoStep == _KakaoSignupStep.agreement) {
       AppToastOverlay.show(context, message);
+    }
+    } catch (_) {
+      if (!mounted) return;
+      const message = '회원가입에 실패했습니다.';
+      setState(() {
+        _isLoading = false;
+        _errorText = message;
+      });
+      if (_usesDesignedSignup && _kakaoStep == _KakaoSignupStep.agreement) {
+        AppToastOverlay.show(context, message);
+      }
+    } finally {
+      if (mounted && !done && _isLoading) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 

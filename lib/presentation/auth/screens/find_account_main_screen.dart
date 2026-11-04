@@ -224,6 +224,7 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
   }
 
   Future<void> _handleSendCode() async {
+    if (_isLoading) return;
     final hasEnoughData = _selectedTab == _FindAccountTab.id
         ? _idNameController.text.trim().isNotEmpty
         : _passwordEmailController.text.trim().isNotEmpty &&
@@ -245,8 +246,8 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
       return;
     }
 
+    _isLoading = true;
     setState(() {
-      _isLoading = true;
       _isCodeSent = false;
       _isCodeExpired = false;
       _otpToken = null;
@@ -261,11 +262,21 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
     final name = _selectedTab == _FindAccountTab.password
         ? _passwordNameController.text.trim()
         : _idNameController.text.trim();
-    final send = await AuthRepository.otpSend(
-      purpose: purpose,
-      name: name,
-      phone: _phoneNumber,
-    );
+    late final Map<String, dynamic> send;
+    try {
+      send = await AuthRepository.otpSend(
+        purpose: purpose,
+        name: name,
+        phone: _phoneNumber,
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _phoneInlineErrorText = '인증번호 발송에 실패했습니다.';
+      });
+      return;
+    }
 
     if (!mounted) return;
 
@@ -321,7 +332,8 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
     );
   }
 
-  void _handlePhoneCertNavigation() {
+  Future<void> _handlePhoneCertNavigation() async {
+    if (_isLoading) return;
     if (_selectedTab == _FindAccountTab.password) {
       final email = _passwordEmailController.text.trim();
       if (email.isEmpty) {
@@ -331,28 +343,43 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
         return;
       }
 
-      Navigator.pushNamed(
-        context,
-        '/kcp-cert',
-        arguments: {
-          'flow': 'find-password',
-          'email': email,
-        },
-      );
+      _isLoading = true;
+      setState(() {});
+      try {
+        await Navigator.pushNamed(
+          context,
+          '/kcp-cert',
+          arguments: {
+            'flow': 'find-password',
+            'email': email,
+          },
+        );
+      } finally {
+        if (mounted) setState(() => _isLoading = false);
+      }
       return;
     }
 
-    Navigator.pushNamed(
-      context,
-      '/kcp-cert',
-      arguments: {
-        'flow': 'find-account',
-      },
-    );
+    _isLoading = true;
+    setState(() {});
+    try {
+      await Navigator.pushNamed(
+        context,
+        '/kcp-cert',
+        arguments: {
+          'flow': 'find-account',
+        },
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   Future<void> _handleSubmit() async {
+    if (_isLoading) return;
     if (_step == _FindAccountStep.result) {
+      _isLoading = true;
+      setState(() {});
       Navigator.pushReplacementNamed(context, '/login');
       return;
     }
@@ -370,14 +397,27 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
       return;
     }
 
+    _isLoading = true;
+    setState(() {});
+
     final purpose = _selectedTab == _FindAccountTab.password
         ? 'password_find'
         : 'id_find';
-    final verify = await AuthRepository.otpVerify(
-      otpToken: token,
-      code: _verificationCodeController.text.trim(),
-      purpose: purpose,
-    );
+    final Map<String, dynamic> verify;
+    try {
+      verify = await AuthRepository.otpVerify(
+        otpToken: token,
+        code: _verificationCodeController.text.trim(),
+        purpose: purpose,
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _verificationErrorText = '인증에 실패했습니다.';
+      });
+      return;
+    }
     if (!mounted) return;
     if (verify['success'] != true) {
       final code = verify['code']?.toString();
@@ -385,6 +425,7 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
       if (code == 'EXPIRED') {
         _countdownTimer?.cancel();
         setState(() {
+          _isLoading = false;
           _isCodeExpired = true;
           _isCodeSent = false;
           _otpToken = null;
@@ -396,6 +437,7 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
       }
 
       setState(() {
+        _isLoading = false;
         _verificationErrorText = msg;
       });
       return;
@@ -1577,7 +1619,7 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
                   width: double.infinity,
                   height: healthDp(context, 43),
                   child: ElevatedButton(
-                    onPressed: _handlePhoneCertNavigation,
+                    onPressed: _isLoading ? null : _handlePhoneCertNavigation,
                     style: ElevatedButton.styleFrom(
                       elevation: 0,
                       backgroundColor: const Color(0xFFFF5A8D),

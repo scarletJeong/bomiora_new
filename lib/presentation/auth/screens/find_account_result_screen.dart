@@ -25,6 +25,8 @@ class FindAccountResultScreen extends StatefulWidget {
 class _FindAccountResultScreenState
     extends State<FindAccountResultScreen> {
   bool _isLoading = true;
+  bool _requesting = false;
+  bool _leaving = false;
   String? _errorText;
   List<String> _accounts = const [];
   int _selectedAccountIndex = 0;
@@ -49,9 +51,18 @@ class _FindAccountResultScreenState
   }
 
   Future<void> _loadAccounts() async {
+    if (_requesting) return;
     if (_certMbDupinfo.isEmpty) {
       _goToNotFound();
       return;
+    }
+
+    _requesting = true;
+    if (_errorText != null && mounted) {
+      setState(() {
+        _isLoading = true;
+        _errorText = null;
+      });
     }
 
     try {
@@ -106,6 +117,19 @@ class _FindAccountResultScreenState
         _errorText = '아이디를 찾지 못했습니다. 다시 시도해 주세요.';
         _isLoading = false;
       });
+    } finally {
+      _requesting = false;
+    }
+  }
+
+  void _leave(VoidCallback action) {
+    if (_leaving) return;
+    _leaving = true;
+    setState(() {});
+    try {
+      action();
+    } catch (_) {
+      if (mounted) setState(() => _leaving = false);
     }
   }
 
@@ -178,33 +202,39 @@ class _FindAccountResultScreenState
                               SizedBox(height: healthDp(context, 20)),
                               FindAccountResultActions(
                                 onPasswordFind: () {
-                                  if (_accounts.isEmpty) return;
+                                  if (_leaving || _accounts.isEmpty) return;
                                   final i = _selectedAccountIndex
                                       .clamp(0, _accounts.length - 1);
-                                  Navigator.pushReplacementNamed(
-                                    context,
-                                    '/find-account',
-                                    arguments: {
-                                      'tab': 'password',
-                                      'prefillEmail': _accounts[i],
-                                    },
-                                  );
+                                  _leave(() {
+                                    Navigator.pushReplacementNamed(
+                                      context,
+                                      '/find-account',
+                                      arguments: {
+                                        'tab': 'password',
+                                        'prefillEmail': _accounts[i],
+                                      },
+                                    );
+                                  });
                                 },
                                 onLogin: () {
                                   if (_accounts.isEmpty) {
-                                    Navigator.pushReplacementNamed(
-                                        context, '/login');
+                                    _leave(() {
+                                      Navigator.pushReplacementNamed(
+                                          context, '/login');
+                                    });
                                     return;
                                   }
                                   final i = _selectedAccountIndex
                                       .clamp(0, _accounts.length - 1);
-                                  Navigator.pushReplacementNamed(
-                                    context,
-                                    '/login',
-                                    arguments: {
-                                      'prefillEmail': _accounts[i],
-                                    },
-                                  );
+                                  _leave(() {
+                                    Navigator.pushReplacementNamed(
+                                      context,
+                                      '/login',
+                                      arguments: {
+                                        'prefillEmail': _accounts[i],
+                                      },
+                                    );
+                                  });
                                 },
                               ),
                             ],
@@ -234,7 +264,7 @@ class _FindAccountResultScreenState
           ),
           SizedBox(height: healthDp(context, 16)),
           ElevatedButton(
-            onPressed: _loadAccounts,
+            onPressed: _isLoading ? null : _loadAccounts,
             style: ElevatedButton.styleFrom(
               elevation: 0,
               backgroundColor: const Color(0xFFFF5A8D),

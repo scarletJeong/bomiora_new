@@ -253,6 +253,7 @@ class _SignupScreenState extends State<SignupScreen> {
   }
 
   Future<void> _checkEmailDuplicate() async {
+    if (_isCheckingEmail) return;
     final email = _emailController.text.trim();
     if (email.isEmpty) {
       setState(() {
@@ -272,37 +273,43 @@ class _SignupScreenState extends State<SignupScreen> {
     }
 
     final seq = ++_emailCheckSeq;
+    _isCheckingEmail = true;
     setState(() {
-      _isCheckingEmail = true;
       _emailErrorText = null;
       _emailSuccessText = null;
     });
 
-    final result = await AuthRepository.checkEmail(email: email.toLowerCase());
-    if (!mounted || seq != _emailCheckSeq) return;
+    try {
+      final result = await AuthRepository.checkEmail(email: email.toLowerCase());
+      if (!mounted || seq != _emailCheckSeq) return;
 
-    setState(() {
-      _isCheckingEmail = false;
-      if (result['exists'] == true) {
-        _emailErrorText = '이미 있는 아이디입니다. 다른 아이디를 입력해 주세요.';
-        _emailSuccessText = null;
-        _verifiedEmail = null;
-        return;
-      }
-      if (result['success'] != true) {
-        _emailErrorText =
-            (result['error'] ?? '아이디 확인 중 오류가 발생했습니다.').toString();
-        _emailSuccessText = null;
-        _verifiedEmail = null;
-        return;
-      }
-      _emailErrorText = null;
-      _emailSuccessText = '사용 가능한 아이디입니다.';
-      _verifiedEmail = email.toLowerCase();
-    });
+      setState(() {
+        _isCheckingEmail = false;
+        if (result['exists'] == true) {
+          _emailErrorText = '이미 있는 아이디입니다. 다른 아이디를 입력해 주세요.';
+          _emailSuccessText = null;
+          _verifiedEmail = null;
+          return;
+        }
+        if (result['success'] != true) {
+          _emailErrorText =
+              (result['error'] ?? '아이디 확인 중 오류가 발생했습니다.').toString();
+          _emailSuccessText = null;
+          _verifiedEmail = null;
+          return;
+        }
+        _emailErrorText = null;
+        _emailSuccessText = '사용 가능한 아이디입니다.';
+        _verifiedEmail = email.toLowerCase();
+      });
 
-    if (_isEmailVerified && mounted) {
-      _passwordFocus.requestFocus();
+      if (_isEmailVerified && mounted) {
+        _passwordFocus.requestFocus();
+      }
+    } finally {
+      if (mounted && _isCheckingEmail && seq == _emailCheckSeq) {
+        setState(() => _isCheckingEmail = false);
+      }
     }
   }
 
@@ -365,6 +372,7 @@ class _SignupScreenState extends State<SignupScreen> {
   }
 
   Future<void> _handleInputComplete() async {
+    if (_isLoading) return;
     FocusScope.of(context).unfocus();
 
     if (_certName == null ||
@@ -388,9 +396,8 @@ class _SignupScreenState extends State<SignupScreen> {
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
+    _isLoading = true;
+    setState(() {});
 
     try {
       setState(() {
@@ -424,12 +431,13 @@ class _SignupScreenState extends State<SignupScreen> {
   }
 
   Future<void> _handleAgreementNext(Map<String, bool> agreements) async {
+    if (_isLoading) return;
     if (_certName == null || _certPhone == null) return;
 
-    setState(() {
-      _isLoading = true;
-    });
+    _isLoading = true;
+    setState(() {});
 
+    var done = false;
     try {
       final result = await AuthRepository.register(
         email: _emailController.text.trim(),
@@ -467,6 +475,7 @@ class _SignupScreenState extends State<SignupScreen> {
         await LastLoginViaService.save(LastLoginViaService.email);
 
         if (!mounted) return;
+        done = true;
         if (PendingProductCheckout.navigateAfterAuth(context)) return;
         Navigator.of(context).pushNamedAndRemoveUntil(
           '/signup-done',
@@ -489,7 +498,7 @@ class _SignupScreenState extends State<SignupScreen> {
         reason: e.toString(),
       );
     } finally {
-      if (mounted) {
+      if (mounted && !done) {
         setState(() {
           _isLoading = false;
         });

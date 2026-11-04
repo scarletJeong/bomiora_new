@@ -339,34 +339,43 @@ class _LoginScreenState extends State<LoginScreen> {
     _handleLogin();
   }
 
+  bool _beginLoading() {
+    if (_isLoading) return false;
+    _isLoading = true;
+    setState(() {});
+    return true;
+  }
+
+  void _endLoading() {
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+  }
+
   Future<void> _handleLogin() async {
+    if (_isLoading) return;
     if (!_formKey.currentState!.validate()) {
       return;
     }
+    if (!_beginLoading()) return;
+    setState(() => _loginErrorText = null);
 
-    setState(() {
-      _isLoading = true;
-      _loginErrorText = null;
-    });
-
+    var done = false;
     try {
-      // 실제 로그인 API 호출
       final result = await AuthRepository.login(
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
 
       if (result['success']) {
+        done = true;
         await _completeSocialLogin(
           result,
           via: LastLoginViaService.email,
         );
-      } else {
-        if (mounted) {
-          setState(() {
-            _loginErrorText = '* 아이디 혹은 비밀번호가 일치하지 않습니다.';
-          });
-        }
+      } else if (mounted) {
+        setState(() {
+          _loginErrorText = '* 아이디 혹은 비밀번호가 일치하지 않습니다.';
+        });
       }
     } catch (_) {
       if (mounted) {
@@ -375,11 +384,7 @@ class _LoginScreenState extends State<LoginScreen> {
         });
       }
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      if (!done) _endLoading();
     }
   }
 
@@ -809,7 +814,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Future<void> _handleSocialAuthResult(
+  Future<bool> _handleSocialAuthResult(
     Map<String, dynamic> result, {
     required String provider,
     required String identifier,
@@ -828,7 +833,7 @@ class _LoginScreenState extends State<LoginScreen> {
         via: LastLoginViaService.normalize(provider) ??
             LastLoginViaService.kakao,
       );
-      return;
+      return true;
     }
 
     if (result['needRegister'] == true) {
@@ -847,14 +852,15 @@ class _LoginScreenState extends State<LoginScreen> {
             ? Map<String, dynamic>.from(result['prefill'] as Map)
             : null,
       );
-      return;
+      return false;
     }
 
-    if (!mounted) return;
+    if (!mounted) return false;
     final msg = result['error']?.toString();
     if (msg != null && msg.isNotEmpty) {
       AppToastOverlay.show(context, msg);
     }
+    return false;
   }
 
   void _reportSocialLoginFailure(
@@ -868,10 +874,9 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _handleKakaoLogin() async {
-    setState(() {
-      _isLoading = true;
-    });
+    if (!_beginLoading()) return;
 
+    var done = false;
     try {
       final kakaoResult = await KakaoAuthService.login(
         returnToAfterLogin: _returnTo,
@@ -880,6 +885,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (kakaoResult['needsRedirect'] == true) {
         final redirectUrl = kakaoResult['redirectUrl']?.toString();
         if (redirectUrl != null && redirectUrl.isNotEmpty) {
+          done = true;
           redirectBrowser(redirectUrl);
         }
         return;
@@ -895,15 +901,12 @@ class _LoginScreenState extends State<LoginScreen> {
       }
 
       final kakaoData = kakaoResult['data'] as Map<String, dynamic>;
-      await _completeKakaoLoginFromData(kakaoData);
+      done = await _completeKakaoLoginFromData(kakaoData);
     } catch (e, stack) {
+      done = false;
       _reportSocialLoginFailure('카카오', e, stack);
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      if (!done) _endLoading();
     }
   }
 
@@ -926,8 +929,12 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     KakaoAuthService.clearWebAuthQueryFromUrl();
-    setState(() => _isLoading = true);
+    if (!_beginLoading()) {
+      _kakaoWebResumeStarted = false;
+      return;
+    }
 
+    var done = false;
     try {
       final kakaoResult = await KakaoAuthService.fetchWebAuthResult(token);
       if (!kakaoResult['success']) {
@@ -940,27 +947,25 @@ class _LoginScreenState extends State<LoginScreen> {
       }
 
       final kakaoData = kakaoResult['data'] as Map<String, dynamic>;
-      await _completeKakaoLoginFromData(kakaoData);
+      done = await _completeKakaoLoginFromData(kakaoData);
     } catch (e, stack) {
       _reportSocialLoginFailure('카카오', e, stack);
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (!done) _endLoading();
       _kakaoWebResumeStarted = false;
     }
   }
 
-  Future<void> _completeKakaoLoginFromData(
+  Future<bool> _completeKakaoLoginFromData(
       Map<String, dynamic> kakaoData) async {
     final kakaoId = kakaoData['kakaoId']?.toString() ?? '';
     final email = kakaoData['email']?.toString();
     final nickname = kakaoData['nickname']?.toString();
 
     if (kakaoId.isEmpty) {
-      if (!mounted) return;
+      if (!mounted) return false;
       AppToastOverlay.show(context, '카카오 사용자 정보를 가져오지 못했습니다.');
-      return;
+      return false;
     }
 
     final result = await AuthRepository.loginWithKakao(
@@ -971,7 +976,7 @@ class _LoginScreenState extends State<LoginScreen> {
       accessToken: kakaoData['accessToken']?.toString(),
     );
 
-    await _handleSocialAuthResult(
+    return _handleSocialAuthResult(
       result,
       provider: 'kakao',
       identifier: kakaoId,
@@ -1000,8 +1005,12 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     NaverAuthService.clearWebAuthQueryFromUrl();
-    setState(() => _isLoading = true);
+    if (!_beginLoading()) {
+      _naverWebResumeStarted = false;
+      return;
+    }
 
+    var done = false;
     try {
       final naverResult = await NaverAuthService.fetchWebAuthResult(token);
       if (!naverResult['success']) {
@@ -1014,18 +1023,16 @@ class _LoginScreenState extends State<LoginScreen> {
       }
 
       final naverData = naverResult['data'] as Map<String, dynamic>;
-      await _completeNaverLoginFromData(naverData);
+      done = await _completeNaverLoginFromData(naverData);
     } catch (e, stack) {
       _reportSocialLoginFailure('네이버', e, stack);
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (!done) _endLoading();
       _naverWebResumeStarted = false;
     }
   }
 
-  Future<void> _completeNaverLoginFromData(
+  Future<bool> _completeNaverLoginFromData(
       Map<String, dynamic> naverData) async {
     final naverId = naverData['naverId']?.toString() ?? '';
     final email = naverData['email']?.toString();
@@ -1033,9 +1040,9 @@ class _LoginScreenState extends State<LoginScreen> {
     final name = naverData['name']?.toString();
 
     if (naverId.isEmpty) {
-      if (!mounted) return;
+      if (!mounted) return false;
       AppToastOverlay.show(context, '네이버 사용자 정보를 가져오지 못했습니다.');
-      return;
+      return false;
     }
 
     final result = await AuthRepository.loginWithNaver(
@@ -1049,7 +1056,7 @@ class _LoginScreenState extends State<LoginScreen> {
       accessToken: naverData['accessToken']?.toString(),
     );
 
-    await _handleSocialAuthResult(
+    return _handleSocialAuthResult(
       result,
       provider: 'naver',
       identifier: naverId,
@@ -1063,10 +1070,9 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _handleAppleLogin() async {
-    setState(() {
-      _isLoading = true;
-    });
+    if (!_beginLoading()) return;
 
+    var done = false;
     try {
       final appleResult = await AppleAuthService.login();
       if (!appleResult['success']) {
@@ -1098,7 +1104,7 @@ class _LoginScreenState extends State<LoginScreen> {
         authorizationCode: appleData['authorizationCode']?.toString(),
       );
 
-      await _handleSocialAuthResult(
+      done = await _handleSocialAuthResult(
         result,
         provider: 'apple',
         identifier: appleId,
@@ -1110,19 +1116,14 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (e, stack) {
       _reportSocialLoginFailure('Apple', e, stack);
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      if (!done) _endLoading();
     }
   }
 
   Future<void> _handleNaverLogin() async {
-    setState(() {
-      _isLoading = true;
-    });
+    if (!_beginLoading()) return;
 
+    var done = false;
     try {
       final naverResult = await NaverAuthService.login(
         returnToAfterLogin: _returnTo,
@@ -1131,6 +1132,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (naverResult['needsRedirect'] == true) {
         final redirectUrl = naverResult['redirectUrl']?.toString();
         if (redirectUrl != null && redirectUrl.isNotEmpty) {
+          done = true;
           redirectBrowser(redirectUrl);
         }
         return;
@@ -1148,15 +1150,11 @@ class _LoginScreenState extends State<LoginScreen> {
       }
 
       final naverData = naverResult['data'] as Map<String, dynamic>;
-      await _completeNaverLoginFromData(naverData);
+      done = await _completeNaverLoginFromData(naverData);
     } catch (e, stack) {
       _reportSocialLoginFailure('네이버', e, stack);
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      if (!done) _endLoading();
     }
   }
 }
