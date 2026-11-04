@@ -35,6 +35,8 @@ import 'presentation/shopping/screens/cart_general_screen.dart' as cart_general;
 import 'presentation/shopping/screens/cart_integration_screen.dart';
 import 'presentation/shopping/wish/screens/wish_list_screen.dart';
 import 'presentation/user/myPage/screens/cancel_member_screen.dart';
+import 'presentation/user/myPage/screens/cancel_member_2_screen.dart';
+import 'presentation/user/myPage/screens/cancel_member_done_screen.dart';
 import 'presentation/customer_service/screens/qa_list_screen.dart';
 import 'presentation/customer_service/screens/qa_detail_screen.dart';
 import 'presentation/customer_service/screens/qa_write_screen.dart';
@@ -289,6 +291,9 @@ class _BomioraAppState extends State<BomioraApp> {
         '/qa': (context) => const QaListScreen(),
         '/qa/write': (context) => const QaWriteScreen(),
         '/cancel-member': (context) => const CancelMemberScreen(),
+        '/withdraw': (context) => const CancelMemberScreen(),
+        '/withdraw/reason': (context) => const Cancel2MemberScreen(),
+        '/withdraw/done': (context) => const CancelMemberDoneScreen(),
         '/kcp-pay': (context) {
           final args = ModalRoute.of(context)?.settings.arguments
               as Map<String, dynamic>?;

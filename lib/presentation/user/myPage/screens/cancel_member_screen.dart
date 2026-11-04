@@ -7,8 +7,6 @@ import '../../../../data/services/point_service.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
-import 'cancel_member_2_screen.dart';
-
 /// 회원탈퇴 화면
 class CancelMemberScreen extends StatefulWidget {
   const CancelMemberScreen({super.key});
@@ -126,12 +124,7 @@ class _CancelMemberScreenState extends State<CancelMemberScreen> {
 
   void _onNextStep() {
     if (!_agreed) return;
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const Cancel2MemberScreen(),
-      ),
-    );
+    Navigator.pushNamed(context, '/withdraw/reason');
   }
 
   @override

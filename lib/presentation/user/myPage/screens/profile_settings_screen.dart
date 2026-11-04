@@ -14,8 +14,6 @@ import '../../../../data/repositories/auth/auth_repository.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../core/validation/app_password_validator.dart';
 import '../../../../data/models/user/user_model.dart';
-import 'cancel_member_screen.dart';
-
 /// 프로필 설정 화면 (개인정보 수정, 비밀번호 변경)
 class ProfileSettingsScreen extends StatefulWidget {
   const ProfileSettingsScreen({super.key});
@@ -746,12 +744,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     return Align(
       alignment: Alignment.centerRight,
       child: InkWell(
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const CancelMemberScreen(),
-          ),
-        ),
+        onTap: () => Navigator.pushNamed(context, '/withdraw'),
         borderRadius: BorderRadius.circular(healthDp(context, 8)),
         child: Padding(
           padding: EdgeInsets.symmetric(

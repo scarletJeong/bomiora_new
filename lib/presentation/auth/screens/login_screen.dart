@@ -357,46 +357,10 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       if (result['success']) {
-        final resultData = result['data'];
-        if (resultData is! Map) {
-          throw const FormatException('로그인 응답 형식이 올바르지 않습니다.');
-        }
-        final userData = NodeValueParser.normalizeMap(
-          Map<String, dynamic>.from(resultData),
+        await _completeSocialLogin(
+          result,
+          via: LastLoginViaService.email,
         );
-
-        // mb_id를 id로 매핑
-        final userRaw = userData['user'];
-        final userJson = NodeValueParser.normalizeMap(
-          userRaw is Map
-              ? Map<String, dynamic>.from(userRaw)
-              : Map<String, dynamic>.from(userData),
-        );
-
-        final userId = NodeValueParser.asString(userJson['mb_id']) ??
-            NodeValueParser.asString(userJson['id']) ??
-            '';
-        userJson['id'] = userId;
-
-        final user = UserModel.fromJson(userJson);
-
-        final token =
-            NodeValueParser.asString(userData['token']); // token이 없으면 null이 됨
-
-        await AuthService.saveLoginData(
-          user: user,
-          token: token,
-          autoLogin: _autoLogin,
-        );
-        await LastLoginViaService.save(LastLoginViaService.email);
-
-        if (!mounted) return;
-
-        // 다음 마이크로태스크에서 네비게이션 실행 (더 안전함)
-        Future.microtask(() {
-          if (!mounted) return;
-          _goHomeAfterLogin();
-        });
       } else {
         if (mounted) {
           setState(() {
@@ -780,7 +744,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }) async {
     final resultData = result['data'];
     if (resultData is! Map) {
-      throw const FormatException('소셜 로그인 응답 형식이 올바르지 않습니다.');
+      throw const FormatException('로그인 응답 형식이 올바르지 않습니다.');
     }
     final userData = NodeValueParser.normalizeMap(
       Map<String, dynamic>.from(resultData),

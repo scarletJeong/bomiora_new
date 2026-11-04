@@ -4,8 +4,6 @@ import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/app_toast_overlay.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
-import 'cancel_member_done_screen.dart';
-
 class Cancel2MemberScreen extends StatefulWidget {
   const Cancel2MemberScreen({super.key});
 
@@ -81,12 +79,7 @@ class _Cancel2MemberScreenState extends State<Cancel2MemberScreen> {
 
       await AuthService.logout();
       if (!mounted) return;
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const CancelMemberDoneScreen(),
-        ),
-      );
+      Navigator.pushReplacementNamed(context, '/withdraw/done');
     } catch (_) {
       if (!mounted) return;
       AppToastOverlay.show(context, '회원 탈퇴 중 오류가 발생했습니다.');
