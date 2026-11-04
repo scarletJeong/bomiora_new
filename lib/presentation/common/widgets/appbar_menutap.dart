@@ -131,21 +131,18 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
     Navigator.pushNamed(context, route, arguments: arguments);
   }
 
-  ProductCategoryItem _prescriptionDietCategory() {
-    return _prescriptionCategories.firstWhere(
-      (item) => item.categoryId == '10',
-      orElse: () => productPrescriptionCategoryListFallback.first,
-    );
-  }
-
-  void _openPrescriptionDietList(BuildContext context) {
-    final diet = _prescriptionDietCategory();
+  Future<void> _openPrescriptionTopCategory(BuildContext context) async {
+    final cats = await ProductCategoryCatalog.prescriptionCategories();
+    if (!mounted) return;
+    final top = cats.isNotEmpty
+        ? cats.first
+        : productPrescriptionCategoryListFallback.first;
     _popAndPushNamed(
       context,
       '/product/',
       arguments: {
-        'categoryId': diet.categoryId,
-        'categoryName': diet.label,
+        'categoryId': top.categoryId,
+        'categoryName': top.label,
         'productKind': 'prescription',
       },
     );
@@ -358,7 +355,7 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                           children: [
                             Expanded(
                               child: InkWell(
-                                onTap: () => _openPrescriptionDietList(context),
+                                onTap: () => _openPrescriptionTopCategory(context),
                                 hoverColor: Colors.transparent,
                                 splashColor: Colors.transparent,
                                 highlightColor: Colors.transparent,
