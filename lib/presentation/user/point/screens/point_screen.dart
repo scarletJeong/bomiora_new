@@ -7,6 +7,7 @@ import '../../../../data/models/user/user_model.dart';
 import '../../../../data/models/point/point_history_model.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/centered_empty_state.dart';
+import '../../../common/widgets/load_failure_notice.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
 import '../widgets/point_info_bottomup.dart';
@@ -28,6 +29,10 @@ class _PointScreenState extends State<PointScreen> {
   int _displayCount = _initialDisplayCount;
   int _selectedHistoryTab = 0;
   bool _isLoading = true;
+  bool _pointFailed = false;
+  bool _pointReloading = false;
+  bool _historyFailed = false;
+  bool _historyReloading = false;
 
   static const Color _pink = Color(0xFFFF5A8D);
   static const Color _border = Color(0x7FD2D2D2);
@@ -70,26 +75,57 @@ class _PointScreenState extends State<PointScreen> {
 
   Future<void> _loadCurrentPoint() async {
     if (_currentUser == null) return;
-    
+    if (mounted) {
+      setState(() => _pointReloading = true);
+    }
+
     try {
       final point = await PointService.getUserPoint(_currentUser!.id);
+      if (!mounted) return;
       setState(() {
         _currentPoint = point;
+        _pointFailed = point == null;
       });
-    } catch (e) {}
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _currentPoint = null;
+        _pointFailed = true;
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _pointReloading = false);
+      }
+    }
   }
 
   Future<void> _loadPointHistory() async {
     if (_currentUser == null) return;
-    
+    if (mounted) {
+      setState(() => _historyReloading = true);
+    }
+
     try {
       final history = await PointService.getPointHistory(_currentUser!.id);
+      if (!mounted) return;
       setState(() {
         _pointHistory = history;
+        _historyFailed = false;
         _displayCount = _initialDisplayCount;
-        _updateDisplayedHistory();
+        _displayedHistory = _filteredHistory.take(_displayCount).toList();
       });
-    } catch (e) {}
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _pointHistory = [];
+        _displayedHistory = [];
+        _historyFailed = true;
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _historyReloading = false);
+      }
+    }
   }
 
   List<PointHistory> get _filteredHistory {
@@ -181,7 +217,8 @@ class _PointScreenState extends State<PointScreen> {
         ),
       );
     }
-    final showEmpty = _displayedHistory.isEmpty;
+    final showHistoryFailure = _historyFailed;
+    final showEmpty = !showHistoryFailure && _displayedHistory.isEmpty;
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -212,6 +249,15 @@ class _PointScreenState extends State<PointScreen> {
         ],
       ),
         ),
+        if (showHistoryFailure)
+          PageCenteredEmptyOverlay(
+            child: _historyReloading
+                ? const CircularProgressIndicator(color: _pink)
+                : LoadFailureNotice(
+                    message: '포인트 내역을 불러오지 못했습니다.',
+                    onRetry: _loadPointHistory,
+                  ),
+          ),
         if (showEmpty)
           PageCenteredEmptyOverlay(
             child: CenteredEmptyState(
@@ -239,7 +285,9 @@ class _PointScreenState extends State<PointScreen> {
   }
 
   Widget _buildAvailablePointSection() {
-    final pointText = PointService.formatPoint(_currentPoint ?? 0);
+    final pointText = _pointFailed
+        ? ''
+        : '${PointService.formatPoint(_currentPoint)} P';
 
     return Container(
       width: double.infinity,
@@ -270,14 +318,29 @@ class _PointScreenState extends State<PointScreen> {
             ],
           ),
           SizedBox(height: healthDp(context, 8)),
-          Text(
-            '$pointText P',
-            style: TextStyle(
-              color: _pink,
-              fontSize: healthSp(context, 19),
-              fontWeight: FontWeight.w700,
+          if (_pointReloading && !_isLoading)
+            SizedBox(
+              width: healthDp(context, 20),
+              height: healthDp(context, 20),
+              child: const CircularProgressIndicator(
+                strokeWidth: 2,
+                color: _pink,
+              ),
+            )
+          else if (_pointFailed)
+            LoadFailureNotice(
+              message: '포인트를 불러오지 못했습니다.',
+              onRetry: _loadCurrentPoint,
+            )
+          else
+            Text(
+              pointText,
+              style: TextStyle(
+                color: _pink,
+                fontSize: healthSp(context, 19),
+                fontWeight: FontWeight.w700,
+              ),
             ),
-          ),
         ],
       ),
     );

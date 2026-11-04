@@ -106,29 +106,20 @@ class PointService {
   }
 
   static Future<List<PointHistory>> _fetchPointHistory(String userId) async {
-    try {
-      final response = await ApiClient.get(ApiEndpoints.pointHistory(userId));
+    final response = await ApiClient.get(ApiEndpoints.pointHistory(userId));
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-
-        if (data['success'] == true && data['data'] != null) {
-          final List<dynamic> historyJson = data['data'];
-          final history = historyJson
-              .map((json) => PointHistory.fromJson(json))
-              .toList();
-          
-          // 날짜 내림차순 정렬 (최신순)
-          history.sort((a, b) => b.dateTime.compareTo(a.dateTime));
-
-          return history;
-        }
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      if (data is Map && data['success'] == true && data['data'] is List) {
+        final history = (data['data'] as List)
+            .map((json) => PointHistory.fromJson(json))
+            .toList();
+        history.sort((a, b) => b.dateTime.compareTo(a.dateTime));
+        return history;
       }
-
-      return [];
-    } catch (e) {
-      return [];
     }
+
+    throw Exception('point history failed');
   }
   
   /// 포인트 포맷팅 (콤마 추가)
