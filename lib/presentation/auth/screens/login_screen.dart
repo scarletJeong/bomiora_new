@@ -409,6 +409,11 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       }
     } catch (_) {
+      if (mounted) {
+        setState(() {
+          _loginErrorText = '* 로그인 요청에 실패했습니다. 다시 시도해 주세요.';
+        });
+      }
     } finally {
       if (mounted) {
         setState(() {

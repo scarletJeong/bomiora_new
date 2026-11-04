@@ -155,20 +155,9 @@ class AuthRepository {
           'error': errorMessage,
         };
       }
-    } catch (e) {
-      // API 서버 연결 실패 시 에러 반환
-      String errorMessage = 'API 서버에 연결할 수 없습니다. 네트워크 연결을 확인해주세요.';
-      
-      if (e.toString().contains('Connection refused')) {
-        errorMessage = '서버에 연결할 수 없습니다. 서버가 실행 중인지 확인해주세요.';
-      } else if (e.toString().contains('Failed host lookup')) {
-        errorMessage = '서버 주소를 찾을 수 없습니다. IP 주소를 확인해주세요.';
-      }
-      
-      return {
-        'success': false,
-        'error': errorMessage,
-      };
+    } catch (_) {
+      // 연결 실패는 화면 catch에서 통신 실패 문구를 보여 준다.
+      rethrow;
     }
   }
 
