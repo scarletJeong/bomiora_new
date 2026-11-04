@@ -9,6 +9,7 @@ import '../../settings/notification_center_screen.dart';
 import '../../settings/settings_screen.dart';
 import '../../shopping/screens/cart_general_screen.dart' as cart_general;
 import '../../shopping/screens/cart_integration_screen.dart';
+import '../../home/home_refresh.dart';
 import '../../home/search/search_popup.dart';
 import '../navigation/app_bar_nav_guard.dart';
 import 'cart_dropdown_menu.dart';
@@ -420,6 +421,7 @@ class _AppBarMenuState extends State<AppBarMenu> {
                           if (scaffold?.isDrawerOpen ?? false) {
                             scaffold!.closeDrawer();
                           }
+                          HomeRefresh.request();
                           goNamedKeepingExisting(context, '/home');
                         },
                         child: SizedBox(

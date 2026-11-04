@@ -3,6 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/constants/app_assets.dart';
 import '../../health/health_common/health_responsive_scale.dart';
+import '../../home/home_refresh.dart';
 import '../../shopping/utils/get_product.dart';
 
 /// 하단 가로 바 ↔ 오른쪽 세로 바 전환 기준 (px).
@@ -170,7 +171,10 @@ class FooterBar extends StatelessWidget {
             iconAsset: AppAssets.naviIcon1,
             iconWidthBase: 16,
             iconHeightBase: 17.27,
-            onTap: () => _go(context, '/home'),
+            onTap: () {
+              HomeRefresh.request();
+              _go(context, '/home');
+            },
           ),
           _item(
             context: context,
@@ -278,11 +282,16 @@ class SideNaviBar extends StatelessWidget {
               entry: _items[i],
               onTap: _items[i].route == null
                   ? null
-                  : () => _go(
+                  : () {
+                      if (_items[i].route == '/home') {
+                        HomeRefresh.request();
+                      }
+                      _go(
                         context,
                         _items[i].route!,
                         arguments: _items[i].routeArguments,
-                      ),
+                      );
+                    },
             ),
           ],
         ],

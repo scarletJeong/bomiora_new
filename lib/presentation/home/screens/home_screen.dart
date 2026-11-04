@@ -32,6 +32,7 @@ import '../../shopping/utils/get_product.dart'
         productGeneralCategoryChipLabel,
         productPrescriptionCategoryMenuLabel;
 import '../../user/myPage/screens/my_page_screen.dart';
+import '../home_refresh.dart';
 import '../widgets/banner_slider.dart';
 import '../widgets/event_section.dart';
 import '../widgets/guidebook_section.dart';
@@ -76,6 +77,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   int _currentIndex = 0;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  final ScrollController _scrollController = ScrollController();
+  int _refreshSerial = 0;
 
   Future<List<BannerModel>>? _bannersFuture;
   Future<List<Product>>? _newProductsFuture;
@@ -106,6 +109,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    HomeRefresh.tick.addListener(_onHomeRefresh);
     _currentIndex = widget.initialIndex;
     if (_currentIndex == 0) {
       _ensureHomeLoads();
@@ -477,8 +481,45 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
+    HomeRefresh.tick.removeListener(_onHomeRefresh);
+    _scrollController.dispose();
     _tabsRequestToken++;
     super.dispose();
+  }
+
+  void _onHomeRefresh() {
+    if (!mounted) return;
+    _reloadHome();
+  }
+
+  /// 스플래시가 넘겨 준 Future는 처음 한 번만 쓰고, 홈 버튼은 새로 받는다.
+  void _reloadHome() {
+    _tabsRequestToken++;
+    setState(() {
+      _refreshSerial++;
+      _homeLoadStarted = true;
+      _loadBelowFold = false;
+      _newLoading = true;
+      _mdPickLoading = true;
+      _tabsLoading = true;
+      _categoryListFailed = false;
+      _newProducts = const [];
+      _mdPickProducts = const [];
+      _productsByCategory.clear();
+      _bannersFuture = BannerService.fetchMobileBanners();
+      _newProductsFuture =
+          ProductRepository.getNewProducts(limit: _kNewLimit);
+      _imagesSettledNotified = false;
+      _pendingImages = 0;
+      _settledImages = 0;
+    });
+    _loadNewProducts();
+    unawaited(_precacheGuidebookThumbs());
+    _scheduleBelowFoldLoad();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scrollController.hasClients) return;
+      _scrollController.jumpTo(0);
+    });
   }
 
   @override
@@ -522,9 +563,11 @@ class _HomeScreenState extends State<HomeScreen> {
     final sectionGap = healthDp(context, 48);
 
     return SingleChildScrollView(
+      controller: _scrollController,
       child: Column(
         children: [
           BannerSlider(
+            key: ValueKey('home-banner-$_refreshSerial'),
             bannersFuture: _bannersFuture,
             onPrimaryImageSettled: _markBannerReady,
           ),
@@ -536,12 +579,12 @@ class _HomeScreenState extends State<HomeScreen> {
             SizedBox(height: sectionGap),
             _buildMdPickBlock(),
             SizedBox(height: sectionGap),
-            const GuidebookSection(),
+            GuidebookSection(key: ValueKey('home-guide-$_refreshSerial')),
             SizedBox(height: sectionGap),
-            const ReviewSection(),
-            const NoticeSection(),
+            ReviewSection(key: ValueKey('home-review-$_refreshSerial')),
+            NoticeSection(key: ValueKey('home-notice-$_refreshSerial')),
             SizedBox(height: sectionGap),
-            const EventSection(),
+            EventSection(key: ValueKey('home-event-$_refreshSerial')),
             SizedBox(height: sectionGap),
             const AppFooter(),
           ] else

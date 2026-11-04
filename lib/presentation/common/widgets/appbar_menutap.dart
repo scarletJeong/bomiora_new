@@ -13,6 +13,7 @@ import '../../shopping/screens/cart_integration_screen.dart';
 import '../../../data/repositories/product/product_category_catalog.dart';
 import '../../shopping/utils/get_product.dart';
 import '../../health/health_common/health_responsive_scale.dart';
+import '../../home/home_refresh.dart';
 import 'app_toast_overlay.dart';
 import '../navigation/app_bar_nav_guard.dart';
 import 'cart_dropdown_menu.dart';
@@ -243,6 +244,7 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
             iconAsset: AppAssets.menu_home_icon,
             label: '홈',
             onTap: () {
+              HomeRefresh.request();
               _closeDrawerOnly(context);
               goNamedKeepingExisting(context, '/home');
             },
