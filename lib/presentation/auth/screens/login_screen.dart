@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_svg/flutter_svg.dart';
+import '../../../core/logging/failure_log.dart';
 import '../../../data/repositories/auth/auth_repository.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/apple_auth_service.dart';
@@ -856,21 +857,60 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     if (!mounted) return false;
+    await _showSocialFailure(provider, result);
+    return false;
+  }
+
+  String _socialFailureLabel(String provider) {
+    switch (provider) {
+      case 'naver':
+      case '네이버':
+        return '네이버';
+      case 'apple':
+      case 'Apple':
+        return 'Apple';
+      default:
+        return '카카오';
+    }
+  }
+
+  Future<void> _reportSocialLoginFailure(
+    String provider,
+    Object error, [
+    StackTrace? stack,
+  ]) async {
+    await FailureLog.record(
+      code: 'auth.socialLogin',
+      mbId: '',
+      reason: error.toString(),
+      detail: {
+        'provider': _socialFailureLabel(provider),
+        if (stack != null) 'stack': stack.toString(),
+      },
+    );
+    if (!mounted) return;
+    AppToastOverlay.show(
+      context,
+      '${_socialFailureLabel(provider)} 로그인에 실패했습니다.',
+    );
+  }
+
+  Future<void> _showSocialFailure(
+    String provider,
+    Map<String, dynamic> result,
+  ) async {
+    if (result['transportFailure'] == true) {
+      await _reportSocialLoginFailure(
+        provider,
+        result['error'] ?? 'unknown',
+      );
+      return;
+    }
+    if (!mounted) return;
     final msg = result['error']?.toString();
     if (msg != null && msg.isNotEmpty) {
       AppToastOverlay.show(context, msg);
     }
-    return false;
-  }
-
-  void _reportSocialLoginFailure(
-    String provider,
-    Object error,
-    StackTrace stack,
-  ) {
-    debugPrint('[$provider] 로그인 실패: $error\n$stack');
-    if (!mounted) return;
-    AppToastOverlay.show(context, '$provider 로그인에 실패했습니다.');
   }
 
   Future<void> _handleKakaoLogin() async {
@@ -893,18 +933,15 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (!kakaoResult['success']) {
         if (!mounted) return;
-        final msg = kakaoResult['error']?.toString();
-        if (msg != null && msg.isNotEmpty) {
-          AppToastOverlay.show(context, msg);
-        }
+        await _showSocialFailure('카카오', kakaoResult);
         return;
       }
 
       final kakaoData = kakaoResult['data'] as Map<String, dynamic>;
       done = await _completeKakaoLoginFromData(kakaoData);
-    } catch (e, stack) {
+    } catch (e) {
       done = false;
-      _reportSocialLoginFailure('카카오', e, stack);
+      await _reportSocialLoginFailure('카카오', e);
     } finally {
       if (!done) _endLoading();
     }
@@ -939,17 +976,14 @@ class _LoginScreenState extends State<LoginScreen> {
       final kakaoResult = await KakaoAuthService.fetchWebAuthResult(token);
       if (!kakaoResult['success']) {
         if (!mounted) return;
-        final msg = kakaoResult['error']?.toString();
-        if (msg != null && msg.isNotEmpty) {
-          AppToastOverlay.show(context, msg);
-        }
+        await _showSocialFailure('카카오', kakaoResult);
         return;
       }
 
       final kakaoData = kakaoResult['data'] as Map<String, dynamic>;
       done = await _completeKakaoLoginFromData(kakaoData);
-    } catch (e, stack) {
-      _reportSocialLoginFailure('카카오', e, stack);
+    } catch (e) {
+      await _reportSocialLoginFailure('카카오', e);
     } finally {
       if (!done) _endLoading();
       _kakaoWebResumeStarted = false;
@@ -1015,17 +1049,14 @@ class _LoginScreenState extends State<LoginScreen> {
       final naverResult = await NaverAuthService.fetchWebAuthResult(token);
       if (!naverResult['success']) {
         if (!mounted) return;
-        final msg = naverResult['error']?.toString();
-        if (msg != null && msg.isNotEmpty) {
-          AppToastOverlay.show(context, msg);
-        }
+        await _showSocialFailure('네이버', naverResult);
         return;
       }
 
       final naverData = naverResult['data'] as Map<String, dynamic>;
       done = await _completeNaverLoginFromData(naverData);
-    } catch (e, stack) {
-      _reportSocialLoginFailure('네이버', e, stack);
+    } catch (e) {
+      await _reportSocialLoginFailure('네이버', e);
     } finally {
       if (!done) _endLoading();
       _naverWebResumeStarted = false;
@@ -1078,10 +1109,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!appleResult['success']) {
         if (!mounted) return;
         if (appleResult['cancelled'] != true) {
-          final msg = appleResult['error']?.toString();
-          if (msg != null && msg.isNotEmpty) {
-            AppToastOverlay.show(context, msg);
-          }
+          await _showSocialFailure('Apple', appleResult);
         }
         return;
       }
@@ -1113,8 +1141,8 @@ class _LoginScreenState extends State<LoginScreen> {
         identityToken: appleData['identityToken']?.toString(),
         authorizationCode: appleData['authorizationCode']?.toString(),
       );
-    } catch (e, stack) {
-      _reportSocialLoginFailure('Apple', e, stack);
+    } catch (e) {
+      await _reportSocialLoginFailure('Apple', e);
     } finally {
       if (!done) _endLoading();
     }
@@ -1141,18 +1169,15 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!naverResult['success']) {
         if (!mounted) return;
         if (naverResult['cancelled'] != true) {
-          final msg = naverResult['error']?.toString();
-          if (msg != null && msg.isNotEmpty) {
-            AppToastOverlay.show(context, msg);
-          }
+          await _showSocialFailure('네이버', naverResult);
         }
         return;
       }
 
       final naverData = naverResult['data'] as Map<String, dynamic>;
       done = await _completeNaverLoginFromData(naverData);
-    } catch (e, stack) {
-      _reportSocialLoginFailure('네이버', e, stack);
+    } catch (e) {
+      await _reportSocialLoginFailure('네이버', e);
     } finally {
       if (!done) _endLoading();
     }

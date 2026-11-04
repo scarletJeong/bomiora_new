@@ -109,7 +109,8 @@ class KakaoAuthService {
     } catch (e) {
       return {
         'success': false,
-        'error': '카카오 로그인 결과 조회 중 오류가 발생했습니다: $e',
+        'transportFailure': true,
+        'error': e.toString(),
       };
     }
   }
@@ -141,14 +142,23 @@ class KakaoAuthService {
         },
       };
     } on KakaoException catch (e) {
+      final message = _getErrorMessage(e);
+      if (message == null) {
+        return {
+          'success': false,
+          'transportFailure': true,
+          'error': e.toString(),
+        };
+      }
       return {
         'success': false,
-        'error': _getErrorMessage(e),
+        'error': message,
       };
     } catch (e) {
       return {
         'success': false,
-        'error': '카카오 로그인 중 오류가 발생했습니다: $e',
+        'transportFailure': true,
+        'error': e.toString(),
       };
     }
   }
@@ -180,7 +190,7 @@ class KakaoAuthService {
     } catch (_) {}
   }
 
-  static String _getErrorMessage(KakaoException e) {
+  static String? _getErrorMessage(KakaoException e) {
     final errorMessage = e.toString();
     if (errorMessage.contains('access_denied') || errorMessage.contains('권한')) {
       return '카카오 로그인 권한이 거부되었습니다.';
@@ -192,8 +202,7 @@ class KakaoAuthService {
     } else if (errorMessage.contains('misconfigured') ||
         errorMessage.contains('설정')) {
       return '카카오 SDK 설정이 올바르지 않습니다.';
-    } else {
-      return '카카오 로그인 중 오류가 발생했습니다: ${e.toString()}';
     }
+    return null;
   }
 }

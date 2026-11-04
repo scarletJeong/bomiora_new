@@ -107,7 +107,8 @@ class NaverAuthService {
     } catch (e) {
       return {
         'success': false,
-        'error': '네이버 로그인 결과 조회 중 오류가 발생했습니다: $e',
+        'transportFailure': true,
+        'error': e.toString(),
       };
     }
   }
@@ -170,7 +171,8 @@ class NaverAuthService {
     } catch (e) {
       return {
         'success': false,
-        'error': '네이버 로그인 중 오류가 발생했습니다: $e',
+        'transportFailure': true,
+        'error': e.toString(),
       };
     }
   }

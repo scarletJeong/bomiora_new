@@ -76,7 +76,8 @@ class AppleAuthService {
     } catch (e) {
       return {
         'success': false,
-        'error': 'Apple 로그인 중 오류가 발생했습니다: $e',
+        'transportFailure': true,
+        'error': e.toString(),
       };
     }
   }

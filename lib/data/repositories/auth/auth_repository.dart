@@ -269,7 +269,8 @@ class AuthRepository {
     } catch (e) {
       return {
         'success': false,
-        'error': '소셜 로그인 중 오류가 발생했습니다: $e',
+        'transportFailure': true,
+        'error': e.toString(),
       };
     }
   }
