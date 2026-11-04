@@ -36,6 +36,7 @@ List<CartItem> cartItemsFromOrderItems(
           'ct_option': p.ctOption ?? '',
           'ct_qty': p.ctQty,
           'ct_price': p.ctPrice > 0 ? p.ctPrice : p.totalPrice,
+          if (p.totalPrice > 0) 'settled_line_amount': p.totalPrice,
           'io_price': p.ioPrice,
           'io_id': p.ioId,
           'io_type': p.ioType,

@@ -17,6 +17,8 @@ class CartItem {
   final String? ioId; // 옵션 ID
   /// 옵션 단가 (운영 PHP `io_price`)
   final int? ioPrice;
+  /// 주문 상세가 서버에서 고른 줄 금액. 있으면 수량 재계산을 하지 않는다.
+  final int? settledLineAmount;
   final int ioType; // 0~3
   final String ctKind; // 상품 종류 (general | prescription)
   /// 파싱된 kind: general | prescription | supply_add(parent 있을 때)
@@ -67,6 +69,7 @@ class CartItem {
     required this.ctQty,
     this.ioId,
     this.ioPrice,
+    this.settledLineAmount,
     this.ioType = 0,
     required this.ctKind,
     this.kind = 'general',
@@ -110,7 +113,10 @@ class CartItem {
 
   /// 라인 결제금액 — PHP `bomiora_cart_line_price_sql` 과 동일.
   /// io_type 1: io×qty / io_type 0·2·3: (ct+io)×qty
+  /// 주문 줄은 서버가 고른 [settledLineAmount]를 그대로 쓴다.
   int get lineAmount {
+    final settled = settledLineAmount;
+    if (settled != null && settled > 0) return settled;
     final io = ioPrice ?? 0;
     final qty = ctQty < 1 ? 1 : ctQty;
     if (ioType == 1) return io * qty;
@@ -248,6 +254,9 @@ class CartItem {
           NodeValueParser.asString(normalized['ioId']),
       ioPrice: normalized['io_price'] != null || normalized['ioPrice'] != null
           ? _parseInt(normalized['io_price'] ?? normalized['ioPrice'])
+          : null,
+      settledLineAmount: normalized['settled_line_amount'] != null
+          ? _parseInt(normalized['settled_line_amount'])
           : null,
       ioType: _parseInt(normalized['io_type'] ?? normalized['ioType'] ?? 0)
           .clamp(0, 3),
