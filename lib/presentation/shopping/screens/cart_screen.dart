@@ -14,6 +14,7 @@ import '../../../core/constants/app_assets.dart';
 import '../../../data/models/cart/cart_item_model.dart';
 import '../../../data/models/cart/cart_line_group.dart';
 import '../../../core/logging/failure_log.dart';
+import '../../../data/services/cart_price_watch.dart';
 import '../../../data/services/cart_service.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../core/utils/price_formatter.dart';
@@ -22,6 +23,7 @@ import '../widgets/get_cartImage.dart';
 import '../widgets/quantity_stepper.dart';
 import '../widgets/cart_add_group_card.dart';
 import '../widgets/cart_empty_shop_button.dart';
+import '../widgets/cart_price_changed_dialog.dart';
 
 class CartScreen extends StatefulWidget {
   final String? backToProductId;
@@ -223,21 +225,21 @@ class _CartScreenState extends State<CartScreen> {
     });
   }
 
-  Future<void> _loadCart({
+  Future<bool> _loadCart({
     bool showCachedData = false,
     bool forceRefresh = false,
   }) async {
     final keepVisible = showCachedData && cartItems.isNotEmpty;
 
     if (!keepVisible) {
-      if (!mounted) return;
+      if (!mounted) return false;
       setState(() {
         isLoading = true;
         errorMessage = null;
         needsLogin = false;
       });
     } else {
-      if (!mounted) return;
+      if (!mounted) return false;
       setState(() {
         isRefreshing = true;
       });
@@ -246,17 +248,19 @@ class _CartScreenState extends State<CartScreen> {
     try {
       final previousItems = List<CartItem>.from(cartItems);
       final result = await CartService.getCart(forceRefresh: forceRefresh);
-      if (!mounted) return;
+      if (!mounted) return false;
 
       final message = result['message']?.toString() ?? '';
       if (result['needsLogin'] == true) {
         _showLoginRequiredCart();
-        return;
+        return false;
       }
 
       if (result['success'] == true) {
         final items = CartService.parseCartItems(result['data']);
         final orderedItems = _preserveCartItemOrder(previousItems, items);
+        final priceChanged = await CartPriceWatch.consumeChanges(orderedItems);
+        if (!mounted) return false;
         setState(() {
           cartItems = orderedItems;
           shippingCost = (result['shipping_cost'] as int?) ?? 0;
@@ -268,16 +272,20 @@ class _CartScreenState extends State<CartScreen> {
           isRefreshing = false;
         });
         unawaited(_refreshSelectedShipping());
-        return;
+        if (priceChanged && mounted) {
+          await showCartPriceChangedDialog(context);
+        }
+        return priceChanged;
       }
 
       await _applyCartLoadFailure(
         message.isNotEmpty ? message : '장바구니를 불러오지 못했습니다.',
       );
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) return false;
       await _applyCartLoadFailure(e.toString());
     }
+    return false;
   }
 
   CartItem _itemWithQuantity(CartItem old, int quantity) {
@@ -512,6 +520,8 @@ class _CartScreenState extends State<CartScreen> {
     if (!mounted) return;
     await _refreshSelectedShipping();
     if (!mounted) return;
+    final priceChanged = await _loadCart(forceRefresh: true);
+    if (!mounted || priceChanged) return;
 
     final selectedCartItems = _displayedCartItems
         .where((item) =>
