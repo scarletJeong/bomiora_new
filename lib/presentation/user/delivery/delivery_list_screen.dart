@@ -59,7 +59,6 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
   static const Color _kPink = Color(0xFFFF5A8D);
   static const Color _kBorder = Color(0x7FD2D2D2);
   static const Color _kMuted = Color(0xFF898686);
-  static const Color _kMuted2 = Color(0xFF898383);
   static const Color _kInk = Color(0xFF1A1A1A);
 
   /// 주문상품 추가상품 펼침 키: `{odId}:{parentCtId}`
@@ -360,8 +359,10 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
 
     if (_selectedStatus == 'all') {
       _displayedOrders = byType.where((order) {
+        if (_isCancelledStage(order)) return false;
+        if (_isCompletedStage(order)) return true;
         if (order.countsAsOpenOrderHistory) return true;
-        return order.displayStatus == '결제대기중' || order.odStatus == '주문';
+        return _isPaymentWaitingStage(order);
       }).toList();
       return;
     }
@@ -1001,7 +1002,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
                 Text(
                   qtyLine,
                   style: TextStyle(
-                    color: _kMuted2,
+                    color: _kMuted,
                     fontSize: healthSp(context, 10),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w500,
@@ -1025,7 +1026,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
                       moreHint,
                       style: TextStyle(
                         fontSize: healthSp(context, 10),
-                        color: _kMuted2,
+                        color: _kMuted,
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w700,
                       ),

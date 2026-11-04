@@ -9,7 +9,7 @@ class RefundReasonStatus {
   static const Color pinkTint = Color(0x0CFF5C8F);
   static const Color ink = Color(0xFF1A1A1E);
   static const Color muted = Color(0xFF898686);
-  static const Color mutedLabel = Color(0xFF898383);
+  static const Color mutedLabel = muted;
   static const Color border = Color(0x7FD2D2D2);
   static const Color borderSolid = Color(0xFFD2D2D2);
   static const Color tabBg = Color(0xFFF9F9F9);

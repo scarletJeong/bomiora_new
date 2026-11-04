@@ -214,7 +214,7 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
       child: MobileAppLayoutWrapper(
           backgroundColor: Colors.white,
           appBar: HealthAppBar(
-            title: '주문 내역',
+            title: '주문상세',
             onBack: _goBack,
           ),
         child: Material(
