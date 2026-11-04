@@ -37,6 +37,7 @@ import 'presentation/shopping/wish/screens/wish_list_screen.dart';
 import 'presentation/user/myPage/screens/cancel_member_screen.dart';
 import 'presentation/customer_service/screens/qa_list_screen.dart';
 import 'presentation/customer_service/screens/qa_detail_screen.dart';
+import 'presentation/customer_service/screens/qa_write_screen.dart';
 import 'presentation/user/point/screens/point_screen.dart';
 import 'presentation/user/delivery/delivery_list_screen.dart';
 import 'presentation/user/delivery/delivery_detail_screen.dart';
@@ -286,6 +287,7 @@ class _BomioraAppState extends State<BomioraApp> {
         '/my_reviews': (context) => const MyReviewsScreen(),
         '/profile': (context) => const HealthProfileListScreen(),
         '/qa': (context) => const QaListScreen(),
+        '/qa/write': (context) => const QaWriteScreen(),
         '/cancel-member': (context) => const CancelMemberScreen(),
         '/kcp-pay': (context) {
           final args = ModalRoute.of(context)?.settings.arguments

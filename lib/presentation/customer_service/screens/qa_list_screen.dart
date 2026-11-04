@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'qa_write_screen.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/centered_empty_state.dart';
 import '../../common/widgets/scroll_reveal_top_overlay.dart';
@@ -149,12 +148,7 @@ class QaListScreenState extends State<QaListScreen> {
   Future<void> refresh() => _loadContacts();
 
   Future<void> _openContactForm() async {
-    final result = await Navigator.push<Object>(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const QaWriteScreen(),
-      ),
-    );
+    final result = await Navigator.pushNamed(context, '/qa/write');
     if (!mounted) return;
     if (result is int && result > 0) {
       _loadContacts(preserveScroll: true);
