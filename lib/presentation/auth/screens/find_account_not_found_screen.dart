@@ -24,16 +24,16 @@ class FindAccountNotFoundScreen extends StatelessWidget {
     return (info['mode'] ?? '').toString() == 'password';
   }
 
-  void _onRetry(BuildContext context) {
-    Navigator.pushReplacementNamed(
+  Future<void> _onRetry(BuildContext context) async {
+    await Navigator.pushReplacementNamed(
       context,
       '/find-account',
       arguments: _openPasswordTabOnRetry ? {'tab': 'password'} : null,
     );
   }
 
-  void _onSignup(BuildContext context) {
-    Navigator.pushNamed(context, '/signup');
+  Future<void> _onSignup(BuildContext context) async {
+    await Navigator.pushNamed(context, '/signup');
   }
 
   @override
@@ -146,65 +146,9 @@ class FindAccountNotFoundScreen extends StatelessWidget {
                       ),
                     ),
                     SizedBox(height: healthDp(context, 20)),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: SizedBox(
-                            height: healthDp(context, 40),
-                            child: OutlinedButton(
-                              onPressed: () => _onRetry(context),
-                              style: OutlinedButton.styleFrom(
-                                side: BorderSide(
-                                  width: healthDp(context, 0.5),
-                                  color: const Color(0xFFD2D2D2),
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(
-                                    healthDp(context, 10),
-                                  ),
-                                ),
-                              ),
-                              child: Text(
-                                '다시 찾기',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: const Color(0xFF898686),
-                                  fontSize: healthSp(context, 16),
-                                  fontFamily: 'Gmarket Sans TTF',
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        SizedBox(width: healthDp(context, 20)),
-                        Expanded(
-                          child: SizedBox(
-                            height: healthDp(context, 40),
-                            child: ElevatedButton(
-                              onPressed: () => _onSignup(context),
-                              style: ElevatedButton.styleFrom(
-                                elevation: 0,
-                                backgroundColor: const Color(0xFFFF5A8D),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(
-                                    healthDp(context, 10),
-                                  ),
-                                ),
-                              ),
-                              child: Text(
-                                '회원가입 하기',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: healthSp(context, 16),
-                                  fontFamily: 'Gmarket Sans TTF',
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
+                    _NotFoundActions(
+                      onRetry: () => _onRetry(context),
+                      onSignup: () => _onSignup(context),
                     ),
                   ],
                 ),
@@ -213,6 +157,95 @@ class FindAccountNotFoundScreen extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _NotFoundActions extends StatefulWidget {
+  const _NotFoundActions({
+    required this.onRetry,
+    required this.onSignup,
+  });
+
+  final Future<void> Function() onRetry;
+  final Future<void> Function() onSignup;
+
+  @override
+  State<_NotFoundActions> createState() => _NotFoundActionsState();
+}
+
+class _NotFoundActionsState extends State<_NotFoundActions> {
+  bool _busy = false;
+
+  Future<void> _run(Future<void> Function() action) async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      await action();
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: SizedBox(
+            height: healthDp(context, 40),
+            child: OutlinedButton(
+              onPressed: _busy ? null : () => _run(widget.onRetry),
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(
+                  width: healthDp(context, 0.5),
+                  color: const Color(0xFFD2D2D2),
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(healthDp(context, 10)),
+                ),
+              ),
+              child: Text(
+                '다시 찾기',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: const Color(0xFF898686),
+                  fontSize: healthSp(context, 16),
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ),
+        ),
+        SizedBox(width: healthDp(context, 20)),
+        Expanded(
+          child: SizedBox(
+            height: healthDp(context, 40),
+            child: ElevatedButton(
+              onPressed: _busy ? null : () => _run(widget.onSignup),
+              style: ElevatedButton.styleFrom(
+                elevation: 0,
+                backgroundColor:
+                    _busy ? const Color(0xFFD2D2D2) : const Color(0xFFFF5A8D),
+                disabledBackgroundColor: const Color(0xFFD2D2D2),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(healthDp(context, 10)),
+                ),
+              ),
+              child: Text(
+                '회원가입 하기',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: healthSp(context, 16),
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
