@@ -1050,6 +1050,21 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
                       };
                     },
                   ),
+                  TapGestureRecognizer:
+                      GestureRecognizerFactoryWithHandlers<TapGestureRecognizer>(
+                    () => TapGestureRecognizer(),
+                    (instance) {
+                      Offset? down;
+                      instance.onTapDown = (d) {
+                        down = d.localPosition;
+                      };
+                      instance.onTap = () {
+                        final pos = down;
+                        if (pos == null) return;
+                        setFromLocalDx(pos.dx);
+                      };
+                    },
+                  ),
                 },
                 child: Column(
               children: [
@@ -1889,11 +1904,47 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
   }
 }
 
-/// 감량 막대 드래그가 화면 뒤로가기(가장자리 스와이프)에 지지 않도록 바로 제스처를 가져간다.
+/// 감량 막대는 가로로 움직일 때만 잡고, 세로로 끌면 화면 스크롤에 넘긴다.
+/// 손가락을 대자마자 가로 제스처로 확정하면 브라우저가 그 움직임을 뒤로가기로 가져간다.
 class _EagerHorizontalDragRecognizer extends HorizontalDragGestureRecognizer {
+  Offset? _origin;
+  int? _pointer;
+  bool _decided = false;
+
   @override
   void addAllowedPointer(PointerDownEvent event) {
     super.addAllowedPointer(event);
-    resolve(GestureDisposition.accepted);
+    _origin = event.position;
+    _pointer = event.pointer;
+    _decided = false;
+  }
+
+  @override
+  void handleEvent(PointerEvent event) {
+    if (!_decided &&
+        event is PointerMoveEvent &&
+        event.pointer == _pointer &&
+        _origin != null) {
+      final delta = event.position - _origin!;
+      if (delta.dx.abs() < kTouchSlop && delta.dy.abs() < kTouchSlop) {
+        return;
+      }
+      _decided = true;
+      if (delta.dy.abs() >= delta.dx.abs()) {
+        resolve(GestureDisposition.rejected);
+        stopTrackingPointer(event.pointer);
+        return;
+      }
+      resolve(GestureDisposition.accepted);
+    }
+    super.handleEvent(event);
+  }
+
+  @override
+  void didStopTrackingLastPointer(int pointer) {
+    _origin = null;
+    _pointer = null;
+    _decided = false;
+    super.didStopTrackingLastPointer(pointer);
   }
 }
