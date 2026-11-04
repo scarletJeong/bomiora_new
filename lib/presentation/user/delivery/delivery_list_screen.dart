@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
 import '../../common/widgets/mobile_layout_wrapper.dart';
+import '../../../core/logging/failure_log.dart';
 import '../../common/widgets/centered_empty_state.dart';
+import '../../common/widgets/load_failure_notice.dart';
 import '../../health/health_common/widgets/health_app_bar.dart';
 import 'widgets/delivery_status_filter_bar.dart';
 import 'widgets/reservation_time_change_popup.dart';
@@ -50,6 +52,8 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
   int _nextPage = 0;
   int _visibleCount = 10;
   bool _loggedOut = false;
+  bool _loadFailed = false;
+  static const String _loadFailMessage = '주문 내역을 불러오지 못했습니다.';
   int _ordersLoadGen = 0;
   static const int _pageSize = 10;
   String _selectedProductType = DeliveryProductType.prescription;
@@ -135,6 +139,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
       if (user == null) {
         setState(() {
           _loggedOut = true;
+          _loadFailed = false;
           _allOrders = [];
           _displayedOrders = [];
           _hasNext = false;
@@ -182,10 +187,22 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
           _nextPage = page + 1;
           _hasNext = _resultHasNext(result, pageOrders.length);
           if (!append) _visibleCount = _pageSize;
+          _loadFailed = false;
           _applyFilter();
         });
+      } else if (gen == _ordersLoadGen) {
+        await _reportOrderLoadFailure(
+          gen: gen,
+          mbId: userId,
+          reason: result['message']?.toString() ?? '주문 목록 조회에 실패했습니다.',
+        );
       }
     } catch (e) {
+      await _reportOrderLoadFailure(
+        gen: gen,
+        mbId: AuthService.currentUser?.id ?? '',
+        reason: e.toString(),
+      );
     } finally {
       if (mounted && gen == _ordersLoadGen) {
         setState(() {
@@ -193,6 +210,24 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
           _isLoadingMore = false;
         });
       }
+    }
+  }
+
+  Future<void> _reportOrderLoadFailure({
+    required int gen,
+    required String mbId,
+    required String reason,
+  }) async {
+    await FailureLog.record(
+      code: 'order.list',
+      mbId: mbId,
+      reason: reason,
+    );
+    if (!mounted || gen != _ordersLoadGen) return;
+    final keepList = _allOrders.isNotEmpty;
+    setState(() => _loadFailed = !keepList);
+    if (keepList) {
+      AppToastOverlay.showAlert(context, _loadFailMessage);
     }
   }
 
@@ -462,8 +497,13 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
       return _buildEmptyStateContent();
     }
     // 필터를 스크롤 밖에 두면 세로 스크롤과 탭/칩 제스처가 경쟁하지 않음
+    final showLoadFailure = !_isLoading &&
+        !_isLoadingMore &&
+        _loadFailed &&
+        _allOrders.isEmpty;
     final showEmpty = !_isLoading &&
         !_isLoadingMore &&
+        !_loadFailed &&
         _displayedOrders.isEmpty &&
         !_hasNext;
     return Stack(
@@ -543,6 +583,13 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
         ),
       ],
         ),
+        if (showLoadFailure)
+          PageCenteredEmptyOverlay(
+            child: LoadFailureNotice(
+              message: _loadFailMessage,
+              onRetry: () => _loadOrders(force: true),
+            ),
+          ),
         if (showEmpty)
           PageCenteredEmptyOverlay(child: _buildEmptyStateContent()),
       ],
