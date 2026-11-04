@@ -247,22 +247,12 @@ extension _PaymentCheckout on _PaymentScreenState {
       } else {
         final code = _resolvePaymentErrorCode(errorCode, message);
         if (code == 'STOCK') {
-          await showDialog<void>(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: const Text('결제할 수 없습니다'),
-              content: Text(
-                message.isNotEmpty
-                    ? message
-                    : '재고 또는 금액이 변경되었습니다. 장바구니를 확인해 주세요.',
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('확인'),
-                ),
-              ],
-            ),
+          await AppAlertDialog.show(
+            context,
+            title: '결제할 수 없습니다',
+            message: message.isNotEmpty
+                ? message
+                : '재고 또는 금액이 변경되었습니다. 장바구니를 확인해 주세요.',
           );
           return;
         }

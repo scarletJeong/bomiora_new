@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_endpoints.dart';
 import '../../core/utils/kcp_pay_session_store.dart';
+import '../common/widgets/app_alert_dialog.dart';
 
 /// 새로고침으로 결제 화면이 사라져도, 진행 중이던 결제 토큰으로 결과를 이어서 확인한다.
 /// WebView는 다시 열지 않고 결과 API만 폴링한다.
@@ -77,19 +78,10 @@ class KcpPayResume {
       clearKcpPayToken();
       if (status == 'failed' && context.mounted) {
         final message = (data['message'] ?? '').toString().trim();
-        await showDialog<void>(
-          context: context,
-          builder: (context) => AlertDialog(
-            content: Text(
-              message.isEmpty ? '결제가 완료되지 않았습니다.' : message,
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('확인'),
-              ),
-            ],
-          ),
+        await AppAlertDialog.show(
+          context,
+          title: '',
+          message: message.isEmpty ? '결제가 완료되지 않았습니다.' : message,
         );
       }
       return true;
@@ -120,19 +112,10 @@ class KcpPayResume {
 
     // 시간 초과: 토큰은 남겨 다음 진입에서 다시 확인. 주문내역으로 안내.
     if (!context.mounted) return;
-    await showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        content: const Text(
-          '결제 결과를 아직 확인하지 못했습니다.\n주문내역에서 상태를 확인해 주세요.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('확인'),
-          ),
-        ],
-      ),
+    await AppAlertDialog.show(
+      context,
+      title: '',
+      message: '결제 결과를 아직 확인하지 못했습니다.\n주문내역에서 상태를 확인해 주세요.',
     );
     if (!context.mounted) return;
     Navigator.of(context).pushNamedAndRemoveUntil(
