@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../../core/constants/app_assets.dart';
-import '../../common/widgets/centered_empty_state.dart';
+import '../../../core/logging/failure_log.dart';
+import '../../common/widgets/app_alert_dialog.dart';
+import '../../common/widgets/load_failure_notice.dart';
 import '../../common/widgets/web_dragscroll.dart';
 import '../../../data/models/cart/cart_item_model.dart';
 import '../../../data/models/product/product_model.dart';
@@ -57,6 +59,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   Product? _product;
   bool _isLoading = true;
   bool _hasError = false;
+  int _detailLoadSerial = 0;
+  bool _failureAlertOpen = false;
   bool _isFavorite = false;
   int _currentImageIndex = 0;
   late TabController _tabController;
@@ -157,6 +161,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   }
 
   Future<void> _loadProductDetail() async {
+    final serial = ++_detailLoadSerial;
     final preview = ProductRepository.getProductPreview(widget.productId);
     _safeSetState(() {
       _product = preview;
@@ -167,42 +172,69 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     try {
       final product =
           await ProductRepository.getProductDetail(widget.productId);
+      if (!mounted || serial != _detailLoadSerial) return;
+      if (product == null) {
+        await _failProductDetail(serial, '상품을 찾지 못했습니다.');
+        return;
+      }
       _safeSetState(() {
         _product = product;
         _isLoading = false;
-        if (product == null) {
-          _hasError = true;
-        } else {
-          // 제품이 로드되면 이미지가 있을 때 PageController 초기화
-          final images = _getProductImages();
-          if (images.length > 1) {
-            _pageController?.dispose();
-            _pageController = PageController();
-          }
-          RecentViewService.recordView(
-            product.id,
-            productKind: product.productKind ?? 'prescription',
-            productName: product.name,
-            imageUrl: product.imageUrl,
-            price: product.price,
-            originalPrice: product.originalPrice,
-            itSubject: product.itSubject,
-          );
-          if (product.isInfluencerProduct != true) {
-            _loadUserPoint();
-          }
+        _hasError = false;
+        final images = _getProductImages();
+        if (images.length > 1) {
+          _pageController?.dispose();
+          _pageController = PageController();
         }
       });
-
+      RecentViewService.recordView(
+        product.id,
+        productKind: product.productKind ?? 'prescription',
+        productName: product.name,
+        imageUrl: product.imageUrl,
+        price: product.price,
+        originalPrice: product.originalPrice,
+        itSubject: product.itSubject,
+      );
+      if (product.isInfluencerProduct != true) {
+        _loadUserPoint();
+      }
       _checkFavoriteStatus();
       _loadRecommendedProducts();
       _resumePendingCheckoutIfNeeded();
-    } catch (_) {
-      _safeSetState(() {
-        _isLoading = false;
-        _hasError = true;
-      });
+    } catch (e) {
+      if (!mounted || serial != _detailLoadSerial) return;
+      await _failProductDetail(serial, e.toString());
     }
+  }
+
+  Future<void> _failProductDetail(int serial, String reason) async {
+    _safeSetState(() {
+      _product = null;
+      _isLoading = false;
+      _hasError = true;
+    });
+    final user = await AuthService.getUser();
+    if (!mounted || serial != _detailLoadSerial) return;
+    await FailureLog.record(
+      code: 'product.detail',
+      mbId: user?.id ?? '',
+      reason: reason,
+      detail: {
+        'productId': widget.productId,
+        'productKind': 'prescription',
+      },
+    );
+    if (!mounted || serial != _detailLoadSerial || _failureAlertOpen) return;
+    _failureAlertOpen = true;
+    final confirmed = await AppAlertDialog.show(
+      context,
+      title: '상품 정보',
+      message: '상품 정보를 불러오지 못했습니다.',
+    );
+    _failureAlertOpen = false;
+    if (confirmed != true || !mounted || serial != _detailLoadSerial) return;
+    await _loadProductDetail();
   }
 
   Future<void> _loadRecommendedProducts() async {
@@ -574,7 +606,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                         : _product == null
                             ? _buildErrorState()
                             : _buildProductDetail(),
-                if (!_isLoading && !_hasError && _product != null)
+                if (!_isLoading && (_hasError || _product != null))
                   _buildFloatingTransparentAppBar(),
               ],
             ),
@@ -587,12 +619,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   }
 
   Widget _buildErrorState() {
-    return CenteredEmptyState(
-      iconWidget: CenteredEmptyState.assetIcon(
-        context,
-        AppAssets.emptyCategoryIcon,
+    return Center(
+      child: LoadFailureNotice(
+        message: '상품 정보를 불러오지 못했습니다.',
+        actionLabel: '새로고침',
+        onRetry: _loadProductDetail,
       ),
-      message: '상품 정보가 없습니다.',
     );
   }
 

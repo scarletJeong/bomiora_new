@@ -19,7 +19,7 @@ class AppAlertDialog extends StatelessWidget {
   final String confirmText;
   final double width;
 
-  static Future<void> show(
+  static Future<bool?> show(
     BuildContext context, {
     required String title,
     required String message,
@@ -27,7 +27,7 @@ class AppAlertDialog extends StatelessWidget {
     double width = 272,
     bool useRootNavigator = false,
   }) {
-    return showDialog<void>(
+    return showDialog<bool>(
       context: context,
       barrierDismissible: false,
       useRootNavigator: useRootNavigator,
@@ -133,7 +133,7 @@ class AppAlertDialog extends StatelessWidget {
                 color: const Color(0xFFFF5A8D),
                 borderRadius: BorderRadius.circular(healthDp(context, 10)),
                 child: InkWell(
-                  onTap: () => Navigator.of(context).pop(),
+                  onTap: () => Navigator.of(context).pop(true),
                   borderRadius: BorderRadius.circular(healthDp(context, 10)),
                   child: Center(
                     child: Text(

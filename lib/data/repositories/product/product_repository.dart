@@ -72,7 +72,6 @@ class ProductRepository {
       page: page,
       pageSize: pageSize,
       cacheKey: cacheKey,
-      fallback: hit?.products ?? const [],
     );
     _listInFlight[cacheKey] = request;
     try {
@@ -90,37 +89,28 @@ class ProductRepository {
     required int page,
     required int pageSize,
     required String cacheKey,
-    required List<Product> fallback,
   }) async {
-    try {
-      String endpoint =
-          ApiEndpoints.productListByCategory(categoryId, productKind: productKind);
-      endpoint += '&page=$page&pageSize=$pageSize';
+    String endpoint =
+        ApiEndpoints.productListByCategory(categoryId, productKind: productKind);
+    endpoint += '&page=$page&pageSize=$pageSize';
 
-      final token = await AuthService.getToken();
-      Map<String, String>? headers;
-      if (token != null && token.isNotEmpty) {
-        headers = {'Authorization': 'Bearer $token'};
-      }
-
-      final response = await ApiClient.get(endpoint, additionalHeaders: headers);
-      if (response.statusCode == 200) {
-        try {
-          final data = json.decode(response.body);
-          final products = _parseProductList(data);
-          _listCache[cacheKey] = _ProductListCacheEntry(
-            products: products,
-            expiresAt: DateTime.now().add(_listCacheTtl),
-          );
-          return products;
-        } catch (_) {
-          return fallback;
-        }
-      }
-      return fallback;
-    } catch (_) {
-      return fallback;
+    final token = await AuthService.getToken();
+    Map<String, String>? headers;
+    if (token != null && token.isNotEmpty) {
+      headers = {'Authorization': 'Bearer $token'};
     }
+
+    final response = await ApiClient.get(endpoint, additionalHeaders: headers);
+    if (response.statusCode != 200) {
+      throw Exception('상품 목록 조회 실패 (${response.statusCode})');
+    }
+    final data = json.decode(response.body);
+    final products = _parseProductList(data);
+    _listCache[cacheKey] = _ProductListCacheEntry(
+      products: products,
+      expiresAt: DateTime.now().add(_listCacheTtl),
+    );
+    return products;
   }
 
   // 상품 상세 정보 가져오기
@@ -150,31 +140,25 @@ class ProductRepository {
   }
 
   static Future<Product?> _fetchProductDetail(String productId) async {
-    try {
-      final response = await ApiClient.get('${ApiEndpoints.productDetail}?id=$productId');
-      
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        
-        Product? productObj;
-        if (data is Map && data['success'] == true && data['data'] != null) {
-          final product = data['data'];
-          if (product is Map) {
-            productObj = Product.fromJson(Map<String, dynamic>.from(product));
-          }
-        } else if (data is Map && data['product'] != null) {
-          final product = data['product'];
-          if (product is Map) {
-            productObj = Product.fromJson(Map<String, dynamic>.from(product));
-          }
-        }
-        return productObj;
-      }
-      
-      return null;
-    } catch (e) {
-      return null;
+    final response =
+        await ApiClient.get('${ApiEndpoints.productDetail}?id=$productId');
+    if (response.statusCode != 200) {
+      throw Exception('상품 상세 조회 실패 (${response.statusCode})');
     }
+    final data = json.decode(response.body);
+
+    if (data is Map && data['success'] == true && data['data'] != null) {
+      final product = data['data'];
+      if (product is Map) {
+        return Product.fromJson(Map<String, dynamic>.from(product));
+      }
+    } else if (data is Map && data['product'] != null) {
+      final product = data['product'];
+      if (product is Map) {
+        return Product.fromJson(Map<String, dynamic>.from(product));
+      }
+    }
+    return null;
   }
 
   // 인기 상품 목록 가져오기

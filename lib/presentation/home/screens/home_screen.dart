@@ -411,7 +411,7 @@ class _HomeScreenState extends State<HomeScreen> {
         productKind: tab.productKind,
         page: 1,
         pageSize: 20,
-      );
+      ).catchError((_) => <Product>[]);
     }
   }
 

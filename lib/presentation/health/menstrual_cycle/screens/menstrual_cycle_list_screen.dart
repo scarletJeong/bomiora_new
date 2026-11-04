@@ -77,7 +77,7 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen>
         ProductRepository.getProductsByCategory(
           categoryId: '80',
           productKind: 'prescription',
-        ),
+        ).then((_) {}, onError: (_, __) {}),
       );
 
       final records =

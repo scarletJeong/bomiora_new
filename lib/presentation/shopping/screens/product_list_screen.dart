@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_assets.dart';
+import '../../../core/logging/failure_log.dart';
 import '../../../data/repositories/product/product_category_catalog.dart';
 import '../../../data/repositories/product/product_repository.dart';
+import '../../../data/services/auth_service.dart';
 import '../../../data/models/product/product_model.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/appbar_menutap.dart';
 import '../../health/health_common/widgets/health_app_bar.dart';
 import '../../common/widgets/app_footer.dart';
 import '../../common/widgets/centered_empty_state.dart';
+import '../../common/widgets/load_failure_notice.dart';
 import '../../common/widgets/navi_bar.dart';
 import '../../common/widgets/product_card.dart';
 import '../../common/widgets/scroll_reveal_top_overlay.dart';
@@ -51,6 +54,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
   final int _pageSize = 20;
   bool _hasMore = true;
   bool _isLoadingMore = false;
+  bool _moreLoadFailed = false;
   final ScrollController _scrollController = ScrollController();
   final ScrollController _tabScrollController = ScrollController();
   final ScrollController _stickyTabScrollController = ScrollController();
@@ -148,7 +152,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
   void _onScroll() {
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 200) {
-      if (!_isLoadingMore && _hasMore) {
+      if (!_isLoadingMore && _hasMore && !_moreLoadFailed) {
         _loadMoreProducts();
       }
     }
@@ -160,6 +164,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
     setState(() {
       _isLoading = true;
       _hasError = false;
+      _moreLoadFailed = false;
     });
 
     try {
@@ -179,14 +184,34 @@ class _ProductListScreenState extends State<ProductListScreen> {
         _currentPage = 1;
       });
       _scheduleActiveTabScroll();
-    } catch (_) {
+    } catch (e) {
+      await _logListFailure(e, categoryId: categoryId, page: 1);
       if (!mounted || requestToken != _productsRequestToken) return;
+      if (categoryId != _activeCategoryId) return;
       setState(() {
         _isLoading = false;
-        _hasError = true;
+        if (_products.isEmpty) _hasError = true;
       });
       _scheduleActiveTabScroll();
     }
+  }
+
+  Future<void> _logListFailure(
+    Object error, {
+    required String categoryId,
+    required int page,
+  }) async {
+    final user = await AuthService.getUser();
+    await FailureLog.record(
+      code: page <= 1 ? 'product.list' : 'product.list.more',
+      mbId: user?.id ?? '',
+      reason: error.toString(),
+      detail: {
+        'categoryId': categoryId,
+        'productKind': widget.productKind ?? '',
+        'page': page,
+      },
+    );
   }
 
   void _scheduleActiveTabScroll({bool animate = false}) {
@@ -198,17 +223,22 @@ class _ProductListScreenState extends State<ProductListScreen> {
     });
   }
 
+  void _retryLoadMore() {
+    setState(() => _moreLoadFailed = false);
+    _loadMoreProducts();
+  }
+
   Future<void> _loadMoreProducts() async {
     if (_isLoadingMore || !_hasMore) return;
 
     final requestToken = _productsRequestToken;
     final categoryId = _activeCategoryId;
+    final nextPage = _currentPage + 1;
     setState(() {
       _isLoadingMore = true;
     });
 
     try {
-      final nextPage = _currentPage + 1;
       final products = await ProductRepository.getProductsByCategory(
         categoryId: categoryId,
         productKind: widget.productKind,
@@ -232,9 +262,15 @@ class _ProductListScreenState extends State<ProductListScreen> {
         _isLoadingMore = false;
       });
     } catch (e) {
+      await _logListFailure(e, categoryId: categoryId, page: nextPage);
+      if (!mounted ||
+          requestToken != _productsRequestToken ||
+          categoryId != _activeCategoryId) {
+        return;
+      }
       setState(() {
         _isLoadingMore = false;
-        _hasMore = false;
+        _moreLoadFailed = true;
       });
     }
   }
@@ -270,17 +306,8 @@ class _ProductListScreenState extends State<ProductListScreen> {
       );
     }
 
-    if (_hasError && _products.isEmpty) {
-      return CenteredEmptyState(
-        iconWidget: CenteredEmptyState.assetIcon(
-          context,
-          AppAssets.emptyCategoryIcon,
-        ),
-        message: '등록된 상품이 없습니다.',
-      );
-    }
-
-    final showEmpty = _products.isEmpty;
+    final showEmpty = _products.isEmpty && !_hasError;
+    final showLoadError = _hasError && _products.isEmpty;
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -361,12 +388,28 @@ class _ProductListScreenState extends State<ProductListScreen> {
                   ),
                 ),
               ),
+              if (_moreLoadFailed)
+                SliverToBoxAdapter(
+                  child: LoadFailureNotice(
+                    message: '상품을 더 불러오지 못했습니다.',
+                    actionLabel: '새로고침',
+                    onRetry: _retryLoadMore,
+                  ),
+                ),
               const SliverToBoxAdapter(child: AppFooter()),
             ],
           ],
         ),
       ),
         ),
+        if (showLoadError)
+          PageCenteredEmptyOverlay(
+            child: LoadFailureNotice(
+              message: '상품이 없습니다.',
+              actionLabel: '새로고침',
+              onRetry: _loadProducts,
+            ),
+          ),
         if (showEmpty)
           PageCenteredEmptyOverlay(
             child: CenteredEmptyState(
