@@ -178,25 +178,23 @@ class AuthService {
     } catch (_) {}
   }
 
-  /// 탈퇴/차단 등으로 세션이 유효한지 확인
-  /// - active=false면 호출 측에서 logout 처리
+  /// 탈퇴·차단 등으로 세션이 유효한지 확인.
+  /// HTTP 200이고 `active == false`일 때만 false. 호출 측에서 로그아웃한다.
+  /// 상태 코드가 200이 아니거나 통신이 실패하면 true를 반환해 로그인 상태를 유지한다.
   static Future<bool> isSessionActive() async {
     try {
       final user = await getUser();
-      if (user == null || user.id.trim().isEmpty) return false;
+      if (user == null || user.id.trim().isEmpty) return true;
 
       final response = await ApiClient.get(
         '${ApiEndpoints.authSession}?mb_id=${Uri.encodeQueryComponent(user.id)}',
       );
 
-      if (response.statusCode != 200) {
-        // 서버 오류 시 즉시 로그아웃하지 않고 유지(보수적)
-        return true;
-      }
+      if (response.statusCode != 200) return true;
 
       final decoded = json.decode(response.body);
       if (decoded is! Map) return true;
-      return decoded['active'] == true;
+      return decoded['active'] != false;
     } catch (_) {
       return true;
     }

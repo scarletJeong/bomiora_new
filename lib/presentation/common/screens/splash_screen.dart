@@ -128,10 +128,16 @@ class _SplashScreenState extends State<SplashScreen> {
   Future<void> _ensureSession() async {
     final loggedIn = await AuthService.isLoggedIn();
     if (!loggedIn) return;
-    // 세션은 로그아웃 버튼에서만 지운다. 새로고침·자동로그인 체크로 풀지 않음.
+    var sessionAlive = true;
     try {
-      await AuthService.isSessionActive();
-    } catch (_) {}
+      sessionAlive = await AuthService.isSessionActive();
+    } catch (_) {
+      sessionAlive = true;
+    }
+    if (!sessionAlive) {
+      await AuthService.logout();
+      return;
+    }
     try {
       await FCMService().registerTokenWithServer();
     } catch (_) {}
