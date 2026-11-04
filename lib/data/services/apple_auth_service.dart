@@ -80,4 +80,8 @@ class AppleAuthService {
       };
     }
   }
+
+  /// Apple 로그인 SDK에는 원격 로그아웃 API가 없다.
+  /// 앱에 남은 회원 정보와 토큰은 AuthService.logout이 지운다.
+  static Future<void> logout() async {}
 }

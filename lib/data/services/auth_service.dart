@@ -8,7 +8,10 @@ import '../../core/network/api_client.dart';
 import '../../core/network/api_endpoints.dart';
 import '../../core/utils/node_value_parser.dart';
 import 'fcm_service_stub.dart' if (dart.library.io) 'fcm_service.dart';
+import 'apple_auth_service.dart';
+import 'cart_service.dart';
 import 'kakao_auth_service.dart';
+import 'last_login_via_service.dart';
 import 'naver_auth_service.dart';
 import 'prescription_purchase_history_service.dart';
 import 'recent_view_service.dart';
@@ -170,11 +173,24 @@ class AuthService {
     } catch (_) {}
 
     try {
+      CartService.invalidateCartCache();
+    } catch (_) {}
+
+    try {
       await KakaoAuthService.logout();
     } catch (_) {}
 
     try {
       await NaverAuthService.logout();
+    } catch (_) {}
+
+    try {
+      final via = await LastLoginViaService.load();
+      final appleLogin =
+          userId.startsWith('apple_') || via == LastLoginViaService.apple;
+      if (appleLogin) {
+        await AppleAuthService.logout();
+      }
     } catch (_) {}
   }
 

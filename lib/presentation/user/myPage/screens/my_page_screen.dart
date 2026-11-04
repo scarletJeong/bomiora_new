@@ -14,6 +14,7 @@ import 'refund_account_screen.dart';
 import '../widgets/my_page_common.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 import '../../../common/widgets/app_toast_overlay.dart';
+import '../../../common/widgets/confirm_dialog.dart';
 
 class MyPageScreen extends StatefulWidget {
   const MyPageScreen({super.key});
@@ -131,6 +132,12 @@ class _MyPageScreenState extends State<MyPageScreen> {
   }
 
   Future<void> _handleLogout() async {
+    final confirmed = await ConfirmDialog.show(
+      context,
+      title: '로그아웃',
+      message: '로그아웃 하시겠어요?',
+    );
+    if (confirmed != true || !mounted) return;
     await AuthService.logout();
     if (!mounted) return;
     setState(() {
