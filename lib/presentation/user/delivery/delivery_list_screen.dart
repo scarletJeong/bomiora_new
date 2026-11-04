@@ -106,15 +106,19 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
     }
   }
 
-  /// 주문 목록. 한 번에 10건만 받고, 더보기로 다음 페이지를 이어 붙인다.
-  Future<void> _loadOrders({bool force = false, bool append = false}) async {
+  /// 주문 목록. 현재 탭에 보이는 주문이 [fillTo]건이 되거나 다음 페이지가 없을 때까지 10건씩 이어 받는다.
+  Future<void> _loadOrders({
+    bool force = false,
+    bool append = false,
+    int? fillTo,
+  }) async {
     if (append) {
       if (_isLoading || _isLoadingMore || !_hasNext) return;
     } else if (_isLoading && !force) {
       return;
     }
     final gen = ++_ordersLoadGen;
-    final page = append ? _nextPage : 0;
+    final targetCount = fillTo ?? (append ? _visibleCount + _pageSize : _pageSize);
 
     setState(() {
       if (append) {
@@ -140,54 +144,69 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
       }
       _loggedOut = false;
       final userId = user.id;
-      
-      final result = await OrderService.getOrderList(
-        mbId: userId,
-        period: 0,
-        status: 'all',
-        page: page,
-        size: _pageSize,
-        forceRefresh: force || append,
-      );
-      
-      if (result['success'] == true) {
+      final orders = append
+          ? List<OrderListModel>.from(_allOrders)
+          : <OrderListModel>[];
+      final reviewed = append
+          ? Map<String, List<String>>.from(_reviewedItIdsByOd)
+          : <String, List<String>>{};
+      final seen = orders.map((order) => order.odId).toSet();
+      var page = append ? _nextPage : 0;
+      var hasNext = false;
+      var guard = 0;
+
+      while (guard < 30) {
+        guard++;
+        if (!mounted || gen != _ordersLoadGen) return;
+        final result = await OrderService.getOrderList(
+          mbId: userId,
+          period: 0,
+          status: 'all',
+          page: page,
+          size: _pageSize,
+          forceRefresh: force || append || page > 0,
+        );
         if (gen != _ordersLoadGen) return;
+        if (result['success'] != true) {
+          if (orders.isEmpty) {
+            await _reportOrderLoadFailure(
+              gen: gen,
+              mbId: userId,
+              reason: result['message']?.toString() ?? '주문 목록 조회에 실패했습니다.',
+            );
+            return;
+          }
+          hasNext = true;
+          break;
+        }
+
         final pageOrders = _ordersFromResult(result['orders']);
         pageOrders.sort((a, b) => b.orderDateTime.compareTo(a.orderDateTime));
-
         if (!mounted || gen != _ordersLoadGen) return;
-        final reviewed = await _reviewedItIdsBeforePaint(
+        final pageReviewed = await _reviewedItIdsBeforePaint(
           userId,
           pageOrders,
           result['reviewedByOrder'],
         );
         if (!mounted || gen != _ordersLoadGen) return;
-        setState(() {
-          if (append) {
-            final seen = _allOrders.map((order) => order.odId).toSet();
-            _allOrders = [
-              ..._allOrders,
-              ...pageOrders.where((order) => seen.add(order.odId)),
-            ];
-            _reviewedItIdsByOd = {..._reviewedItIdsByOd, ...reviewed};
-          } else {
-            _allOrders = pageOrders;
-            _reviewedItIdsByOd = reviewed;
-          }
-          _allOrders.sort((a, b) => b.orderDateTime.compareTo(a.orderDateTime));
-          _nextPage = page + 1;
-          _hasNext = _resultHasNext(result, pageOrders.length);
-          if (!append) _visibleCount = _pageSize;
-          _loadFailed = false;
-          _applyFilter();
-        });
-      } else if (gen == _ordersLoadGen) {
-        await _reportOrderLoadFailure(
-          gen: gen,
-          mbId: userId,
-          reason: result['message']?.toString() ?? '주문 목록 조회에 실패했습니다.',
-        );
+        orders.addAll(pageOrders.where((order) => seen.add(order.odId)));
+        reviewed.addAll(pageReviewed);
+        hasNext = _resultHasNext(result, pageOrders.length);
+        page++;
+        if (_filteredCount(orders) >= targetCount || !hasNext) break;
       }
+
+      if (!mounted || gen != _ordersLoadGen) return;
+      setState(() {
+        orders.sort((a, b) => b.orderDateTime.compareTo(a.orderDateTime));
+        _allOrders = orders;
+        _reviewedItIdsByOd = reviewed;
+        _nextPage = page;
+        _hasNext = hasNext;
+        if (!append) _visibleCount = _pageSize;
+        _loadFailed = false;
+        _applyFilter();
+      });
     } catch (e) {
       await _reportOrderLoadFailure(
         gen: gen,
@@ -255,15 +274,18 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
   }
 
   Future<void> _loadMoreOrders() async {
-    if (_displayedOrders.length > _visibleCount) {
-      setState(() => _visibleCount += _pageSize);
-      return;
+    final target = _visibleCount + _pageSize;
+    if (_displayedOrders.length < target && _hasNext && !_isLoadingMore) {
+      await _loadOrders(append: true, fillTo: target);
     }
-    if (!_hasNext || _isLoadingMore) return;
-    final before = _allOrders.length;
-    await _loadOrders(append: true);
-    if (!mounted || _allOrders.length <= before) return;
-    setState(() => _visibleCount += _pageSize);
+    if (!mounted) return;
+    setState(() => _visibleCount = target);
+  }
+
+  Future<void> _fillDisplayedTo(int count) async {
+    if (_displayedOrders.length >= count || !_hasNext) return;
+    if (_isLoading || _isLoadingMore) return;
+    await _loadOrders(append: true, fillTo: count);
   }
 
   List<String> _stringIds(dynamic value) {
@@ -348,68 +370,71 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
 
   /// 필터 적용
   void _applyFilter() {
-    final byType = _allOrders.where((order) {
-      if (_selectedProductType == DeliveryProductType.prescription) {
-        return order.isPrescriptionOrder;
-      }
-      return !order.isPrescriptionOrder;
-    });
+    _displayedOrders = _allOrders.where(_matchesCurrentFilter).toList();
+  }
 
+  int _filteredCount(List<OrderListModel> orders) {
+    return orders.where(_matchesCurrentFilter).length;
+  }
+
+  bool _matchesCurrentFilter(OrderListModel order) {
+    final typeMatches = _selectedProductType == DeliveryProductType.prescription
+        ? order.isPrescriptionOrder
+        : !order.isPrescriptionOrder;
+    if (!typeMatches) return false;
     if (_selectedStatus == 'all') {
-      _displayedOrders = byType.where((order) {
-        if (isOrderCancelled(order)) return false;
-        if (isOrderCompleted(order)) return true;
-        if (order.countsAsOpenOrderHistory) return true;
-        return isOrderPaymentWaiting(order);
-      }).toList();
-      return;
+      if (isOrderCancelled(order)) return false;
+      if (isOrderCompleted(order)) return true;
+      if (order.countsAsOpenOrderHistory) return true;
+      return isOrderPaymentWaiting(order);
     }
+    return _matchesStatusFilter(order);
+  }
 
-    _displayedOrders = byType.where((order) {
-      final displayStatus = order.displayStatus;
-      final od = order.odStatus;
-      switch (_selectedStatus) {
-        case 'payment_waiting':
-          return displayStatus == '결제대기중' || od == '주문';
-        case 'consultation_done':
-          if (displayStatus == '배송중' ||
-              displayStatus == '배송완료' ||
-              od == '배송' ||
-              od == '완료') {
-            return false;
-          }
-          return order.isConsultationDone ||
-              displayStatus == '상담완료' ||
-              displayStatus.contains('상담');
-        case 'paid':
-          return !order.isConsultationDone &&
-              (displayStatus == '결제완료' ||
-                  (od == '입금' && displayStatus != '상담완료') ||
-                  (order.isPrescriptionOrder &&
-                      od == '준비' &&
-                      displayStatus != '상담완료'));
-        case 'preparing':
-          return !order.isPrescriptionOrder &&
-              (displayStatus == '배송준비중' || od == '준비');
-        case 'delivering':
-          return displayStatus == '배송중' || od == '배송';
-        case 'completed':
-          return displayStatus == '배송완료' || od == '완료';
-        case 'cancelled':
-          return displayStatus.contains('취소') ||
-              od.contains('취소') ||
-              displayStatus == '주문 취소' ||
-              displayStatus == '주문취소';
-        default:
-          return true;
-      }
-    }).toList();
+  bool _matchesStatusFilter(OrderListModel order) {
+    final displayStatus = order.displayStatus;
+    final od = order.odStatus;
+    switch (_selectedStatus) {
+      case 'payment_waiting':
+        return displayStatus == '결제대기중' || od == '주문';
+      case 'consultation_done':
+        if (displayStatus == '배송중' ||
+            displayStatus == '배송완료' ||
+            od == '배송' ||
+            od == '완료') {
+          return false;
+        }
+        return order.isConsultationDone ||
+            displayStatus == '상담완료' ||
+            displayStatus.contains('상담');
+      case 'paid':
+        return !order.isConsultationDone &&
+            (displayStatus == '결제완료' ||
+                (od == '입금' && displayStatus != '상담완료') ||
+                (order.isPrescriptionOrder &&
+                    od == '준비' &&
+                    displayStatus != '상담완료'));
+      case 'preparing':
+        return !order.isPrescriptionOrder &&
+            (displayStatus == '배송준비중' || od == '준비');
+      case 'delivering':
+        return displayStatus == '배송중' || od == '배송';
+      case 'completed':
+        return displayStatus == '배송완료' || od == '완료';
+      case 'cancelled':
+        return displayStatus.contains('취소') ||
+            od.contains('취소') ||
+            displayStatus == '주문 취소' ||
+            displayStatus == '주문취소';
+      default:
+        return true;
+    }
   }
 
   void _selectProductType(String productType) {
     if (_selectedProductType == productType) return;
     // 필터 UI는 바에서 먼저 반영되고, 목록 리빌드는 다음 프레임에 수행
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted || _selectedProductType == productType) return;
       setState(() {
         _selectedProductType = productType;
@@ -418,13 +443,14 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
         _applyFilter();
       });
       _scrollToTop();
+      await _fillDisplayedTo(_pageSize);
     });
   }
 
   /// 상태 필터 선택
   void _selectStatus(String status) {
     if (_selectedStatus == status) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted || _selectedStatus == status) return;
       setState(() {
         _selectedStatus = status;
@@ -432,6 +458,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
         _applyFilter();
       });
       _scrollToTop();
+      await _fillDisplayedTo(_pageSize);
     });
   }
 
@@ -499,14 +526,18 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
                 else if (_displayedOrders.isEmpty)
                   SliverFillRemaining(
                     hasScrollBody: false,
-                    child: _canLoadMore
-                        ? Padding(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: healthDp(context, 27),
-                            ),
-                            child: Center(child: _buildMoreButton()),
+                    child: _isLoadingMore
+                        ? const Center(
+                            child: CircularProgressIndicator(color: _kPink),
                           )
-                        : const SizedBox.shrink(),
+                        : _canLoadMore
+                            ? Padding(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: healthDp(context, 27),
+                                ),
+                                child: Center(child: _buildMoreButton()),
+                              )
+                            : const SizedBox.shrink(),
                   )
                 else
                   SliverPadding(
