@@ -9,6 +9,7 @@ import '../../../common/widgets/dropdown_btn.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/app_toast_overlay.dart';
 import '../../../common/widgets/centered_empty_state.dart';
+import '../../../common/widgets/load_failure_notice.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
 
@@ -27,12 +28,18 @@ class _RefundAccountScreenState extends State<RefundAccountScreen> {
   static const String _bankEmptyHint = '은행을 선택하세요';
 
   String _selectedBank = '';
+  String _mbId = '';
   bool _isLoggedIn = false;
   bool _loadingRefund = true;
+  bool _loadFailed = false;
+  bool _saving = false;
+
+  int get _accountDigitCount =>
+      _accountController.text.replaceAll(RegExp(r'[^0-9]'), '').length;
 
   bool get _canSubmit =>
       _selectedBank.trim().isNotEmpty &&
-      _accountController.text.trim().isNotEmpty &&
+      _accountDigitCount >= 10 &&
       _ownerController.text.trim().isNotEmpty;
 
   List<String> get _bankItemsForDropdown =>
@@ -62,12 +69,18 @@ class _RefundAccountScreenState extends State<RefundAccountScreen> {
     }
     setState(() {
       _isLoggedIn = true;
+      _mbId = user.id;
       _loadingRefund = true;
+      _loadFailed = false;
     });
     await _loadRefund(user.id);
   }
 
   Future<void> _loadRefund(String mbId) async {
+    setState(() {
+      _loadingRefund = true;
+      _loadFailed = false;
+    });
     try {
       final data = await RefundAccountService.fetch(mbId);
       if (!mounted) return;
@@ -81,11 +94,15 @@ class _RefundAccountScreenState extends State<RefundAccountScreen> {
             '${data['refundHolder'] ?? data['mb_refund_holder'] ?? ''}'.trim();
         setState(() {
           _selectedBank = bank;
+          _loadFailed = false;
         });
         _accountController.text = acc;
         _ownerController.text = holder;
+      } else {
+        setState(() => _loadFailed = true);
       }
     } catch (_) {
+      if (mounted) setState(() => _loadFailed = true);
     } finally {
       if (mounted) {
         setState(() => _loadingRefund = false);
@@ -102,8 +119,16 @@ class _RefundAccountScreenState extends State<RefundAccountScreen> {
     super.dispose();
   }
 
+  String _saveFailureMessage(Object? raw) {
+    final text = raw?.toString().trim() ?? '';
+    if (text.isEmpty || RegExp(r'\(\d{3}\)').hasMatch(text)) {
+      return '환불계좌를 저장하지 못했습니다.';
+    }
+    return text;
+  }
+
   Future<void> _submit() async {
-    if (!_canSubmit) return;
+    if (_saving || !_canSubmit) return;
     if (!_formKey.currentState!.validate()) return;
 
     final user = await AuthService.getUser();
@@ -114,10 +139,9 @@ class _RefundAccountScreenState extends State<RefundAccountScreen> {
 
     final digitsOnly =
         _accountController.text.replaceAll(RegExp(r'[^0-9]'), '');
-    if (digitsOnly.length < 10) {
-      return;
-    }
 
+    _saving = true;
+    setState(() {});
     try {
       final data = await RefundAccountService.save(
         mbId: user.id,
@@ -129,8 +153,17 @@ class _RefundAccountScreenState extends State<RefundAccountScreen> {
       if (data['success'] == true) {
         AppToastOverlay.show(context, '환불계좌 등록이 완료되었습니다.');
         Navigator.pop(context, true);
+        return;
       }
-    } catch (_) {}
+      AppToastOverlay.showAlert(context, _saveFailureMessage(data['message']));
+    } catch (_) {
+      if (!mounted) return;
+      AppToastOverlay.showAlert(context, '환불계좌를 저장하지 못했습니다.');
+    } finally {
+      if (mounted) {
+        setState(() => _saving = false);
+      }
+    }
   }
 
   @override
@@ -158,6 +191,16 @@ class _RefundAccountScreenState extends State<RefundAccountScreen> {
                         height: healthDp(context, 36),
                         child: const CircularProgressIndicator(
                             color: Color(0xFFFF5A8D)),
+                      ),
+                    )
+                  : _loadFailed
+                  ? Center(
+                      child: LoadFailureNotice(
+                        message: '환불계좌를 불러오지 못했습니다.',
+                        onRetry: () {
+                          if (_mbId.isEmpty) return;
+                          _loadRefund(_mbId);
+                        },
                       ),
                     )
                   : Column(
@@ -201,10 +244,19 @@ class _RefundAccountScreenState extends State<RefundAccountScreen> {
                                   inputFormatters: [
                                     FilteringTextInputFormatter.digitsOnly,
                                   ],
-                                  validator: (v) =>
-                                      (v == null || v.trim().isEmpty)
-                                          ? '계좌번호를 입력해주세요'
-                                          : null,
+                                  validator: (v) {
+                                    final digits = (v ?? '').replaceAll(
+                                      RegExp(r'[^0-9]'),
+                                      '',
+                                    );
+                                    if (digits.isEmpty) {
+                                      return '계좌번호를 입력해주세요';
+                                    }
+                                    if (digits.length < 10) {
+                                      return '계좌번호는 10자리 이상이어야 합니다.';
+                                    }
+                                    return null;
+                                  },
                                 ),
                                 const SizedBox(height: 20),
                                 const _FieldLabel('예금주명'),
@@ -264,7 +316,7 @@ class _RefundAccountScreenState extends State<RefundAccountScreen> {
                                   child: _RefundFormButton(
                                     label: '확인',
                                     filled: true,
-                                    enabled: _canSubmit,
+                                    enabled: _canSubmit && !_saving,
                                     onTap: _submit,
                                   ),
                                 ),
