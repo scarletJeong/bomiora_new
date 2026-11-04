@@ -1002,13 +1002,18 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
             final trackH = healthDp(context, 8);
             final thumbR = healthDp(context, 7);
             final labelW = healthDp(context, 36);
+            // 왼쪽 끝과 원·막대 시작 사이에 간격을 둔다.
+            final leadingGap = healthDp(context, 5);
+            final inset = thumbR + leadingGap;
+            final innerW = (w - inset).clamp(0.0, w);
 
             final sliderKg = _weightLossKg.clamp(1, 30);
-            double xForKg(int kg) => w <= 0 ? 0 : ((kg - 1) / 29.0) * w;
+            double xForKg(int kg) =>
+                innerW <= 0 ? inset : inset + ((kg - 1) / 29.0) * innerW;
 
             void setFromLocalDx(double dx) {
-              if (w <= 0) return;
-              final t = (dx / w).clamp(0.0, 1.0);
+              if (innerW <= 0) return;
+              final t = ((dx - inset) / innerW).clamp(0.0, 1.0);
               final kg = (1 + t * 29).round().clamp(1, 30);
               setState(() => _weightLossKg = kg);
               _syncWeightField();
@@ -1076,7 +1081,7 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
                       children: [
                         // 트랙(비활성)
                         Positioned(
-                          left: 0,
+                          left: inset,
                           right: 0,
                           top: thumbR - trackH / 2,
                           child: Container(
@@ -1089,8 +1094,8 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
                         ),
                         // 트랙(활성)
                         Positioned(
-                          left: 0,
-                          width: xForKg(sliderKg).clamp(0.0, w).toDouble(),
+                          left: inset,
+                          width: (xForKg(sliderKg) - inset).clamp(0.0, innerW),
                           top: thumbR - trackH / 2,
                           child: Container(
                             height: trackH,
@@ -1126,7 +1131,10 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
                       for (final kg in _weightLabelMarks)
                         Positioned(
                           left: kg == 1
-                              ? 0
+                              ? leadingGap.clamp(
+                                  0.0,
+                                  (w - labelW).clamp(0.0, w),
+                                )
                               : kg == 30
                                   ? (w - labelW).clamp(0.0, w)
                                   : (xForKg(kg) - labelW / 2).clamp(
