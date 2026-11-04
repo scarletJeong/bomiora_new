@@ -21,6 +21,8 @@ import '../../../data/repositories/product/product_option_repository.dart';
 import '../../../data/repositories/product/product_category_catalog.dart';
 import '../../../data/models/cart/cart_item_model.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
+import '../../common/widgets/navi_bar.dart';
+import '../../home/home_refresh.dart';
 import '../../common/widgets/app_toast_overlay.dart';
 import '../widgets/product_tail_info_section.dart';
 import '../widgets/option_bottomup.dart';
@@ -1358,10 +1360,8 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
                 const Spacer(),
                 _detailAppBarIconButton(
                   onPressed: () {
-                    Navigator.of(context).pushNamedAndRemoveUntil(
-                      '/home',
-                      (route) => false,
-                    );
+                    HomeRefresh.request();
+                    goNamedKeepingExisting(context, '/home');
                   },
                   child: _detailAppBarSvgIcon(
                     AppAssets.appbarHomeIcon,
