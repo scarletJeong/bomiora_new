@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/utils/image_url_helper.dart';
 import '../../../data/models/product/product_model.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import 'app_clickable.dart';
@@ -218,10 +219,11 @@ class ProductCardWithSubscription extends StatelessWidget {
   }
 
   Widget _buildImage(BuildContext context) {
-    if (product.displayImageUrl.isEmpty) return _placeholder(context);
+    final imageUrl = ImageUrlHelper.productGridThumbUrl(product.displayImageUrl);
+    if (imageUrl.isEmpty) return _placeholder(context);
 
     final image = ProductCoverRatioImage(
-      url: product.displayImageUrl,
+      url: imageUrl,
       onSettled: onImageSettled,
       errorBuilder: (_, __, ___) => _placeholder(context),
       loadingBuilder: (context, child, progress) {

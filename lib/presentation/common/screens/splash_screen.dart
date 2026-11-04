@@ -144,6 +144,15 @@ class _SplashScreenState extends State<SplashScreen> {
   ) async {
     if (!mounted) return;
     unawaited(ContentService.getHomePreviewList());
+    // 홈 ‘건강을 채우는 시간’ 다이어트 첫 카드. 스플래시 동안 목록만 먼저 받아 둔다.
+    unawaited(
+      ProductRepository.getProductsByCategory(
+        categoryId: '10',
+        productKind: 'prescription',
+        page: 1,
+        pageSize: 4,
+      ),
+    );
 
     final results = await Future.wait<Object>([
       bannersFuture,

@@ -89,8 +89,10 @@ class AppNetworkImage extends StatefulWidget {
     final cacheW = cachePx(context, logicalW);
     final cacheH = cachePx(context, logicalH);
 
+    // 웹 카드는 cacheWidth 없이 NetworkImage를 쓴다. ResizeImage로 미리 받으면
+    // 위젯과 캐시 키가 달라 같은 그림을 한 번 더 받는다.
     ImageProvider provider = NetworkImage(trimmed);
-    if (cacheW != null || cacheH != null) {
+    if (!kIsWeb && (cacheW != null || cacheH != null)) {
       provider = ResizeImage(
         provider,
         width: cacheW,

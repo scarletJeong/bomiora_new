@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../../common/widgets/centered_empty_state.dart';
 
 import '../../../core/constants/app_assets.dart';
+import '../../../core/utils/image_url_helper.dart';
 import '../../../data/models/home/banner_model.dart';
 import '../../../data/models/product/product_model.dart';
 import '../../../core/logging/failure_log.dart';
@@ -21,6 +22,7 @@ import '../../common/widgets/app_network_image.dart';
 import '../../common/navigation/app_bar_nav_guard.dart';
 import '../../common/widgets/appbar_menutap.dart';
 import '../../common/widgets/navi_bar.dart';
+import '../../common/widgets/product_card.dart';
 import '../../common/widgets/product_card_with_subscription.dart';
 import '../../common/widgets/product_main_card.dart';
 import '../../common/widgets/web_dragscroll.dart';
@@ -105,6 +107,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _categoryListFailed = false;
   final Map<String, List<Product>> _productsByCategory = {};
   bool _categoryLoading = false;
+  Future<void> _dietLeadReady = Future<void>.value();
 
   @override
   void initState() {
@@ -123,8 +126,47 @@ class _HomeScreenState extends State<HomeScreen> {
     _newProductsFuture = widget.newProductsFuture ??
         ProductRepository.getNewProducts(limit: _kNewLimit);
     _loadNewProducts();
+    _dietLeadReady = _precacheDietLeadThumbs();
     unawaited(_precacheGuidebookThumbs());
     _scheduleBelowFoldLoad();
+  }
+
+  /// 다이어트 탭이 기본 선택이다. 첫 두 장 썸네일을 다른 목록보다 먼저 받는다.
+  Future<void> _precacheDietLeadThumbs() async {
+    const cacheKey = 'prescription:10';
+    try {
+      final products = await ProductRepository.getProductsByCategory(
+        categoryId: '10',
+        productKind: 'prescription',
+        page: 1,
+        pageSize: _kCategoryMaxDisplay,
+      );
+      if (!mounted) return;
+      setState(() {
+        _productsByCategory[cacheKey] = products;
+        if (_tabs.isNotEmpty &&
+            _cacheKeyForTab(_tabs[_selectedTabIndex]) == cacheKey) {
+          _categoryLoading = false;
+        }
+      });
+      final jobs = <Future<void>>[];
+      for (final product in products.take(2)) {
+        final url = ImageUrlHelper.productGridThumbUrl(product.displayImageUrl);
+        if (url.isEmpty) continue;
+        jobs.add(
+          AppNetworkImage.precacheUrl(
+            context,
+            url,
+            width: kProductDetailThumbWidth,
+            height: kProductDetailThumbHeight,
+            decodeWidthLogical: kProductDetailThumbWidth,
+            decodeHeightLogical: kProductDetailThumbHeight,
+          ),
+        );
+      }
+      if (jobs.isEmpty || !mounted) return;
+      await Future.wait(jobs);
+    } catch (_) {}
   }
 
   Future<void> _precacheGuidebookThumbs() async {
@@ -406,6 +448,19 @@ class _HomeScreenState extends State<HomeScreen> {
           }
         });
       }, onError: (_, __) {});
+    }
+    unawaited(_prefetchWiderCategoryLists(tabs));
+  }
+
+  /// 카테고리 전체 20건은 다이어트 첫 두 썸네일 다음에 받는다.
+  Future<void> _prefetchWiderCategoryLists(
+    List<ProductCategoryItem> tabs,
+  ) async {
+    await _dietLeadReady;
+    if (!mounted) return;
+    for (final tab in tabs) {
+      final id = tab.categoryId.trim();
+      if (id.isEmpty) continue;
       ProductRepository.getProductsByCategory(
         categoryId: id,
         productKind: tab.productKind,
@@ -514,6 +569,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _settledImages = 0;
     });
     _loadNewProducts();
+    _dietLeadReady = _precacheDietLeadThumbs();
     unawaited(_precacheGuidebookThumbs());
     _scheduleBelowFoldLoad();
     WidgetsBinding.instance.addPostFrameCallback((_) {
