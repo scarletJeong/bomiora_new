@@ -414,7 +414,7 @@ class _SignupScreenState extends State<SignupScreen> {
     try {
       final result = await AuthRepository.register(
         email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
+        password: _passwordController.text,
         name: _certName!,
         phone: _certPhone,
         birthday: _certBirthday,
