@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/constants/app_assets.dart';
-import '../../../core/utils/date_formatter.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../data/models/announcement/announcement_model.dart';
 import '../../../data/models/content/content_post.dart';
@@ -627,7 +626,6 @@ class _SearchListScreenState extends State<SearchListScreen> {
 
   Widget _buildThumbListRow({
     required String title,
-    String? subtitle,
     String? imageUrl,
     IconData fallbackIcon = Icons.article_outlined,
     required VoidCallback onTap,
@@ -655,7 +653,7 @@ class _SearchListScreenState extends State<SearchListScreen> {
             ),
           ),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(radius),
@@ -689,20 +687,6 @@ class _SearchListScreenState extends State<SearchListScreen> {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    if (subtitle != null && subtitle.isNotEmpty) ...[
-                      SizedBox(height: healthDp(context, 6)),
-                      Text(
-                        subtitle,
-                        style: TextStyle(
-                          color: _muted,
-                          fontSize: healthSp(context, 14),
-                          fontFamily: 'Gmarket Sans TTF',
-                          fontWeight: FontWeight.w500,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
                   ],
                 ),
               ),
@@ -716,7 +700,6 @@ class _SearchListScreenState extends State<SearchListScreen> {
   Widget _buildEventListRow(EventModel event) {
     return _buildThumbListRow(
       title: event.wrSubject,
-      subtitle: DateDisplayFormatter.formatYmdFromString(event.wrDatetime),
       imageUrl: event.getImageUrl(),
       fallbackIcon: Icons.celebration_outlined,
       onTap: () => _openEvent(event),
@@ -727,7 +710,6 @@ class _SearchListScreenState extends State<SearchListScreen> {
     final imagePath = item.imagePath?.trim();
     return _buildThumbListRow(
       title: item.title,
-      subtitle: DateDisplayFormatter.formatYmdFromString(item.createdAtRaw),
       imageUrl: imagePath != null && imagePath.isNotEmpty
           ? ImageUrlHelper.getImageUrl(imagePath)
           : null,
