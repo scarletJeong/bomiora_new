@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../core/logging/failure_log.dart';
 import '../../../data/models/user/user_model.dart';
 import '../../../data/repositories/auth/auth_repository.dart';
 import '../../../data/services/auth_service.dart';
@@ -519,10 +520,22 @@ class _SocialSignupScreenState extends State<SocialSignupScreen> {
             ? Map<String, dynamic>.from(userRaw)
             : Map<String, dynamic>.from(data),
       );
-      final userId =
-          NodeValueParser.asString(userJson['mb_id']) ??
-          NodeValueParser.asString(userJson['id']) ??
-          '';
+      final userId = _signupMemberId(userJson);
+      if (userId == null) {
+        await FailureLog.record(
+          code: 'auth.signup',
+          mbId: '',
+          reason: '회원 번호가 없습니다.',
+          detail: {'provider': widget.provider, 'email': email},
+        );
+        if (!mounted) return;
+        const message = '회원가입에 실패했습니다.';
+        setState(() => _errorText = message);
+        if (_usesDesignedSignup && _kakaoStep == _KakaoSignupStep.agreement) {
+          AppToastOverlay.show(context, message);
+        }
+        return;
+      }
       userJson['id'] = userId;
 
       await AuthService.saveLoginData(
@@ -1333,4 +1346,12 @@ class _SocialSignupScreenState extends State<SocialSignupScreen> {
       ],
     );
   }
+}
+
+String? _signupMemberId(Map<String, dynamic> userJson) {
+  for (final key in ['mb_id', 'id', 'mbId', 'mb_no']) {
+    final value = NodeValueParser.asString(userJson[key])?.trim() ?? '';
+    if (value.isNotEmpty) return value;
+  }
+  return null;
 }

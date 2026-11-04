@@ -464,9 +464,14 @@ class _SignupScreenState extends State<SignupScreen> {
               ? Map<String, dynamic>.from(userRaw)
               : <String, dynamic>{},
         );
-        final userId = NodeValueParser.asString(userJson['mb_id']) ??
-            NodeValueParser.asString(userJson['id']) ??
-            '';
+        final userId = _signupMemberId(userJson);
+        if (userId == null) {
+          await _reportSignupFailure(
+            '회원가입에 실패했습니다.',
+            reason: '회원 번호가 없습니다.',
+          );
+          return;
+        }
         userJson['id'] = userId;
 
         final user = UserModel.fromJson(userJson);
@@ -1243,4 +1248,12 @@ class _GenderOption extends StatelessWidget {
       ),
     );
   }
+}
+
+String? _signupMemberId(Map<String, dynamic> userJson) {
+  for (final key in ['mb_id', 'id', 'mbId', 'mb_no']) {
+    final value = NodeValueParser.asString(userJson[key])?.trim() ?? '';
+    if (value.isNotEmpty) return value;
+  }
+  return null;
 }
