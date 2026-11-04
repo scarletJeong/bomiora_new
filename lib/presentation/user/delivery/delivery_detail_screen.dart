@@ -2,6 +2,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
+import '../../../core/logging/failure_log.dart';
 import '../../../data/models/cart/cart_item_model.dart';
 import '../../../data/models/delivery/delivery_model.dart';
 import '../../../data/services/auth_service.dart';
@@ -60,6 +61,7 @@ class DeliveryDetailScreen extends StatefulWidget {
 class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
   OrderDetailModel? _orderDetail;
   bool _isLoading = true;
+  bool _requiresLogin = false;
   String _deliveryMemo = '';
   List<String> _reviewedItIds = const [];
 
@@ -91,18 +93,20 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
 
     final hasPreview = _orderDetail != null;
     if (!hasPreview) {
-      setState(() => _isLoading = true);
+      setState(() {
+        _isLoading = true;
+        _requiresLogin = false;
+      });
     }
 
     try {
       final user = await AuthService.getUser();
       if (user == null) {
         if (!mounted) return;
-        if (Navigator.canPop(context)) {
-          Navigator.pop(context);
-        } else {
-          Navigator.pushReplacementNamed(context, '/login');
-        }
+        setState(() {
+          _requiresLogin = true;
+          _isLoading = false;
+        });
         return;
       }
 
@@ -111,24 +115,55 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
         mbId: user.id,
       );
 
-      if (result['success'] == true) {
+      if (result['success'] == true && result['order'] is OrderDetailModel) {
         final order = result['order'] as OrderDetailModel;
         if (!mounted) return;
         setState(() {
+          _requiresLogin = false;
           _orderDetail = order;
           _deliveryMemo = (order.deliveryMessage ?? '').trim();
           _isLoading = false;
         });
-        // 리뷰 여부는 화면 표시 후 백그라운드에서
         if (_isCompletedStage(order)) {
           _loadReviewedItIds(user.id, order.odId);
         }
-      } else if (mounted) {
-        setState(() => _isLoading = false);
+        return;
       }
-    } catch (_) {
-      if (mounted) setState(() => _isLoading = false);
+      await _handleDetailLoadFailure(
+        mbId: user.id,
+        reason: result['message']?.toString() ?? '주문 상세 조회에 실패했습니다.',
+      );
+    } catch (e) {
+      await _handleDetailLoadFailure(
+        mbId: AuthService.currentUser?.id ?? '',
+        reason: e.toString(),
+      );
     }
+  }
+
+  /// 목록 카드가 있으면 그 화면을 유지하고 알린다.
+  /// 카드가 없으면 안내 후 주문 내역으로 보낸다.
+  Future<void> _handleDetailLoadFailure({
+    required String mbId,
+    required String reason,
+  }) async {
+    await FailureLog.record(
+      code: 'order.detail',
+      mbId: mbId,
+      reason: reason,
+    );
+    if (!mounted) return;
+    final hasPreview = _orderDetail != null;
+    setState(() {
+      _requiresLogin = false;
+      _isLoading = false;
+    });
+    if (hasPreview) {
+      AppToastOverlay.showAlert(context, '주문 내역을 불러오지 못했습니다.');
+      return;
+    }
+    AppToastOverlay.showAlert(context, '주문 내역을 불러올 수 없습니다.');
+    Navigator.pushReplacementNamed(context, '/order');
   }
 
   Future<void> _loadReviewedItIds(String mbId, String odId) async {
@@ -186,11 +221,31 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
             color: Colors.white,
           child: _isLoading
               ? const Center(child: CircularProgressIndicator())
-              : _orderDetail == null
-                  ? _buildErrorState()
-                  : _buildOrderDetail(),
+              : _requiresLogin
+                  ? _buildLoginState()
+                  : _orderDetail == null
+                      ? _buildErrorState()
+                      : _buildOrderDetail(),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildLoginState() {
+    return CenteredEmptyState(
+      iconWidget: CenteredEmptyState.assetIcon(
+        context,
+        AppAssets.emptyDeliveryIcon,
+      ),
+      message: '로그인 후 이용 가능합니다.',
+      trailing: CenteredEmptyState.loginButtonTrailing(
+        context,
+        onPressed: () async {
+          await Navigator.pushNamed(context, '/login');
+          if (!mounted) return;
+          await _loadOrderDetail();
+        },
       ),
     );
   }
@@ -202,13 +257,6 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
         AppAssets.emptyDeliveryIcon,
       ),
       message: '주문 내역을 불러올 수 없습니다.',
-      trailing: CenteredEmptyState.loginButtonTrailing(
-        context,
-        label: '주문내역으로',
-        onPressed: () {
-          Navigator.pushReplacementNamed(context, '/order');
-        },
-      ),
     );
   }
 
