@@ -247,7 +247,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       setState(() {
         _recommendedProducts = products;
       });
-    } catch (_) {
+    } catch (e) {
+      await FailureLog.record(
+        code: 'product.recommend',
+        mbId: AuthService.currentUser?.id ?? '',
+        reason: e.toString(),
+        detail: {'productId': widget.productId, 'productKind': 'prescription'},
+      );
       if (!mounted) return;
       setState(() {
         _recommendedProducts = [];

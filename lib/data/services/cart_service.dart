@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:math';
+import '../../core/logging/failure_log.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_endpoints.dart';
 import '../../core/utils/inf_code_tracker.dart';
@@ -503,13 +504,25 @@ class CartService {
       final response = await ApiClient.get(url);
       // 304는 캐시 히트인데 body가 비어 추천이 안 뜨는 경우가 있어 200만 성공 처리
       // (ApiClient GET에 no-cache 헤더로 304 자체를 줄임)
-      if (response.statusCode != 200) return [];
+      if (response.statusCode != 200) {
+        await _logRecommendFailure(id, 'status=${response.statusCode}');
+        return [];
+      }
 
       final data = json.decode(response.body);
-      if (data is! Map || data['success'] != true) return [];
+      if (data is! Map || data['success'] != true) {
+        await _logRecommendFailure(
+          id,
+          data is Map ? (data['message']?.toString() ?? 'success != true') : '응답 형식이 아닙니다.',
+        );
+        return [];
+      }
 
       final raw = data['data'];
-      if (raw is! List) return cached?.value ?? [];
+      if (raw is! List) {
+        await _logRecommendFailure(id, '추천 목록이 없습니다.');
+        return cached?.value ?? [];
+      }
 
       final list = raw
           .whereType<Map>()
@@ -517,9 +530,19 @@ class CartService {
           .toList();
       _productRecommendCache[id] = (value: list, at: DateTime.now());
       return list;
-    } catch (_) {
+    } catch (e) {
+      await _logRecommendFailure(id, e.toString());
       return cached?.value ?? [];
     }
+  }
+
+  static Future<void> _logRecommendFailure(String productId, String reason) async {
+    await FailureLog.record(
+      code: 'product.recommend',
+      mbId: AuthService.currentUser?.id ?? '',
+      reason: reason,
+      detail: {'productId': productId},
+    );
   }
 
   /// 장바구니 하단 인플루언서·MD 추천 상품 (PHP `get_influencer_recommend_products`)

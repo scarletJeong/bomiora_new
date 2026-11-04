@@ -465,8 +465,12 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
 
       if (!mounted) return;
       await _showCompletionDialog();
-    } catch (_) {
-      // ignored
+    } catch (e) {
+      await _notifySubmitFailure(
+        code: 'prescription.prepare',
+        toast: '예약을 저장하지 못했습니다.',
+        reason: e.toString(),
+      );
     } finally {
       if (mounted) {
         setState(() => _isSubmitting = false);
