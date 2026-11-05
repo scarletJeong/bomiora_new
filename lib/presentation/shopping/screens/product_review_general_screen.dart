@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../common/widgets/app_star_rating.dart';
+import '../../common/widgets/load_failure_notice.dart';
 import '../../../core/constants/app_assets.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../../data/models/review/review_model.dart';
@@ -24,6 +25,8 @@ class GeneralReviewTabPanel extends StatelessWidget {
   final String? fallbackImageUrl;
   final bool hasMore;
   final double? averageOverride;
+  final bool loadFailed;
+  final VoidCallback? onRetry;
 
   const GeneralReviewTabPanel({
     super.key,
@@ -39,6 +42,8 @@ class GeneralReviewTabPanel extends StatelessWidget {
     this.fallbackImageUrl,
     this.hasMore = false,
     this.averageOverride,
+    this.loadFailed = false,
+    this.onRetry,
   });
 
   @override
@@ -60,24 +65,28 @@ class GeneralReviewTabPanel extends StatelessWidget {
             padding: EdgeInsets.all(healthDp(context, 32)),
             child: const Center(child: CircularProgressIndicator(color: const Color(0xFFFF5A8D))),
           )
+        else if (loadFailed) ...[
+          LoadFailureNotice(
+            message: '리뷰를 불러오지 못했습니다',
+            onRetry: onRetry ?? () {},
+          ),
+        ] else if (visible.isEmpty)
+          const _GeneralReviewEmpty()
         else ...[
           GeneralReviewStatsCard(average: average),
           SizedBox(height: healthDp(context, 14)),
-          if (visible.isEmpty)
-            const _GeneralReviewEmpty()
-          else
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: hPad),
-              child: ProductReviewListSection(
-                reviews: visible,
-                showCategoryScores: false,
-                showCouponSection: showCouponSection,
-                guestLoginLocked: guestLoginLocked,
-                onGuestLoginTap: onGuestLoginTap,
-                onReviewTap: onReviewTap,
-                fallbackImageUrl: fallbackImageUrl,
-              ),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: hPad),
+            child: ProductReviewListSection(
+              reviews: visible,
+              showCategoryScores: false,
+              showCouponSection: showCouponSection,
+              guestLoginLocked: guestLoginLocked,
+              onGuestLoginTap: onGuestLoginTap,
+              onReviewTap: onReviewTap,
+              fallbackImageUrl: fallbackImageUrl,
             ),
+          ),
           if (!guestLoginLocked && (capped < sorted.length || hasMore))
             Padding(
               padding: EdgeInsets.fromLTRB(hPad, healthDp(context, 48), hPad, 0),

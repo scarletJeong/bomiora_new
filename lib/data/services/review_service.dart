@@ -368,6 +368,14 @@ class ReviewService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+        if (data is Map && data['success'] == false) {
+          return {
+            'success': false,
+            'message': (data['message'] ?? data['error'] ?? '리뷰 목록을 불러올 수 없습니다.')
+                .toString(),
+            'reviews': <ReviewModel>[],
+          };
+        }
 
         // 리뷰 목록 파싱
         List<ReviewModel> reviews = [];

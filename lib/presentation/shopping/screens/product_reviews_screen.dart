@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/app_assets.dart';
 import '../../common/widgets/app_star_rating.dart';
 import '../../common/widgets/centered_empty_state.dart';
+import '../../common/widgets/load_failure_notice.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../../data/models/review/review_model.dart';
 import '../widgets/product_review_list_card.dart';
@@ -24,6 +25,8 @@ class PrescriptionReviewTabPanel extends StatelessWidget {
   final String? fallbackImageUrl;
   final bool hasMore;
   final PrescriptionReviewStats? statsOverride;
+  final bool loadFailed;
+  final VoidCallback? onRetry;
 
   const PrescriptionReviewTabPanel({
     super.key,
@@ -39,6 +42,8 @@ class PrescriptionReviewTabPanel extends StatelessWidget {
     this.fallbackImageUrl,
     this.hasMore = false,
     this.statsOverride,
+    this.loadFailed = false,
+    this.onRetry,
   });
 
   @override
@@ -60,22 +65,27 @@ class PrescriptionReviewTabPanel extends StatelessWidget {
             padding: EdgeInsets.all(healthDp(context, 32)),
             child: const Center(child: CircularProgressIndicator(color: const Color(0xFFFF5A8D))),
           )
+        else if (loadFailed) ...[
+          LoadFailureNotice(
+            message: '리뷰를 불러오지 못했습니다',
+            onRetry: onRetry ?? () {},
+          ),
+        ] else if (visible.isEmpty)
+          Padding(
+            padding: EdgeInsets.symmetric(vertical: healthDp(context, 24)),
+            child: CenteredEmptyState(
+              iconWidget: CenteredEmptyState.assetIcon(
+                context,
+                AppAssets.emptyReviewIcon,
+              ),
+              message: '등록된 리뷰가 없습니다.',
+            ),
+          )
         else ...[
           PrescriptionReviewStatsCard(stats: stats),
           SizedBox(height: healthDp(context, 20)),
-          if (guestLoginLocked && visible.isNotEmpty)
+          if (guestLoginLocked)
             _PrescriptionReviewGuestLock(onLogin: onGuestLoginTap)
-          else if (visible.isEmpty)
-            Padding(
-              padding: EdgeInsets.symmetric(vertical: healthDp(context, 24)),
-              child: CenteredEmptyState(
-                iconWidget: CenteredEmptyState.assetIcon(
-                  context,
-                  AppAssets.emptyReviewIcon,
-                ),
-                message: '등록된 리뷰가 없습니다.',
-              ),
-            )
           else
             Padding(
               padding: EdgeInsets.symmetric(horizontal: hPad),

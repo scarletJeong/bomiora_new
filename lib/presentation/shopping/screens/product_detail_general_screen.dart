@@ -74,6 +74,8 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
   List<ReviewModel> _supporterReviews = [];
   List<ReviewModel> _generalReviews = [];
   bool _isLoadingReviews = false;
+  bool _supporterReviewsLoadFailed = false;
+  bool _allReviewsLoadFailed = false;
   int? _userPoint; // 현재 사용자 보유 포인트
   bool? _usePointConfig; // cf_use_point 설정값
   int _visibleSupporterReviewCount = 3;
@@ -363,6 +365,8 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
     if (!hadCache) {
       _safeSetState(() {
         _isLoadingReviews = true;
+        _supporterReviewsLoadFailed = false;
+        _allReviewsLoadFailed = false;
       });
     }
 
@@ -371,28 +375,56 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
         productId: widget.productId,
       );
 
-      if (loaded != null) {
+      if (!mounted) return;
+      if (loaded == null) {
         _safeSetState(() {
-          _supporterReviews = loaded.supporterReviews;
-          _generalReviews = loaded.generalReviews;
-          _supporterHasNext = loaded.supporterHasNext;
-          _allHasNext = loaded.allHasNext;
-          _supporterPage = 0;
-          _allPage = 0;
-          _visibleSupporterReviewCount = 3;
-          _visibleNormalReviewCount = 3;
+          if (_supporterReviews.isEmpty) _supporterReviewsLoadFailed = true;
+          if (_generalReviews.isEmpty) _allReviewsLoadFailed = true;
           _isLoadingReviews = false;
         });
-      } else {
-        _safeSetState(() {
-          _isLoadingReviews = false;
-        });
+        await _noteReviewLoadFailure(null);
+        return;
       }
-    } catch (e) {
+      final failed = loaded.allFailed || loaded.supporterFailed;
       _safeSetState(() {
+        if (!loaded.supporterFailed) {
+          _supporterReviews = loaded.supporterReviews;
+          _supporterHasNext = loaded.supporterHasNext;
+          _supporterPage = 0;
+          _visibleSupporterReviewCount = 3;
+          _supporterReviewsLoadFailed = false;
+        } else if (_supporterReviews.isEmpty) {
+          _supporterReviewsLoadFailed = true;
+        }
+        if (!loaded.allFailed) {
+          _generalReviews = loaded.generalReviews;
+          _allHasNext = loaded.allHasNext;
+          _allPage = 0;
+          _visibleNormalReviewCount = 3;
+          _allReviewsLoadFailed = false;
+        } else if (_generalReviews.isEmpty) {
+          _allReviewsLoadFailed = true;
+        }
         _isLoadingReviews = false;
       });
+      if (failed) await _noteReviewLoadFailure(null);
+    } catch (e) {
+      if (!mounted) return;
+      _safeSetState(() {
+        if (_supporterReviews.isEmpty) _supporterReviewsLoadFailed = true;
+        if (_generalReviews.isEmpty) _allReviewsLoadFailed = true;
+        _isLoadingReviews = false;
+      });
+      await _noteReviewLoadFailure(e);
     }
+  }
+
+  Future<void> _noteReviewLoadFailure(Object? error) {
+    return FailureLog.record(
+      code: 'product.review.list',
+      mbId: AuthService.currentUser?.id ?? '',
+      reason: error == null ? '리뷰 목록 조회에 실패했습니다' : error.toString(),
+    );
   }
 
   Future<void> _revealMoreReviews({required bool supporter}) async {
@@ -881,6 +913,8 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       fallbackImageUrl: _reviewFallbackImageUrl,
       hasMore: _supporterHasNext,
       averageOverride: _supporterReviewAverage,
+      loadFailed: _supporterReviewsLoadFailed,
+      onRetry: _loadReviews,
       onLoadMore: () => _revealMoreReviews(supporter: true),
       onReviewTap: _openReviewDetail,
     );
@@ -966,6 +1000,8 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       fallbackImageUrl: _reviewFallbackImageUrl,
       hasMore: _allHasNext,
       averageOverride: _allReviewAverage,
+      loadFailed: _allReviewsLoadFailed,
+      onRetry: _loadReviews,
       onLoadMore: () => _revealMoreReviews(supporter: false),
       onReviewTap: _openReviewDetail,
     );

@@ -8,6 +8,8 @@ class ProductReviewLoadResult {
   final Map<String, dynamic> stats;
   final bool supporterHasNext;
   final bool allHasNext;
+  final bool allFailed;
+  final bool supporterFailed;
 
   const ProductReviewLoadResult({
     required this.allReviews,
@@ -16,6 +18,8 @@ class ProductReviewLoadResult {
     required this.stats,
     required this.supporterHasNext,
     required this.allHasNext,
+    this.allFailed = false,
+    this.supporterFailed = false,
   });
 }
 
@@ -130,7 +134,9 @@ class ProductReviewLoader {
 
     late final Future<ProductReviewLoadResult?> future;
     future = _fetch(productId: id).then((result) {
-      if (result != null) _memory[id] = result;
+      if (result != null && !result.allFailed && !result.supporterFailed) {
+        _memory[id] = result;
+      }
       return result;
     }).whenComplete(() {
       if (identical(_inflight[id], future)) {
@@ -194,6 +200,8 @@ class ProductReviewLoader {
       generalReviews: allReviews,
       supporterHasNext: supporter?.hasNext ?? false,
       allHasNext: all?.hasNext ?? false,
+      allFailed: all == null,
+      supporterFailed: supporter == null,
       stats: _buildStats(allReviews: allReviews, supporter: supporterReviews),
     );
   }
