@@ -63,7 +63,7 @@ extension _StepsListChart on _StepsTodayScreenState {
                             ),
                             SizedBox(height: healthDp(context, 2)),
                             Text(
-                              '$totalSteps',
+                              totalSteps <= 0 ? '-' : '$totalSteps',
                               style: const TextStyle(
                                 color: Color(0xFFFF5A8D),
                                 fontSize: 32,
