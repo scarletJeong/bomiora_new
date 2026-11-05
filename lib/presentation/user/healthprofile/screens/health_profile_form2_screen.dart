@@ -95,7 +95,7 @@ class _HealthProfileForm2State extends State<HealthProfileForm2Screen> {
 
   void _goNext() {
     if (!session.isWizardStepFilled(1)) {
-      AppToastOverlay.show(context, '모든 문진표를 작성해야합니다');
+      AppToastOverlay.showAlert(context, '이 단계의 항목을 입력해주세요');
       _formKey.currentState?.validate();
       return;
     }

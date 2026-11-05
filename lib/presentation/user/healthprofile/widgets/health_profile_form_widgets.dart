@@ -33,7 +33,7 @@ abstract final class HealthProfileFormUi {
     required GlobalKey<FormState> formKey,
   }) async {
     if (!session.isAllWizardStepsFilled()) {
-      AppToastOverlay.show(context, '모든 문진표를 작성해야합니다');
+      AppToastOverlay.showAlert(context, '모든 문진표를 작성해야합니다');
       formKey.currentState?.validate();
       return;
     }
@@ -370,9 +370,11 @@ class HealthProfileWizardBottomBar extends StatelessWidget {
                   ? null
                   : () {
                       if (!canProceed) {
-                        AppToastOverlay.show(
+                        AppToastOverlay.showAlert(
                           context,
-                          '모든 문진표를 작성해야합니다',
+                          last
+                              ? '모든 문진표를 작성해야합니다'
+                              : '이 단계의 항목을 입력해주세요',
                         );
                         return;
                       }
