@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../../core/constants/app_assets.dart';
-import '../../common/widgets/centered_empty_state.dart';
+import '../../common/widgets/load_failure_notice.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 
 /// `legal/` 마크다운을 제목·본문·목록으로 표시합니다.
@@ -38,8 +37,19 @@ class _LegalDocumentViewState extends State<LegalDocumentView> {
       setState(() => _markdown = text);
     } catch (_) {
       if (!mounted) return;
-      setState(() => _failed = true);
+      setState(() {
+        _markdown = null;
+        _failed = true;
+      });
     }
+  }
+
+  void _retry() {
+    setState(() {
+      _failed = false;
+      _markdown = null;
+    });
+    _load();
   }
 
   @override
@@ -47,24 +57,10 @@ class _LegalDocumentViewState extends State<LegalDocumentView> {
     final padding = widget.padding ?? EdgeInsets.all(healthDp(context, 20));
 
     if (_failed) {
-      return Padding(
-        padding: padding,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CenteredEmptyState.assetIcon(context, AppAssets.emptyNoticeIcon),
-            SizedBox(height: healthDp(context, 8)),
-            Text(
-              '등록된 약관이 없습니다.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: const Color(0x665B3F43),
-                fontSize: healthSp(context, 12),
-                fontFamily: _font,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
+      return Center(
+        child: LoadFailureNotice(
+          message: '약관을 불러오지 못했습니다',
+          onRetry: _retry,
         ),
       );
     }
@@ -117,6 +113,8 @@ class _LegalDocumentViewState extends State<LegalDocumentView> {
         widgets.add(_quote(context, trimmed.substring(2)));
       } else if (trimmed.startsWith('- ')) {
         widgets.add(_bullet(context, trimmed.substring(2)));
+      } else if (RegExp(r'^\d+\.\s+').hasMatch(trimmed)) {
+        widgets.add(_numbered(context, trimmed));
       } else {
         widgets.add(_paragraph(context, trimmed));
       }
@@ -150,6 +148,29 @@ class _LegalDocumentViewState extends State<LegalDocumentView> {
         fontWeight: FontWeight.w300,
         color: Colors.black87,
         height: 1.6,
+      ),
+    );
+  }
+
+  Widget _numbered(BuildContext context, String text) {
+    final marker = RegExp(r'^\d+\.\s+').firstMatch(text);
+    final prefix = marker?.group(0) ?? '';
+    final body = prefix.isEmpty ? text : text.substring(prefix.length);
+    final style = TextStyle(
+      fontFamily: _font,
+      fontSize: healthSp(context, 13),
+      fontWeight: FontWeight.w300,
+      color: Colors.black87,
+      height: 1.6,
+    );
+    return Padding(
+      padding: EdgeInsets.only(left: healthDp(context, 8)),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(prefix, style: style),
+          Expanded(child: _paragraph(context, body)),
+        ],
       ),
     );
   }
