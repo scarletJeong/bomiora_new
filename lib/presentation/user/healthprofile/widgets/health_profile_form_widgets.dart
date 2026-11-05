@@ -98,7 +98,12 @@ abstract final class HealthProfileFormUi {
           (route) => false,
         );
       }
-    } catch (_) {
+    } catch (e) {
+      if (!context.mounted) return;
+      final message = e is HealthProfileSaveException
+          ? e.message
+          : '문진표를 저장하지 못했습니다.';
+      AppToastOverlay.showAlert(context, message);
     } finally {
       if (context.mounted) {
         session.isLoading = false;

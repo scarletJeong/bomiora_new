@@ -2,6 +2,12 @@ import 'dart:convert';
 import '../../core/network/api_client.dart';
 import '../../presentation/user/healthprofile/models/health_profile_model.dart';
 
+class HealthProfileSaveException implements Exception {
+  HealthProfileSaveException(this.message);
+
+  final String message;
+}
+
 class HealthProfileService {
   // ApiClient의 동적 baseUrl 사용 (로컬: localhost:9000, 서버: bomiora.net)
 
@@ -77,29 +83,40 @@ class HealthProfileService {
 
   // 건강프로필 저장
   static Future<bool> saveHealthProfile(HealthProfileModel profile) async {
-    try {
-      final response =
-          await ApiClient.post('/api/healthprofile', profile.toJson());
+    final response =
+        await ApiClient.post('/api/healthprofile', profile.toJson());
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final data = json.decode(response.body);
-        final ok = data is Map && data['success'] == true;
-        if (ok) {
-          final saved = data['data'];
-          _memCache[profile.mbId] = saved is Map
-              ? HealthProfileModel.fromJson(
-                  Map<String, dynamic>.from(saved),
-                )
-              : profile;
-          _memCacheAt[profile.mbId] = DateTime.now();
-        }
-        return ok;
-      } else {
-        throw Exception('건강프로필 저장 실패: ${response.statusCode}');
-      }
-    } catch (e) {
-      throw Exception('건강프로필 저장 중 오류 발생: $e');
+    dynamic data;
+    try {
+      data = json.decode(response.body);
+    } catch (_) {
+      data = null;
     }
+
+    if ((response.statusCode == 200 || response.statusCode == 201) &&
+        data is Map &&
+        data['success'] == true) {
+      final saved = data['data'];
+      _memCache[profile.mbId] = saved is Map
+          ? HealthProfileModel.fromJson(
+              Map<String, dynamic>.from(saved),
+            )
+          : profile;
+      _memCacheAt[profile.mbId] = DateTime.now();
+      return true;
+    }
+
+    throw HealthProfileSaveException(_saveFailureMessage(data));
+  }
+
+  static String _saveFailureMessage(dynamic data) {
+    if (data is Map) {
+      for (final key in ['message', 'error']) {
+        final text = data[key]?.toString().trim() ?? '';
+        if (text.isNotEmpty) return text;
+      }
+    }
+    return '문진표를 저장하지 못했습니다.';
   }
 
   // 건강프로필 삭제
