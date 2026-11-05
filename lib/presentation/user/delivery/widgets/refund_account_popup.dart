@@ -5,6 +5,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../../../../core/constants/app_assets.dart';
 import '../../../../core/constants/refund_bank_names.dart';
 import '../../../../data/services/refund_account_service.dart';
+import '../../../common/widgets/app_toast_overlay.dart';
 import '../../../common/widgets/dropdown_btn.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 
@@ -94,11 +95,20 @@ class _RefundAccountPopupState extends State<RefundAccountPopup> {
   void _onCancel() => Navigator.pop(context);
 
   void _onConfirm() {
-    if (_selectedBank.trim().isEmpty) return;
+    if (_selectedBank.trim().isEmpty) {
+      AppToastOverlay.showAlert(context, '은행을 선택해주세요.');
+      return;
+    }
     final digits = _accountController.text.replaceAll(RegExp(r'[^0-9]'), '');
-    if (digits.length < 10) return;
+    if (digits.length < 10) {
+      AppToastOverlay.showAlert(context, '계좌번호는 10자 이상 입력해주세요.');
+      return;
+    }
     final holder = _holderController.text.trim();
-    if (holder.isEmpty) return;
+    if (holder.isEmpty) {
+      AppToastOverlay.showAlert(context, '예금주를 입력해주세요.');
+      return;
+    }
     Navigator.pop(
       context,
       RefundAccountInput(

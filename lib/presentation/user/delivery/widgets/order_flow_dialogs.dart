@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/logging/failure_log.dart';
 import '../../../../data/models/delivery/delivery_model.dart';
 import '../../../../data/services/delivery_service.dart';
 import '../../../../data/services/refund_account_service.dart';
@@ -60,12 +61,30 @@ class OrderFlowDialogs {
       refundInput = await RefundAccountPopup.show(context, mbId: mbId);
       if (refundInput == null) return false;
 
-      await RefundAccountService.save(
-        mbId: mbId,
-        refundBank: refundInput.bank,
-        refundAccountDigits: refundInput.accountDigits,
-        refundHolder: refundInput.holder,
-      );
+      try {
+        final saved = await RefundAccountService.save(
+          mbId: mbId,
+          refundBank: refundInput.bank,
+          refundAccountDigits: refundInput.accountDigits,
+          refundHolder: refundInput.holder,
+        );
+        if (saved['success'] != true) {
+          final message = saved['message']?.toString().trim();
+          await FailureLog.record(
+            code: 'order.refund_account.save',
+            mbId: mbId,
+            reason: (message != null && message.isNotEmpty)
+                ? message
+                : '환불계좌 저장에 실패했습니다',
+          );
+        }
+      } catch (e) {
+        await FailureLog.record(
+          code: 'order.refund_account.save',
+          mbId: mbId,
+          reason: e.toString(),
+        );
+      }
     }
 
     if (!context.mounted) return false;
