@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../data/services/health_profile_service.dart';
 import '../../../common/widgets/app_toast_overlay.dart';
+import '../../../common/widgets/load_failure_notice.dart';
 import '../../../common/widgets/keyboard_field_lift.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
@@ -32,6 +33,10 @@ abstract final class HealthProfileFormUi {
     required HealthProfileFormSession session,
     required GlobalKey<FormState> formKey,
   }) async {
+    if (session.profileLoadFailed) {
+      AppToastOverlay.showAlert(context, '문진표를 불러오지 못했습니다');
+      return;
+    }
     if (!session.isAllWizardStepsFilled()) {
       AppToastOverlay.showAlert(context, '모든 문진표를 작성해야합니다');
       formKey.currentState?.validate();
@@ -168,37 +173,86 @@ class HealthProfileFormFrame extends StatelessWidget {
           ),
           child: DefaultTextStyle.merge(
             style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
-            child: session.currentUser == null
+            child: session.currentUser == null || session.profileChecking
                 ? const Center(
                     child: CircularProgressIndicator(color: Color(0xFFFF5A8D)),
                   )
-                : ColoredBox(
-                    color: Colors.white,
-                    child: Stack(
-                      children: [
-                        Column(
+                : session.profileLoadFailed
+                    ? ColoredBox(
+                        color: Colors.white,
+                        child: Center(
+                          child: _HealthProfileLoadFailure(
+                            key: ValueKey(session.profileLoadAttempt),
+                            onRetry: session.retryProfileLoad,
+                          ),
+                        ),
+                      )
+                    : ColoredBox(
+                        color: Colors.white,
+                        child: Stack(
                           children: [
-                            Expanded(child: child),
-                            if (pinnedBottom != null) pinnedBottom!,
+                            Column(
+                              children: [
+                                Expanded(child: child),
+                                if (pinnedBottom != null) pinnedBottom!,
+                              ],
+                            ),
+                            if (session.isLoading) const _FormLoadingOverlay(),
                           ],
                         ),
-                        if (session.isLoading)
-                          const Positioned.fill(
-                            child: ColoredBox(
-                              color: Color(0x33000000),
-                              child: Center(
-                                child: CircularProgressIndicator(
-                                  color: Color(0xFFFF5A8D),
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
+                      ),
           ),
         ),
       ),
+    );
+  }
+}
+
+class _FormLoadingOverlay extends StatelessWidget {
+  const _FormLoadingOverlay();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Positioned.fill(
+      child: ColoredBox(
+        color: Color(0x33000000),
+        child: Center(
+          child: CircularProgressIndicator(color: Color(0xFFFF5A8D)),
+        ),
+      ),
+    );
+  }
+}
+
+class _HealthProfileLoadFailure extends StatefulWidget {
+  const _HealthProfileLoadFailure({super.key, required this.onRetry});
+
+  final Future<void> Function() onRetry;
+
+  @override
+  State<_HealthProfileLoadFailure> createState() =>
+      _HealthProfileLoadFailureState();
+}
+
+class _HealthProfileLoadFailureState extends State<_HealthProfileLoadFailure> {
+  static const String _message = '문진표를 불러오지 못했습니다';
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      AppToastOverlay.showAlert(context, _message);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LoadFailureNotice(
+      message: _message,
+      onRetry: () {
+        widget.onRetry();
+      },
     );
   }
 }

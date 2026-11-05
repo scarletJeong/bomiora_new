@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../../../core/logging/failure_log.dart';
 import '../../../../data/models/user/user_model.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/services/health_profile_service.dart';
@@ -37,6 +38,9 @@ class HealthProfileFormSession extends ChangeNotifier {
 
   UserModel? currentUser;
   bool isLoading = false;
+  bool profileChecking = false;
+  bool profileLoadFailed = false;
+  int profileLoadAttempt = 0;
   bool _disposed = false;
 
   final Map<String, dynamic> formData = {};
@@ -170,15 +174,32 @@ class HealthProfileFormSession extends ChangeNotifier {
     final user = await AuthService.getUser();
     if (_disposed) return;
     currentUser = user;
-    notifyListeners();
 
     if (existingProfile != null) {
       loadExistingData(existingProfile!);
       return;
     }
-    if (user != null) {
-      await _checkExistingProfile();
+    if (user == null) {
+      notifyListeners();
+      return;
     }
+    profileChecking = true;
+    notifyListeners();
+    await _checkExistingProfile();
+    if (_disposed) return;
+    profileChecking = false;
+    notifyListeners();
+  }
+
+  Future<void> retryProfileLoad() async {
+    if (_disposed || currentUser == null || profileChecking) return;
+    if (existingProfile != null) return;
+    profileChecking = true;
+    notifyListeners();
+    await _checkExistingProfile();
+    if (_disposed) return;
+    profileChecking = false;
+    notifyListeners();
   }
 
   Future<void> _checkExistingProfile() async {
@@ -186,14 +207,25 @@ class HealthProfileFormSession extends ChangeNotifier {
       final profile =
           await HealthProfileService.getHealthProfile(currentUser!.id);
       if (_disposed) return;
+      profileLoadFailed = false;
       if (profile != null) {
         existingProfile = profile;
         loadExistingData(profile);
       } else {
         _prefillMemberBasicsFromUser(currentUser!);
+        notifyListeners();
       }
-    } catch (_) {
-      // 프로필 로드 실패 시 무시
+    } catch (e) {
+      if (_disposed) return;
+      profileLoadFailed = true;
+      profileLoadAttempt++;
+      await FailureLog.record(
+        code: 'health_profile.form',
+        mbId: currentUser?.id ?? '',
+        reason: e.toString(),
+      );
+      if (_disposed) return;
+      notifyListeners();
     }
   }
 
@@ -952,6 +984,9 @@ class HealthProfileFormSession extends ChangeNotifier {
   }
 
   Future<void> saveHealthProfile() async {
+    if (profileLoadFailed) {
+      throw Exception('문진표를 불러오지 못했습니다');
+    }
     final birthYear = formData['birth_year'] ?? '';
     final birthMonth = formData['birth_month'] ?? '';
     final birthDay = formData['birth_day'] ?? '';
