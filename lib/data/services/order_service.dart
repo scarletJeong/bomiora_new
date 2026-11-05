@@ -102,41 +102,6 @@ class OrderService {
     }
   }
 
-  /// 주문 취소
-  /// 
-  /// [odId] 주문 ID
-  /// [mbId] 회원 ID
-  static Future<Map<String, dynamic>> cancelOrder({
-    required int odId,
-    required String mbId,
-  }) async {
-    try {
-      final response = await ApiClient.post(
-        '/api/orders/$odId/cancel',
-        {'mbId': mbId},
-      );
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return {
-          'success': true,
-          'message': data['message'] ?? '주문이 취소되었습니다.',
-        };
-      } else {
-        final errorData = json.decode(response.body);
-        return {
-          'success': false,
-          'message': errorData['error'] ?? '주문 취소에 실패했습니다.',
-        };
-      }
-    } catch (e) {
-      return {
-        'success': false,
-        'message': '네트워크 오류가 발생했습니다.',
-      };
-    }
-  }
-
   /// 구매 확정 (수령확인)
   ///
   /// [odId] 주문 ID (String — 큰 숫자 정밀도 손실 방지)
