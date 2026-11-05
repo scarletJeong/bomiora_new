@@ -48,7 +48,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
     _loadNotifications();
   }
 
-  Future<void> _loadNotifications() async {
+  Future<void> _loadNotifications({bool refresh = false}) async {
     final loggedIn = await AuthService.isLoggedIn();
     if (!mounted) return;
 
@@ -62,7 +62,10 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
     }
 
     setState(() => _isLoading = true);
-    final items = await NotificationInboxService.fetchList(limit: 50);
+    final items = await NotificationInboxService.fetchList(
+      limit: 50,
+      refresh: refresh,
+    );
     if (!mounted) return;
     setState(() {
       _isLoggedIn = true;
@@ -231,7 +234,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                       Expanded(
                         child: RefreshIndicator(
                           color: _kPink,
-                          onRefresh: _loadNotifications,
+                          onRefresh: () => _loadNotifications(refresh: true),
                           child: items.isEmpty
                               ? LayoutBuilder(
                                   builder: (context, constraints) {

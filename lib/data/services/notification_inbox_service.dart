@@ -128,7 +128,10 @@ class NotificationInboxService {
     int limit = 50,
     bool unreadOnly = false,
     bool allowServer = true,
+    bool refresh = false,
   }) async {
+    if (refresh) _serverListMissing = false;
+
     final user = await AuthService.getUser();
     if (user == null || user.id.trim().isEmpty) return [];
 
