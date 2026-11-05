@@ -6,6 +6,7 @@ import '../../../core/constants/app_assets.dart';
 import '../../common/widgets/app_network_image.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/confirm_dialog.dart';
+import '../../common/widgets/app_toast_overlay.dart';
 import '../../common/widgets/centered_empty_state.dart';
 import '../../common/widgets/app_star_rating.dart';
 import '../../common/widgets/dropdown_btn.dart';
@@ -1186,10 +1187,14 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
       message: '정말 이 리뷰를 삭제하시겠습니까?',
       confirmText: '삭제',
     );
-    if (!confirmed) return;
+    if (!confirmed || !mounted) return;
     try {
       final user = await AuthService.getUser();
-      if (user == null) return;
+      if (!mounted) return;
+      if (user == null) {
+        AppToastOverlay.showAlert(context, '리뷰를 삭제하지 못했습니다.');
+        return;
+      }
       final result = await ReviewService.deleteReview(
         review.isId!,
         user.id,
@@ -1201,8 +1206,13 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
           if (_activeReview?.isId == review.isId) _activeReview = null;
         });
         _loadReviews(refresh: true);
+        return;
       }
-    } catch (_) {}
+      AppToastOverlay.showAlert(context, '리뷰를 삭제하지 못했습니다.');
+    } catch (_) {
+      if (!mounted) return;
+      AppToastOverlay.showAlert(context, '리뷰를 삭제하지 못했습니다.');
+    }
   }
 
   @override
