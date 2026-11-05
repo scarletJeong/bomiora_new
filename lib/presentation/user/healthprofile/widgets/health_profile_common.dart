@@ -9,6 +9,23 @@ abstract final class HealthProfileFormCommon {
 
   static const Color pink = Color(0xFFFF3787);
   static const Color pinkSoft = Color(0x0CFF3787);
+
+  /// 1단계 BMI 안내와 목록 배지가 같이 쓰는 구간 색.
+  static const Color bmiUnderweight = Color(0xFF60A5FA);
+  static const Color bmiNormal = Color(0xFF4ADE80);
+  static const Color bmiOverweight = Color(0xFFFACC15);
+  static const Color bmiObese = Color(0xFFFB923C);
+  static const Color bmiSevere = Color(0xFFF87171);
+
+  /// 아시아 태평양 구간. [bmi]는 화면과 같은 소수점 한 자리 값.
+  static (String, Color)? bmiCategory(double? bmi) {
+    if (bmi == null) return null;
+    if (bmi < 18.5) return ('저체중', bmiUnderweight);
+    if (bmi < 23) return ('정상', bmiNormal);
+    if (bmi < 25) return ('과체중', bmiOverweight);
+    if (bmi < 30) return ('비만', bmiObese);
+    return ('고도비만', bmiSevere);
+  }
   static const Color border = Color(0x7FD2D2D2);
   static const Color ink = Color(0xFF1A1A1E);
   static const Color muted = Color(0xFF898686);
