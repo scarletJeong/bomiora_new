@@ -642,13 +642,11 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
       ];
     }
 
-    if (_isConsultationDoneStage(order)) {
+    if (_isConsultationDoneStage(order) || _isPreparingStage(order)) {
       return const [];
     }
 
-    if (_isPreparingStage(order) ||
-        _isPaymentWaitingStage(order) ||
-        _isPaidStage(order)) {
+    if (_isPaymentWaitingStage(order) || _isPaidStage(order)) {
       return [
         (
           label: '주문취소',

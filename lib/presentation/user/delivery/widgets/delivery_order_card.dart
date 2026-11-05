@@ -33,6 +33,7 @@ class DeliveryOrderCard extends StatefulWidget {
     required this.onConfirmPurchase,
     required this.onChangeAddress,
     required this.onChangeReservation,
+    required this.onCancelOrder,
   });
 
   final OrderListModel order;
@@ -47,6 +48,7 @@ class DeliveryOrderCard extends StatefulWidget {
   final Future<void> Function(String odId) onConfirmPurchase;
   final Future<void> Function(OrderListModel order) onChangeAddress;
   final Future<void> Function(OrderListModel order) onChangeReservation;
+  final Future<void> Function(OrderListModel order) onCancelOrder;
 
   @override
   State<DeliveryOrderCard> createState() => _DeliveryOrderCardState();
@@ -624,9 +626,13 @@ class _DeliveryOrderCardState extends State<DeliveryOrderCard> {
       ]);
     }
 
-    // 결제대기중: 예약시간 변경과 주문취소 버튼은 숨긴다.
     if (isOrderPaymentWaiting(order)) {
       return _buildActionRow([
+        (
+          label: '주문취소',
+          onTap: () => widget.onCancelOrder(order),
+          style: _CardActionStyle.outlineGray,
+        ),
         (
           label: '배송지변경',
           onTap: () => widget.onChangeAddress(order),
@@ -636,7 +642,13 @@ class _DeliveryOrderCardState extends State<DeliveryOrderCard> {
     }
 
     if (isOrderPaid(order)) {
-      final specs = <({String label, Future<void> Function()? onTap, _CardActionStyle style})>[];
+      final specs = <({String label, Future<void> Function()? onTap, _CardActionStyle style})>[
+        (
+          label: '주문취소',
+          onTap: () => widget.onCancelOrder(order),
+          style: _CardActionStyle.outlineGray,
+        ),
+      ];
       if (isPrescription) {
         specs.add((
           label: '예약시간변경',

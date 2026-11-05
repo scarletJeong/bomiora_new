@@ -564,6 +564,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
                             onConfirmPurchase: _confirmPurchase,
                             onChangeAddress: _changeDeliveryAddress,
                             onChangeReservation: _changeReservationTimeFromList,
+                            onCancelOrder: _cancelOrderFromList,
                           );
                         },
                         childCount: _visibleOrders.length,
@@ -788,6 +789,28 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
         ),
       ),
     );
+  }
+
+  /// 결제대기중·결제완료 목록에서 주문 취소
+  Future<void> _cancelOrderFromList(OrderListModel order) async {
+    final user = await AuthService.getUser();
+    if (!mounted) return;
+    if (user == null) {
+      AppToastOverlay.show(context, '로그인이 필요합니다.');
+      return;
+    }
+    final ok = await OrderFlowDialogs.runOrderCancelFlow(
+      context,
+      odId: order.odId,
+      mbId: user.id,
+    );
+    if (ok && mounted) {
+      await OrderFlowDialogs.openCancelledOrderPage(
+        context,
+        odId: order.odId,
+        isPrescription: order.isPrescriptionOrder,
+      );
+    }
   }
 
   /// 배송확정 (구매 확정)
