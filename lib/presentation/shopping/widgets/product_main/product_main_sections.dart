@@ -608,7 +608,7 @@ class ProductMainCheckpointSection extends StatelessWidget {
                   title: '1:1 코칭',
                   bodies: const [
                     '다이어트는 개개인의 몸상태와 성격이',
-                    '모두 다르기 때문에 1:1코칭이 꼭! 필요합니다.',
+                    '모두 다르기 때문에 1:1 코칭이 꼭! 필요합니다.',
                   ],
                 ),
                 SizedBox(height: healthDp(context, 20)),
@@ -848,7 +848,7 @@ class ProductMainPhotoBioSection extends StatelessWidget {
     '· KBS, MBC, SBS, JTBC 등 다수 건강 프로그램',
     '· 한의학전문의 패널로 출연',
     ' - 기분좋은날 / 나는 몸신이다 / 모란봉클럽 등',
-    '· 다수 연예인 및 모델 인플루언서 주치의 ',
+    '· 다수 연예인 및 모델 인플루언서 주치의',
     '· 피트니스 대회, 모델 대회 심사위원 활동',
     ' - 국내 피트니스 및 모델 대회 다수 수상',
   ];

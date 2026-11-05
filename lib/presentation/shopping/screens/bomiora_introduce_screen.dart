@@ -8,15 +8,11 @@ import '../../common/widgets/navi_bar.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../widgets/product_main/product_main_sections.dart';
 
-class BomioraIntroduceScreen extends StatefulWidget {
+class BomioraIntroduceScreen extends StatelessWidget {
   const BomioraIntroduceScreen({super.key});
 
-  @override
-  State<BomioraIntroduceScreen> createState() => _BomioraIntroduceScreenState();
-}
-
-class _BomioraIntroduceScreenState extends State<BomioraIntroduceScreen> {
-  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  static final GlobalKey<ScaffoldState> _scaffoldKey =
+      GlobalKey<ScaffoldState>();
 
   @override
   Widget build(BuildContext context) {
