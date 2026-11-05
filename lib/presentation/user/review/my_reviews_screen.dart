@@ -3,11 +3,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../../core/constants/app_assets.dart';
+import '../../../core/logging/failure_log.dart';
 import '../../common/widgets/app_network_image.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/confirm_dialog.dart';
 import '../../common/widgets/app_toast_overlay.dart';
 import '../../common/widgets/centered_empty_state.dart';
+import '../../common/widgets/load_failure_notice.dart';
 import '../../common/widgets/app_star_rating.dart';
 import '../../common/widgets/dropdown_btn.dart';
 import '../../health/health_common/health_responsive_scale.dart';
@@ -37,6 +39,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
   List<ReviewModel> _reviews = [];
   bool _isLoading = false;
   bool _requiresLogin = false;
+  bool _loadFailed = false;
   int _currentPage = 0;
   bool _hasMore = true;
   static const int _historyPageSize = 5;
@@ -310,16 +313,19 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
 
     setState(() => _isLoading = true);
 
+    var mbId = '';
     try {
       final user = await AuthService.getUser();
       if (user == null) {
         if (mounted) {
           setState(() {
             _requiresLogin = true;
+            _loadFailed = false;
           });
         }
         return;
       }
+      mbId = user.id;
 
       final result = await ReviewService.getMemberReviews(
         mbId: user.id,
@@ -333,6 +339,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
 
         setState(() {
           _requiresLogin = false;
+          _loadFailed = false;
           if (refresh) {
             _reviews = newReviews;
             _currentPage = 1;
@@ -354,13 +361,32 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
             }
           }
         });
+      } else {
+        final message = (result['message'] as String?)?.trim();
+        await _recordReviewLoadFailure(
+          mbId,
+          (message != null && message.isNotEmpty)
+              ? message
+              : '리뷰 목록 조회에 실패했습니다',
+        );
       }
     } catch (e) {
+      await _recordReviewLoadFailure(mbId, e.toString());
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  Future<void> _recordReviewLoadFailure(String mbId, String reason) async {
+    await FailureLog.record(
+      code: 'review.my.list',
+      mbId: mbId,
+      reason: reason,
+    );
+    if (!mounted || _reviews.isNotEmpty) return;
+    setState(() => _loadFailed = true);
   }
 
   String _writtenLine(ReviewModel r) {
@@ -1257,8 +1283,15 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                   )
                 : _requiresLogin
                     ? _buildLoginMessage()
-                    : _reviews.isEmpty
-                        ? _buildEmpty()
+                    : _loadFailed && _reviews.isEmpty
+                        ? Center(
+                            child: LoadFailureNotice(
+                              message: '리뷰를 불러오지 못했습니다',
+                              onRetry: () => _loadReviews(refresh: true),
+                            ),
+                          )
+                        : _reviews.isEmpty
+                            ? _buildEmpty()
                         : RefreshIndicator(
                             color: _kPink,
                             onRefresh: () => _loadReviews(refresh: true),
