@@ -134,7 +134,14 @@ class OrderService {
 
       if (response.statusCode == 200) {
         final data = _decodeBody(response);
-        
+        if (data is Map && data['success'] == false) {
+          return {
+            'success': false,
+            'message': (data['message'] ?? data['error'] ?? '주문 목록을 불러올 수 없습니다.')
+                .toString(),
+          };
+        }
+
         // 주문 목록 파싱
         List<OrderListModel> orders = [];
         if (data is Map && data['orders'] != null) {

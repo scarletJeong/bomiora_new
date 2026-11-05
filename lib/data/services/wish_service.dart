@@ -148,7 +148,12 @@ class WishService {
 
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
-      if (data is Map && data['data'] != null && data['data'] is List) {
+      if (data is Map && data['success'] == false) {
+        throw Exception(
+          (data['message'] ?? data['error'] ?? '찜 목록 조회 실패').toString(),
+        );
+      }
+      if (data is Map && data['data'] is List) {
         final normalized = (data['data'] as List)
             .map(_normalizeWishItem)
             .whereType<Map<String, dynamic>>()
@@ -158,9 +163,15 @@ class WishService {
         }
         return normalized;
       }
+      if (data is Map && data['success'] == true) {
+        if (epoch == _listEpoch) {
+          rememberWishList(userId, <Map<String, dynamic>>[]);
+        }
+        return [];
+      }
     }
 
-    return [];
+    throw Exception('찜 목록 조회 실패');
   }
 
   static String _cacheKey(String userId, String productId) =>

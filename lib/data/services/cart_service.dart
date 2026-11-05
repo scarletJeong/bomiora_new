@@ -648,6 +648,14 @@ class CartService {
 
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
+      if (data is Map && data['success'] == false) {
+        return {
+          'success': false,
+          'message': (data['message'] ?? data['error'] ?? '장바구니 조회에 실패했습니다.')
+              .toString(),
+          'items': [],
+        };
+      }
       final result = {
         'success': true,
         'data': data['data'] ?? [],

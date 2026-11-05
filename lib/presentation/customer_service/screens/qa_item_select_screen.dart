@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_assets.dart';
+import '../../../core/logging/failure_log.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../core/utils/node_value_parser.dart';
@@ -16,6 +17,7 @@ import '../../../data/services/delivery_service.dart';
 import '../../../data/services/wish_service.dart';
 import '../../common/widgets/app_network_image.dart';
 import '../../common/widgets/centered_empty_state.dart';
+import '../../common/widgets/load_failure_notice.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/product_card.dart';
 import '../../health/health_common/health_responsive_scale.dart';
@@ -65,7 +67,7 @@ class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
     _load();
   }
 
-  Future<void> _load() async {
+  Future<void> _load({bool forceRefresh = false}) async {
     setState(() {
       _loading = true;
       _error = null;
@@ -73,14 +75,30 @@ class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
     });
     try {
       if (_isOrderTab) {
-        await _loadOrders();
+        await _loadOrders(forceRefresh: forceRefresh);
       } else {
-        await _loadProducts();
+        await _loadProducts(forceRefresh: forceRefresh);
       }
-    } catch (_) {
+    } catch (e) {
+      if (!mounted) return;
+      final message = e.toString();
+      if (message.contains('로그인')) {
+        setState(() {
+          _error = '로그인이 필요합니다.';
+          _items = [];
+          _orderGroups = [];
+          _loading = false;
+        });
+        return;
+      }
+      await FailureLog.record(
+        code: 'qa.select',
+        mbId: AuthService.currentUser?.id ?? '',
+        reason: message,
+      );
       if (!mounted) return;
       setState(() {
-        _error = '목록을 불러오지 못했습니다.';
+        _error = '목록을 불러오지 못했습니다';
         _items = [];
         _orderGroups = [];
         _loading = false;
@@ -88,10 +106,18 @@ class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
     }
   }
 
-  Future<void> _loadProducts() async {
+  Future<void> _loadProducts({bool forceRefresh = false}) async {
     List<_SelectableItem> list = [];
     if (_currentTab == QaItemSelectTab.cart) {
-      final result = await CartService.getCart();
+      final result = await CartService.getCart(forceRefresh: forceRefresh);
+      if (result['needsLogin'] == true) {
+        throw Exception('로그인이 필요합니다.');
+      }
+      if (result['success'] != true) {
+        throw Exception(
+          result['message']?.toString() ?? '장바구니 조회에 실패했습니다.',
+        );
+      }
       final raw = result['items'] ?? result['data'] ?? [];
       if (raw is List) {
         list = raw
@@ -102,7 +128,7 @@ class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
       }
       list = _groupCartExtras(list);
     } else {
-      final raw = await WishService.getWishList();
+      final raw = await WishService.getWishList(forceRefresh: forceRefresh);
       list = raw
           .whereType<Map>()
           .map((e) => _fromWishMap(Map<String, dynamic>.from(e)))
@@ -206,17 +232,10 @@ class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
         status.contains('반품');
   }
 
-  Future<void> _loadOrders() async {
+  Future<void> _loadOrders({bool forceRefresh = false}) async {
     final user = await AuthService.getUser();
     if (user == null) {
-      if (!mounted) return;
-      setState(() {
-        _error = '로그인이 필요합니다.';
-        _items = [];
-        _orderGroups = [];
-        _loading = false;
-      });
-      return;
+      throw Exception('로그인이 필요합니다.');
     }
     final result = await OrderService.getOrderList(
       mbId: user.id,
@@ -225,7 +244,13 @@ class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
       page: 0,
       size: 30,
       lite: true,
+      forceRefresh: forceRefresh,
     );
+    if (result['success'] != true) {
+      throw Exception(
+        result['message']?.toString() ?? '주문 목록 조회에 실패했습니다.',
+      );
+    }
     final orders = (result['orders'] as List?)?.whereType<OrderListModel>() ??
         const <OrderListModel>[];
     final filtered = orders.where((order) {
@@ -647,18 +672,36 @@ class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
   }
 
   Widget _buildSelectEmpty(BuildContext context) {
-    final login = _error == '로그인이 필요합니다.';
-    final message = _error != null
-        ? (login ? '로그인 후 이용 가능합니다.' : '선택할 상품이 없습니다.')
-        : _emptyText;
-    final icon = _error != null ? AppAssets.emptyCategoryIcon : _emptyIcon;
+    if (_error == '로그인이 필요합니다.') {
+      return CenteredEmptyState(
+        iconWidget: CenteredEmptyState.assetIcon(
+          context,
+          AppAssets.emptyQAIcon,
+        ),
+        message: '로그인 후 이용 가능합니다.',
+        trailing: CenteredEmptyState.loginButtonTrailing(
+          context,
+          onPressed: () async {
+            await Navigator.pushNamed(context, '/login');
+            if (!mounted) return;
+            await _load(forceRefresh: true);
+          },
+        ),
+      );
+    }
+    if (_error != null) {
+      return LoadFailureNotice(
+        message: '목록을 불러오지 못했습니다',
+        onRetry: () => _load(forceRefresh: true),
+      );
+    }
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        CenteredEmptyState.assetIcon(context, icon),
+        CenteredEmptyState.assetIcon(context, _emptyIcon),
         SizedBox(height: healthDp(context, 10)),
         Text(
-          message,
+          _emptyText,
           style: TextStyle(
             color: const Color(0xFF898686),
             fontSize: healthSp(context, 14),
