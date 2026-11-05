@@ -13,6 +13,7 @@ import '../../../data/models/review/review_model.dart';
 import 'review_write_finish.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/review_service.dart';
+import '../../common/widgets/app_network_image.dart';
 import '../../common/widgets/app_star_rating.dart';
 import '../../common/widgets/app_toast_overlay.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
@@ -263,12 +264,12 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
     if (url == null || url.isEmpty) return fallback();
     return ClipRRect(
       borderRadius: r4,
-      child: Image.network(
-        url,
-        key: ValueKey(url),
+      child: AppNetworkImage(
+        url: url,
         width: side,
         height: side,
         fit: BoxFit.cover,
+        preferHtmlElementOnWeb: false,
         errorBuilder: (_, __, ___) => fallback(),
       ),
     );
@@ -309,8 +310,9 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
           _ReviewDraftImage(file: image, previewBytes: bytes),
         ),
       );
-    } catch (e) {
-      debugPrint('이미지 선택 오류: $e');
+    } catch (_) {
+      if (!mounted) return;
+      AppToastOverlay.show(context, '이미지를 불러오지 못했습니다.');
     }
   }
 
@@ -339,12 +341,12 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
   Widget _draftImageThumb(_ReviewDraftImage draft, double size) {
     if (draft.isServer) {
       final url = ImageUrlHelper.getImageUrl(draft.serverPath);
-      return Image.network(
-        url,
-        key: ValueKey(url),
+      return AppNetworkImage(
+        url: url,
         width: size,
         height: size,
         fit: BoxFit.cover,
+        preferHtmlElementOnWeb: false,
         errorBuilder: (_, __, ___) => _draftImagePlaceholder(size),
       );
     }

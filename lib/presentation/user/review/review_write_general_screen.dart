@@ -11,6 +11,7 @@ import '../../../data/models/review/review_model.dart';
 import 'review_write_finish.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/review_service.dart';
+import '../../common/widgets/app_network_image.dart';
 import '../../common/widgets/app_star_rating.dart';
 import '../../common/widgets/app_toast_overlay.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
@@ -465,8 +466,9 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
           _ReviewDraftImage(file: image, previewBytes: bytes),
         ),
       );
-    } catch (e) {
-      debugPrint('이미지 선택 오류: $e');
+    } catch (_) {
+      if (!mounted) return;
+      AppToastOverlay.show(context, '이미지를 불러오지 못했습니다.');
     }
   }
 
@@ -496,12 +498,12 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
       BuildContext context, _ReviewDraftImage draft, double size) {
     if (draft.isServer) {
       final url = ImageUrlHelper.getImageUrl(draft.serverPath);
-      return Image.network(
-        url,
-        key: ValueKey(url),
+      return AppNetworkImage(
+        url: url,
         width: size,
         height: size,
         fit: BoxFit.cover,
+        preferHtmlElementOnWeb: false,
         errorBuilder: (_, __, ___) => _imagePlaceholder(size),
       );
     }
@@ -1051,12 +1053,12 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
           !ImageUrlHelper.isReviewAttachmentUrl(u)) {
         return ClipRRect(
           borderRadius: r4,
-          child: Image.network(
-            u,
-            key: ValueKey(u),
+          child: AppNetworkImage(
+            url: u,
             width: side,
             height: side,
             fit: BoxFit.cover,
+            preferHtmlElementOnWeb: false,
             errorBuilder: (_, __, ___) => fallback(),
           ),
         );
@@ -1105,10 +1107,12 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
                       ),
                     );
                   }
-                  return Image.network(
-                    url,
-                    key: ValueKey('${item.itId}|$url'),
+                  return AppNetworkImage(
+                    url: url,
+                    width: healthDp(context, 64),
+                    height: healthDp(context, 64),
                     fit: BoxFit.cover,
+                    preferHtmlElementOnWeb: false,
                     errorBuilder: (_, __, ___) => Container(
                       color: const Color(0xFFE9E9E9),
                       child: Icon(
