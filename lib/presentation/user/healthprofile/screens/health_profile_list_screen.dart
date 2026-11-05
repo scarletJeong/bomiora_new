@@ -3,11 +3,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../../../core/constants/app_assets.dart';
+import '../../../../data/models/health/weight/weight_record_model.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/services/health_profile_service.dart';
 import '../../../../data/services/shop_default_service.dart';
 import '../../../../data/models/user/user_model.dart';
 import '../models/health_profile_model.dart';
+import '../widgets/health_profile_common.dart';
 import '../widgets/health_profile_form_flow.dart';
 import '../widgets/health_profile_payload.dart';
 import '../widgets/health_profile_prescription_booking_args.dart';
@@ -46,7 +48,6 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
   static const Color _kBorderSoft = Color(0x7FD2D2D2);
   static const Color _kCardBorder = Color(0xFFF1F5F9);
   static const Color _kChipBg = Color(0xFFFAFAFA);
-  static const Color _kBmiYellow = Color(0xFFFACC15);
   static const String _kFont = 'Gmarket Sans TTF';
 
   UserModel? _currentUser;
@@ -430,10 +431,8 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
     final height = _asDouble(profile.answer4);
     final weight = _asDouble(profile.answer5);
     final a3 = _asDouble(profile.answer3);
-    final bmi = (height != null && height > 0 && weight != null)
-        ? weight / ((height / 100) * (height / 100))
-        : null;
-    final bmiLabel = _bmiCategory(bmi);
+    final bmi = WeightRecord.calculateBMI(weight ?? 0, height);
+    final bmiLabel = HealthProfileFormCommon.bmiCategory(bmi);
 
     // answer3: 신규=목표 체중, 레거시=감량량(작은 값). 목표 체중 / 목표까지 잔량 분리.
     double? goalWeight;
@@ -526,7 +525,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
                       ),
                     const Spacer(),
                     Text(
-                      bmi != null ? bmi.toStringAsFixed(2) : '-',
+                      bmi != null ? bmi.toStringAsFixed(1) : '-',
                       style: TextStyle(
                         color: const Color(0xFF1A1A1A),
                         fontSize: healthSp(context, 16),
@@ -1133,16 +1132,6 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
   String _trimNum(double v) {
     if (v == v.roundToDouble()) return v.toStringAsFixed(0);
     return v.toStringAsFixed(1);
-  }
-
-  /// Asia-Pacific BMI cutoffs
-  (String, Color)? _bmiCategory(double? bmi) {
-    if (bmi == null) return null;
-    if (bmi < 18.5) return ('저체중', const Color(0xFF60A5FA));
-    if (bmi < 23) return ('정상', const Color(0xFF4ADE80));
-    if (bmi < 25) return ('과체중', _kBmiYellow);
-    if (bmi < 30) return ('비만', const Color(0xFFFB923C));
-    return ('고도비만', const Color(0xFFEF4444));
   }
 
   List<String> _pipeParts(String s) {

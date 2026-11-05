@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../../core/constants/app_assets.dart';
+import '../../../../data/models/health/weight/weight_record_model.dart';
 import '../../../common/widgets/app_toast_overlay.dart';
 import '../../../common/widgets/keyboard_field_lift.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
@@ -281,15 +282,15 @@ class _HealthProfileForm1State extends State<HealthProfileForm1Screen> {
             ),
           ),
           SizedBox(height: healthDp(context, 10)),
-          row(const Color(0xFF60A5FA), '저체중 (18.5 미만)'),
+          row(HealthProfileFormCommon.bmiUnderweight, '저체중 (18.5 미만)'),
           SizedBox(height: healthDp(context, 10)),
-          row(const Color(0xFF4ADE80), '정상 (18.5 ~ 22.9)'),
+          row(HealthProfileFormCommon.bmiNormal, '정상 (18.5 ~ 22.9)'),
           SizedBox(height: healthDp(context, 10)),
-          row(const Color(0xFFFACC15), '과체중 (23 ~ 24.9)'),
+          row(HealthProfileFormCommon.bmiOverweight, '과체중 (23 ~ 24.9)'),
           SizedBox(height: healthDp(context, 10)),
-          row(const Color(0xFFFB923C), '비만 (25 ~ 29.9)'),
+          row(HealthProfileFormCommon.bmiObese, '비만 (25 ~ 29.9)'),
           SizedBox(height: healthDp(context, 10)),
-          row(const Color(0xFFF87171), '고도비만 (30 이상)'),
+          row(HealthProfileFormCommon.bmiSevere, '고도비만 (30 이상)'),
         ],
       ),
     );
@@ -309,10 +310,8 @@ class _HealthProfileForm1State extends State<HealthProfileForm1Screen> {
       (session.formData['answer_3']?.toString() ?? '').replaceAll(',', ''),
     );
     final remaining = (weight != null && goal != null) ? weight - goal : null;
-    final bmi = (height != null && height > 0 && weight != null)
-        ? weight / ((height / 100) * (height / 100))
-        : null;
-    final bmiCat = _formBmiCategory(bmi);
+    final bmi = WeightRecord.calculateBMI(weight ?? 0, height);
+    final bmiCat = HealthProfileFormCommon.bmiCategory(bmi);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -713,15 +712,6 @@ class _HealthProfileForm1State extends State<HealthProfileForm1Screen> {
         child,
       ],
     );
-  }
-
-  (String, Color)? _formBmiCategory(double? bmi) {
-    if (bmi == null) return null;
-    if (bmi < 18.5) return ('저체중', const Color(0xFF60A5FA));
-    if (bmi < 23) return ('정상', const Color(0xFF4ADE80));
-    if (bmi < 25) return ('과체중', const Color(0xFFFACC15));
-    if (bmi < 30) return ('비만', const Color(0xFFFB923C));
-    return ('고도비만', const Color(0xFFF87171));
   }
 
   TextStyle _figmaFieldTextStyle(BuildContext context) => TextStyle(
