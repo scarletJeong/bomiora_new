@@ -215,9 +215,6 @@ class ApiEndpoints {
   static const String getAnnouncementList = '/api/announcement/list';
   static const String getAnnouncementDetail = '/api/announcement';
 
-  // FAQ 관련
-  static const String getFaqList = '/api/faq/list';
-
   // 콘텐츠 관련
   static const String getContentList = '/api/content/list';
   static const String getContentDetail = '/api/content';
