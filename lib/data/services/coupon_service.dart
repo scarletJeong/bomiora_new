@@ -13,6 +13,15 @@ class CouponService {
   static final Map<String, DateTime> _tabsCacheAt = {};
   static final Map<String, Future<Map<String, List<Coupon>>>> _tabsInFlight = {};
 
+  static void clearMemberCache(String userId) {
+    final id = userId.trim();
+    if (id.isEmpty) return;
+    _availableCache.remove(id);
+    _availableCacheAt.remove(id);
+    _tabsCache.remove(id);
+    _tabsCacheAt.remove(id);
+  }
+
   /// 쿠폰 화면용. 실패는 null이고 캐시에 넣지 않는다. 성공한 빈 목록은 빈 리스트다.
   static Future<Map<String, List<Coupon>>?> loadCouponTabs(String userId) async {
     final id = userId.trim();

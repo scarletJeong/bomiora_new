@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/delivery/delivery_model.dart';
 import '../../core/network/api_client.dart';
+import 'coupon_service.dart';
 
 /// 주문/배송 서비스
 class OrderService {
@@ -242,6 +243,7 @@ class OrderService {
 
       if (response.statusCode == 200) {
         invalidateOrderList(mbId);
+        CouponService.clearMemberCache(mbId);
         final data = _decodeBody(response);
         return {
           'success': true,
