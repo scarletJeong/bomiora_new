@@ -160,7 +160,7 @@ class _NotificationSettingsScreenState
                         context,
                         title: '마케팅 정보 수신 동의',
                         description:
-                            '이벤트, 할인 쿠폰 등 혜택에 대한 알림 메시지를받습니다. ',
+                            '이벤트, 할인 쿠폰 등 혜택에 대한 알림 메시지를 받습니다. ',
                         value: _marketingAgree,
                         onChanged: _onMarketingChanged,
                       ),
