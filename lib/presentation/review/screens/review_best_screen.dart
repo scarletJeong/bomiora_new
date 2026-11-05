@@ -5,6 +5,7 @@ import '../../../core/utils/image_url_helper.dart';
 import '../../../data/models/review/main_home_review_model.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/review_service.dart';
+import '../../common/widgets/app_network_image.dart';
 import '../../common/widgets/app_star_rating.dart';
 import '../../common/widgets/centered_empty_state.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
@@ -694,9 +695,14 @@ class _BestReviewCardState extends State<_BestReviewCard> {
                                 setState(() => _imageIndex = i);
                               },
                               itemBuilder: (_, i) {
-                                return Image.network(
-                                  images[i],
+                                return AppNetworkImage(
+                                  url: images[i],
                                   fit: BoxFit.cover,
+                                  width: double.infinity,
+                                  height: imageSize,
+                                  decodeWidthLogical: imageSize,
+                                  decodeHeightLogical: imageSize,
+                                  preferHtmlElementOnWeb: false,
                                   errorBuilder: (_, __, ___) =>
                                       const ColoredBox(
                                           color: Color(0xFFE0E0E0)),
