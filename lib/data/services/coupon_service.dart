@@ -13,6 +13,26 @@ class CouponService {
   static final Map<String, DateTime> _tabsCacheAt = {};
   static final Map<String, Future<Map<String, List<Coupon>>>> _tabsInFlight = {};
 
+  /// 쿠폰 화면용. 실패는 null이고 캐시에 넣지 않는다. 성공한 빈 목록은 빈 리스트다.
+  static Future<Map<String, List<Coupon>>?> loadCouponTabs(String userId) async {
+    final id = userId.trim();
+    final tabs = await _fetchCouponTabs(id, surfaceFailure: true);
+    if (tabs == null) return null;
+    _tabsCache[id] = {
+      'available': List<Coupon>.from(tabs['available'] ?? const []),
+      'used': List<Coupon>.from(tabs['used'] ?? const []),
+      'expired': List<Coupon>.from(tabs['expired'] ?? const []),
+    };
+    _tabsCacheAt[id] = DateTime.now();
+    _availableCache[id] = List<Coupon>.from(tabs['available'] ?? const []);
+    _availableCacheAt[id] = DateTime.now();
+    return {
+      'available': List<Coupon>.from(tabs['available'] ?? const []),
+      'used': List<Coupon>.from(tabs['used'] ?? const []),
+      'expired': List<Coupon>.from(tabs['expired'] ?? const []),
+    };
+  }
+
   static Future<Map<String, List<Coupon>>> getCouponTabs(
     String userId, {
     bool forceRefresh = false,

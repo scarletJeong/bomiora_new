@@ -41,6 +41,8 @@ class _CouponTabLists {
 class _CouponScreenState extends State<CouponScreen> {
   UserModel? _currentUser;
   final ValueNotifier<bool> _isLoading = ValueNotifier(true);
+  final ValueNotifier<bool> _loadFailed = ValueNotifier(false);
+  final ValueNotifier<bool> _reloading = ValueNotifier(false);
   final ValueNotifier<int> _selectedCouponTab = ValueNotifier(0);
   final ValueNotifier<_CouponTabLists> _couponLists =
       ValueNotifier(const _CouponTabLists());
@@ -94,6 +96,8 @@ class _CouponScreenState extends State<CouponScreen> {
   @override
   void dispose() {
     _isLoading.dispose();
+    _loadFailed.dispose();
+    _reloading.dispose();
     _selectedCouponTab.dispose();
     _couponLists.dispose();
     _couponCodeController.dispose();
@@ -123,20 +127,28 @@ class _CouponScreenState extends State<CouponScreen> {
 
   Future<void> _loadCoupons() async {
     if (_currentUser == null) return;
+    _reloading.value = true;
 
     try {
-      final tabs = await CouponService.getCouponTabs(
-        _currentUser!.id,
-        forceRefresh: true,
-      );
+      final tabs = await CouponService.loadCouponTabs(_currentUser!.id);
       if (!mounted) return;
+      if (tabs == null) {
+        _couponLists.value = const _CouponTabLists();
+        _loadFailed.value = true;
+        return;
+      }
+      _loadFailed.value = false;
       _couponLists.value = _CouponTabLists(
         available: tabs['available'] ?? const <Coupon>[],
         used: tabs['used'] ?? const <Coupon>[],
         expired: tabs['expired'] ?? const <Coupon>[],
       );
     } catch (e) {
-      debugPrint('쿠폰 조회 오류: $e');
+      if (!mounted) return;
+      _couponLists.value = const _CouponTabLists();
+      _loadFailed.value = true;
+    } finally {
+      if (mounted) _reloading.value = false;
     }
   }
 
@@ -244,7 +256,7 @@ class _CouponScreenState extends State<CouponScreen> {
                         );
                       },
                     ),
-                    Expanded(child: _buildCouponList()),
+                    Expanded(child: _buildCouponBody()),
                   ],
                 ),
               ),
@@ -262,7 +274,11 @@ class _CouponScreenState extends State<CouponScreen> {
       valueListenable: _isLoading,
       builder: (context, loading, _) {
         if (loading) return const SizedBox.shrink();
-        return ValueListenableBuilder<int>(
+        return ValueListenableBuilder<bool>(
+          valueListenable: _loadFailed,
+          builder: (context, failed, _) {
+            if (failed) return const SizedBox.shrink();
+            return ValueListenableBuilder<int>(
           valueListenable: _selectedCouponTab,
           builder: (context, tab, _) {
             return ValueListenableBuilder<_CouponTabLists>(
@@ -284,6 +300,68 @@ class _CouponScreenState extends State<CouponScreen> {
                   ),
                 );
               },
+            );
+          },
+        );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildCouponBody() {
+    return ValueListenableBuilder<bool>(
+      valueListenable: _loadFailed,
+      builder: (context, failed, _) {
+        if (!failed) return _buildCouponList();
+        return ValueListenableBuilder<bool>(
+          valueListenable: _reloading,
+          builder: (context, reloading, _) {
+            if (reloading) {
+              return const Center(
+                child: CircularProgressIndicator(color: _pink),
+              );
+            }
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SizedBox(height: healthDp(context, 28)),
+                Text(
+                  '쿠폰을 불러오지 못했습니다.',
+                  textAlign: TextAlign.center,
+                  style: _couponText(
+                    context,
+                    size: 14,
+                    color: _textSub,
+                    height: 1.5,
+                  ),
+                ),
+                SizedBox(height: healthDp(context, 16)),
+                SizedBox(
+                  height: healthDp(context, 44),
+                  child: ElevatedButton(
+                    onPressed: _loadCoupons,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _pink,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius:
+                            BorderRadius.circular(healthDp(context, 10)),
+                      ),
+                    ),
+                    child: Text(
+                      '다시 불러오기',
+                      style: _couponText(
+                        context,
+                        size: 14,
+                        color: Colors.white,
+                        weight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             );
           },
         );
@@ -328,9 +406,13 @@ class _CouponScreenState extends State<CouponScreen> {
     return ValueListenableBuilder<int>(
       valueListenable: _selectedCouponTab,
       builder: (context, selected, _) {
-        return ValueListenableBuilder<_CouponTabLists>(
+        return ValueListenableBuilder<bool>(
+          valueListenable: _loadFailed,
+          builder: (context, failed, _) {
+            return ValueListenableBuilder<_CouponTabLists>(
           valueListenable: _couponLists,
           builder: (context, lists, _) {
+            final availableCount = failed ? null : lists.available.length;
             return SizedBox(
               width: double.infinity,
               child: Row(
@@ -340,7 +422,7 @@ class _CouponScreenState extends State<CouponScreen> {
                     child: _buildTabChip(
                       0,
                       '사용가능한 쿠폰',
-                      lists.available.length,
+                      availableCount,
                       selected,
                     ),
                   ),
@@ -365,6 +447,8 @@ class _CouponScreenState extends State<CouponScreen> {
             );
           },
         );
+          },
+        );
       },
     );
   }
@@ -372,10 +456,11 @@ class _CouponScreenState extends State<CouponScreen> {
   Widget _buildTabChip(
     int index,
     String label,
-    int count,
+    int? count,
     int selectedTab,
   ) {
     final selected = selectedTab == index;
+    final title = count == null ? label : '$label$count';
 
     return GestureDetector(
       onTap: () => _selectedCouponTab.value = index,
@@ -389,7 +474,7 @@ class _CouponScreenState extends State<CouponScreen> {
               fit: BoxFit.scaleDown,
               alignment: Alignment.center,
               child: Text(
-                selected && index == 0 ? '$label$count' : label,
+                selected && index == 0 ? title : label,
                 textAlign: TextAlign.center,
                 maxLines: 1,
                 softWrap: false,
