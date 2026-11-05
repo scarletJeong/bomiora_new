@@ -541,6 +541,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
 
       if (profileSaved) {
         await _loadCurrentUser();
+        if (!mounted) return;
+        AppToastOverlay.show(context, '저장했습니다.');
       }
     } catch (_) {
       if (profileSaved && mounted) await _loadCurrentUser();
