@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../../../core/constants/app_assets.dart';
+import '../../../../core/logging/failure_log.dart';
 import '../../../../data/models/health/weight/weight_record_model.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/services/health_profile_service.dart';
@@ -15,6 +16,7 @@ import '../widgets/health_profile_payload.dart';
 import '../widgets/health_profile_prescription_booking_args.dart';
 import 'health_profile_form1_screen.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
+import '../../../common/widgets/load_failure_notice.dart';
 import '../../../common/widgets/login_required_dialog.dart';
 import '../../../common/widgets/centered_empty_state.dart';
 import '../../../common/widgets/app_alert_dialog.dart';
@@ -53,6 +55,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
   UserModel? _currentUser;
   HealthProfileModel? _healthProfile;
   bool _isLoading = true;
+  bool _loadFailed = false;
   bool _initialPromptShown = false;
 
   /// 스크롤 진행률 — setState 없이 프로그레스바만 갱신(스크롤 끊김 방지)
@@ -101,6 +104,12 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
       if (user != null) {
         setState(() => _currentUser = user);
         await _loadHealthProfile();
+      } else if (mounted) {
+        setState(() {
+          _currentUser = null;
+          _healthProfile = null;
+          _loadFailed = false;
+        });
       }
     } catch (_) {
     } finally {
@@ -111,7 +120,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
 
   Future<void> _maybePromptInitialQuestionnaire() async {
     if (!mounted || !_isPrescriptionBooking || _currentUser == null) return;
-    if (_initialPromptShown) return;
+    if (_initialPromptShown || _loadFailed) return;
 
     final needsInitial =
         _healthProfile == null || _healthProfile!.needsInitialQuestionnaire;
@@ -155,8 +164,15 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
     try {
       _healthProfile =
           await HealthProfileService.getHealthProfile(_currentUser!.id);
-    } catch (_) {
+      _loadFailed = false;
+    } catch (e) {
       _healthProfile = null;
+      _loadFailed = true;
+      await FailureLog.record(
+        code: 'health_profile.list',
+        mbId: _currentUser?.id ?? '',
+        reason: e.toString(),
+      );
     }
   }
 
@@ -227,6 +243,14 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
             if (!mounted) return;
             await _loadData();
           },
+        ),
+      );
+    }
+    if (_loadFailed) {
+      return Center(
+        child: LoadFailureNotice(
+          message: '문진표를 불러오지 못했습니다',
+          onRetry: _loadData,
         ),
       );
     }
@@ -906,11 +930,8 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
     HealthProfilePrescriptionBookingArgs booking,
   ) async {
     final profile = _healthProfile;
-    if (profile == null) {
-      await _promptInitialQuestionnaire();
-      return;
-    }
-    if (profile.needsInitialQuestionnaire) {
+    if (_loadFailed) return;
+    if (profile == null || profile.needsInitialQuestionnaire) {
       await _promptInitialQuestionnaire();
       return;
     }

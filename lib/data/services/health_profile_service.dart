@@ -38,24 +38,30 @@ class HealthProfileService {
   static Future<HealthProfileModel?> _fetchHealthProfile(String id) async {
     final response = await ApiClient.get('/api/healthprofile/$id');
 
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-
-      if (data is Map && data['success'] == true && data['data'] != null) {
-        final payload = data['data'];
-        if (payload is Map) {
-          final model =
-              HealthProfileModel.fromJson(Map<String, dynamic>.from(payload));
-          _memCache[id] = model;
-          _memCacheAt[id] = DateTime.now();
-          return model;
-        }
-      }
-      _memCache[id] = null;
-      _memCacheAt[id] = DateTime.now();
-      return null;
+    if (response.statusCode != 200) {
+      throw Exception('건강프로필 조회 실패: ${response.statusCode}');
     }
-    throw Exception('건강프로필 조회 실패: ${response.statusCode}');
+    final data = json.decode(response.body);
+    if (data is Map && data['success'] == true) {
+      final payload = data['data'];
+      if (payload == null) {
+        _memCache[id] = null;
+        _memCacheAt[id] = DateTime.now();
+        return null;
+      }
+      if (payload is Map) {
+        final model = HealthProfileModel.fromJson(
+          Map<String, dynamic>.from(payload),
+        );
+        _memCache[id] = model;
+        _memCacheAt[id] = DateTime.now();
+        return model;
+      }
+    }
+    final message = data is Map ? data['message']?.toString().trim() : null;
+    throw Exception(
+      message == null || message.isEmpty ? '문진표 조회에 실패했습니다' : message,
+    );
   }
 
   static void invalidateCache([String? userId]) {
