@@ -155,8 +155,8 @@ class _CouponScreenState extends State<CouponScreen> {
   String _emptyMessage(int tab) =>
       tab < _emptyMessages.length ? _emptyMessages[tab] : '';
 
-  /// `true` 성공, `false` 실패, `null` 로그인 필요 등으로 등록을 시도하지 않음
-  Future<bool?> _registerCoupon() async {
+  /// 성공·미시도는 null. 실패면 입력칸 아래에 보일 문구.
+  Future<String?> _registerCoupon() async {
     final code = _couponCodeController.text.replaceAll('-', '').trim();
     if (code.length != 16) return null;
 
@@ -174,7 +174,7 @@ class _CouponScreenState extends State<CouponScreen> {
         _couponCodeController.text.trim(),
       );
 
-      if (!mounted) return false;
+      if (!mounted) return null;
 
       if (result['success'] == true) {
         _couponCodeController.clear();
@@ -182,12 +182,11 @@ class _CouponScreenState extends State<CouponScreen> {
         if (mounted) {
           AppToastOverlay.show(context, '쿠폰이 성공적으로 등록되었습니다.');
         }
-        return true;
+        return null;
       }
-      return false;
+      return result['message']?.toString().trim() ?? '';
     } catch (e) {
-      debugPrint('쿠폰 등록 오류: $e');
-      return false;
+      return '쿠폰 등록 중 오류가 발생했습니다: $e';
     }
   }
 
@@ -624,7 +623,7 @@ class _CouponRegistrationCard extends StatefulWidget {
   });
 
   final TextEditingController controller;
-  final Future<bool?> Function() onRegister;
+  final Future<String?> Function() onRegister;
 
   @override
   State<_CouponRegistrationCard> createState() =>
@@ -638,7 +637,7 @@ class _CouponRegistrationCardState extends State<_CouponRegistrationCard> {
   static const Color _textMain = Color(0xFF1A1A1A);
   static const Color _usedRed = Color(0xFFEF4444);
 
-  final ValueNotifier<bool> _registerError = ValueNotifier(false);
+  final ValueNotifier<String?> _registerError = ValueNotifier(null);
   final ValueNotifier<bool> _registering = ValueNotifier(false);
 
   @override
@@ -665,7 +664,7 @@ class _CouponRegistrationCardState extends State<_CouponRegistrationCard> {
   }
 
   void _onCodeChanged() {
-    if (_registerError.value) _registerError.value = false;
+    if (_registerError.value != null) _registerError.value = null;
   }
 
   Future<void> _onRegisterTap() async {
@@ -674,12 +673,12 @@ class _CouponRegistrationCardState extends State<_CouponRegistrationCard> {
         widget.controller.text.replaceAll('-', '').trim().length == 16;
     if (!enabled) return;
 
-    _registerError.value = false;
+    _registerError.value = null;
     _registering.value = true;
     try {
       final result = await widget.onRegister();
       if (!mounted) return;
-      if (result == false) _registerError.value = true;
+      if (result != null) _registerError.value = result;
     } finally {
       if (mounted) _registering.value = false;
     }
@@ -811,14 +810,17 @@ class _CouponRegistrationCardState extends State<_CouponRegistrationCard> {
                   ),
                 ],
               ),
-              ValueListenableBuilder<bool>(
+              ValueListenableBuilder<String?>(
                 valueListenable: _registerError,
-                builder: (context, showError, _) {
-                  if (!showError) return const SizedBox.shrink();
+                builder: (context, message, _) {
+                  if (message == null) return const SizedBox.shrink();
+                  final text = message.trim().isEmpty
+                      ? '쿠폰정보를 다시 입력해주세요.'
+                      : message.trim();
                   return Padding(
                     padding: EdgeInsets.only(top: healthDp(context, 4)),
                     child: Text(
-                      '쿠폰정보를 다시 입력해주세요.',
+                      text,
                       style: _couponText(
                         context,
                         size: 10,
