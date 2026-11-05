@@ -421,7 +421,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
         rvkind: supporter ? 'supporter' : null,
         page: page + 1,
       );
-      if (!mounted || more == null) return;
+      if (!mounted) return;
+      if (more == null) {
+        AppToastOverlay.showAlert(context, '리뷰를 더 불러오지 못했습니다.');
+        return;
+      }
       _safeSetState(() {
         final merged = [...loaded, ...more.reviews];
         final cap = nextVisible > merged.length ? merged.length : nextVisible;
@@ -437,6 +441,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
           _visibleNormalReviewCount = cap;
         }
       });
+    } catch (_) {
+      if (!mounted) return;
+      AppToastOverlay.showAlert(context, '리뷰를 더 불러오지 못했습니다.');
     } finally {
       _reviewPaging = false;
     }
