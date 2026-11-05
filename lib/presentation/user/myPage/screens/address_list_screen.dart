@@ -5,6 +5,7 @@ import '../../../common/widgets/confirm_dialog.dart';
 import '../../../common/widgets/app_alert_dialog.dart';
 import '../../../common/widgets/app_toast_overlay.dart';
 import '../../../common/widgets/centered_empty_state.dart';
+import '../../../common/widgets/load_failure_notice.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
 import '../../../../data/services/auth_service.dart';
@@ -28,6 +29,7 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
   UserModel? _currentUser;
   List<Map<String, dynamic>> _addresses = [];
   bool _isLoadingAddresses = false;
+  bool _loadFailed = false;
   bool _showAllAddresses = false;
 
   @override
@@ -60,25 +62,36 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
     }
   }
 
-  Future<void> _loadAddresses() async {
+  Future<void> _loadAddresses({bool forceRefresh = false}) async {
     if (_currentUser == null) return;
     final id = _currentUser!.id;
-    final cached = AddressService.peekAddressList(id);
-    if (cached != null) {
-      _applyAddresses(cached, loading: false);
-    } else if (!_isLoadingAddresses) {
-      setState(() => _isLoadingAddresses = true);
+    final fresh = forceRefresh ? null : AddressService.peekFreshAddressList(id);
+    if (fresh != null) {
+      _loadFailed = false;
+      _applyAddresses(fresh, loading: false);
+      return;
+    }
+    if (!_isLoadingAddresses && mounted) {
+      setState(() {
+        _isLoadingAddresses = true;
+        _loadFailed = false;
+      });
     }
 
-    try {
-      final addresses = await AddressService.getAddressList(id);
-      if (!mounted) return;
-      _applyAddresses(addresses, loading: false);
-    } catch (_) {
-      if (mounted) {
-        setState(() => _isLoadingAddresses = false);
-      }
+    final loaded = await AddressService.loadAddresses(
+      id,
+      forceRefresh: forceRefresh,
+    );
+    if (!mounted) return;
+    if (!loaded.ok) {
+      setState(() {
+        _isLoadingAddresses = false;
+        _loadFailed = true;
+      });
+      return;
     }
+    _loadFailed = false;
+    _applyAddresses(loaded.items, loading: false);
   }
 
   void _applyAddresses(List<Map<String, dynamic>> addresses, {required bool loading}) {
@@ -157,7 +170,10 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
       });
       AppToastOverlay.show(context, '배송지가 삭제됐어요.');
     } else {
-      await _loadAddresses();
+      AppToastOverlay.showAlert(
+        context,
+        AddressService.failureToast(result['message']),
+      );
     }
   }
 
@@ -321,7 +337,14 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                     ),
                   ),
                 )
-              : _currentUser == null
+              : _loadFailed
+                  ? Center(
+                      child: LoadFailureNotice(
+                        message: '배송지를 불러오지 못했습니다.',
+                        onRetry: () => _loadAddresses(forceRefresh: true),
+                      ),
+                    )
+                  : _currentUser == null
                   ? CenteredEmptyState(
                       iconWidget: CenteredEmptyState.assetIcon(
                         context,

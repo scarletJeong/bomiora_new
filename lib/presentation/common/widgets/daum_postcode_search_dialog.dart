@@ -5,7 +5,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import '../../../core/network/api_client.dart';
+import '../../../data/services/address_service.dart';
 import '../../health/health_common/health_responsive_scale.dart';
+import 'app_toast_overlay.dart';
 import 'mobile_layout_wrapper.dart';
 
 const double _kPostcodeDialogMaxWidth = 650;
@@ -355,12 +357,17 @@ class _DaumPostcodeDialogState extends State<_DaumPostcodeDialog> {
                               }
                             } catch (_) {}
                           },
-                          onReceivedError: (_, __, error) {
-                            if (!mounted || _completed) return;
+                          onReceivedError: (_, __, ___) {
+                            if (!mounted || _completed || _errorMessage != null) {
+                              return;
+                            }
                             setState(() {
-                              _errorMessage =
-                                  '주소 검색 창 로딩 중 오류가 발생했습니다.\n${error.description}';
+                              _errorMessage = '주소 검색 창 로딩 중 오류가 발생했습니다.';
                             });
+                            AppToastOverlay.showAlert(
+                              context,
+                              AddressService.saveFailureFallback,
+                            );
                           },
                         ),
             ),

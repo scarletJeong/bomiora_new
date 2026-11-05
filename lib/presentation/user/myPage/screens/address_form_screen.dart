@@ -87,8 +87,9 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
     final user = await AuthService.getUser();
     if (!mounted || user == null) return;
 
-    final list = await AddressService.getAddressList(user.id);
-    if (!mounted) return;
+    final loaded = await AddressService.loadAddresses(user.id);
+    if (!mounted || !loaded.ok) return;
+    final list = loaded.items;
 
     if (widget.address == null) {
       // 최초 등록: 기본배송지 체크 필수
@@ -294,6 +295,8 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
     try {
       selected = await showDaumPostcodeSearchDialog(context);
     } catch (_) {
+      if (!mounted) return;
+      AppToastOverlay.showAlert(context, AddressService.saveFailureFallback);
       return;
     }
     if (!mounted || selected == null) return;
@@ -341,7 +344,14 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
     final user = await AuthService.getUser();
     if (user == null) return false;
 
-    final list = await AddressService.getAddressList(user.id);
+    final loaded = await AddressService.loadAddresses(user.id);
+    if (!loaded.ok) {
+      if (mounted) {
+        AppToastOverlay.showAlert(context, '배송지를 불러오지 못했습니다.');
+      }
+      return false;
+    }
+    final list = loaded.items;
     final otherDefaultExists = list.any((a) {
       if (a['adDefault'] != 1) return false;
       if (widget.address == null) return true;
@@ -399,7 +409,16 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
 
       List<Map<String, dynamic>> existing = const [];
       if (widget.address == null || !_isDefault) {
-        existing = await AddressService.getAddressList(user.id);
+        final loaded = await AddressService.loadAddresses(
+          user.id,
+          forceRefresh: true,
+        );
+        if (!loaded.ok) {
+          if (!mounted) return;
+          AppToastOverlay.showAlert(context, '배송지를 불러오지 못했습니다.');
+          return;
+        }
+        existing = loaded.items;
       }
 
       // 신규 등록 시 mb_id당 최대 10개
@@ -461,9 +480,15 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
           'registered': isNew,
           'defaultChanged': defaultChanged,
         });
+      } else {
+        AppToastOverlay.showAlert(
+          context,
+          AddressService.failureToast(result['message']),
+        );
       }
-    } catch (e) {
-      // ignore
+    } catch (_) {
+      if (!mounted) return;
+      AppToastOverlay.showAlert(context, AddressService.saveFailureFallback);
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
