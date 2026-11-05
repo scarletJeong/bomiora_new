@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_assets.dart';
+import '../../core/logging/failure_log.dart';
 import '../common/widgets/mobile_layout_wrapper.dart';
 import '../common/widgets/centered_empty_state.dart';
 import '../common/widgets/app_toast_overlay.dart';
+import '../common/widgets/load_failure_notice.dart';
 import '../health/health_common/widgets/health_app_bar.dart';
 import '../health/health_common/health_responsive_scale.dart';
 import '../../data/models/notification/notification_settings_model.dart';
@@ -28,6 +30,8 @@ class _NotificationSettingsScreenState
 
   bool _loading = true;
   bool _requiresLogin = false;
+  bool _loadFailed = false;
+  int _saveGen = 0;
   Future<void> _saveChain = Future<void>.value();
 
   /// mb_notif_order — UI 미노출, 기존 값 유지
@@ -49,6 +53,14 @@ class _NotificationSettingsScreenState
   }
 
   Future<void> _loadSettings() async {
+    if (mounted) {
+      setState(() {
+        _loading = true;
+        _loadFailed = false;
+        _requiresLogin = false;
+      });
+    }
+
     final loggedIn = await AuthService.isLoggedIn();
     if (!loggedIn) {
       if (!mounted) return;
@@ -59,26 +71,32 @@ class _NotificationSettingsScreenState
       return;
     }
 
-    final cached = NotificationService.peekSettings();
-    if (cached != null && mounted) {
+    try {
+      final settings = await NotificationService.loadSettings(
+        forceRefresh: true,
+      );
+      if (!mounted) return;
       setState(() {
-        _orderAgree = cached.orderAgree;
-        _marketingAgree = cached.marketingAgree;
-        _nightAgree = cached.appPushAgree;
-        _smsAgree = cached.smsAgree;
+        _orderAgree = settings.orderAgree;
+        _marketingAgree = settings.marketingAgree;
+        _nightAgree = settings.appPushAgree;
+        _smsAgree = settings.smsAgree;
+        _loadFailed = false;
+        _loading = false;
+      });
+    } catch (e) {
+      final user = await AuthService.getUser();
+      await FailureLog.record(
+        code: 'notification.settings.load',
+        mbId: user?.id ?? '',
+        reason: e.toString(),
+      );
+      if (!mounted) return;
+      setState(() {
+        _loadFailed = true;
         _loading = false;
       });
     }
-
-    final settings = await NotificationService.loadSettings();
-    if (!mounted) return;
-    setState(() {
-      _orderAgree = settings.orderAgree;
-      _marketingAgree = settings.marketingAgree;
-      _nightAgree = settings.appPushAgree;
-      _smsAgree = settings.smsAgree;
-      _loading = false;
-    });
   }
 
   NotificationSettingsModel get _currentSettings => NotificationSettingsModel(
@@ -88,29 +106,45 @@ class _NotificationSettingsScreenState
         smsAgree: _smsAgree,
       );
 
-  Future<void> _persist() {
+  Future<void> _persist(NotificationSettingsModel previous) {
+    final generation = ++_saveGen;
     final snapshot = _currentSettings;
     _saveChain = _saveChain.then((_) async {
       final ok = await NotificationService.saveSettings(snapshot);
-      await FCMService().syncTopicsFromSettings();
-      if (!mounted || ok) return;
-      AppToastOverlay.show(context, '알림 설정 저장에 실패했습니다.');
+      if (!mounted) return;
+      if (!ok) {
+        if (generation == _saveGen) {
+          setState(() {
+            _orderAgree = previous.orderAgree;
+            _marketingAgree = previous.marketingAgree;
+            _nightAgree = previous.appPushAgree;
+            _smsAgree = previous.smsAgree;
+          });
+        }
+        AppToastOverlay.show(context, '알림 설정 저장에 실패했습니다.');
+        return;
+      }
+      try {
+        await FCMService().syncTopicsFromSettings();
+      } catch (_) {}
     });
     return _saveChain;
   }
 
   Future<void> _onMarketingChanged(bool value) async {
+    final previous = _currentSettings;
     setState(() {
       _marketingAgree = value;
       // 화면에는 없는 SMS 수신만 마케팅과 같이 저장한다.
       _smsAgree = value;
     });
-    await _persist();
+    await _persist(previous);
   }
 
   Future<void> _onNightChanged(bool value) async {
+    final previous = _currentSettings;
     setState(() => _nightAgree = value);
-    await _persist();
+    await _persist(previous);
   }
 
   @override
@@ -129,7 +163,7 @@ class _NotificationSettingsScreenState
                   child: const CircularProgressIndicator(color: _kPink),
                 ),
               )
-            : _requiresLogin
+                : _requiresLogin
                 ? LayoutBuilder(
                     builder: (context, constraints) {
                       return SizedBox(
@@ -143,11 +177,30 @@ class _NotificationSettingsScreenState
                           message: '로그인 후 이용 가능합니다.',
                           trailing: CenteredEmptyState.loginButtonTrailing(
                             context,
+                            onPressed: () async {
+                              await Navigator.pushNamed(context, '/login');
+                              if (!mounted) return;
+                              await _loadSettings();
+                            },
                           ),
                         ),
                       );
                     },
                   )
+                : _loadFailed
+                    ? LayoutBuilder(
+                        builder: (context, constraints) {
+                          return SizedBox(
+                            height: constraints.maxHeight,
+                            child: Center(
+                              child: LoadFailureNotice(
+                                message: '알림 설정을 불러오지 못했습니다',
+                                onRetry: _loadSettings,
+                              ),
+                            ),
+                          );
+                        },
+                      )
                 : ListView(
                     padding: EdgeInsets.fromLTRB(
                       healthDp(context, 27),

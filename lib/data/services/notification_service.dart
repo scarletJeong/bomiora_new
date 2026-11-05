@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../core/logging/failure_log.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_endpoints.dart';
 import '../../core/utils/node_value_parser.dart';
@@ -53,71 +54,113 @@ class NotificationService {
     }
   }
 
-  static Future<NotificationSettingsModel> _fetchSettings() async {
+  static Future<NotificationSettingsModel> _readLocal() async {
     final prefs = await SharedPreferences.getInstance();
-    final local = NotificationSettingsModel(
+    return NotificationSettingsModel(
       orderAgree: prefs.getBool(_prefsOrder) ?? false,
       marketingAgree: prefs.getBool(_prefsMarketing) ?? false,
       appPushAgree: prefs.getBool(_prefsAppPush) ?? false,
       smsAgree: prefs.getBool(_prefsSms) ?? false,
     );
+  }
 
-    if (!await AuthService.isLoggedIn()) return local;
+  /// 라우트가 아직 없을 때의 404. 회원 없음처럼 `success`가 있는 404는 제외한다.
+  static bool _isUndeployedApi(int statusCode, Map<String, dynamic>? map) {
+    if (statusCode != 404) return false;
+    if (map != null && map.containsKey('success')) return false;
+    return true;
+  }
 
+  static Map<String, dynamic>? _decodeMap(String body) {
     try {
-      final user = await AuthService.getUser();
-      if (user == null || user.id.isEmpty) return local;
-
-      final response = await ApiClient.get(
-        '${ApiEndpoints.userNotificationSettings}?mb_id=${Uri.encodeQueryComponent(user.id)}',
-      );
-      if (response.statusCode != 200) return local;
-
-      final decoded = json.decode(response.body);
-      if (decoded is! Map) return local;
-      final map = NodeValueParser.normalizeMap(
-        Map<String, dynamic>.from(decoded),
-      );
-      if (map['success'] != true || map['data'] == null) return local;
-
-      final data = map['data'];
-      if (data is! Map) return local;
-      final remote = NotificationSettingsModel.fromJson(
-        Map<String, dynamic>.from(data),
-      );
-      await _saveLocal(remote);
-      return remote;
+      final decoded = json.decode(body);
+      if (decoded is! Map) return null;
+      return NodeValueParser.normalizeMap(Map<String, dynamic>.from(decoded));
     } catch (_) {
-      return local;
+      return null;
     }
   }
 
+  static String _failureMessage(Map<String, dynamic>? map, String fallback) {
+    final message = map?['message']?.toString().trim();
+    if (message != null && message.isNotEmpty) return message;
+    final error = map?['error']?.toString().trim();
+    if (error != null && error.isNotEmpty) return error;
+    return fallback;
+  }
+
+  static Future<NotificationSettingsModel> _fetchSettings() async {
+    if (!await AuthService.isLoggedIn()) return _readLocal();
+
+    final user = await AuthService.getUser();
+    if (user == null || user.id.isEmpty) return _readLocal();
+
+    final response = await ApiClient.get(
+      '${ApiEndpoints.userNotificationSettings}?mb_id=${Uri.encodeQueryComponent(user.id)}',
+    );
+    final map = _decodeMap(response.body);
+    if (_isUndeployedApi(response.statusCode, map)) {
+      return _readLocal();
+    }
+    final data = map?['data'];
+    if (response.statusCode != 200 ||
+        map == null ||
+        map['success'] != true ||
+        data is! Map) {
+      throw Exception(
+        _failureMessage(map, '알림 설정을 불러오지 못했습니다.'),
+      );
+    }
+
+    final remote = NotificationSettingsModel.fromJson(
+      Map<String, dynamic>.from(data),
+    );
+    await _saveLocal(remote);
+    return remote;
+  }
+
   static Future<bool> saveSettings(NotificationSettingsModel settings) async {
-    await _saveLocal(settings);
+    if (!await AuthService.isLoggedIn()) return false;
 
-    if (!await AuthService.isLoggedIn()) return true;
-
+    var mbId = '';
     try {
       final user = await AuthService.getUser();
-      if (user == null || user.id.isEmpty) return true;
+      if (user == null || user.id.isEmpty) return false;
+      mbId = user.id;
 
-      final body = {
-        'mb_id': user.id,
-        ...settings.toJson(),
-      };
       final response = await ApiClient.put(
         ApiEndpoints.userNotificationSettings,
-        body,
+        {
+          'mb_id': user.id,
+          ...settings.toJson(),
+        },
       );
-      if (response.statusCode == 404) return true;
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        final decoded = json.decode(response.body);
-        if (decoded is Map && decoded['success'] == false) return false;
+      final map = _decodeMap(response.body);
+      if (_isUndeployedApi(response.statusCode, map)) {
+        await _saveLocal(settings);
         return true;
       }
-      return false;
-    } catch (_) {
+      final ok = response.statusCode >= 200 &&
+          response.statusCode < 300 &&
+          map != null &&
+          map['success'] != false;
+      if (!ok) {
+        await FailureLog.record(
+          code: 'notification.settings.save',
+          mbId: mbId,
+          reason: _failureMessage(map, '알림 설정 저장에 실패했습니다.'),
+        );
+        return false;
+      }
+      await _saveLocal(settings);
       return true;
+    } catch (e) {
+      await FailureLog.record(
+        code: 'notification.settings.save',
+        mbId: mbId,
+        reason: e.toString(),
+      );
+      return false;
     }
   }
 
