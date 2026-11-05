@@ -2,6 +2,7 @@ import 'dart:convert';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_endpoints.dart';
 import '../../../models/health/blood_pressure/blood_pressure_record_model.dart';
+import '../health_save_result.dart';
 
 class BloodPressureRepository {
   static const Duration _cacheTtl = Duration(seconds: 30);
@@ -83,29 +84,32 @@ class BloodPressureRepository {
 
   static Future<List<BloodPressureRecord>> _fetchBloodPressureRecords(
       String userId) async {
-    try {
-      final response = await ApiClient.get(
-          '${ApiEndpoints.bloodPressureRecords}?mb_id=$userId');
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-
-        if (data['success'] == true && data['data'] != null) {
-          final List<dynamic> records = data['data'];
-          return records
-              .map((json) => BloodPressureRecord.fromJson(json))
-              .toList();
-        } else if (data is List) {
-          return data
-              .map((json) => BloodPressureRecord.fromJson(json))
-              .toList();
-        }
-      }
-
-      return [];
-    } catch (e) {
-      return [];
+    final response = await ApiClient.get(
+        '${ApiEndpoints.bloodPressureRecords}?mb_id=$userId');
+    if (response.statusCode != 200) {
+      throw Exception('혈압 기록 조회 실패 (${response.statusCode})');
     }
+    final data = json.decode(response.body);
+    if (data is Map && data['success'] == true) {
+      final raw = data['data'];
+      if (raw is! List) return [];
+      return raw
+          .whereType<Map>()
+          .map((json) =>
+              BloodPressureRecord.fromJson(Map<String, dynamic>.from(json)))
+          .toList();
+    }
+    if (data is List) {
+      return data
+          .whereType<Map>()
+          .map((json) =>
+              BloodPressureRecord.fromJson(Map<String, dynamic>.from(json)))
+          .toList();
+    }
+    final message = data is Map ? data['message']?.toString().trim() : null;
+    throw Exception(
+      message == null || message.isEmpty ? '혈압 기록 조회에 실패했습니다' : message,
+    );
   }
 
   static Future<BloodPressureRecord?> getLatestBloodPressureRecord(
@@ -128,7 +132,9 @@ class BloodPressureRepository {
     }
   }
 
-  static Future<bool> addBloodPressureRecord(BloodPressureRecord record) async {
+  static Future<HealthSaveResult> addBloodPressureRecord(
+    BloodPressureRecord record,
+  ) async {
     try {
       final response = await ApiClient.post(
         ApiEndpoints.bloodPressureRecords,
@@ -137,22 +143,23 @@ class BloodPressureRepository {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
-        final ok = data['success'] == true;
+        final ok = data is Map && data['success'] == true;
         if (ok) invalidate(record.mbId);
-        return ok;
+        return ok ? HealthSaveResult.ok : HealthSaveResult.failed(data);
       }
 
-      return false;
+      return HealthSaveResult.failed(HealthSaveResult.decode(response.body));
     } catch (e) {
-      return false;
+      return const HealthSaveResult(success: false);
     }
   }
 
-  static Future<bool> updateBloodPressureRecord(
-      BloodPressureRecord record) async {
+  static Future<HealthSaveResult> updateBloodPressureRecord(
+    BloodPressureRecord record,
+  ) async {
     try {
       if (record.id == null) {
-        throw Exception('수정할 기록의 ID가 없습니다');
+        return const HealthSaveResult(success: false);
       }
 
       final response = await ApiClient.put(
@@ -162,14 +169,14 @@ class BloodPressureRepository {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        final ok = data['success'] == true;
+        final ok = data is Map && data['success'] == true;
         if (ok) invalidate(record.mbId);
-        return ok;
+        return ok ? HealthSaveResult.ok : HealthSaveResult.failed(data);
       }
 
-      return false;
+      return HealthSaveResult.failed(HealthSaveResult.decode(response.body));
     } catch (e) {
-      return false;
+      return const HealthSaveResult(success: false);
     }
   }
 

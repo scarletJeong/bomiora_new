@@ -4,8 +4,10 @@ import 'package:intl/intl.dart';
 import 'dart:math' as math;
 
 import '../../../../core/constants/app_assets.dart';
+import '../../../../core/logging/failure_log.dart';
 
 import '../../../common/chart_layout.dart';
+import '../../../common/widgets/load_failure_notice.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../../data/models/health/steps/steps_record_model.dart';
 import '../../../../data/models/user/user_model.dart';
@@ -55,6 +57,7 @@ class _StepsTodayScreenState extends State<StepsTodayScreen>
   HealthGoalRecordModel? latestHealthGoal;
   DateTime selectedDate = DateTime.now();
   bool isLoading = true;
+  bool loadFailed = false;
   String selectedPeriod = '일';
   double timeOffset = 0.0;
   VoidCallback? _refreshExpandedChart;
@@ -138,10 +141,20 @@ class _StepsTodayScreenState extends State<StepsTodayScreen>
         weekStepsByDate = Map<String, int>.from(results[2] as Map<String, int>);
         monthSteps12 = List<int>.from(results[3] as List<int>);
         isLoading = false;
+        loadFailed = false;
       });
-    } catch (e, st) {
-      debugPrint('StepsTodayScreen._loadData: $e\n$st');
-      if (mounted) setState(() => isLoading = false);
+    } catch (e) {
+      await FailureLog.record(
+        code: 'health.steps.list',
+        mbId: AuthService.currentUser?.id ?? '',
+        reason: e.toString(),
+      );
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+          loadFailed = true;
+        });
+      }
     }
   }
 
@@ -245,7 +258,14 @@ class _StepsTodayScreenState extends State<StepsTodayScreen>
                     ],
                   ),
                 )
-              : SingleChildScrollView(
+              : loadFailed
+                  ? Center(
+                      child: LoadFailureNotice(
+                        message: '기록을 불러오지 못했습니다',
+                        onRetry: _loadData,
+                      ),
+                    )
+                  : SingleChildScrollView(
                   child: Padding(
                     padding: EdgeInsets.symmetric(
                       horizontal: healthDp(context, 27),

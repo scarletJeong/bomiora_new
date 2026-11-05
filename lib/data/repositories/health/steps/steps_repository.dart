@@ -48,15 +48,20 @@ class StepsRepository {
       );
 
       if (response.statusCode != 200) {
-        return null;
+        throw Exception('걸음 기록 조회 실패 (${response.statusCode})');
       }
 
       final root = _tryDecodeObject(response.body);
-      if (root == null) return null;
+      if (root == null) {
+        throw Exception('걸음 기록 응답을 해석하지 못했습니다');
+      }
 
-      if (root['success'] == true && root['data'] is Map) {
-        final data = Map<String, dynamic>.from(root['data'] as Map);
-        return StepsRecord.fromJson(data);
+      if (root['success'] == true) {
+        if (root['data'] is Map) {
+          final data = Map<String, dynamic>.from(root['data'] as Map);
+          return StepsRecord.fromJson(data);
+        }
+        return null;
       }
 
       // 레거시: 본문이 곧바로 레코드 객체인 경우
@@ -64,9 +69,12 @@ class StepsRepository {
         return StepsRecord.fromJson(root);
       }
 
-      return null;
+      final message = root['message']?.toString().trim();
+      throw Exception(
+        message == null || message.isEmpty ? '걸음 기록 조회에 실패했습니다' : message,
+      );
     } catch (e) {
-      return null;
+      rethrow;
     }
   }
 
@@ -89,10 +97,16 @@ class StepsRepository {
       final response = await ApiClient.get(
         ApiEndpoints.stepsDailyRange(mbId: mbId, startYyyyMmDd: ss, endYyyyMmDd: ee),
       );
-      if (response.statusCode != 200) return {};
+      if (response.statusCode != 200) {
+        throw Exception('걸음 기록 조회 실패 (${response.statusCode})');
+      }
       final root = _tryDecodeObject(response.body);
-      if (root == null) return {};
-      if (root['success'] != true || root['data'] is! Map) return {};
+      if (root == null || root['success'] != true || root['data'] is! Map) {
+        final message = root?['message']?.toString().trim();
+        throw Exception(
+          message == null || message.isEmpty ? '걸음 기록 조회에 실패했습니다' : message,
+        );
+      }
       final data = Map<String, dynamic>.from(root['data'] as Map);
       final days = data['days'];
       if (days is! List) return {};
@@ -108,7 +122,7 @@ class StepsRepository {
       }
       return out;
     } catch (e) {
-      return {};
+      rethrow;
     }
   }
 
@@ -118,10 +132,16 @@ class StepsRepository {
       final response = await ApiClient.get(
         ApiEndpoints.stepsMonthlyTotals(mbId: mbId, year: year),
       );
-      if (response.statusCode != 200) return List<int>.filled(12, 0);
+      if (response.statusCode != 200) {
+        throw Exception('걸음 기록 조회 실패 (${response.statusCode})');
+      }
       final root = _tryDecodeObject(response.body);
-      if (root == null) return List<int>.filled(12, 0);
-      if (root['success'] != true || root['data'] is! Map) return List<int>.filled(12, 0);
+      if (root == null || root['success'] != true || root['data'] is! Map) {
+        final message = root?['message']?.toString().trim();
+        throw Exception(
+          message == null || message.isEmpty ? '걸음 기록 조회에 실패했습니다' : message,
+        );
+      }
       final data = Map<String, dynamic>.from(root['data'] as Map);
       final months = data['months'];
       final out = List<int>.filled(12, 0);
@@ -138,7 +158,7 @@ class StepsRepository {
       }
       return out;
     } catch (e) {
-      return List<int>.filled(12, 0);
+      rethrow;
     }
   }
 

@@ -2,6 +2,7 @@ import 'dart:convert';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_endpoints.dart';
 import '../../../models/health/menstrual_cycle/menstrual_cycle_model.dart';
+import '../health_save_result.dart';
 
 class MenstrualCycleRepository {
   static const Duration _cacheTtl = Duration(seconds: 30);
@@ -79,8 +80,9 @@ class MenstrualCycleRepository {
   }
 
   // 생리주기 기록 추가
-  static Future<bool> addMenstrualCycleRecord(
-      MenstrualCycleRecord record) async {
+  static Future<HealthSaveResult> addMenstrualCycleRecord(
+    MenstrualCycleRecord record,
+  ) async {
     try {
       final response = await ApiClient.post(
         ApiEndpoints.menstrualCycleRecords,
@@ -89,7 +91,7 @@ class MenstrualCycleRepository {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
-        final ok = data['success'] == true;
+        final ok = data is Map && data['success'] == true;
         if (ok && data['data'] is Map) {
           try {
             optimisticallyUpsert(
@@ -99,21 +101,22 @@ class MenstrualCycleRepository {
             );
           } catch (_) {}
         }
-        return ok;
+        return ok ? HealthSaveResult.ok : HealthSaveResult.failed(data);
       }
 
-      return false;
+      return HealthSaveResult.failed(HealthSaveResult.decode(response.body));
     } catch (e) {
-      return false;
+      return const HealthSaveResult(success: false);
     }
   }
 
   // 생리주기 기록 수정
-  static Future<bool> updateMenstrualCycleRecord(
-      MenstrualCycleRecord record) async {
+  static Future<HealthSaveResult> updateMenstrualCycleRecord(
+    MenstrualCycleRecord record,
+  ) async {
     try {
       if (record.id == null) {
-        throw Exception('수정할 기록의 ID가 없습니다');
+        return const HealthSaveResult(success: false);
       }
 
       final response = await ApiClient.put(
@@ -123,14 +126,14 @@ class MenstrualCycleRepository {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        final ok = data['success'] == true;
+        final ok = data is Map && data['success'] == true;
         if (ok) optimisticallyUpsert(record);
-        return ok;
+        return ok ? HealthSaveResult.ok : HealthSaveResult.failed(data);
       }
 
-      return false;
+      return HealthSaveResult.failed(HealthSaveResult.decode(response.body));
     } catch (e) {
-      return false;
+      return const HealthSaveResult(success: false);
     }
   }
 
@@ -163,24 +166,25 @@ class MenstrualCycleRepository {
 
   static Future<List<MenstrualCycleRecord>> _fetchMenstrualCycleRecords(
       String mbId) async {
-    try {
-      final response = await ApiClient.get(
-          '${ApiEndpoints.menstrualCycleRecords}?mb_id=$mbId');
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['success'] == true) {
-          final List<dynamic> records = data['data'];
-          return records
-              .map((json) => MenstrualCycleRecord.fromJson(json))
-              .toList();
-        }
-      }
-
-      return [];
-    } catch (e) {
-      return [];
+    final response = await ApiClient.get(
+        '${ApiEndpoints.menstrualCycleRecords}?mb_id=$mbId');
+    if (response.statusCode != 200) {
+      throw Exception('생리 기록 조회 실패 (${response.statusCode})');
     }
+    final data = json.decode(response.body);
+    if (data is Map && data['success'] == true) {
+      final raw = data['data'];
+      if (raw is! List) return [];
+      return raw
+          .whereType<Map>()
+          .map((json) =>
+              MenstrualCycleRecord.fromJson(Map<String, dynamic>.from(json)))
+          .toList();
+    }
+    final message = data is Map ? data['message']?.toString().trim() : null;
+    throw Exception(
+      message == null || message.isEmpty ? '생리 기록 조회에 실패했습니다' : message,
+    );
   }
 
   // 생리주기 기록 삭제

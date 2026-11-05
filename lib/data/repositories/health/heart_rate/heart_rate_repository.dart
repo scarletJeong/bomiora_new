@@ -48,24 +48,25 @@ class HeartRateRepository {
 
   static Future<List<HeartRateRecord>> _fetchHeartRateRecords(
       String userId) async {
-    try {
-      final response = await ApiClient.get(
-        '${ApiEndpoints.heartRateRecords}?mb_id=$userId',
-      );
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['success'] == true && data['data'] is List) {
-          final records = data['data'] as List<dynamic>;
-          return records
-              .map((e) => HeartRateRecord.fromJson(e as Map<String, dynamic>))
-              .toList();
-        }
-      }
-      return [];
-    } catch (e) {
-      return [];
+    final response = await ApiClient.get(
+      '${ApiEndpoints.heartRateRecords}?mb_id=$userId',
+    );
+    if (response.statusCode != 200) {
+      throw Exception('심박 기록 조회 실패 (${response.statusCode})');
     }
+    final data = json.decode(response.body);
+    if (data is Map && data['success'] == true) {
+      final raw = data['data'];
+      if (raw is! List) return [];
+      return raw
+          .whereType<Map>()
+          .map((e) => HeartRateRecord.fromJson(Map<String, dynamic>.from(e)))
+          .toList();
+    }
+    final message = data is Map ? data['message']?.toString().trim() : null;
+    throw Exception(
+      message == null || message.isEmpty ? '심박 기록 조회에 실패했습니다' : message,
+    );
   }
 
   static Future<HeartRateRecord?> getLatestHeartRateRecord(

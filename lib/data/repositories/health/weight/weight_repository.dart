@@ -2,6 +2,7 @@ import 'dart:convert';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_endpoints.dart';
 import '../../../models/health/weight/weight_record_model.dart';
+import '../health_save_result.dart';
 
 class WeightRepository {
   static const Duration _cacheTtl = Duration(seconds: 15);
@@ -77,7 +78,7 @@ class WeightRepository {
   }
 
   // 체중 기록 추가
-  static Future<bool> addWeightRecord(WeightRecord record) async {
+  static Future<HealthSaveResult> addWeightRecord(WeightRecord record) async {
     try {
       final response = await ApiClient.post(
         ApiEndpoints.weightRecords,
@@ -86,7 +87,7 @@ class WeightRepository {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
-        final ok = data['success'] == true;
+        final ok = data is Map && data['success'] == true;
         if (ok && data['record'] is Map) {
           final saved = WeightRecord.fromJson(
             Map<String, dynamic>.from(data['record']),
@@ -98,19 +99,19 @@ class WeightRepository {
         } else if (ok) {
           invalidate(record.mbId);
         }
-        return ok;
+        return ok ? HealthSaveResult.ok : HealthSaveResult.failed(data);
       }
-      return false;
+      return HealthSaveResult.failed(HealthSaveResult.decode(response.body));
     } catch (e) {
-      return false;
+      return const HealthSaveResult(success: false);
     }
   }
 
   // 체중 기록 수정
-  static Future<bool> updateWeightRecord(WeightRecord record) async {
+  static Future<HealthSaveResult> updateWeightRecord(WeightRecord record) async {
     try {
       if (record.id == null) {
-        throw Exception('수정할 기록의 ID가 없습니다');
+        return const HealthSaveResult(success: false);
       }
 
       final response = await ApiClient.put(
@@ -120,7 +121,7 @@ class WeightRepository {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        final ok = data['success'] == true;
+        final ok = data is Map && data['success'] == true;
         if (ok && data['record'] is Map) {
           final saved = WeightRecord.fromJson(
             Map<String, dynamic>.from(data['record']),
@@ -137,12 +138,12 @@ class WeightRepository {
         } else if (ok) {
           invalidate(record.mbId);
         }
-        return ok;
+        return ok ? HealthSaveResult.ok : HealthSaveResult.failed(data);
       }
 
-      return false;
+      return HealthSaveResult.failed(HealthSaveResult.decode(response.body));
     } catch (e) {
-      return false;
+      return const HealthSaveResult(success: false);
     }
   }
 
@@ -202,22 +203,24 @@ class WeightRepository {
   }
 
   static Future<List<WeightRecord>> _fetchWeightRecords(String mbId) async {
-    try {
-      final response =
-          await ApiClient.get('${ApiEndpoints.weightRecords}?mb_id=$mbId');
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['success'] == true) {
-          final List<dynamic> records = data['data'];
-          return records.map((json) => WeightRecord.fromJson(json)).toList();
-        }
-      }
-
-      return [];
-    } catch (e) {
-      return [];
+    final response =
+        await ApiClient.get('${ApiEndpoints.weightRecords}?mb_id=$mbId');
+    if (response.statusCode != 200) {
+      throw Exception('체중 기록 조회 실패 (${response.statusCode})');
     }
+    final data = json.decode(response.body);
+    if (data is Map && data['success'] == true) {
+      final raw = data['data'];
+      if (raw is! List) return [];
+      return raw
+          .whereType<Map>()
+          .map((json) => WeightRecord.fromJson(Map<String, dynamic>.from(json)))
+          .toList();
+    }
+    final message = data is Map ? data['message']?.toString().trim() : null;
+    throw Exception(
+      message == null || message.isEmpty ? '체중 기록 조회에 실패했습니다' : message,
+    );
   }
 
   // 체중 기록 삭제

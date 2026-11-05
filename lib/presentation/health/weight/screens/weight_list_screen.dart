@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'dart:io';
 import 'dart:math' as math;
 import 'package:image_picker/image_picker.dart';
+import '../../../common/widgets/load_failure_notice.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/btn_record.dart';
 import '../../../common/widgets/app_toast_overlay.dart';
@@ -19,6 +20,7 @@ import '../../../../data/models/user/user_model.dart';
 import '../../../../data/repositories/health/health_goal/health_goal_repository.dart';
 import '../../../../data/repositories/health/weight/weight_repository.dart';
 import '../../../../data/services/auth_service.dart';
+import '../../../../core/logging/failure_log.dart';
 import '../../../../core/utils/image_picker_utils.dart';
 import '../../../../core/utils/image_url_helper.dart';
 import '../../../../core/health/health_refresh_bus.dart';
@@ -73,6 +75,7 @@ class _WeightListScreenState extends State<WeightListScreen>
   Map<String, WeightRecord> weightRecordsMap = {}; // 날짜를 키로 하는 맵
   List<WeightRecord> allRecords = []; // 모든 체중 기록 (시간 정보 포함)
   bool isLoading = true;
+  bool loadFailed = false;
 
   // 현재 선택된 날짜 (기본값: 오늘)
   late DateTime selectedDate;
@@ -508,16 +511,25 @@ class _WeightListScreenState extends State<WeightListScreen>
             timeOffset = _dailyOffsetForDate(selectedDate);
           }
           isLoading = false;
+          loadFailed = false;
         });
       } else {
         setState(() {
           latestHealthGoal = null;
           isLoading = false;
+          loadFailed = false;
         });
       }
     } catch (e) {
+      await FailureLog.record(
+        code: 'health.weight.list',
+        mbId: currentUser?.id ?? AuthService.currentUser?.id ?? '',
+        reason: e.toString(),
+      );
+      if (!mounted) return;
       setState(() {
         isLoading = false;
+        loadFailed = true;
       });
     }
   }
@@ -543,7 +555,18 @@ class _WeightListScreenState extends State<WeightListScreen>
           // 기간 탭 변경 시 전체 위젯 트리를 교체하면 스크롤 위치가 초기화됨
           // (특히 '주/월'에서 _loadData()로 isLoading=true가 되며 상단으로 튀는 현상)
           // → 스크롤 뷰는 유지하고 로딩 오버레이만 올린다.
-          child: Column(
+          child: loadFailed
+              ? Center(
+                  child: isLoading
+                      ? const CircularProgressIndicator(
+                          color: Color(0xFFFF5A8D),
+                        )
+                      : LoadFailureNotice(
+                          message: '기록을 불러오지 못했습니다',
+                          onRetry: _loadData,
+                        ),
+                )
+              : Column(
             children: [
               Expanded(
                 child: Stack(

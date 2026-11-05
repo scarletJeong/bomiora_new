@@ -2,6 +2,7 @@ import 'dart:convert';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_endpoints.dart';
 import '../../../models/health/blood_sugar/blood_sugar_record_model.dart';
+import '../health_save_result.dart';
 
 class BloodSugarRepository {
   static const Duration _cacheTtl = Duration(seconds: 30);
@@ -59,27 +60,32 @@ class BloodSugarRepository {
 
   static Future<List<BloodSugarRecord>> _fetchBloodSugarRecords(
       String userId) async {
-    try {
-      final response = await ApiClient.get(
-          '${ApiEndpoints.bloodSugarRecords}?mb_id=$userId');
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-
-        if (data['success'] == true && data['data'] != null) {
-          final List<dynamic> records = data['data'];
-          return records
-              .map((json) => BloodSugarRecord.fromJson(json))
-              .toList();
-        } else if (data is List) {
-          return data.map((json) => BloodSugarRecord.fromJson(json)).toList();
-        }
-      }
-
-      return [];
-    } catch (e) {
-      return [];
+    final response = await ApiClient.get(
+        '${ApiEndpoints.bloodSugarRecords}?mb_id=$userId');
+    if (response.statusCode != 200) {
+      throw Exception('혈당 기록 조회 실패 (${response.statusCode})');
     }
+    final data = json.decode(response.body);
+    if (data is Map && data['success'] == true) {
+      final raw = data['data'];
+      if (raw is! List) return [];
+      return raw
+          .whereType<Map>()
+          .map((json) =>
+              BloodSugarRecord.fromJson(Map<String, dynamic>.from(json)))
+          .toList();
+    }
+    if (data is List) {
+      return data
+          .whereType<Map>()
+          .map((json) =>
+              BloodSugarRecord.fromJson(Map<String, dynamic>.from(json)))
+          .toList();
+    }
+    final message = data is Map ? data['message']?.toString().trim() : null;
+    throw Exception(
+      message == null || message.isEmpty ? '혈당 기록 조회에 실패했습니다' : message,
+    );
   }
 
   static Future<BloodSugarRecord?> getLatestBloodSugarRecord(
@@ -102,7 +108,9 @@ class BloodSugarRepository {
     }
   }
 
-  static Future<bool> addBloodSugarRecord(BloodSugarRecord record) async {
+  static Future<HealthSaveResult> addBloodSugarRecord(
+    BloodSugarRecord record,
+  ) async {
     try {
       final response = await ApiClient.post(
         ApiEndpoints.bloodSugarRecords,
@@ -111,21 +119,23 @@ class BloodSugarRepository {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
-        final ok = data['success'] == true;
+        final ok = data is Map && data['success'] == true;
         if (ok) invalidate(record.mbId);
-        return ok;
+        return ok ? HealthSaveResult.ok : HealthSaveResult.failed(data);
       }
 
-      return false;
+      return HealthSaveResult.failed(HealthSaveResult.decode(response.body));
     } catch (e) {
-      return false;
+      return const HealthSaveResult(success: false);
     }
   }
 
-  static Future<bool> updateBloodSugarRecord(BloodSugarRecord record) async {
+  static Future<HealthSaveResult> updateBloodSugarRecord(
+    BloodSugarRecord record,
+  ) async {
     try {
       if (record.id == null) {
-        throw Exception('수정할 기록의 ID가 없습니다');
+        return const HealthSaveResult(success: false);
       }
 
       final response = await ApiClient.put(
@@ -135,14 +145,14 @@ class BloodSugarRepository {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        final ok = data['success'] == true;
+        final ok = data is Map && data['success'] == true;
         if (ok) invalidate(record.mbId);
-        return ok;
+        return ok ? HealthSaveResult.ok : HealthSaveResult.failed(data);
       }
 
-      return false;
+      return HealthSaveResult.failed(HealthSaveResult.decode(response.body));
     } catch (e) {
-      return false;
+      return const HealthSaveResult(success: false);
     }
   }
 

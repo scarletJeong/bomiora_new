@@ -3,7 +3,9 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
+import '../../../../core/logging/failure_log.dart';
 import '../../../../core/constants/app_assets.dart';
+import '../../../common/widgets/load_failure_notice.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/btn_record.dart';
 import '../../../common/chart_layout.dart';
@@ -50,6 +52,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen>
   Map<String, BloodPressureRecord> bloodPressureRecordsMap = {}; // 날짜별 요약 기록
   Map<String, List<BloodPressureRecord>> dailyRecordsCache = {}; // 날짜별 상세 기록 캐시
   bool isLoading = true;
+  bool loadFailed = false;
   late DateTime selectedDate;
 
   // 차트 관련
@@ -532,15 +535,24 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen>
 
         setState(() {
           isLoading = false;
+          loadFailed = false;
         });
       } else {
         setState(() {
           isLoading = false;
+          loadFailed = false;
         });
       }
     } catch (e) {
+      await FailureLog.record(
+        code: 'health.blood_pressure.list',
+        mbId: currentUser?.id ?? AuthService.currentUser?.id ?? '',
+        reason: e.toString(),
+      );
+      if (!mounted) return;
       setState(() {
         isLoading = false;
+        loadFailed = true;
       });
     }
   }
@@ -621,7 +633,14 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen>
               ? const Center(
                   child: CircularProgressIndicator(color: Color(0xFFFF5A8D)),
                 )
-              : Column(
+              : loadFailed
+                  ? Center(
+                      child: LoadFailureNotice(
+                        message: '기록을 불러오지 못했습니다',
+                        onRetry: _loadData,
+                      ),
+                    )
+                  : Column(
                   children: [
                     Expanded(
                       child: SingleChildScrollView(

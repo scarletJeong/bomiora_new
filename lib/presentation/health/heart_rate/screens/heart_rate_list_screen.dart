@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/logging/failure_log.dart';
 import '../../../../data/models/health/heart_rate/heart_rate_record_model.dart';
 import '../../../../data/models/user/user_model.dart';
 import '../../../../data/repositories/health/heart_rate/heart_rate_repository.dart';
@@ -11,6 +12,7 @@ import '../../../../core/health/health_refresh_bus.dart';
 import '../../../../core/health/health_refresh_listener.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../common/chart_layout.dart';
+import '../../../common/widgets/load_failure_notice.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../widgets/heart_rate_period_chart.dart';
 import '../widgets/heart_rate_tooltip.dart';
@@ -50,6 +52,7 @@ class _HeartRateListScreenState extends State<HeartRateListScreen>
 
   UserModel? currentUser;
   bool isLoading = true;
+  bool loadFailed = false;
   final List<HeartRateRecord> _allRecords = [];
   int? selectedChartPointIndex;
   Offset? tooltipPosition;
@@ -107,11 +110,18 @@ class _HeartRateListScreenState extends State<HeartRateListScreen>
         _allRecords
           ..clear()
           ..addAll(records);
+        loadFailed = false;
       } else {
         _allRecords.clear();
+        loadFailed = false;
       }
     } catch (e) {
-      _allRecords.clear();
+      await FailureLog.record(
+        code: 'health.heart_rate.list',
+        mbId: currentUser?.id ?? AuthService.currentUser?.id ?? '',
+        reason: e.toString(),
+      );
+      loadFailed = true;
     } finally {
       if (mounted) {
         _recordsCacheDateKey = null;
@@ -575,7 +585,14 @@ class _HeartRateListScreenState extends State<HeartRateListScreen>
               ? const Center(
                   child: CircularProgressIndicator(color: Color(0xFFFF5A8D)),
                 )
-              : Column(
+              : loadFailed
+                  ? Center(
+                      child: LoadFailureNotice(
+                        message: '기록을 불러오지 못했습니다',
+                        onRetry: _loadData,
+                      ),
+                    )
+                  : Column(
                   children: [
                     Expanded(
                       child: SingleChildScrollView(
