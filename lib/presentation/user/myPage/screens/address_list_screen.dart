@@ -317,7 +317,7 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                     width: healthDp(context, 36),
                     height: healthDp(context, 36),
                     child: const CircularProgressIndicator(
-                      color: Color(0xFFFF3787),
+                      color: Color(0xFFFF5A8D),
                     ),
                   ),
                 )
