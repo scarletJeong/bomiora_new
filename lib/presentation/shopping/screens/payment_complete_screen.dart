@@ -230,7 +230,11 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
 
   Future<void> _cancelOrder(OrderDetailModel order) async {
     final user = await AuthService.getUser();
-    if (user == null || !mounted) return;
+    if (!mounted) return;
+    if (user == null) {
+      AppToastOverlay.show(context, '로그인이 필요합니다.');
+      return;
+    }
     final ok = await OrderFlowDialogs.runOrderCancelFlow(
       context,
       odId: order.odId,

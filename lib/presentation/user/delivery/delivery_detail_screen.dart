@@ -753,7 +753,11 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
   Future<void> _cancelOrder() async {
     if (_orderDetail == null) return;
     final user = await AuthService.getUser();
-    if (user == null) return;
+    if (!mounted) return;
+    if (user == null) {
+      AppToastOverlay.show(context, '로그인이 필요합니다.');
+      return;
+    }
 
     final ok = await OrderFlowDialogs.runOrderCancelFlow(
       context,

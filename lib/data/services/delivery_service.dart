@@ -247,29 +247,44 @@ class OrderService {
         '/api/orders/$odId/cancel',
         body,
       );
-
-      if (response.statusCode == 200) {
+      dynamic data = <String, dynamic>{};
+      try {
+        data = _decodeBody(response);
+      } catch (_) {
+        data = <String, dynamic>{};
+      }
+      final ok = response.statusCode == 200 &&
+          data is Map &&
+          data['success'] == true;
+      if (ok) {
         invalidateOrderList(mbId);
         CouponService.clearMemberCache(mbId);
-        final data = _decodeBody(response);
         return {
           'success': true,
           'cancelRequested': data['cancelRequested'] == true,
           'message': data['message'] ?? '주문이 취소되었습니다.',
         };
-      } else {
-        final errorData = _decodeBody(response);
-        return {
-          'success': false,
-          'message': errorData['error'] ?? '주문 취소에 실패했습니다.',
-        };
       }
+      return {
+        'success': false,
+        'message': _cancelFailureMessage(data),
+      };
     } catch (e) {
       return {
         'success': false,
         'message': '네트워크 오류가 발생했습니다.',
       };
     }
+  }
+
+  static String _cancelFailureMessage(dynamic data) {
+    if (data is Map) {
+      final message = data['message']?.toString().trim();
+      if (message != null && message.isNotEmpty) return message;
+      final error = data['error']?.toString().trim();
+      if (error != null && error.isNotEmpty) return error;
+    }
+    return '주문 취소에 실패했습니다.';
   }
 
   /// 구매 확정

@@ -108,9 +108,12 @@ class OrderFlowDialogs {
       return true;
     }
 
+    final message = result['message']?.toString().trim();
     AppToastOverlay.show(
       context,
-      result['message']?.toString() ?? '주문 취소에 실패했습니다.',
+      (message != null && message.isNotEmpty)
+          ? message
+          : '주문 취소에 실패했습니다.',
     );
     return false;
   }
