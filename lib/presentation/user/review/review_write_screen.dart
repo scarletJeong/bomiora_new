@@ -1752,6 +1752,9 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
     try {
       final user = await AuthService.getUser();
       if (user == null) {
+        if (mounted) {
+          AppToastOverlay.show(context, '로그인이 필요합니다.');
+        }
         return;
       }
 
@@ -1763,6 +1766,9 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
         }
         final imagePaths = await _resolveImagePathsForSubmit();
         if (imagePaths.length != _draftImages.length) {
+          if (mounted) {
+            AppToastOverlay.show(context, '1번 상품 이미지 업로드에 실패했습니다.');
+          }
           return;
         }
         final review = ReviewModel(
