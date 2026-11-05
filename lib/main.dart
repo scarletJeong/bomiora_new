@@ -34,6 +34,8 @@ import 'presentation/shopping/screens/cart_screen.dart';
 import 'presentation/shopping/screens/cart_general_screen.dart' as cart_general;
 import 'presentation/shopping/screens/cart_integration_screen.dart';
 import 'presentation/shopping/wish/screens/wish_list_screen.dart';
+import 'data/models/address/shipping_address.dart';
+import 'presentation/user/myPage/screens/address_form_screen.dart';
 import 'presentation/user/myPage/screens/cancel_member_screen.dart';
 import 'presentation/user/myPage/screens/cancel_member_2_screen.dart';
 import 'presentation/user/myPage/screens/cancel_member_done_screen.dart';
@@ -52,7 +54,6 @@ import 'presentation/community/announcement/screens/announcement_list_screen.dar
 import 'presentation/community/announcement/screens/announcement_detail_screen.dart';
 import 'presentation/community/event/screens/event_list_screen.dart';
 import 'presentation/community/event/screens/event_detail_screen.dart';
-import 'presentation/community/faq/screens/faq_list_screen.dart';
 import 'presentation/content/dashboard/screens/content_list_screen.dart';
 import 'presentation/content/dashboard/screens/content_detail_screen.dart';
 import 'presentation/home/search/search_list_screen.dart';
@@ -313,6 +314,12 @@ class _BomioraAppState extends State<BomioraApp> {
         // 로그인·가입 직후: 스플래시에서 메인 이미지 준비 후 홈 진입
         '/enter-home': (context) => const SplashScreen(checkSession: false),
         '/favorite': (context) => const WishListScreen(),
+        '/address/edit': (context) {
+          final args = ModalRoute.of(context)?.settings.arguments;
+          return AddressFormScreen(
+            address: args is ShippingAddress ? args : null,
+          );
+        },
         '/my_page': (context) => const MobileLayoutWrapper(initialIndex: 1),
         '/health': (context) => const HealthDashboardScreen(),
         '/cart': (context) => const CartScreen(),
@@ -358,7 +365,6 @@ class _BomioraAppState extends State<BomioraApp> {
         // 그 화면이 주문 목록으로 바꿔 버린다. 상세는 onGenerateRoute만 연다.
         '/announcement': (context) => const AnnouncementListScreen(),
         '/event': (context) => const EventListScreen(),
-        '/faq': (context) => const FaqListScreen(),
         '/content': (context) => const ContentListScreen(),
         '/content/list': (context) => const ContentListScreen(),
         '/content/detail': (context) {

@@ -8,12 +8,13 @@ import '../../../common/widgets/check_box.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
 import '../../../common/widgets/daum_postcode_search_dialog.dart';
+import '../../../../data/models/address/shipping_address.dart';
 import '../../../../data/services/address_service.dart';
 import '../../../../data/services/auth_service.dart';
 
 /// 배송지 추가/수정 화면
 class AddressFormScreen extends StatefulWidget {
-  final Map<String, dynamic>? address;
+  final ShippingAddress? address;
 
   const AddressFormScreen({
     super.key,
@@ -89,7 +90,7 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
 
     final loaded = await AddressService.loadAddresses(user.id);
     if (!mounted || !loaded.ok) return;
-    final list = loaded.items;
+    final list = loaded.items.map(ShippingAddress.fromMap).toList();
 
     if (widget.address == null) {
       // 최초 등록: 기본배송지 체크 필수
@@ -106,8 +107,8 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
     // 수정: 이 주소가 유일한 기본배송지면 해제 불가
     if (_wasDefault) {
       final otherDefaultExists = list.any((a) {
-        if (a['adDefault'] != 1) return false;
-        return a['adId'] != widget.address!['adId'];
+        if (!a.isDefault) return false;
+        return a.id != widget.address!.id;
       });
       setState(() {
         _mustKeepDefault = !otherDefaultExists;
@@ -141,27 +142,6 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
     super.dispose();
   }
 
-  static String _str(Map<String, dynamic> m, List<String> keys) {
-    for (final k in keys) {
-      final v = m[k];
-      if (v == null) continue;
-      if (v is String) {
-        final t = v.trim();
-        if (t.isNotEmpty) return t;
-      } else {
-        final t = v.toString().trim();
-        if (t.isNotEmpty && t != 'null') return t;
-      }
-    }
-    return '';
-  }
-
-  static String _zipLine(Map<String, dynamic> m) {
-    final z1 = _str(m, ['adZip1', 'ad_zip1']);
-    final z2 = _str(m, ['adZip2', 'ad_zip2']);
-    return ('$z1$z2').replaceAll(RegExp(r'[^0-9]'), '');
-  }
-
   static Map<String, String> _splitZipForApi(String raw) {
     var t = raw.replaceAll(RegExp(r'\s'), '');
     if (t.isEmpty) return {'zip1': '', 'zip2': ''};
@@ -180,26 +160,25 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
   }
 
   void _loadData() {
-    final m = widget.address;
-    if (m == null) {
+    final address = widget.address;
+    if (address == null) {
       _subjectPreset = _SubjectPreset.none;
       _subjectController.text = '';
       return;
     }
 
-    final zipLine = _zipLine(m);
-    final subject = _str(m, ['adSubject', 'ad_subject']);
-    _nameController.text = _str(m, ['adName', 'ad_name']);
-    final rawPhone = _str(m, ['adHp', 'ad_hp', 'adTel', 'ad_tel']);
+    final subject = address.subject.trim();
+    _nameController.text = address.name.trim();
+    final rawPhone = address.phone.trim().isNotEmpty
+        ? address.phone
+        : address.tel;
     final phoneDigits = rawPhone.replaceAll(RegExp(r'\D'), '');
     _phoneController.text =
         phoneDigits.length > 11 ? phoneDigits.substring(0, 11) : phoneDigits;
-    _zipController.text = zipLine;
-    _address1Controller.text = _str(m, ['adAddr1', 'ad_addr1']);
-    final a2 = _str(m, ['adAddr2', 'ad_addr2']);
-    final a3 = _str(m, ['adAddr3', 'ad_addr3']);
-    _address2Controller.text = '$a2 $a3'.trim();
-    _wasDefault = m['adDefault'] == 1 || m['ad_default'] == 1;
+    _zipController.text = address.postalCode;
+    _address1Controller.text = address.addr1.trim();
+    _address2Controller.text = address.detailAddress;
+    _wasDefault = address.isDefault;
     _isDefault = _wasDefault;
     _showDetailAddress = _address1Controller.text.trim().isNotEmpty;
 
@@ -351,11 +330,11 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
       }
       return false;
     }
-    final list = loaded.items;
+    final list = loaded.items.map(ShippingAddress.fromMap).toList();
     final otherDefaultExists = list.any((a) {
-      if (a['adDefault'] != 1) return false;
+      if (!a.isDefault) return false;
       if (widget.address == null) return true;
-      return a['adId'] != widget.address!['adId'];
+      return a.id != widget.address!.id;
     });
 
     if (!otherDefaultExists) return true;
@@ -407,7 +386,7 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
       final user = await AuthService.getUser();
       if (user == null) return;
 
-      List<Map<String, dynamic>> existing = const [];
+      List<ShippingAddress> existing = const [];
       if (widget.address == null || !_isDefault) {
         final loaded = await AddressService.loadAddresses(
           user.id,
@@ -418,7 +397,7 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
           AppToastOverlay.showAlert(context, '배송지를 불러오지 못했습니다.');
           return;
         }
-        existing = loaded.items;
+        existing = loaded.items.map(ShippingAddress.fromMap).toList();
       }
 
       // 신규 등록 시 mb_id당 최대 10개
@@ -455,11 +434,14 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
       };
 
       Map<String, dynamic> result;
+      final editingId = widget.address?.id;
       if (widget.address != null) {
-        result = await AddressService.updateAddress(
-          widget.address!['adId'],
-          addressData,
-        );
+        if (editingId == null) {
+          if (!mounted) return;
+          AppToastOverlay.showAlert(context, AddressService.saveFailureFallback);
+          return;
+        }
+        result = await AddressService.updateAddress(editingId, addressData);
       } else {
         result = await AddressService.addAddress(addressData);
       }

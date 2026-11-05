@@ -8,10 +8,10 @@ import '../../../common/widgets/centered_empty_state.dart';
 import '../../../common/widgets/load_failure_notice.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
+import '../../../../data/models/address/shipping_address.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/services/address_service.dart';
 import '../../../../data/models/user/user_model.dart';
-import 'address_form_screen.dart';
 
 /// 배송지 관리 화면
 class AddressManagementScreen extends StatefulWidget {
@@ -27,7 +27,7 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
   static const int _collapsedAddressCount = 4;
 
   UserModel? _currentUser;
-  List<Map<String, dynamic>> _addresses = [];
+  List<ShippingAddress> _addresses = [];
   bool _isLoadingAddresses = false;
   bool _loadFailed = false;
   bool _showAllAddresses = false;
@@ -95,14 +95,12 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
   }
 
   void _applyAddresses(List<Map<String, dynamic>> addresses, {required bool loading}) {
-    final sorted = List<Map<String, dynamic>>.from(addresses);
+    final sorted = addresses.map(ShippingAddress.fromMap).toList();
     sorted.sort((a, b) {
-      final ad = _isDefaultAddress(a) ? 0 : 1;
-      final bd = _isDefaultAddress(b) ? 0 : 1;
+      final ad = a.isDefault ? 0 : 1;
+      final bd = b.isDefault ? 0 : 1;
       if (ad != bd) return ad.compareTo(bd);
-      final aid = (a['adId'] as int?) ?? 0;
-      final bid = (b['adId'] as int?) ?? 0;
-      return bid.compareTo(aid);
+      return (b.id ?? 0).compareTo(a.id ?? 0);
     });
     setState(() {
       _addresses = sorted;
@@ -117,33 +115,27 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
       return;
     }
 
-    final result = await Navigator.push(
+    final result = await Navigator.pushNamed(context, '/address/edit');
+    if (!mounted) return;
+    _handleFormResult(result);
+  }
+
+  Future<void> _goToEdit(ShippingAddress address) async {
+    final result = await Navigator.pushNamed(
       context,
-      MaterialPageRoute(
-        builder: (context) => const AddressFormScreen(),
-      ),
+      '/address/edit',
+      arguments: address,
     );
     if (!mounted) return;
     _handleFormResult(result);
   }
 
-  Future<void> _goToEdit(Map<String, dynamic> address) async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => AddressFormScreen(address: address),
-      ),
-    );
-    if (!mounted) return;
-    _handleFormResult(result);
-  }
-
-  Future<void> _deleteAddress(Map<String, dynamic> address) async {
+  Future<void> _deleteAddress(ShippingAddress address) async {
     if (_currentUser == null) return;
-    final id = address['adId'] as int?;
+    final id = address.id;
     if (id == null) return;
 
-    final isDefault = _isDefaultAddress(address);
+    final isDefault = address.isDefault;
     if (isDefault) {
       await AppAlertDialog.show(
         context,
@@ -166,7 +158,7 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
     if (!mounted) return;
     if (result['success'] == true) {
       setState(() {
-        _addresses = _addresses.where((a) => a['adId'] != id).toList();
+        _addresses = _addresses.where((a) => a.id != id).toList();
       });
       AppToastOverlay.show(context, '배송지가 삭제됐어요.');
     } else {
@@ -264,11 +256,6 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
         ),
       ),
     );
-  }
-
-  bool _isDefaultAddress(Map<String, dynamic> address) {
-    final v = address['adDefault'];
-    return v == 1 || v == '1' || v == true;
   }
 
   Widget _buildCardActionButton({
@@ -433,15 +420,13 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
     );
   }
 
-  Widget _buildAddressCard(Map<String, dynamic> address) {
-    final String subject = (address['adSubject'] ?? '').toString().trim();
-    final String recipient = (address['adName'] ?? '').toString().trim();
-    final String phone = (address['adHp'] ?? '').toString().trim();
-    final String address1 = (address['adAddr1'] ?? '').toString().trim();
-    final String address2 = (address['adAddr2'] ?? '').toString().trim();
-    final String address3 = (address['adAddr3'] ?? '').toString().trim();
-    final String detail = '$address2 $address3'.trim();
-    final bool isDefault = _isDefaultAddress(address);
+  Widget _buildAddressCard(ShippingAddress address) {
+    final String subject = address.subject.trim();
+    final String recipient = address.name.trim();
+    final String phone = address.phone.trim();
+    final String address1 = address.addr1.trim();
+    final String detail = address.detailAddress;
+    final bool isDefault = address.isDefault;
 
     final titleName = recipient.isEmpty ? '수령인' : recipient;
     final titleText =

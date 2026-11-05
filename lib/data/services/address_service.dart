@@ -1,6 +1,7 @@
 import 'dart:convert';
 import '../../core/network/api_client.dart';
 import '../../core/utils/node_value_parser.dart';
+import '../models/address/shipping_address.dart';
 
 /// 배송지 목록 조회 결과. 실패와 빈 목록을 구분한다.
 class AddressListLoad {
@@ -64,40 +65,7 @@ class AddressService {
   }
 
   static Map<String, dynamic>? _normalizeAddressItem(dynamic raw) {
-    if (raw is! Map) return null;
-    final item = NodeValueParser.normalizeMap(Map<String, dynamic>.from(raw));
-
-    final defaultRaw = item['adDefault'] ?? item['ad_default'];
-    final defaultInt = NodeValueParser.asInt(defaultRaw);
-    final defaultString = NodeValueParser.asString(defaultRaw)?.toLowerCase();
-    final isDefault = defaultInt == 1 ||
-        defaultString == 'y' ||
-        defaultString == 'true' ||
-        defaultRaw == true;
-
-    return {
-      'adId': NodeValueParser.asInt(item['adId'] ?? item['ad_id']),
-      'adSubject':
-          NodeValueParser.asString(item['adSubject'] ?? item['ad_subject']) ??
-              '',
-      'adName':
-          NodeValueParser.asString(item['adName'] ?? item['ad_name']) ?? '',
-      'adHp': NodeValueParser.asString(item['adHp'] ?? item['ad_hp']) ?? '',
-      'adTel': NodeValueParser.asString(item['adTel'] ?? item['ad_tel']) ?? '',
-      'adZip1':
-          NodeValueParser.asString(item['adZip1'] ?? item['ad_zip1']) ?? '',
-      'adZip2':
-          NodeValueParser.asString(item['adZip2'] ?? item['ad_zip2']) ?? '',
-      'adAddr1':
-          NodeValueParser.asString(item['adAddr1'] ?? item['ad_addr1']) ?? '',
-      'adAddr2':
-          NodeValueParser.asString(item['adAddr2'] ?? item['ad_addr2']) ?? '',
-      'adAddr3':
-          NodeValueParser.asString(item['adAddr3'] ?? item['ad_addr3']) ?? '',
-      'adMemo':
-          NodeValueParser.asString(item['adMemo'] ?? item['ad_memo']) ?? '',
-      'adDefault': isDefault ? 1 : 0,
-    };
+    return ShippingAddress.tryParse(raw)?.toMap();
   }
 
   static Map<String, dynamic>? _normalizeAddressSearchItem(dynamic raw) {
