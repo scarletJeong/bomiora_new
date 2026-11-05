@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -13,7 +12,6 @@ import '../../health_common/widgets/health_app_bar.dart';
 import '../../health_common/widgets/health_date_selector.dart';
 import '../../health_common/widgets/health_focus_outline_box.dart';
 import '../widgets/health_year_month_picker_dialog.dart';
-import '../../../common/widgets/app_toast_overlay.dart';
 import '../../../../data/models/health/menstrual_cycle/menstrual_cycle_model.dart';
 import '../../../../data/repositories/health/menstrual_cycle/menstrual_cycle_repository.dart';
 import '../../../../data/repositories/health/dashboard/health_dashboard_repository.dart';
@@ -1272,6 +1270,7 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
     }
     _cycleLength = cycleLength;
 
+    setState(() => _isLoading = true);
     try {
       final user = await AuthService.getUser();
       if (!mounted) return;
@@ -1280,9 +1279,6 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
           context,
           message: '건강 기록 입력은 로그인 후 이용할 수 있습니다.',
         );
-        if (mounted) {
-          setState(() => _isLoading = false);
-        }
         return;
       }
 
@@ -1373,38 +1369,25 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
         );
       }
 
-      final previous = MenstrualCycleRepository.optimisticallyUpsert(record);
-      notifyHealthDataChanged(HealthRefreshDomain.menstrual);
-      if (mounted) Navigator.pop(context, true);
-      unawaited(_persistMenstrualCycle(
-        record: record,
-        isUpdate: matched != null,
-        previous: previous,
-      ));
+      final saved = matched != null
+          ? await MenstrualCycleRepository.updateMenstrualCycleRecord(record)
+          : await MenstrualCycleRepository.addMenstrualCycleRecord(record);
+      if (!mounted) return;
+      if (saved.success) {
+        HealthDashboardRepository.invalidate(user.id);
+        notifyHealthDataChanged(HealthRefreshDomain.menstrual);
+        Navigator.pop(context, true);
+        return;
+      }
+      HealthInputComplete.showSaveFailureToast(context, saved.message);
     } catch (e) {
       if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+        HealthInputComplete.showSaveFailureToast(context, null);
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
       }
     }
-  }
-
-  Future<void> _persistMenstrualCycle({
-    required MenstrualCycleRecord record,
-    required bool isUpdate,
-    required List<MenstrualCycleRecord> previous,
-  }) async {
-    final success = isUpdate
-        ? await MenstrualCycleRepository.updateMenstrualCycleRecord(record)
-        : await MenstrualCycleRepository.addMenstrualCycleRecord(record);
-    if (!success) {
-      MenstrualCycleRepository.restoreRecords(record.mbId, previous);
-      AppToastOverlay.showAlertFromNavigator(
-        '저장에 실패해서 이전 기록으로 되돌렸습니다.',
-      );
-    }
-    HealthDashboardRepository.invalidate(record.mbId);
-    notifyHealthDataChanged(HealthRefreshDomain.menstrual);
   }
 }

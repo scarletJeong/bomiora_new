@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -14,7 +12,6 @@ import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/login_required_dialog.dart';
 import '../../../../data/models/health/blood_pressure/blood_pressure_record_model.dart';
 import '../../../../data/services/auth_service.dart';
-import '../../../common/widgets/app_toast_overlay.dart';
 import '../../../../data/repositories/health/blood_pressure/blood_pressure_repository.dart';
 import '../../../../data/repositories/health/dashboard/health_dashboard_repository.dart';
 import '../../../../core/health/health_refresh_bus.dart';
@@ -203,33 +200,27 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
         pulse: pulse,
       );
 
-      final previous = BloodPressureRepository.optimisticallyUpsert(record);
-      notifyHealthDataChanged(HealthRefreshDomain.bloodPressure);
-      if (mounted) Navigator.pop(context, true);
-      unawaited(_persistRecord(record, previous));
+      final saved = widget.record == null
+          ? await BloodPressureRepository.addBloodPressureRecord(record)
+          : await BloodPressureRepository.updateBloodPressureRecord(record);
+
+      if (!mounted) return;
+      if (saved.success) {
+        HealthDashboardRepository.invalidate(user.id);
+        notifyHealthDataChanged(HealthRefreshDomain.bloodPressure);
+        Navigator.pop(context, true);
+        return;
+      }
+      HealthInputComplete.showSaveFailureToast(context, saved.message);
     } catch (e) {
+      if (mounted) {
+        HealthInputComplete.showSaveFailureToast(context, null);
+      }
     } finally {
       if (mounted) {
         setState(() => _isSaving = false);
       }
     }
-  }
-
-  Future<void> _persistRecord(
-    BloodPressureRecord record,
-    List<BloodPressureRecord> previous,
-  ) async {
-    final success = widget.record == null
-        ? await BloodPressureRepository.addBloodPressureRecord(record)
-        : await BloodPressureRepository.updateBloodPressureRecord(record);
-    if (!success) {
-      BloodPressureRepository.restoreRecords(record.mbId, previous);
-      AppToastOverlay.showAlertFromNavigator(
-        '저장에 실패해서 이전 기록으로 되돌렸습니다.',
-      );
-    }
-    HealthDashboardRepository.invalidate(record.mbId);
-    notifyHealthDataChanged(HealthRefreshDomain.bloodPressure);
   }
 
   void _onDeletePressed() {

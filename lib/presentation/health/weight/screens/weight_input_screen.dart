@@ -212,38 +212,37 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
         sideImagePath: _sideImagePath,
       );
 
-      // API 호출
-      bool success;
-      if (widget.record == null) {
-        // 새 기록 추가
-        success = await WeightRepository.addWeightRecord(record);
-      } else {
-        // 기록 수정
-        success = await WeightRepository.updateWeightRecord(record);
-      }
+      final saved = widget.record == null
+          ? await WeightRepository.addWeightRecord(record)
+          : await WeightRepository.updateWeightRecord(record);
 
-      if (mounted) {
-        if (success) {
-          final days = <DateTime>{
-            DateTime(
-              _selectedDateTime.year,
-              _selectedDateTime.month,
-              _selectedDateTime.day,
-            ),
-          };
-          final previous = widget.record?.measuredAt;
-          if (previous != null) {
-            days.add(DateTime(previous.year, previous.month, previous.day));
-          }
-          for (final day in days) {
-            await WeightRepository.refreshRecordsForDate(user.id, day);
-          }
-          HealthDashboardRepository.invalidate(user.id);
-          notifyHealthDataChanged(HealthRefreshDomain.weight);
-          Navigator.pop(context, true); // 성공
+      if (!mounted) return;
+      if (saved.success) {
+        final days = <DateTime>{
+          DateTime(
+            _selectedDateTime.year,
+            _selectedDateTime.month,
+            _selectedDateTime.day,
+          ),
+        };
+        final previous = widget.record?.measuredAt;
+        if (previous != null) {
+          days.add(DateTime(previous.year, previous.month, previous.day));
         }
+        for (final day in days) {
+          await WeightRepository.refreshRecordsForDate(user.id, day);
+        }
+        if (!mounted) return;
+        HealthDashboardRepository.invalidate(user.id);
+        notifyHealthDataChanged(HealthRefreshDomain.weight);
+        Navigator.pop(context, true);
+        return;
       }
+      HealthInputComplete.showSaveFailureToast(context, saved.message);
     } catch (e) {
+      if (mounted) {
+        HealthInputComplete.showSaveFailureToast(context, null);
+      }
     } finally {
       if (mounted) {
         setState(() => _isSaving = false);

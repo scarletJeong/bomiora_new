@@ -179,18 +179,22 @@ class _BloodSugarInputScreenState extends State<BloodSugarInputScreen> {
       );
 
       // 측정 유형을 바꾸면 기존 공복 기록을 식후로 덮어쓰지 않고 새 기록으로 저장
-      final success = _editingRecordId == null
+      final saved = _editingRecordId == null
           ? await BloodSugarRepository.addBloodSugarRecord(record)
           : await BloodSugarRepository.updateBloodSugarRecord(record);
 
-      if (mounted) {
-        if (success) {
-          HealthDashboardRepository.invalidate(user.id);
-          notifyHealthDataChanged(HealthRefreshDomain.bloodSugar);
-          Navigator.pop(context, true); // 성공
-        }
+      if (!mounted) return;
+      if (saved.success) {
+        HealthDashboardRepository.invalidate(user.id);
+        notifyHealthDataChanged(HealthRefreshDomain.bloodSugar);
+        Navigator.pop(context, true);
+        return;
       }
+      HealthInputComplete.showSaveFailureToast(context, saved.message);
     } catch (e) {
+      if (mounted) {
+        HealthInputComplete.showSaveFailureToast(context, null);
+      }
     } finally {
       if (mounted) {
         setState(() => _isSaving = false);
