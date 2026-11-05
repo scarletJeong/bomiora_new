@@ -3,6 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/constants/app_assets.dart';
+import '../../../../core/logging/failure_log.dart';
 import '../../../../core/utils/image_url_helper.dart';
 
 import '../../../../data/models/user/user_model.dart';
@@ -52,6 +53,8 @@ class _TodayDietScreenState extends State<TodayDietScreen>
   num totalFat = 0;
   num totalOther = 0;
   List<FoodRecordSummary> _dayRecords = [];
+  bool _loadFailed = false;
+  int _loadGeneration = 0;
 
   void _toggleFoodSearchFor(String mealKey) {
     setState(() {
@@ -65,28 +68,61 @@ class _TodayDietScreenState extends State<TodayDietScreen>
     setState(() => _currentUser = user);
   }
 
-  void _loadMealData() async {
+  Future<void> _loadMealData({bool forceRefresh = false}) async {
+    final generation = ++_loadGeneration;
     final mbId = _currentUser?.id;
     if (mbId == null || mbId.isEmpty) {
-      setState(() => _dayRecords = []);
+      if (!mounted || generation != _loadGeneration) return;
+      setState(() {
+        _dayRecords = [];
+        _loadFailed = false;
+        totalCalories = 0;
+        totalCarbs = 0;
+        totalProtein = 0;
+        totalFat = 0;
+        totalOther = 0;
+      });
       return;
     }
-    final list = await FoodRepository.getRecordsForDate(mbId, selectedDate);
-
-    if (!mounted) return;
-    final calories = list.fold<int>(0, (sum, r) => sum + (r.calories ?? 0));
-    final carbs = list.fold<num>(0, (sum, r) => sum + (r.carbs ?? 0));
-    final protein = list.fold<num>(0, (sum, r) => sum + (r.protein ?? 0));
-    final fat = list.fold<num>(0, (sum, r) => sum + (r.fat ?? 0));
-    final other = list.fold<num>(0, (sum, r) => sum + (r.other ?? 0));
-    setState(() {
-      _dayRecords = list;
-      totalCalories = calories;
-      totalCarbs = carbs;
-      totalProtein = protein;
-      totalFat = fat;
-      totalOther = other;
-    });
+    try {
+      final list = await FoodRepository.getRecordsForDate(
+        mbId,
+        selectedDate,
+        forceRefresh: forceRefresh,
+        surfaceFailure: true,
+      );
+      if (!mounted || generation != _loadGeneration) return;
+      final calories = list.fold<int>(0, (sum, r) => sum + (r.calories ?? 0));
+      final carbs = list.fold<num>(0, (sum, r) => sum + (r.carbs ?? 0));
+      final protein = list.fold<num>(0, (sum, r) => sum + (r.protein ?? 0));
+      final fat = list.fold<num>(0, (sum, r) => sum + (r.fat ?? 0));
+      final other = list.fold<num>(0, (sum, r) => sum + (r.other ?? 0));
+      setState(() {
+        _dayRecords = list;
+        _loadFailed = false;
+        totalCalories = calories;
+        totalCarbs = carbs;
+        totalProtein = protein;
+        totalFat = fat;
+        totalOther = other;
+      });
+    } catch (e) {
+      await FailureLog.record(
+        code: 'health.food.list',
+        mbId: mbId,
+        reason: e.toString(),
+      );
+      if (!mounted || generation != _loadGeneration) return;
+      setState(() {
+        _dayRecords = [];
+        _loadFailed = true;
+        totalCalories = 0;
+        totalCarbs = 0;
+        totalProtein = 0;
+        totalFat = 0;
+        totalOther = 0;
+      });
+    }
   }
 
   FoodRecordSummary? _recordFor(String mealKey) {
@@ -178,6 +214,9 @@ class _TodayDietScreenState extends State<TodayDietScreen>
                   iconColor: const Color(0xFF898686),
                 ),
                 SizedBox(height: healthDp(context, 14)),
+                if (_loadFailed)
+                  _buildLoadFailure(context)
+                else ...[
                 Center(
                   child: MediaQuery(
                     data: MediaQuery.of(context)
@@ -223,10 +262,63 @@ class _TodayDietScreenState extends State<TodayDietScreen>
                 _mealSection(context, '저녁'),
                 SizedBox(height: healthDp(context, 14)),
                 _mealSection(context, '간식'),
+                ],
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildLoadFailure(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        healthDp(context, 10),
+        healthDp(context, 28),
+        healthDp(context, 10),
+        healthDp(context, 36),
+      ),
+      child: Column(
+        children: [
+          Text(
+            '기록을 불러오지 못했습니다',
+            textAlign: TextAlign.center,
+            textScaler: TextScaler.noScaling,
+            style: TextStyle(
+              color: const Color(0xFF898686),
+              fontSize: healthSp(context, 14),
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w500,
+              height: 1.5,
+            ),
+          ),
+          SizedBox(height: healthDp(context, 16)),
+          SizedBox(
+            width: double.infinity,
+            height: healthDp(context, 44),
+            child: ElevatedButton(
+              onPressed: () => _loadMealData(forceRefresh: true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFF5A8D),
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(healthDp(context, 10)),
+                ),
+              ),
+              child: Text(
+                '다시 시도',
+                textScaler: TextScaler.noScaling,
+                style: TextStyle(
+                  fontSize: healthSp(context, 14),
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

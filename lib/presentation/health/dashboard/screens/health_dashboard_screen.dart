@@ -273,15 +273,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
           latestStepsRecord = stepsRecord;
           latestHealthGoal = healthGoal;
 
-          if (weightRecord != null) {
-            currentWeight = weightRecord.weight;
-            height = weightRecord.height ?? 170.0;
-            bmi = weightRecord.resolvedBmi ?? 0.0;
-          } else {
-            currentWeight = 0.0;
-            height = 170.0;
-            bmi = 0.0;
-          }
+          _applyBodyMetrics(weightRecord);
 
           if (bloodPressureRecord != null) {
             systolicBP = bloodPressureRecord.systolic;
@@ -338,6 +330,28 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
   bool _isSameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
 
+  /// 키는 그날 기록에 저장된 값만 쓴다. BMI는 키와 체중이 둘 다 있을 때만 계산한다.
+  void _applyBodyMetrics(WeightRecord? weightRecord) {
+    if (weightRecord == null) {
+      currentWeight = 0.0;
+      height = 0.0;
+      bmi = 0.0;
+      return;
+    }
+    currentWeight = weightRecord.weight;
+    final savedHeight = weightRecord.height;
+    final hasWeight = weightRecord.weight > 0;
+    if (savedHeight != null && savedHeight > 0) {
+      height = savedHeight;
+      bmi = hasWeight
+          ? (WeightRecord.calculateBMI(weightRecord.weight, savedHeight) ?? 0.0)
+          : 0.0;
+    } else {
+      height = 0.0;
+      bmi = 0.0;
+    }
+  }
+
   void _applyHealthDashboard(UserModel user, HealthDashboardPayload dashboard) {
     final weightRecord =
         _latestOfDate(dashboard.weightRecords, (e) => e.measuredAt);
@@ -357,15 +371,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
       latestHeartRateRecord = heartRateRecord;
       latestStepsRecord = dashboard.steps;
       latestHealthGoal = dashboard.healthGoal;
-      if (weightRecord != null) {
-        currentWeight = weightRecord.weight;
-        height = weightRecord.height ?? 170.0;
-        bmi = weightRecord.resolvedBmi ?? 0.0;
-      } else {
-        currentWeight = 0.0;
-        height = 170.0;
-        bmi = 0.0;
-      }
+      _applyBodyMetrics(weightRecord);
       if (bloodPressureRecord != null) {
         systolicBP = bloodPressureRecord.systolic;
         diastolicBP = bloodPressureRecord.diastolic;
@@ -1041,13 +1047,20 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
 
   Widget _buildBodyMetricsSection() {
     // 당일 기록이 없으면 단위/플레이스홀더 표시 (다른 날 데이터로 채우지 않음)
-    final String heightValue =
-        latestWeightRecord == null ? '- cm' : '${height.toStringAsFixed(1)}cm';
+    final savedHeight = latestWeightRecord?.height;
+    final hasWeight =
+        latestWeightRecord != null && latestWeightRecord!.weight > 0;
+    final String heightValue = (savedHeight != null && savedHeight > 0)
+        ? '${savedHeight.toStringAsFixed(1)}cm'
+        : '- cm';
     final String weightValue = latestWeightRecord == null
         ? '- kg'
         : '${currentWeight.toStringAsFixed(1)}kg';
-    final String bmiValue =
-        latestWeightRecord == null ? '- - -' : bmi.toStringAsFixed(2);
+    final String bmiValue = (savedHeight != null &&
+            savedHeight > 0 &&
+            hasWeight)
+        ? bmi.toStringAsFixed(2)
+        : '- - -';
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),

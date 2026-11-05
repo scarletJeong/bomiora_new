@@ -649,18 +649,28 @@ class FoodRepository {
       );
       if (response.statusCode != 200) {
         if (surfaceFailure) {
-          throw StateError('food records load failed');
+          throw StateError(_foodLoadFailureReason(response.body, response.statusCode));
         }
         return [];
       }
       final body = _decodeResponseBody(response.body);
-      List<dynamic> list = [];
-      if (body is List)
+      if (body is Map && body['success'] == false) {
+        if (surfaceFailure) {
+          throw StateError(_foodLoadFailureReason(body, response.statusCode));
+        }
+        return [];
+      }
+      final List<dynamic> list;
+      if (body is List) {
         list = body;
-      else if (body is Map && body['data'] is List)
+      } else if (body is Map && body['data'] is List) {
         list = body['data'] as List;
-      else if (body is Map && body['success'] == true && body['data'] is List) {
-        list = body['data'] as List;
+      } else if (body is Map && body['success'] == true) {
+        list = const [];
+      } else if (surfaceFailure) {
+        throw StateError(_foodLoadFailureReason(body, response.statusCode));
+      } else {
+        return [];
       }
       final records = <FoodRecordSummary>[];
       for (final e in list) {
@@ -677,6 +687,24 @@ class FoodRepository {
       if (surfaceFailure) rethrow;
       return [];
     }
+  }
+
+  static String _foodLoadFailureReason(dynamic body, int status) {
+    dynamic data = body;
+    if (body is String) {
+      try {
+        data = _decodeResponseBody(body);
+      } catch (_) {
+        data = null;
+      }
+    }
+    if (data is Map) {
+      final message = data['message']?.toString().trim() ?? '';
+      if (message.isNotEmpty) return message;
+      final error = data['error']?.toString().trim() ?? '';
+      if (error.isNotEmpty) return error;
+    }
+    return '식단 조회에 실패했습니다 ($status)';
   }
 
   /// 식사 기록 생성 (해당 날짜/시간대)
