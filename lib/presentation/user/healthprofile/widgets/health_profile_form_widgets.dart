@@ -40,6 +40,7 @@ abstract final class HealthProfileFormUi {
     if (formKey.currentState?.validate() != true) return;
     formKey.currentState?.save();
 
+    final isEdit = session.existingProfile?.pfNo != null;
     session.isLoading = true;
     session.touch();
     try {
@@ -80,7 +81,10 @@ abstract final class HealthProfileFormUi {
         return;
       }
 
-      AppToastOverlay.show(context, '문진표를 수정하였습니다');
+      AppToastOverlay.show(
+        context,
+        isEdit ? '문진표를 수정하였습니다' : '문진표를 저장하였습니다',
+      );
       if (Navigator.of(context).canPop()) {
         popAllFormRoutes(context);
       } else {
