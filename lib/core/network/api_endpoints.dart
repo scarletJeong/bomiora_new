@@ -109,6 +109,8 @@ class ApiEndpoints {
       '/api/user/notification-settings';
   static const String userNotifications = '/api/user/notifications';
   static const String userNotificationRead = '/api/user/notifications/read';
+  static String userNotificationDelete(String notificationId) =>
+      '/api/user/notifications/${Uri.encodeComponent(notificationId)}';
 
   // 건강 관리 관련 (향후 확장용)
   static const String bloodSugarRecords = '/api/health/blood-sugar';

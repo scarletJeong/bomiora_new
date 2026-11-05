@@ -1,8 +1,10 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../core/logging/failure_log.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_endpoints.dart';
 import '../../core/utils/node_value_parser.dart';
@@ -14,6 +16,7 @@ class NotificationInboxService {
   NotificationInboxService._();
 
   static const String _localKeyPrefix = 'notification_inbox_v1_';
+  static const String _deletedKeyPrefix = 'notification_inbox_deleted_v1_';
 
   static final ValueNotifier<int> revision = ValueNotifier(0);
   static bool _serverListMissing = false;
@@ -21,6 +24,7 @@ class NotificationInboxService {
   static void _bump() => revision.value++;
 
   static String _localKey(String mbId) => '$_localKeyPrefix$mbId';
+  static String _deletedKey(String mbId) => '$_deletedKeyPrefix$mbId';
 
   static String _categoryFromType(String? type) {
     switch (type?.toLowerCase()) {
@@ -131,12 +135,17 @@ class NotificationInboxService {
     final mbId = user.id.trim();
     List<AppNotificationItem> items;
 
+    final deleted = await _loadDeleted(mbId);
     final server = allowServer && !_serverListMissing
         ? await _fetchFromServer(mbId, limit)
         : null;
-    final local = await _loadLocal(mbId);
+    final local = (await _loadLocal(mbId))
+        .where((item) => !deleted.contains(item.id))
+        .toList();
     if (server != null) {
-      items = _mergeInbox(local, server);
+      final visibleServer =
+          server.where((item) => !deleted.contains(item.id)).toList();
+      items = _mergeInbox(local, visibleServer);
       await _saveLocalList(mbId, items);
     } else {
       items = local;
@@ -151,27 +160,44 @@ class NotificationInboxService {
   }
 
   static Future<bool> markAsRead(String notificationId) async {
+    final id = notificationId.trim();
+    if (id.isEmpty) return false;
+
     final user = await AuthService.getUser();
     if (user == null || user.id.trim().isEmpty) return false;
 
     final mbId = user.id.trim();
+    try {
+      final response = await ApiClient.post(
+        ApiEndpoints.userNotificationRead,
+        {
+          'mb_id': mbId,
+          'notification_id': id,
+        },
+      );
+      if (!_isApiSuccess(response)) {
+        await FailureLog.record(
+          code: 'notification.read',
+          mbId: mbId,
+          reason: _failureReason(response),
+        );
+        return false;
+      }
+    } catch (e) {
+      await FailureLog.record(
+        code: 'notification.read',
+        mbId: mbId,
+        reason: e.toString(),
+      );
+      return false;
+    }
+
     final list = await _loadLocal(mbId);
-    final idx = list.indexWhere((e) => e.id == notificationId);
+    final idx = list.indexWhere((e) => e.id == id);
     if (idx >= 0) {
       list[idx] = list[idx].copyWith(isRead: true);
       await _saveLocalList(mbId, list);
     }
-
-    try {
-      await ApiClient.post(
-        ApiEndpoints.userNotificationRead,
-        {
-          'mb_id': mbId,
-          'notification_id': notificationId,
-        },
-      );
-    } catch (_) {}
-
     _bump();
     return true;
   }
@@ -187,7 +213,7 @@ class NotificationInboxService {
     return true;
   }
 
-  /// 단일 알림 삭제 (로컬 인박스)
+  /// 단일 알림 삭제. 삭제 API가 없으면 지운 id만 남겨 다시 합치지 않는다.
   static Future<bool> removeById(String notificationId) async {
     final id = notificationId.trim();
     if (id.isEmpty) return false;
@@ -196,11 +222,34 @@ class NotificationInboxService {
     if (user == null || user.id.trim().isEmpty) return false;
 
     final mbId = user.id.trim();
+    try {
+      final response = await ApiClient.delete(
+        '${ApiEndpoints.userNotificationDelete(id)}?mb_id=${Uri.encodeQueryComponent(mbId)}',
+      );
+      if (_isMissingApi(response)) {
+        await _rememberDeleted(mbId, id);
+      } else if (!_isApiSuccess(response)) {
+        await FailureLog.record(
+          code: 'notification.delete',
+          mbId: mbId,
+          reason: _failureReason(response),
+        );
+        return false;
+      }
+    } catch (e) {
+      await FailureLog.record(
+        code: 'notification.delete',
+        mbId: mbId,
+        reason: e.toString(),
+      );
+      return false;
+    }
+
     final list = await _loadLocal(mbId);
     final next = list.where((e) => e.id != id).toList();
-    if (next.length == list.length) return false;
-
-    await _saveLocalList(mbId, next);
+    if (next.length != list.length) {
+      await _saveLocalList(mbId, next);
+    }
     _bump();
     return true;
   }
@@ -260,7 +309,7 @@ class NotificationInboxService {
         byId[item.id] = item;
         continue;
       }
-      byId[item.id] = prev.copyWith(isRead: prev.isRead && item.isRead);
+      byId[item.id] = prev.copyWith(isRead: prev.isRead || item.isRead);
     }
     return byId.values.toList();
   }
@@ -296,6 +345,54 @@ class NotificationInboxService {
     final prefs = await SharedPreferences.getInstance();
     final encoded = json.encode(items.map((e) => e.toJson()).toList());
     await prefs.setString(_localKey(mbId), encoded);
+  }
+
+  static bool _isMissingApi(http.Response response) {
+    return response.statusCode == 404 || response.statusCode == 405;
+  }
+
+  static bool _isApiSuccess(http.Response response) {
+    final code = response.statusCode;
+    if (code < 200 || code >= 300) return false;
+    final body = response.body.trim();
+    if (body.isEmpty) return true;
+    try {
+      final decoded = json.decode(body);
+      if (decoded is Map && decoded['success'] == false) return false;
+    } catch (_) {}
+    return true;
+  }
+
+  static String _failureReason(http.Response response) {
+    final code = response.statusCode;
+    final body = response.body.trim();
+    if (body.isEmpty) return 'HTTP $code';
+    try {
+      final decoded = json.decode(body);
+      if (decoded is Map) {
+        final message =
+            (decoded['message'] ?? decoded['error'])?.toString().trim();
+        if (message != null && message.isNotEmpty) return message;
+      }
+    } catch (_) {}
+    return 'HTTP $code';
+  }
+
+  static Future<Set<String>> _loadDeleted(String mbId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getStringList(_deletedKey(mbId)) ?? const <String>[];
+      return raw.map((id) => id.trim()).where((id) => id.isNotEmpty).toSet();
+    } catch (_) {
+      return {};
+    }
+  }
+
+  static Future<void> _rememberDeleted(String mbId, String id) async {
+    final prefs = await SharedPreferences.getInstance();
+    final current = prefs.getStringList(_deletedKey(mbId)) ?? <String>[];
+    if (!current.contains(id)) current.add(id);
+    await prefs.setStringList(_deletedKey(mbId), current);
   }
 
   static Future<void> _upsertLocal(

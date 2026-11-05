@@ -5,6 +5,7 @@ import '../../core/constants/app_assets.dart';
 import '../../data/models/notification/app_notification_model.dart';
 import '../../data/services/auth_service.dart';
 import '../../data/services/notification_inbox_service.dart';
+import '../common/widgets/app_toast_overlay.dart';
 import '../common/widgets/centered_empty_state.dart';
 import '../common/widgets/mobile_layout_wrapper.dart';
 import '../health/health_common/health_responsive_scale.dart';
@@ -90,8 +91,12 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
 
   Future<void> _markAsRead(AppNotificationItem item) async {
     if (item.isRead) return;
-    await NotificationInboxService.markAsRead(item.id);
+    final ok = await NotificationInboxService.markAsRead(item.id);
     if (!mounted) return;
+    if (!ok) {
+      AppToastOverlay.showAlert(context, '알림을 읽음 처리하지 못했습니다.');
+      return;
+    }
     setState(() {
       _items = _items
           .map((e) => e.id == item.id ? e.copyWith(isRead: true) : e)
@@ -102,11 +107,13 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
   Future<void> _deleteNotification(AppNotificationItem item) async {
     final ok = await NotificationInboxService.removeById(item.id);
     if (!mounted) return;
-    if (ok) {
-      setState(() {
-        _items = _items.where((e) => e.id != item.id).toList();
-      });
+    if (!ok) {
+      AppToastOverlay.showAlert(context, '알림을 삭제하지 못했습니다.');
+      return;
     }
+    setState(() {
+      _items = _items.where((e) => e.id != item.id).toList();
+    });
   }
 
   void _openNotification(AppNotificationItem item) {
