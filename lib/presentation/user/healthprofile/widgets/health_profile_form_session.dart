@@ -345,11 +345,17 @@ class HealthProfileFormSession extends ChangeNotifier {
     if (rawMeansNoHealth(profile.answer11)) {
       formData['answer_11'] = <String>['해당없음'];
     } else if (profile.answer11.isNotEmpty) {
-      formData['answer_11'] = normalizeDiseaseMedicationParts(
+      final normalized = normalizeDiseaseMedicationParts(
         profile.answer11.split('|'),
       ).map((e) => e == '해당 없음' ? '해당없음' : e).toList();
+      final collapsed = _collapseToKnownOptions(
+        normalized,
+        HealthProfileQuestionnaireOptions.diseases,
+      );
+      formData['answer_11'] =
+          collapsed.isEmpty ? <String>[] : collapsed;
     } else {
-      formData['answer_11'] = <String>['해당없음'];
+      formData['answer_11'] = <String>[];
     }
 
     if (profile.answer12.isNotEmpty) {
@@ -751,10 +757,61 @@ class HealthProfileFormSession extends ChangeNotifier {
             c;
   }
 
-  bool _nonEmptyString(dynamic v) => (v?.toString().trim().isNotEmpty ?? false);
+  /// 중복 선택은 화면에 있는 선택지가 하나라도 켜져 있어야 한다.
+  /// 선택지와 맞지 않는 저장값은 고르지 않은 것으로 본다.
+  bool _hasSelectedGridOption(HealthProfileQuestion question) {
+    final options = question.options ?? const <String>[];
+    return options.any((opt) => isGridOptionSelected(question, opt));
+  }
 
-  bool _nonEmptyList(dynamic v) =>
-      v is List && v.map((e) => e.toString().trim()).any((e) => e.isNotEmpty);
+  /// `내분비|영양|대사질환`처럼 쪼개진 값을 `내분비, 영양, 대사질환` 선택지로 합친다.
+  List<String> _collapseToKnownOptions(
+    List<String> parts,
+    List<String> options,
+  ) {
+    final remaining =
+        parts.map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+    final tokenized = [
+      for (final option in options)
+        (
+          option,
+          option
+              .split(RegExp(r'\s*,\s*'))
+              .map((e) => e.trim())
+              .where((e) => e.isNotEmpty)
+              .toList(),
+        ),
+    ]..sort((a, b) => b.$2.length.compareTo(a.$2.length));
+
+    final result = <String>[];
+    var i = 0;
+    while (i < remaining.length) {
+      final exact = options.contains(remaining[i]) ? remaining[i] : null;
+      if (exact != null) {
+        if (!result.contains(exact)) result.add(exact);
+        i += 1;
+        continue;
+      }
+      var matched = false;
+      for (final entry in tokenized) {
+        final tokens = entry.$2;
+        if (tokens.length < 2 || i + tokens.length > remaining.length) continue;
+        final head = remaining.sublist(i, i + tokens.length);
+        if (head.length == tokens.length &&
+            List.generate(head.length, (n) => head[n] == tokens[n])
+                .every((same) => same)) {
+          if (!result.contains(entry.$1)) result.add(entry.$1);
+          i += tokens.length;
+          matched = true;
+          break;
+        }
+      }
+      if (!matched) i += 1;
+    }
+    return result;
+  }
+
+  bool _nonEmptyString(dynamic v) => (v?.toString().trim().isNotEmpty ?? false);
 
   bool _isYmdValid(int y, int m, int d) {
     try {
@@ -816,14 +873,16 @@ class HealthProfileFormSession extends ChangeNotifier {
 
       switch (q.type) {
         case 'grid':
-          final raw = formData[q.id];
           if (q.allowMultiple == true) {
-            if (!_nonEmptyList(raw)) return false;
-          } else {
-            if (!_nonEmptyString(raw)) return false;
+            if (!_hasSelectedGridOption(q)) return false;
+          } else if (!_nonEmptyString(formData[q.id])) {
+            return false;
           }
           if (q.id == 'answer_10') {
-            if (!_nonEmptyList(formData['answer_10_types'])) return false;
+            final types = section.questions
+                .where((item) => item.id == 'answer_10_types')
+                .firstOrNull;
+            if (types == null || !_hasSelectedGridOption(types)) return false;
             if (isExerciseOtherSelected()) {
               final hasCommitted =
                   exerciseOthers.any((e) => e.trim().isNotEmpty);
