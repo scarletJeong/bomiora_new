@@ -18,6 +18,9 @@ import '../../../../data/repositories/product/product_repository.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../core/health/health_refresh_bus.dart';
 import '../../../../core/health/health_refresh_listener.dart';
+import '../../../../core/logging/failure_log.dart';
+import '../../../common/widgets/login_required_dialog.dart';
+import '../../../common/widgets/load_failure_notice.dart';
 import 'menstrual_cycle_input_screen.dart';
 
 /// 선택일이 예상 배란기일 때 링 위 날짜 마커 채움색
@@ -45,6 +48,9 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen>
   /// 전체 히스토리(최근 시작일 내림차순)
   List<MenstrualCycleRecord> _allRecords = const [];
   bool _isLoading = true;
+  bool _loadFailed = false;
+  bool _needsLogin = false;
+  bool _loginDialogOpen = false;
   late DateTime selectedDate;
   bool _isAutoCreatingCycle = false;
 
@@ -71,7 +77,28 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen>
     try {
       final user = await AuthService.getUser();
       if (user == null) {
-        throw Exception('로그인이 필요합니다');
+        if (!mounted) return;
+        setState(() {
+          _isLoading = false;
+          _loadFailed = false;
+          _needsLogin = true;
+          _allRecords = const [];
+          _currentRecord = null;
+        });
+        if (_loginDialogOpen) return;
+        _loginDialogOpen = true;
+        await showLoginRequiredDialog(context);
+        _loginDialogOpen = false;
+        if (!mounted) return;
+        final again = await AuthService.getUser();
+        if (again != null) {
+          await _loadMenstrualCycleData();
+          return;
+        }
+        if (mounted && Navigator.of(context).canPop()) {
+          Navigator.of(context).pop();
+        }
+        return;
       }
       unawaited(
         ProductRepository.getProductsByCategory(
@@ -93,12 +120,21 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen>
         _currentRecord =
             recordForSelected ?? (records.isNotEmpty ? records.first : null);
         _isLoading = false;
+        _loadFailed = false;
+        _needsLogin = false;
       });
       _maybeAutoCreateNextCycleForDate(selectedDate);
     } catch (e) {
+      await FailureLog.record(
+        code: 'health.menstrual.list',
+        mbId: AuthService.currentUser?.id ?? '',
+        reason: e.toString(),
+      );
       if (!mounted) return;
       setState(() {
         _isLoading = false;
+        _loadFailed = true;
+        _needsLogin = false;
       });
     }
   }
@@ -139,7 +175,16 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen>
                     ],
                   ),
                 )
-              : _currentRecord == null
+              : _needsLogin
+                  ? const SizedBox.shrink()
+                  : _loadFailed
+                      ? Center(
+                          child: LoadFailureNotice(
+                            message: '기록을 불러오지 못했습니다',
+                            onRetry: _loadMenstrualCycleData,
+                          ),
+                        )
+                      : _currentRecord == null
                   ? _buildNoDataView()
                   : Column(
                       children: [
@@ -779,10 +824,10 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen>
           );
 
           // 새로운 레코드 저장
-          final success =
+          final saved =
               await MenstrualCycleRepository.addMenstrualCycleRecord(newRecord);
 
-          if (success) {
+          if (saved.success) {
             HealthDashboardRepository.invalidate(user.id);
             notifyHealthDataChanged(HealthRefreshDomain.menstrual);
           }
