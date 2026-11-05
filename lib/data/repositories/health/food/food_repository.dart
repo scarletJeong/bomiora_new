@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_endpoints.dart';
@@ -574,7 +573,6 @@ class FoodRepository {
     int offset = 0,
   }) async {
     try {
-      final sw = Stopwatch()..start();
       final list =
           await _fetchFoodSearchRaw(keyword, limit: limit, offset: offset);
 
@@ -585,9 +583,6 @@ class FoodRepository {
         if (pA != pB) return pA.compareTo(pB);
         return a.foodName.compareTo(b.foodName);
       });
-      sw.stop();
-      debugPrint(
-          '[FoodRepo] searchFood("$keyword") took ${sw.elapsedMilliseconds}ms');
 
       return list;
     } catch (e) {
