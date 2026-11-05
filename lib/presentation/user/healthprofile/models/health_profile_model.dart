@@ -1,5 +1,7 @@
+import 'dart:async';
+
+import '../../../../core/logging/failure_log.dart';
 import '../../../../core/utils/node_value_parser.dart';
-import 'package:flutter/foundation.dart';
 
 class HealthProfileModel {
   final int? pfNo;
@@ -63,25 +65,29 @@ class HealthProfileModel {
 
     // pfNo 파싱 (camelCase 또는 snake_case)
     final pfNo = normalized['pfNo'] ?? normalized['pf_no'];
-    
-    // DateTime 파싱 헬퍼 함수
-    DateTime? parseDateTime(dynamic value) {
+    final mbId = NodeValueParser.asString(normalized['mbId']) ??
+        NodeValueParser.asString(normalized['mb_id']) ??
+        '';
+
+    DateTime? parseDateTime(dynamic value, String field) {
       final stringValue = NodeValueParser.asString(value);
       if (stringValue == null || stringValue.isEmpty) return null;
       final direct = DateTime.tryParse(stringValue);
       if (direct != null) return direct;
       final withT = DateTime.tryParse(stringValue.replaceAll(' ', 'T'));
       if (withT != null) return withT;
-      debugPrint('[HealthProfileModel] 날짜 파싱 오류: $value');
+      unawaited(FailureLog.record(
+        code: 'health_profile.date',
+        mbId: mbId,
+        reason: '날짜를 해석하지 못했습니다',
+        detail: {'field': field, 'value': stringValue},
+      ));
       return null;
     }
     
     final result = HealthProfileModel(
       pfNo: NodeValueParser.asInt(pfNo),
-      mbId:
-          NodeValueParser.asString(normalized['mbId']) ??
-          NodeValueParser.asString(normalized['mb_id']) ??
-          '',
+      mbId: mbId,
       answer1:
           NodeValueParser.asString(normalized['answer1']) ??
           NodeValueParser.asString(normalized['answer_1']) ??
@@ -158,8 +164,16 @@ class HealthProfileModel {
           NodeValueParser.asString(normalized['answer13Sideeffect']) ??
           NodeValueParser.asString(normalized['answer_13_sideeffect']) ??
           '',
-      pfWdatetime: parseDateTime(normalized['pfWdatetime'] ?? normalized['pf_wdatetime']) ?? DateTime.now(),
-      pfMdatetime: parseDateTime(normalized['pfMdatetime'] ?? normalized['pf_mdatetime']) ?? DateTime.now(),
+      pfWdatetime: parseDateTime(
+            normalized['pfWdatetime'] ?? normalized['pf_wdatetime'],
+            'pfWdatetime',
+          ) ??
+          DateTime.now(),
+      pfMdatetime: parseDateTime(
+            normalized['pfMdatetime'] ?? normalized['pf_mdatetime'],
+            'pfMdatetime',
+          ) ??
+          DateTime.now(),
       pfIp:
           NodeValueParser.asString(normalized['pfIp']) ??
           NodeValueParser.asString(normalized['pf_ip']) ??

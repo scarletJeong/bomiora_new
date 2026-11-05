@@ -96,35 +96,6 @@ class HealthProfileService {
     }
   }
 
-  // 건강프로필 수정
-  static Future<bool> updateHealthProfile(HealthProfileModel profile) async {
-    try {
-      // PUT 대신 POST로 변경 (pfNo를 포함하여 전송)
-      // 백엔드에서 pfNo가 있으면 업데이트, 없으면 생성하도록 처리
-      final response =
-          await ApiClient.post('/api/healthprofile', profile.toJson());
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final data = json.decode(response.body);
-        final ok = data is Map && data['success'] == true;
-        if (ok) {
-          final saved = data['data'];
-          _memCache[profile.mbId] = saved is Map
-              ? HealthProfileModel.fromJson(
-                  Map<String, dynamic>.from(saved),
-                )
-              : profile;
-          _memCacheAt[profile.mbId] = DateTime.now();
-        }
-        return ok;
-      } else {
-        throw Exception('건강프로필 수정 실패: ${response.statusCode}');
-      }
-    } catch (e) {
-      throw Exception('건강프로필 수정 중 오류 발생: $e');
-    }
-  }
-
   // 건강프로필 삭제
   static Future<bool> deleteHealthProfile(int profileId) async {
     try {
@@ -138,16 +109,6 @@ class HealthProfileService {
       }
     } catch (e) {
       throw Exception('건강프로필 삭제 중 오류 발생: $e');
-    }
-  }
-
-  // 건강프로필 존재 여부 확인
-  static Future<bool> hasHealthProfile(String userId) async {
-    try {
-      final profile = await getHealthProfile(userId);
-      return profile != null;
-    } catch (e) {
-      return false;
     }
   }
 

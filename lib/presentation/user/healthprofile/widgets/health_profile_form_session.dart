@@ -945,11 +945,7 @@ class HealthProfileFormSession extends ChangeNotifier {
       pfMemo: '',
     );
 
-    if (existingProfile != null && existingProfile!.pfNo != null) {
-      await HealthProfileService.updateHealthProfile(profile);
-    } else {
-      await HealthProfileService.saveHealthProfile(profile);
-    }
+    await HealthProfileService.saveHealthProfile(profile);
   }
 
   void touch() => notifyListeners();

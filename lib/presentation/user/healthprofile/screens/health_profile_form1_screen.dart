@@ -1127,13 +1127,6 @@ class _HealthProfileForm1State extends State<HealthProfileForm1Screen> {
     );
   }
 
-  // ignore: unused_element
-  void _openAnswer6Menu({
-    required List<String> options,
-    required ValueChanged<String> onSelected,
-  }) {
-    _openAnswer6BottomSheet(options: options, onSelected: onSelected);
-  }
 }
 
 class _Answer6OptionTile extends StatefulWidget {
