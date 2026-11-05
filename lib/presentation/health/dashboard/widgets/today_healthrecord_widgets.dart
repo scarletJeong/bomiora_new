@@ -158,7 +158,7 @@ class TodayHealthRecordSection extends StatelessWidget {
                             title: '혈압',
                             value: latestBloodPressureRecord != null
                                 ? '수축기 $systolicBP mmHg\n이완기 $diastolicBP mmHg'
-                                : '입력하세요.\n입력하세요.',
+                                : '입력하세요.',
                             subtitle: '',
                             statusText: HealthVitalStatus.bloodPressure(
                               record: latestBloodPressureRecord,
