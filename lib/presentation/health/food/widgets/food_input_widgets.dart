@@ -10,6 +10,7 @@ import '../../../../core/constants/app_assets.dart';
 import '../../../../core/utils/image_picker_utils.dart';
 import '../../../../core/utils/image_url_helper.dart';
 import '../../../../data/repositories/health/food/food_repository.dart';
+import '../../../common/widgets/app_network_image.dart';
 import '../../../common/widgets/app_toast_overlay.dart';
 import '../../../common/widgets/dropdown_btn.dart';
 import '../../health_common/health_responsive_scale.dart';
@@ -1249,14 +1250,14 @@ class _MealPhotoThumbnail extends StatelessWidget {
             errorBuilder: (_, __, ___) =>
                 const ColoredBox(color: Color(0xFF6C6C6C)),
           )
-        : Image.network(
-            isLocalPreview
+        : AppNetworkImage(
+            url: isLocalPreview
                 ? previewPath
                 : ImageUrlHelper.getImageUrl(imagePath),
-            key: ValueKey(imagePath),
             fit: BoxFit.cover,
-            width: double.infinity,
-            height: double.infinity,
+            width: size,
+            height: size,
+            preferHtmlElementOnWeb: false,
             errorBuilder: (_, __, ___) =>
                 const ColoredBox(color: Color(0xFF6C6C6C)),
           );

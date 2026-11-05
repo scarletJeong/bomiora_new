@@ -6,6 +6,7 @@ import '../../../../core/constants/app_assets.dart';
 import '../../../../core/health/health_refresh_bus.dart';
 import '../../../../core/health/health_refresh_listener.dart';
 import '../../../../core/utils/image_url_helper.dart';
+import '../../../common/widgets/app_network_image.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/appbar_menutap.dart';
 import '../../../../data/services/auth_service.dart';
@@ -700,11 +701,12 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
     if (profile != null && profile.isNotEmpty) {
       final url = ImageUrlHelper.getImageUrl(profile);
       if (url.isNotEmpty) {
-        return Image.network(
-          url,
+        return AppNetworkImage(
+          url: url,
           width: size,
           height: size,
           fit: BoxFit.cover,
+          preferHtmlElementOnWeb: false,
           errorBuilder: (_, __, ___) => _buildProfileAvatarPlaceholder(context),
         );
       }

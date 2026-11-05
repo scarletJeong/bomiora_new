@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../../core/constants/app_assets.dart';
+import '../../../common/widgets/app_network_image.dart';
 import '../../../../core/utils/image_url_helper.dart';
 import '../../food/screens/food_list_screen.dart';
 import '../../health_common/health_responsive_scale.dart';
@@ -373,12 +374,12 @@ class _TodayMealItemCard extends StatelessWidget {
             fit: StackFit.expand,
             children: [
               if (_hasValidImage)
-                Image.network(
-                  ImageUrlHelper.getImageUrl(_representativeImagePath!),
-                  key: ValueKey(_representativeImagePath),
+                AppNetworkImage(
+                  url: ImageUrlHelper.getImageUrl(_representativeImagePath!),
                   fit: BoxFit.cover,
                   width: double.infinity,
                   height: double.infinity,
+                  preferHtmlElementOnWeb: false,
                   errorBuilder: (_, __, ___) =>
                       const ColoredBox(color: Color(0xFF6C6C6C)),
                 )

@@ -10,6 +10,7 @@ import '../../../../data/repositories/health/food/food_repository.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../core/health/health_refresh_bus.dart';
 import '../../../../core/health/health_refresh_listener.dart';
+import '../../../common/widgets/app_network_image.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../health_common/health_responsive_scale.dart';
 import '../../health_common/macro_kcal.dart';
@@ -71,10 +72,7 @@ class _TodayDietScreenState extends State<TodayDietScreen>
       setState(() => _dayRecords = []);
       return;
     }
-    final sw = Stopwatch()..start();
     final list = await FoodRepository.getRecordsForDate(mbId, selectedDate);
-    sw.stop();
-    debugPrint('[FoodList] _loadMealData took ${sw.elapsedMilliseconds}ms');
 
     if (!mounted) return;
     final calories = list.fold<int>(0, (sum, r) => sum + (r.calories ?? 0));
@@ -511,12 +509,12 @@ class _TodayDietScreenState extends State<TodayDietScreen>
         child: SizedBox(
           width: thumbW,
           height: thumbH,
-          child: Image.network(
-            ImageUrlHelper.getImageUrl(imagePath),
-            key: ValueKey(imagePath),
+          child: AppNetworkImage(
+            url: ImageUrlHelper.getImageUrl(imagePath),
             fit: BoxFit.cover,
-            width: double.infinity,
-            height: double.infinity,
+            width: thumbW,
+            height: thumbH,
+            preferHtmlElementOnWeb: false,
             errorBuilder: (_, __, ___) =>
                 const ColoredBox(color: Color(0xFF6C6C6C)),
           ),
