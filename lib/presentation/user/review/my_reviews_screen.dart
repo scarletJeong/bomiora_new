@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../../core/constants/app_assets.dart';
+import '../../common/widgets/app_network_image.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/confirm_dialog.dart';
 import '../../common/widgets/centered_empty_state.dart';
@@ -489,9 +490,12 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
         width: side,
         height: side,
         child: url != null && url.isNotEmpty
-            ? Image.network(
-                url,
+            ? AppNetworkImage(
+                url: url,
+                width: side,
+                height: side,
                 fit: BoxFit.cover,
+                preferHtmlElementOnWeb: false,
                 errorBuilder: (_, __, ___) => _imagePlaceholder(),
               )
             : _imagePlaceholder(),
@@ -523,11 +527,12 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
         child: SizedBox(
           width: side,
           height: side,
-          child: Image.network(
-            url,
+          child: AppNetworkImage(
+            url: url,
             width: side,
             height: side,
             fit: BoxFit.cover,
+            preferHtmlElementOnWeb: false,
             errorBuilder: (_, __, ___) => _imagePlaceholder(),
           ),
         ),
@@ -995,9 +1000,12 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                   width: healthDp(context, 40),
                   height: healthDp(context, 40),
                   child: listThumb != null && listThumb.isNotEmpty
-                      ? Image.network(
-                          listThumb,
+                      ? AppNetworkImage(
+                          url: listThumb,
+                          width: healthDp(context, 40),
+                          height: healthDp(context, 40),
                           fit: BoxFit.cover,
+                          preferHtmlElementOnWeb: false,
                           errorBuilder: (_, __, ___) => Container(
                             color: _kBorderSoft,
                             child: Icon(

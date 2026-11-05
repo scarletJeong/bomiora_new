@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../common/widgets/app_network_image.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 
 /// 리뷰 사진 크게 보기. 좌우로 넘기고, 넘기기 안내는 처음 한 번만 잠깐 보여 준다.
@@ -152,9 +153,12 @@ class _ReviewPhotoViewerState extends State<ReviewPhotoViewer> {
                     itemCount: total,
                     onPageChanged: (value) => setState(() => _index = value),
                     itemBuilder: (context, index) {
-                      return Image.network(
-                        widget.urls[index],
+                      return AppNetworkImage(
+                        url: widget.urls[index],
                         fit: BoxFit.cover,
+                        width: double.infinity,
+                        height: double.infinity,
+                        preferHtmlElementOnWeb: false,
                         errorBuilder: (_, __, ___) => const ColoredBox(
                           color: Color(0xFF2A2A2A),
                           child: Center(
@@ -215,11 +219,12 @@ class _ReviewPhotoViewerState extends State<ReviewPhotoViewer> {
                         child: ClipRRect(
                           borderRadius:
                               BorderRadius.circular(healthDp(context, 8)),
-                          child: Image.network(
-                            widget.urls[i],
+                          child: AppNetworkImage(
+                            url: widget.urls[i],
                             width: thumb,
                             height: thumb,
                             fit: BoxFit.cover,
+                            preferHtmlElementOnWeb: false,
                             errorBuilder: (_, __, ___) =>
                                 const ColoredBox(color: Color(0xFF2A2A2A)),
                           ),
