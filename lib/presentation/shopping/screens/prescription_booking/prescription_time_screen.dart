@@ -1215,7 +1215,7 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
     if (_isLoading) {
       return const MobileAppLayoutWrapper(
         appBar: null,
-        child: Center(child: CircularProgressIndicator()),
+        child: Center(child: CircularProgressIndicator(color: const Color(0xFFFF5A8D))),
       );
     }
     

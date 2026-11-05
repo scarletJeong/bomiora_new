@@ -101,7 +101,7 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
     return MobileAppLayoutWrapper(
       appBar: const HealthAppBar(title: '공지사항'),
       child: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator(color: const Color(0xFFFF5A8D)))
           : _item == null
               ? CenteredEmptyState(
                   iconWidget: CenteredEmptyState.assetIcon(

@@ -245,7 +245,7 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
           textScaler: TextScaler.linear(textScale),
         ),
         child: _loading
-            ? const Center(child: CircularProgressIndicator())
+            ? const Center(child: CircularProgressIndicator(color: const Color(0xFFFF5A8D)))
             : KeyboardAwareFormBody(
                 pinBottom: true,
                 formPadding: EdgeInsets.fromLTRB(

@@ -7,8 +7,8 @@ import 'health_profile_questionnaire_options.dart';
 abstract final class HealthProfileFormCommon {
   HealthProfileFormCommon._();
 
-  static const Color pink = Color(0xFFFF3787);
-  static const Color pinkSoft = Color(0x0CFF3787);
+  static const Color pink = Color(0xFFFF5A8D);
+  static const Color pinkSoft = Color(0x0CFF5A8D);
 
   /// 1단계 BMI 안내와 목록 배지가 같이 쓰는 구간 색.
   static const Color bmiUnderweight = Color(0xFF60A5FA);

@@ -331,7 +331,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
             : null,
       ),
       child: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator(color: const Color(0xFFFF5A8D)))
           : Column(
               children: [
                 Expanded(

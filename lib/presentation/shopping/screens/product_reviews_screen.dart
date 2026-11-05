@@ -58,7 +58,7 @@ class PrescriptionReviewTabPanel extends StatelessWidget {
         if (isLoading)
           Padding(
             padding: EdgeInsets.all(healthDp(context, 32)),
-            child: const Center(child: CircularProgressIndicator()),
+            child: const Center(child: CircularProgressIndicator(color: const Color(0xFFFF5A8D))),
           )
         else ...[
           PrescriptionReviewStatsCard(stats: stats),

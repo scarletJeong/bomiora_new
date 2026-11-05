@@ -221,7 +221,7 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
         child: Material(
             color: Colors.white,
           child: _isLoading
-              ? const Center(child: CircularProgressIndicator())
+              ? const Center(child: CircularProgressIndicator(color: const Color(0xFFFF5A8D)))
               : _requiresLogin
                   ? _buildLoginState()
                   : _orderDetail == null

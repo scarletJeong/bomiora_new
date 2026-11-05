@@ -200,7 +200,7 @@ class _ReviewSectionState extends State<ReviewSection> {
           child: SizedBox(
             width: healthDp(context, 28),
             height: healthDp(context, 28),
-            child: const CircularProgressIndicator(strokeWidth: 2),
+            child: const CircularProgressIndicator(color: const Color(0xFFFF5A8D), strokeWidth: 2),
           ),
         ),
       );
@@ -409,7 +409,7 @@ class _ReviewCardImageState extends State<_ReviewCardImage> {
           child: const SizedBox(
             width: 22,
             height: 22,
-            child: CircularProgressIndicator(strokeWidth: 2),
+            child: CircularProgressIndicator(color: const Color(0xFFFF5A8D), strokeWidth: 2),
           ),
         );
       },

@@ -80,7 +80,7 @@ class _ProductMainCategoryTapState extends State<ProductMainCategoryTap> {
     if (!_categoriesReady) {
       return SizedBox(
         height: healthDp(context, widget.compact ? 72 : 100),
-        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+        child: const Center(child: CircularProgressIndicator(color: const Color(0xFFFF5A8D), strokeWidth: 2)),
       );
     }
 

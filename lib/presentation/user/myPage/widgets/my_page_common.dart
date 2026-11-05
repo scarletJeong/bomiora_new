@@ -44,7 +44,7 @@ class MyPageLoadingIndicator extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Center(
       child: CircularProgressIndicator(
-        color: Color(0xFFFF3787),
+        color: Color(0xFFFF5A8D),
       ),
     );
   }

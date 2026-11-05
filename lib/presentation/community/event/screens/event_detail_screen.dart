@@ -118,7 +118,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
 
   Widget _buildBody(BuildContext context) {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: CircularProgressIndicator(color: const Color(0xFFFF5A8D)));
     }
 
     if (_event == null) {

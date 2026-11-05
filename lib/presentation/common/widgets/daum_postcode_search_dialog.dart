@@ -274,7 +274,7 @@ class _DaumPostcodeDialogState extends State<_DaumPostcodeDialog> {
             ),
             Expanded(
               child: _closing
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const Center(child: CircularProgressIndicator(color: const Color(0xFFFF5A8D)))
                   : _errorMessage != null
                       ? Center(
                           child: Padding(

@@ -594,7 +594,7 @@ class _ReservationTimeChangePopupState
                                     vertical: healthDp(context, 16),
                                   ),
                                   child: const Center(
-                                    child: CircularProgressIndicator(),
+                                    child: CircularProgressIndicator(color: const Color(0xFFFF5A8D)),
                                   ),
                                 )
                               else if (times.isEmpty)

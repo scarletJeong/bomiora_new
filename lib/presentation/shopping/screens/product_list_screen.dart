@@ -301,7 +301,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
         child: SizedBox(
           width: healthDp(context, 36),
           height: healthDp(context, 36),
-          child: const CircularProgressIndicator(strokeWidth: 2),
+          child: const CircularProgressIndicator(color: const Color(0xFFFF5A8D), strokeWidth: 2),
         ),
       );
     }
@@ -375,7 +375,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                             child: SizedBox(
                               width: healthDp(context, 28),
                               height: healthDp(context, 28),
-                              child: const CircularProgressIndicator(
+                              child: const CircularProgressIndicator(color: const Color(0xFFFF5A8D), 
                                 strokeWidth: 2,
                               ),
                             ),

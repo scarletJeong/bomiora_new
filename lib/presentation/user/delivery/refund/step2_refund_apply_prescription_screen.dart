@@ -217,7 +217,7 @@ class _RefundApplyPrescriptionScreenState extends State<RefundApplyPrescriptionS
       child: Material(
         color: Colors.white,
         child: _loading
-            ? const Center(child: CircularProgressIndicator())
+            ? const Center(child: CircularProgressIndicator(color: const Color(0xFFFF5A8D)))
             : _loadError != null
                 ? _buildError()
                 : _buildBody(),

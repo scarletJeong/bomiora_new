@@ -240,7 +240,7 @@ class ProductCatalogCard extends StatelessWidget {
                             child: SizedBox(
                               width: healthDp(context, 28),
                               height: healthDp(context, 28),
-                              child: const CircularProgressIndicator(
+                              child: const CircularProgressIndicator(color: const Color(0xFFFF5A8D), 
                                 strokeWidth: 2,
                               ),
                             ),

@@ -608,7 +608,7 @@ class _CartScreenState extends State<CartScreen> {
   Widget _buildBody(BuildContext context) {
     if (isLoading && cartItems.isEmpty) {
       return _wrapWithOptionalHeader(
-        const Center(child: CircularProgressIndicator()),
+        const Center(child: CircularProgressIndicator(color: const Color(0xFFFF5A8D))),
       );
     }
     if (needsLogin) {

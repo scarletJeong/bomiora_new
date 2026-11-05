@@ -855,7 +855,7 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
         ),
         Expanded(
           child: _isLoading
-              ? const Center(child: CircularProgressIndicator())
+              ? const Center(child: CircularProgressIndicator(color: const Color(0xFFFF5A8D)))
               : _addresses.isEmpty
                   ? Center(
                       child: Text(

@@ -73,7 +73,7 @@ class _GuidebookSectionState extends State<GuidebookSection> {
                     child: SizedBox(
                       width: 24,
                       height: 24,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                      child: CircularProgressIndicator(color: const Color(0xFFFF5A8D), strokeWidth: 2),
                     ),
                   );
                 }

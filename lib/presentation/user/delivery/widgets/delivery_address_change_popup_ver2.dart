@@ -555,7 +555,7 @@ class _DeliveryAddressChangePopupState
                             vertical: healthDp(context, 24),
                           ),
                           child: const Center(
-                            child: CircularProgressIndicator(),
+                            child: CircularProgressIndicator(color: const Color(0xFFFF5A8D)),
                           ),
                         )
                       else if (_addresses.isEmpty)

@@ -157,7 +157,7 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
                       if (_loading)
                         const SliverFillRemaining(
                           hasScrollBody: false,
-                          child: Center(child: CircularProgressIndicator()),
+                          child: Center(child: CircularProgressIndicator(color: const Color(0xFFFF5A8D))),
                         )
                       else if (showEmpty)
                         const SliverFillRemaining(

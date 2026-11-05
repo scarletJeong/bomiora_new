@@ -68,7 +68,7 @@ class _NoticeSectionState extends State<NoticeSection> {
                       child: SizedBox(
                         width: 20,
                         height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                        child: CircularProgressIndicator(color: const Color(0xFFFF5A8D), strokeWidth: 2),
                       ),
                     ),
                   )

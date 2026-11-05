@@ -737,7 +737,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_tabsLoading) {
       return SizedBox(
         height: healthDp(context, 280),
-        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+        child: const Center(child: CircularProgressIndicator(color: const Color(0xFFFF5A8D), strokeWidth: 2)),
       );
     }
     if (_tabs.isEmpty) {
@@ -872,7 +872,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: SizedBox(
           width: healthDp(context, 20),
           height: healthDp(context, 20),
-          child: const CircularProgressIndicator(strokeWidth: 2),
+          child: const CircularProgressIndicator(color: const Color(0xFFFF5A8D), strokeWidth: 2),
         ),
       );
     }
@@ -921,7 +921,7 @@ class _HomeScreenState extends State<HomeScreen> {
           child: SizedBox(
             width: healthDp(context, 20),
             height: healthDp(context, 20),
-            child: const CircularProgressIndicator(strokeWidth: 2),
+            child: const CircularProgressIndicator(color: const Color(0xFFFF5A8D), strokeWidth: 2),
           ),
         ),
       );

@@ -166,7 +166,7 @@ class HealthProfileFormFrame extends StatelessWidget {
             style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
             child: session.currentUser == null
                 ? const Center(
-                    child: CircularProgressIndicator(color: Color(0xFFFF3787)),
+                    child: CircularProgressIndicator(color: Color(0xFFFF5A8D)),
                   )
                 : ColoredBox(
                     color: Colors.white,
@@ -184,7 +184,7 @@ class HealthProfileFormFrame extends StatelessWidget {
                               color: Color(0x33000000),
                               child: Center(
                                 child: CircularProgressIndicator(
-                                  color: Color(0xFFFF3787),
+                                  color: Color(0xFFFF5A8D),
                                 ),
                               ),
                             ),
@@ -437,7 +437,7 @@ class HealthProfileSectionSubmitBar extends StatelessWidget {
         child: ElevatedButton(
           onPressed: session.isLoading ? null : onSubmit,
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFFFF3787),
+            backgroundColor: const Color(0xFFFF5A8D),
             foregroundColor: Colors.white,
             padding: EdgeInsets.zero,
             minimumSize: Size(double.infinity, healthDp(context, 40)),

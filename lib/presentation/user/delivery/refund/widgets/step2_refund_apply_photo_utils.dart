@@ -118,7 +118,7 @@ class RefundApplyPhotoUtils {
               return SizedBox(
                 width: size,
                 height: size,
-                child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                child: const Center(child: CircularProgressIndicator(color: const Color(0xFFFF5A8D), strokeWidth: 2)),
               );
             }
             return ClipRRect(

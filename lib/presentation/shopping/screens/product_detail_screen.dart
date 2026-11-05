@@ -597,7 +597,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
             body: Stack(
               children: [
                 _isLoading
-                    ? const Center(child: CircularProgressIndicator())
+                    ? const Center(child: CircularProgressIndicator(color: const Color(0xFFFF5A8D)))
                     : _hasError
                         ? _buildErrorState()
                         : _product == null
@@ -1179,7 +1179,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                   loadingBuilder: (context, child, loadingProgress) {
                     if (loadingProgress == null) return child;
                     return const Center(
-                      child: CircularProgressIndicator(),
+                      child: CircularProgressIndicator(color: const Color(0xFFFF5A8D)),
                     );
                   },
                 ),

@@ -568,7 +568,7 @@ class _SignupScreenState extends State<SignupScreen> {
         child: SizedBox(
           width: healthDp(context, 36),
           height: healthDp(context, 36),
-          child: const CircularProgressIndicator(strokeWidth: 2),
+          child: const CircularProgressIndicator(color: const Color(0xFFFF5A8D), strokeWidth: 2),
         ),
       );
     }

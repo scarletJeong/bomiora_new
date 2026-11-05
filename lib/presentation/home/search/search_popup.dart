@@ -231,7 +231,7 @@ class _SearchPopupDialogState extends State<_SearchPopupDialog> {
                       child: SizedBox(
                         width: 22,
                         height: 22,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                        child: CircularProgressIndicator(color: const Color(0xFFFF5A8D), strokeWidth: 2),
                       ),
                     ),
                   )
