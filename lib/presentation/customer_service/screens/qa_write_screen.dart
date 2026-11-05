@@ -327,7 +327,7 @@ class _QaWriteScreenState extends State<QaWriteScreen> {
                       child: Text(
                         '· 평일 당일 17시30분 이후 접수건은 익일 오전 9시30분 이후 답변 가능\n  (공휴일, 주말 제외)',
                         style: TextStyle(
-                          color: const Color(0xFF555555),
+                          color: const Color(0xFF898686),
                           fontSize: healthSp(context, 10),
                           fontFamily: _font,
                           fontWeight: FontWeight.w500,
@@ -344,7 +344,7 @@ class _QaWriteScreenState extends State<QaWriteScreen> {
                           Text(
                             '안녕하세요. 보미오라 고객센터입니다.',
                             style: TextStyle(
-                              color: const Color(0xFF0F172A),
+                              color: const Color(0xFF1A1A1A),
                               fontSize: healthSp(context, 18),
                               fontFamily: _font,
                               fontWeight: FontWeight.w500,
@@ -427,7 +427,10 @@ class _QaWriteScreenState extends State<QaWriteScreen> {
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: TextStyle(
-                                        color: const Color(0xFF898383),
+                                        color: _productFieldLabel ==
+                                                '상품을 선택해주세요'
+                                            ? const Color(0xFF898686)
+                                            : const Color(0xFF1A1A1A),
                                         fontSize: healthSp(context, 12),
                                         fontFamily: _font,
                                         fontWeight: FontWeight.w300,
@@ -595,7 +598,7 @@ class _QaWriteScreenState extends State<QaWriteScreen> {
                     ),
                   ),
                   style: TextStyle(
-                    color: const Color(0xFF1A1A1E),
+                    color: const Color(0xFF1A1A1A),
                     fontSize: healthSp(context, 12),
                     fontFamily: _font,
                     fontWeight: FontWeight.w500,
@@ -835,7 +838,7 @@ class _LandingDropdown extends StatelessWidget {
       backgroundColor:
           enabled ? Colors.white : const Color(0xFFF7F7F7),
       emptyTextColor: const Color(0xFF898686),
-      valueTextColor: const Color(0xFF1A1A1E),
+      valueTextColor: const Color(0xFF1A1A1A),
       emptyFontWeight: FontWeight.w300,
       valueFontWeight: FontWeight.w500,
       dimWhenDisabled: false,

@@ -659,7 +659,7 @@ class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
         Text(
           message,
           style: TextStyle(
-            color: const Color(0xFFC0C0C0),
+            color: const Color(0xFF898686),
             fontSize: healthSp(context, 14),
             fontFamily: _font,
             fontWeight: FontWeight.w500,
@@ -760,7 +760,7 @@ class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
               Text(
                 '문의하실 상품을 선택해주세요.',
                 style: TextStyle(
-                  color: const Color(0xFF0F172A),
+                  color: const Color(0xFF1A1A1A),
                   fontSize: healthSp(context, 18),
                   fontFamily: _font,
                   fontWeight: FontWeight.w500,
@@ -1066,7 +1066,7 @@ class _OrderHeaderRow extends StatelessWidget {
               child: Text(
                 odId,
                 style: TextStyle(
-                  color: const Color(0xFF555555),
+                  color: const Color(0xFF1A1A1A),
                   fontSize: healthSp(context, 12),
                   fontFamily: _font,
                   fontWeight: FontWeight.w300,
@@ -1098,7 +1098,7 @@ class _ProductSelectRow extends StatelessWidget {
   final bool compact;
   final bool embedded;
 
-  static const Color _ink = Color(0xFF1A1A1E);
+  static const Color _ink = Color(0xFF1A1A1A);
   static const String _font = 'Gmarket Sans TTF';
 
   @override
@@ -1208,9 +1208,7 @@ class _OptionMetaRow extends StatelessWidget {
           Text(
             parts[i],
             style: TextStyle(
-              color: i == parts.length - 1 && parts.length > 1
-                  ? const Color(0xFF898686)
-                  : const Color(0xFF898383),
+              color: const Color(0xFF898686),
               fontSize: healthSp(context, 10),
               fontFamily: _font,
               fontWeight: FontWeight.w500,
