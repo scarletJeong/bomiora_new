@@ -293,10 +293,11 @@ class AuthService {
       final data = json.decode(response.body) as Map<String, dynamic>;
 
       if (response.statusCode == 200 && data['success'] == true) {
-        if (data['user'] != null) {
-          final updatedUser = UserModel.fromJson(data['user']);
-          await updateUser(updatedUser);
-        }
+        await _storeProfileAfterSave(
+          responseUser: data['user'],
+          nickname: nickname,
+          phone: phone,
+        );
 
         return {
           'success': true,
@@ -315,6 +316,39 @@ class AuthService {
         'success': false,
         'message': '네트워크 오류가 발생했습니다.',
       };
+    }
+  }
+
+  /// 성공 응답의 `user`로 기기 회원 정보를 바꾸고, 없으면 방금 저장한 닉네임·연락처만 합친다.
+  static Future<void> _storeProfileAfterSave({
+    required dynamic responseUser,
+    String? nickname,
+    String? phone,
+  }) async {
+    final parsed = _userFromProfileResponse(responseUser);
+    if (parsed != null) {
+      await updateUser(parsed);
+      return;
+    }
+
+    final local = await getUser();
+    if (local == null) return;
+    await updateUser(
+      local.copyWith(
+        nickname: nickname ?? local.nickname,
+        phone: phone ?? local.phone,
+      ),
+    );
+  }
+
+  static UserModel? _userFromProfileResponse(dynamic raw) {
+    if (raw is! Map) return null;
+    try {
+      final user = UserModel.fromJson(Map<String, dynamic>.from(raw));
+      if (user.id.trim().isEmpty) return null;
+      return user;
+    } catch (_) {
+      return null;
     }
   }
 
