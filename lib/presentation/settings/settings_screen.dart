@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../common/widgets/app_alert_dialog.dart';
 import '../common/widgets/mobile_layout_wrapper.dart';
 import '../health/health_common/widgets/health_app_bar.dart';
@@ -16,12 +17,26 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  static const String _appVersion = '26.01.0';
+  String _appVersion = '';
   static const String _font = 'Gmarket Sans TTF';
   static const Color _kBorder = Color(0xFFD2D2D2);
   static const Color _kText = Color(0xFF1A1A1E);
   static const Color _kMuted = Color(0xFF898686);
   static const Color _kPink = Color(0xFFFF5A8D);
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAppVersion();
+  }
+
+  Future<void> _loadAppVersion() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      if (!mounted) return;
+      setState(() => _appVersion = info.version);
+    } catch (_) {}
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -107,29 +122,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 title: '앱정보',
                 icon: Icons.info_outline_rounded,
                 onTap: _showAppInfoDialog,
-                trailing: Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: healthDp(context, 5),
-                    vertical: healthDp(context, 5),
-                  ),
-                  decoration: ShapeDecoration(
-                    color: const Color(0xFFF6F3F2),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(
-                        healthDp(context, 20),
+                trailing: _appVersion.isEmpty
+                    ? const SizedBox.shrink()
+                    : Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: healthDp(context, 5),
+                          vertical: healthDp(context, 5),
+                        ),
+                        decoration: ShapeDecoration(
+                          color: const Color(0xFFF6F3F2),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(
+                              healthDp(context, 20),
+                            ),
+                          ),
+                        ),
+                        child: Text(
+                          _appVersion,
+                          style: TextStyle(
+                            color: _kMuted,
+                            fontSize: healthSp(context, 12),
+                            fontFamily: _font,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                  child: Text(
-                    _appVersion,
-                    style: TextStyle(
-                      color: _kMuted,
-                      fontSize: healthSp(context, 12),
-                      fontFamily: _font,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
               ),
             ],
           ),
@@ -206,7 +223,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  void _showAppInfoDialog() {
+  Future<void> _showAppInfoDialog() async {
+    if (_appVersion.isEmpty) {
+      await _loadAppVersion();
+    }
+    if (!mounted) return;
     AppAlertDialog.show(
       context,
       title: '앱 정보',
