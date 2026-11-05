@@ -457,7 +457,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       if (!mounted) return;
       if (more == null) {
         AppToastOverlay.showAlert(context, '리뷰를 더 불러오지 못했습니다.');
-        return;
+        return; 
       }
       _safeSetState(() {
         final merged = [...loaded, ...more.reviews];

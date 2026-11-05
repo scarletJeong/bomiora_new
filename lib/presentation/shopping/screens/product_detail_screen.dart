@@ -423,7 +423,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       );
       if (!mounted) return;
       if (more == null) {
-        AppToastOverlay.showAlert(context, '리뷰를 더 불러오지 못했습니다.');
+        AppToastOverlay.showAlert(context, '리뷰를 더 불러오지 못했습니다.'); 
         return;
       }
       _safeSetState(() {
