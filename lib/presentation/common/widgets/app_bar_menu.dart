@@ -67,13 +67,13 @@ class _AppBarMenuState extends State<AppBarMenu> {
   }
 
   Future<void> _loadUnreadNotificationCount() async {
-    final items = await NotificationInboxService.fetchList(
+    final page = await NotificationInboxService.fetchList(
       unreadOnly: true,
       allowServer: false,
     );
     if (!mounted) return;
     setState(() {
-      _unreadNotificationCount = items.length;
+      _unreadNotificationCount = page.items.length;
     });
   }
 

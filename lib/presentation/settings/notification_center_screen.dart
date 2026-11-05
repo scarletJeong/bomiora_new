@@ -7,6 +7,7 @@ import '../../data/services/auth_service.dart';
 import '../../data/services/notification_inbox_service.dart';
 import '../common/widgets/app_toast_overlay.dart';
 import '../common/widgets/centered_empty_state.dart';
+import '../common/widgets/load_failure_notice.dart';
 import '../common/widgets/mobile_layout_wrapper.dart';
 import '../health/health_common/health_responsive_scale.dart';
 import '../health/health_common/widgets/health_app_bar.dart';
@@ -29,6 +30,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
   int _selectedTab = 0;
   bool _isLoading = true;
   bool _isLoggedIn = false;
+  bool _loadFailed = false;
   List<AppNotificationItem> _items = [];
 
   @override
@@ -55,6 +57,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
     if (!loggedIn) {
       setState(() {
         _isLoggedIn = false;
+        _loadFailed = false;
         _items = [];
         _isLoading = false;
       });
@@ -62,14 +65,15 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
     }
 
     setState(() => _isLoading = true);
-    final items = await NotificationInboxService.fetchList(
+    final page = await NotificationInboxService.fetchList(
       limit: 50,
       refresh: refresh,
     );
     if (!mounted) return;
     setState(() {
       _isLoggedIn = true;
-      _items = items;
+      _items = page.items;
+      _loadFailed = page.serverFailed && page.items.isEmpty;
       _isLoading = false;
     });
   }
@@ -210,7 +214,15 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                             context,
                             AppAssets.emptyAlarmIcon,
                           ),
-                          message: '알림내역이 없습니다',
+                          message: '로그인 후 이용 가능합니다.',
+                          trailing: CenteredEmptyState.loginButtonTrailing(
+                            context,
+                            onPressed: () async {
+                              await Navigator.pushNamed(context, '/login');
+                              if (!mounted) return;
+                              await _loadNotifications(refresh: true);
+                            },
+                          ),
                         ),
                       );
                     },
@@ -271,13 +283,19 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                       ),
                       if (items.isEmpty)
                         PageCenteredEmptyOverlay(
-                          child: CenteredEmptyState(
-                            iconWidget: CenteredEmptyState.assetIcon(
-                              context,
-                              AppAssets.emptyAlarmIcon,
-                            ),
-                            message: '표시할 알림이 없습니다.',
-                          ),
+                          child: _loadFailed
+                              ? LoadFailureNotice(
+                                  message: '알림을 불러오지 못했습니다',
+                                  onRetry: () =>
+                                      _loadNotifications(refresh: true),
+                                )
+                              : CenteredEmptyState(
+                                  iconWidget: CenteredEmptyState.assetIcon(
+                                    context,
+                                    AppAssets.emptyAlarmIcon,
+                                  ),
+                                  message: '표시할 알림이 없습니다.',
+                                ),
                         ),
                     ],
                   ),

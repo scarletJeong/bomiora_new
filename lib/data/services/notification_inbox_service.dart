@@ -11,6 +11,17 @@ import '../../core/utils/node_value_parser.dart';
 import '../models/notification/app_notification_model.dart';
 import 'auth_service.dart';
 
+/// 알림 목록 조회 결과. 서버 실패와 빈 목록을 구분한다.
+class NotificationInboxPage {
+  const NotificationInboxPage({
+    required this.items,
+    required this.serverFailed,
+  });
+
+  final List<AppNotificationItem> items;
+  final bool serverFailed;
+}
+
 /// 푸시·서버 알림 인박스 (로컬 캐시 + 서버 동기화)
 class NotificationInboxService {
   NotificationInboxService._();
@@ -124,7 +135,7 @@ class NotificationInboxService {
     _bump();
   }
 
-  static Future<List<AppNotificationItem>> fetchList({
+  static Future<NotificationInboxPage> fetchList({
     int limit = 50,
     bool unreadOnly = false,
     bool allowServer = true,
@@ -133,15 +144,26 @@ class NotificationInboxService {
     if (refresh) _serverListMissing = false;
 
     final user = await AuthService.getUser();
-    if (user == null || user.id.trim().isEmpty) return [];
+    if (user == null || user.id.trim().isEmpty) {
+      return const NotificationInboxPage(items: [], serverFailed: false);
+    }
 
     final mbId = user.id.trim();
     List<AppNotificationItem> items;
 
     final deleted = await _loadDeleted(mbId);
-    final server = allowServer && !_serverListMissing
-        ? await _fetchFromServer(mbId, limit)
-        : null;
+    final List<AppNotificationItem>? server;
+    final bool serverFailed;
+    if (!allowServer) {
+      server = null;
+      serverFailed = false;
+    } else if (_serverListMissing) {
+      server = null;
+      serverFailed = true;
+    } else {
+      server = await _fetchFromServer(mbId, limit);
+      serverFailed = server == null;
+    }
     final local = (await _loadLocal(mbId))
         .where((item) => !deleted.contains(item.id))
         .toList();
@@ -159,7 +181,10 @@ class NotificationInboxService {
     if (unreadOnly) {
       items = items.where((e) => !e.isRead).toList();
     }
-    return items.take(limit).toList();
+    return NotificationInboxPage(
+      items: items.take(limit).toList(),
+      serverFailed: serverFailed,
+    );
   }
 
   static Future<bool> markAsRead(String notificationId) async {
@@ -267,18 +292,42 @@ class NotificationInboxService {
       );
       if (response.statusCode == 404) {
         _serverListMissing = true;
+        await FailureLog.record(
+          code: 'notification.list',
+          mbId: mbId,
+          reason: 'HTTP 404',
+        );
         return null;
       }
       if (response.statusCode != 200 || response.body.trim().isEmpty) {
+        await FailureLog.record(
+          code: 'notification.list',
+          mbId: mbId,
+          reason: _failureReason(response),
+        );
         return null;
       }
 
       final decoded = json.decode(response.body);
-      if (decoded is! Map) return null;
+      if (decoded is! Map) {
+        await FailureLog.record(
+          code: 'notification.list',
+          mbId: mbId,
+          reason: '응답 형식이 올바르지 않습니다.',
+        );
+        return null;
+      }
       final map = NodeValueParser.normalizeMap(
         Map<String, dynamic>.from(decoded),
       );
-      if (map['success'] == false) return null;
+      if (map['success'] == false) {
+        await FailureLog.record(
+          code: 'notification.list',
+          mbId: mbId,
+          reason: _failureReason(response),
+        );
+        return null;
+      }
 
       final rows = map['data'] ?? map['notifications'] ?? map['items'];
       if (rows is! List) return [];
@@ -294,7 +343,12 @@ class NotificationInboxService {
           })
           .whereType<AppNotificationItem>()
           .toList();
-    } catch (_) {
+    } catch (e) {
+      await FailureLog.record(
+        code: 'notification.list',
+        mbId: mbId,
+        reason: e.toString(),
+      );
       return null;
     }
   }
