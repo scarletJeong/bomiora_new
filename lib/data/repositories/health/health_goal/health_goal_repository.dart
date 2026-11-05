@@ -148,7 +148,7 @@ class HealthGoalRepository {
       debugPrint('[HealthGoalRepository.register] $e');
       return HealthGoalRegisterResult(
         success: false,
-        message: e.toString(),
+        logDetail: e.toString(),
       );
     }
   }
@@ -157,11 +157,13 @@ class HealthGoalRepository {
 class HealthGoalRegisterResult {
   final bool success;
   final String? message;
+  final String? logDetail;
   final int? weightRecordId;
 
   const HealthGoalRegisterResult({
     required this.success,
     this.message,
+    this.logDetail,
     this.weightRecordId,
   });
 }
