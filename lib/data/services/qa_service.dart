@@ -169,7 +169,10 @@ class QaService {
         }
       }
     } catch (e) {
-      throw Exception('문의내역 조회 실패: $e');
+      if ('$e'.contains('로그인이 필요합니다')) {
+        throw Exception('로그인이 필요합니다.');
+      }
+      rethrow;
     }
   }
 
@@ -178,9 +181,21 @@ class QaService {
       '${ApiEndpoints.qaList}?mb_id=${Uri.encodeComponent(mbId)}',
     );
 
-    final responseData = json.decode(response.body);
-    if (responseData['success'] == true && responseData['data'] != null) {
-      final List<dynamic> dataList = responseData['data'];
+    dynamic responseData;
+    try {
+      responseData = json.decode(response.body);
+    } catch (_) {
+      throw Exception('문의 목록 응답을 읽지 못했습니다. (${response.statusCode})');
+    }
+
+    if (response.statusCode == 200 &&
+        responseData is Map &&
+        responseData['success'] == true) {
+      final raw = responseData['data'];
+      if (raw != null && raw is! List) {
+        throw Exception('문의 목록 형식이 올바르지 않습니다.');
+      }
+      final dataList = raw is List ? raw : const <dynamic>[];
       final list = dataList
           .whereType<Map>()
           .map((json) => QaInquiry.fromJson(Map<String, dynamic>.from(json)))
@@ -198,9 +213,17 @@ class QaService {
       return List<QaInquiry>.from(list);
     }
 
-    _listCache[mbId] = const [];
-    _listCacheAt[mbId] = DateTime.now();
-    return [];
+    throw Exception(_listFailureReason(responseData, response.statusCode));
+  }
+
+  static String _listFailureReason(dynamic body, int statusCode) {
+    if (body is Map) {
+      for (final key in ['message', 'error']) {
+        final text = body[key]?.toString().trim() ?? '';
+        if (text.isNotEmpty) return text;
+      }
+    }
+    return '문의 목록 조회에 실패했습니다. ($statusCode)';
   }
 
   static Future<void> _prefetchVisibleDetails(List<QaInquiry> list) async {

@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/centered_empty_state.dart';
+import '../../common/widgets/load_failure_notice.dart';
 import '../../common/widgets/scroll_reveal_top_overlay.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../health/health_common/widgets/health_app_bar.dart';
 import '../../../core/constants/app_assets.dart';
+import '../../../core/logging/failure_log.dart';
 import '../../../data/models/qa/qa_inquiry_model.dart';
+import '../../../data/services/auth_service.dart';
 import '../../../data/services/qa_service.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../common/widgets/app_toast_overlay.dart';
@@ -73,6 +76,7 @@ class QaListScreenState extends State<QaListScreen> {
   Future<void> _loadContacts({
     bool fromPullRefresh = false,
     bool preserveScroll = false,
+    bool forceRefresh = false,
   }) async {
     if (!fromPullRefresh && !preserveScroll) {
       setState(() {
@@ -89,7 +93,7 @@ class QaListScreenState extends State<QaListScreen> {
 
     try {
       final contacts = await QaService.getMyList(
-        forceRefresh: fromPullRefresh,
+        forceRefresh: fromPullRefresh || forceRefresh,
       );
       if (!mounted) return;
       setState(() {
@@ -111,13 +115,22 @@ class QaListScreenState extends State<QaListScreen> {
     } catch (e) {
       if (!mounted) return;
       final message = e.toString();
-      setState(() {
-        if (message.contains('로그인')) {
+      if (message.contains('로그인')) {
+        setState(() {
           _requiresLogin = true;
           _errorMessage = null;
-        } else {
-          _errorMessage = '문의내역을 불러오는데 실패했습니다: $e';
-        }
+          _isLoading = false;
+        });
+        return;
+      }
+      await FailureLog.record(
+        code: 'qa.list',
+        mbId: AuthService.currentUser?.id ?? '',
+        reason: message,
+      );
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = '문의내역을 불러오지 못했습니다';
         _isLoading = false;
       });
     }
@@ -485,13 +498,9 @@ class QaListScreenState extends State<QaListScreen> {
         children: [
           _buildListHeader(),
           SizedBox(height: healthDp(context, 40)),
-          CenteredEmptyState(
-            fillAvailable: false,
-            iconWidget: CenteredEmptyState.assetIcon(
-              context,
-              AppAssets.emptyQAIcon,
-            ),
-            message: '문의내역이 없습니다.',
+          LoadFailureNotice(
+            message: '문의내역을 불러오지 못했습니다',
+            onRetry: () => _loadContacts(forceRefresh: true),
           ),
         ],
       );
