@@ -37,7 +37,6 @@ import '../utils/product_detail_html_helper.dart';
 import '../utils/product_info_spec_helper.dart';
 import 'payment_screen.dart';
 import 'product_review_general_screen.dart';
-import '../../review/screens/review_detail_screen.dart';
 import '../../common/widgets/login_required_dialog.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 
@@ -923,7 +922,6 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       loadFailed: _supporterReviewsLoadFailed,
       onRetry: _loadReviews,
       onLoadMore: () => _revealMoreReviews(supporter: true),
-      onReviewTap: _openReviewDetail,
     );
   }
 
@@ -1010,19 +1008,6 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       loadFailed: _allReviewsLoadFailed,
       onRetry: _loadReviews,
       onLoadMore: () => _revealMoreReviews(supporter: false),
-      onReviewTap: _openReviewDetail,
-    );
-  }
-
-  void _openReviewDetail(ReviewModel review) {
-    Navigator.push(
-      context,
-      MaterialPageRoute<void>(
-        builder: (_) => ReviewDetailScreen(
-          review: review,
-          fromProductDetail: true,
-        ),
-      ),
     );
   }
 

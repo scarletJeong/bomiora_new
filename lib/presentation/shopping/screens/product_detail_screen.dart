@@ -31,7 +31,6 @@ import '../widgets/recommend_product_bottomup.dart';
 import '../utils/cart_navigation.dart';
 import 'prescription_booking/prescription_profile_screen.dart';
 import 'product_reviews_screen.dart';
-import '../../review/screens/review_detail_screen.dart';
 import '../utils/get_review.dart';
 import '../utils/product_detail_html_helper.dart';
 import '../utils/product_info_spec_helper.dart';
@@ -1082,7 +1081,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       loadFailed: _supporterReviewsLoadFailed,
       onRetry: _loadReviews,
       onLoadMore: () => _revealMoreReviews(supporter: true),
-      onReviewTap: _openReviewDetail,
     );
   }
 
@@ -1101,19 +1099,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       showCouponSection: false,
       fallbackImageUrl: _reviewFallbackImageUrl,
       onLoadMore: () => _revealMoreReviews(supporter: false),
-      onReviewTap: _openReviewDetail,
-    );
-  }
-
-  void _openReviewDetail(ReviewModel review) {
-    Navigator.push(
-      context,
-      MaterialPageRoute<void>(
-        builder: (_) => ReviewDetailScreen(
-          review: review,
-          fromProductDetail: true,
-        ),
-      ),
     );
   }
 

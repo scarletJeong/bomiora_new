@@ -17,7 +17,6 @@ class PrescriptionReviewTabPanel extends StatelessWidget {
   final bool isLoading;
   final int visibleCount;
   final VoidCallback onLoadMore;
-  final ValueChanged<ReviewModel> onReviewTap;
   final bool guestLoginLocked;
   final VoidCallback? onGuestLoginTap;
   final bool embedInParentScroll;
@@ -34,7 +33,6 @@ class PrescriptionReviewTabPanel extends StatelessWidget {
     required this.isLoading,
     required this.visibleCount,
     required this.onLoadMore,
-    required this.onReviewTap,
     this.guestLoginLocked = false,
     this.onGuestLoginTap,
     this.embedInParentScroll = false,
@@ -94,7 +92,6 @@ class PrescriptionReviewTabPanel extends StatelessWidget {
                 // 비대면 상세: 서포터/일반(비서포터) 모두 효과·가성비·맛향·편리함 표시
                 showCategoryScores: true,
                 showCouponSection: showCouponSection,
-                onReviewTap: onReviewTap,
                 fallbackImageUrl: fallbackImageUrl,
               ),
             ),

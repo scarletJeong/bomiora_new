@@ -42,7 +42,6 @@ class ProductReviewListCard extends StatefulWidget {
   final bool showCouponSection;
   /// null 이면 리뷰 종류(is_rvkind)로 판단. 일반 상품 화면에서는 false 고정.
   final bool? showCategoryScores;
-  final VoidCallback? onOpenDetail;
   final VoidCallback? onGuestLoginTap;
   /// 리뷰 첨부 사진이 없을 때 쓸 상품 썸네일
   final String? fallbackImageUrl;
@@ -52,7 +51,6 @@ class ProductReviewListCard extends StatefulWidget {
     required this.review,
     this.showCouponSection = false,
     this.showCategoryScores,
-    this.onOpenDetail,
     this.onGuestLoginTap,
     this.fallbackImageUrl,
   });
@@ -1035,7 +1033,6 @@ class ProductReviewListSection extends StatelessWidget {
   final bool? showCategoryScores;
   final bool guestLoginLocked;
   final VoidCallback? onGuestLoginTap;
-  final ValueChanged<ReviewModel>? onReviewTap;
   final String? fallbackImageUrl;
 
   const ProductReviewListSection({
@@ -1045,7 +1042,6 @@ class ProductReviewListSection extends StatelessWidget {
     this.showCategoryScores,
     this.guestLoginLocked = false,
     this.onGuestLoginTap,
-    this.onReviewTap,
     this.fallbackImageUrl,
   });
 
@@ -1067,9 +1063,6 @@ class ProductReviewListSection extends StatelessWidget {
             showCategoryScores: showCategoryScores,
             onGuestLoginTap: onGuestLoginTap,
             fallbackImageUrl: fallbackImageUrl,
-            onOpenDetail: onReviewTap != null
-                ? () => onReviewTap!(displayReviews[i])
-                : null,
           ),
         ],
       ],

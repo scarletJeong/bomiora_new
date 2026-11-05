@@ -17,7 +17,6 @@ class GeneralReviewTabPanel extends StatelessWidget {
   final bool isLoading;
   final int visibleCount;
   final VoidCallback onLoadMore;
-  final ValueChanged<ReviewModel> onReviewTap;
   final bool guestLoginLocked;
   final VoidCallback? onGuestLoginTap;
   final bool embedInParentScroll;
@@ -34,7 +33,6 @@ class GeneralReviewTabPanel extends StatelessWidget {
     required this.isLoading,
     required this.visibleCount,
     required this.onLoadMore,
-    required this.onReviewTap,
     this.guestLoginLocked = false,
     this.onGuestLoginTap,
     this.embedInParentScroll = false,
@@ -83,7 +81,6 @@ class GeneralReviewTabPanel extends StatelessWidget {
               showCouponSection: showCouponSection,
               guestLoginLocked: guestLoginLocked,
               onGuestLoginTap: onGuestLoginTap,
-              onReviewTap: onReviewTap,
               fallbackImageUrl: fallbackImageUrl,
             ),
           ),
