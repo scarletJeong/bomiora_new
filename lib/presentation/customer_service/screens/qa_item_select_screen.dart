@@ -14,6 +14,7 @@ import '../../../data/services/auth_service.dart';
 import '../../../data/services/cart_service.dart';
 import '../../../data/services/delivery_service.dart';
 import '../../../data/services/wish_service.dart';
+import '../../common/widgets/app_network_image.dart';
 import '../../common/widgets/centered_empty_state.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/product_card.dart';
@@ -1131,9 +1132,12 @@ class _ProductSelectRow extends StatelessWidget {
                 height: thumb,
                 color: const Color(0xFFE8E8E8),
                 child: imageUrl.isNotEmpty
-                    ? Image.network(
-                        ImageUrlHelper.getImageUrl(imageUrl),
+                    ? AppNetworkImage(
+                        url: ImageUrlHelper.getImageUrl(imageUrl),
+                        width: thumb,
+                        height: thumb,
                         fit: BoxFit.cover,
+                        preferHtmlElementOnWeb: false,
                         errorBuilder: (_, __, ___) => Icon(
                           Icons.image_outlined,
                           color: Colors.grey.shade500,

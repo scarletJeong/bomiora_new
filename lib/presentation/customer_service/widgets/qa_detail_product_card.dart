@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../core/utils/price_formatter.dart';
 import '../../../data/models/qa/qa_inquiry_model.dart';
+import '../../common/widgets/app_network_image.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../shopping/widgets/supply_add_expand_block.dart';
 import '../models/qa_inquiry_draft.dart';
@@ -323,9 +324,12 @@ class _QaDetailProductCardState extends State<QaDetailProductCard> {
                   height: healthDp(context, 56),
                   color: const Color(0xFFF5F5F5),
                   child: imageUrl.isNotEmpty
-                      ? Image.network(
-                          ImageUrlHelper.getImageUrl(imageUrl),
+                      ? AppNetworkImage(
+                          url: ImageUrlHelper.getImageUrl(imageUrl),
+                          width: healthDp(context, 56),
+                          height: healthDp(context, 56),
                           fit: BoxFit.cover,
+                          preferHtmlElementOnWeb: false,
                           errorBuilder: (_, __, ___) => Icon(
                             Icons.image_outlined,
                             size: healthDp(context, 20),
