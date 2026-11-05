@@ -6,7 +6,11 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../../../../core/constants/app_assets.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 
-const _sectionLineColor = Color(0xFFD9D9D9);
+const _emphasisColor = Color(0xFFFF5A8D);
+const _secondaryTextColor = Color(0xFF898686);
+const _bodyTextColor = Color(0xFF1A1A1A);
+const _sectionLineColor = Color(0xFFD2D2D2);
+const _photoFallbackColor = Color(0xFFF2ECEA);
 
 /// 원장 소개 이미지 (`assets/img/product_main_intro.png`)
 Widget _productMainIntroPhoto({
@@ -40,13 +44,13 @@ Widget _bioTitleWithLinesAndAlignedBody({
   required double maxWidth,
 }) {
   final titleStyle = TextStyle(
-    color: Colors.black,
+    color: _bodyTextColor,
     fontSize: healthSp(context, 12),
     fontFamily: 'Gmarket Sans TTF',
     fontWeight: FontWeight.w300,
   );
   final bodyStyle = TextStyle(
-    color: Colors.black,
+    color: _bodyTextColor,
     fontSize: healthSp(context, 12),
     fontFamily: 'Gmarket Sans TTF',
     fontWeight: FontWeight.w300,
@@ -304,7 +308,7 @@ class _ProductMainQuoteStackState extends State<_ProductMainQuoteStack> {
               TextSpan(
                 text: '" 다이어트는 처음부터 쉬워야 합니다. " ',
                 style: TextStyle(
-                  color: Colors.black,
+                  color: _bodyTextColor,
                   fontSize: healthSp(context, 16),
                   fontFamily: 'Gmarket Sans TTF',
                   fontWeight: FontWeight.w500,
@@ -320,7 +324,7 @@ class _ProductMainQuoteStackState extends State<_ProductMainQuoteStack> {
           '정대진 │ 대표원장',
           textAlign: TextAlign.center,
           style: TextStyle(
-            color: Colors.black,
+            color: _bodyTextColor,
             fontSize: healthSp(context, 12),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w300,
@@ -332,7 +336,7 @@ class _ProductMainQuoteStackState extends State<_ProductMainQuoteStack> {
           '정대진 대표원장이 수년간 직접 몸을 관리하며',
           textAlign: TextAlign.center,
           style: TextStyle(
-            color: Colors.black,
+            color: _bodyTextColor,
             fontSize: healthSp(context, 14),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w300,
@@ -344,7 +348,7 @@ class _ProductMainQuoteStackState extends State<_ProductMainQuoteStack> {
           '쌓은 다이어트 노하우와 다수의 임상례를 바탕으로',
           textAlign: TextAlign.center,
           style: TextStyle(
-            color: Colors.black,
+            color: _bodyTextColor,
             fontSize: healthSp(context, 14),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w300,
@@ -359,7 +363,7 @@ class _ProductMainQuoteStackState extends State<_ProductMainQuoteStack> {
               fontFamily: 'Gmarket Sans TTF',
               fontWeight: FontWeight.w300,
               letterSpacing: -healthSp(context, 1.26),
-              color: Colors.black,
+              color: _bodyTextColor,
             ),
             children: [
               const TextSpan(text: '마침내 만들어진 '),
@@ -383,7 +387,7 @@ class _ProductMainQuoteStackState extends State<_ProductMainQuoteStack> {
               TextSpan(
                 text: '보미 다이어트 솔루션',
                 style: TextStyle(
-                  color: const Color(0xFFFF5A8D),
+                  color: _emphasisColor,
                   fontSize: healthSp(context, 14),
                   fontFamily: 'Gmarket Sans TTF',
                   fontWeight: FontWeight.w700,
@@ -393,7 +397,7 @@ class _ProductMainQuoteStackState extends State<_ProductMainQuoteStack> {
               TextSpan(
                 text: '으로',
                 style: TextStyle(
-                  color: Colors.black,
+                  color: _bodyTextColor,
                   fontSize: healthSp(context, 14),
                   fontFamily: 'Gmarket Sans TTF',
                   fontWeight: FontWeight.w500,
@@ -408,7 +412,7 @@ class _ProductMainQuoteStackState extends State<_ProductMainQuoteStack> {
           '당신의 아름다운 봄을',
           textAlign: TextAlign.center,
           style: TextStyle(
-            color: Colors.black,
+            color: _bodyTextColor,
             fontSize: healthSp(context, 14),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w500,
@@ -419,7 +423,7 @@ class _ProductMainQuoteStackState extends State<_ProductMainQuoteStack> {
           '보미오라와 함께 만나보세요.',
           textAlign: TextAlign.center,
           style: TextStyle(
-            color: Colors.black,
+            color: _bodyTextColor,
             fontSize: healthSp(context, 14),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w500,
@@ -459,7 +463,7 @@ class _ProductMainQuoteStackState extends State<_ProductMainQuoteStack> {
                   alignment: Alignment.topCenter,
                   filterQuality: FilterQuality.high,
                   errorBuilder: (_, __, ___) =>
-                      ColoredBox(color: Colors.grey[200]!),
+                      const ColoredBox(color: _photoFallbackColor),
                 ),
                 Positioned.fill(
                   child: DecoratedBox(
@@ -524,20 +528,20 @@ class ProductMainCheckpointSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final pointLabelStyle = TextStyle(
-      color: const Color(0xFF999999),
+      color: _secondaryTextColor,
       fontSize: healthSp(context, 10),
       fontFamily: 'Gmarket Sans TTF',
       fontWeight: FontWeight.w300,
       letterSpacing: -healthSp(context, 0.50),
     );
     final titleStyle = TextStyle(
-      color: Colors.black,
+      color: _bodyTextColor,
       fontSize: healthSp(context, 16),
       fontFamily: 'Gmarket Sans TTF',
       fontWeight: FontWeight.w500,
     );
     final bodyStyle = TextStyle(
-      color: Colors.black,
+      color: _bodyTextColor,
       fontSize: healthSp(context, 12),
       fontFamily: 'Gmarket Sans TTF',
       fontWeight: FontWeight.w300,
@@ -554,7 +558,7 @@ class ProductMainCheckpointSection extends StatelessWidget {
                 TextSpan(
                   text: '보미 솔루션 ',
                   style: TextStyle(
-                    color: Colors.black,
+                    color: _bodyTextColor,
                     fontSize: healthSp(context, 20),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w300,
@@ -564,7 +568,7 @@ class ProductMainCheckpointSection extends StatelessWidget {
                 TextSpan(
                   text: 'Check Point!',
                   style: TextStyle(
-                    color: const Color(0xFFFF3787),
+                    color: _emphasisColor,
                     fontSize: healthSp(context, 20),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w700,
@@ -611,7 +615,7 @@ class ProductMainCheckpointSection extends StatelessWidget {
                 Divider(
                   height: healthDp(context, 0.5),
                   thickness: healthDp(context, 0.5),
-                  color: Colors.grey[300]!,
+                  color: _sectionLineColor,
                 ),
                 SizedBox(height: healthDp(context, 20)),
                 _pointColumn(
@@ -631,7 +635,7 @@ class ProductMainCheckpointSection extends StatelessWidget {
                 Divider(
                   height: healthDp(context, 1),
                   thickness: healthDp(context, 1),
-                  color: Colors.grey[300]!,
+                  color: _sectionLineColor,
                 ),
                 SizedBox(height: healthDp(context, 20)),
                 _pointColumn(
@@ -708,7 +712,7 @@ class ProductMainTrustSection extends StatelessWidget {
           '믿을 수 있는 든든한 주치의가',
           textAlign: TextAlign.center,
           style: TextStyle(
-            color: Colors.black,
+            color: _bodyTextColor,
             fontSize: healthSp(context, 18),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w500,
@@ -718,7 +722,7 @@ class ProductMainTrustSection extends StatelessWidget {
           '되어드리겠습니다.',
           textAlign: TextAlign.center,
           style: TextStyle(
-            color: Colors.black,
+            color: _bodyTextColor,
             fontSize: healthSp(context, 18),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w500,
@@ -776,7 +780,7 @@ class ProductMainPhotoBioSection extends StatelessWidget {
             '보미오라한의원│대표원장',
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: Colors.black,
+              color: _bodyTextColor,
               fontSize: healthSp(context, 12),
               fontFamily: 'Gmarket Sans TTF',
               fontWeight: FontWeight.w300,
@@ -886,7 +890,7 @@ class _StaggeredBottomGrid extends StatelessWidget {
                 fit: BoxFit.cover,
                 filterQuality: FilterQuality.high,
                 errorBuilder: (_, __, ___) =>
-                    ColoredBox(color: Colors.grey[200]!),
+                    const ColoredBox(color: _photoFallbackColor),
               ),
             ),
           );
