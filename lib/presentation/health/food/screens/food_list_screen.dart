@@ -51,7 +51,6 @@ class _TodayDietScreenState extends State<TodayDietScreen>
   num totalProtein = 0;
   num totalFat = 0;
   num totalOther = 0;
-  static const int _maxCalories = 2000;
   List<FoodRecordSummary> _dayRecords = [];
 
   void _toggleFoodSearchFor(String mealKey) {
@@ -267,10 +266,10 @@ class _TodayDietScreenState extends State<TodayDietScreen>
     );
   }
 
-  /// 칼로리 바: 최대 2000kcal 기준, 탄수화물/단백질/지방 비율로 채움
+  /// 칼로리 바: [healthTargetCalories] 기준, 탄수화물/단백질/지방 비율로 채움
   Widget _buildDashboardMacroBar(BuildContext context) {
-    final fillRatio = (_maxCalories > 0 && totalCalories > 0)
-        ? (totalCalories / _maxCalories).clamp(0.0, 1.0)
+    final fillRatio = (healthTargetCalories > 0 && totalCalories > 0)
+        ? (totalCalories / healthTargetCalories).clamp(0.0, 1.0)
         : 0.0;
     final shares = MacroKcalShares.fromGrams(
       carbsG: totalCarbs,

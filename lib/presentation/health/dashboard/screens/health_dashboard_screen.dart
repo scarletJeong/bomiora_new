@@ -27,6 +27,7 @@ import 'health_goal_screen.dart';
 import '../widgets/today_healthrecord_widgets.dart';
 import '../widgets/today_meal_widgets.dart';
 import '../../health_common/health_responsive_scale.dart';
+import '../../health_common/macro_kcal.dart';
 import '../../health_common/widgets/health_date_selector.dart';
 import '../../health_common/health_goal_gate.dart';
 import '../../../common/widgets/login_required_dialog.dart';
@@ -62,7 +63,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
   DateTime selectedDate = DateTime.now();
 
   int consumedCalories = 0;
-  int targetCalories = 0;
+  int targetCalories = healthTargetCalories;
   num totalCarbs = 0;
   num totalProtein = 0;
   num totalFat = 0;
@@ -158,7 +159,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
           height = 170.0;
           bmi = 0.0;
           consumedCalories = 0;
-          targetCalories = 0;
+          targetCalories = healthTargetCalories;
           totalCarbs = 0;
           totalProtein = 0;
           totalFat = 0;

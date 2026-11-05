@@ -1,3 +1,6 @@
+/// 오늘 식단 목표 칼로리. 건강 목표 설정은 다음 단계에서 이 값을 바꾼다.
+const int healthTargetCalories = 2000;
+
 /// 탄수화물·단백질·기타 4kcal/g, 지방 9kcal/g로 나눈 막대 비율.
 class MacroKcalShares {
   const MacroKcalShares({
