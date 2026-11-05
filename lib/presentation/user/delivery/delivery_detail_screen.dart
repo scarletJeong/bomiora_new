@@ -128,6 +128,14 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
         if (_isCompletedStage(order)) {
           _loadReviewedItIds(user.id, order.odId);
         }
+        if (_isCancelledStage(order) && order.cancelPriceMissing) {
+          FailureLog.record(
+            code: 'order.cancel_price',
+            mbId: user.id,
+            reason: '취소 금액이 없습니다.',
+            detail: {'odId': order.odId},
+          );
+        }
         return;
       }
       await _handleDetailLoadFailure(

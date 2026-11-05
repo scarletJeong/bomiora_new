@@ -444,8 +444,11 @@ class OrderDetailModel {
   final int pointDiscount;
   final int totalPrice;
 
-  /// 취소 금액 (`od_cancel_price`)
+  /// 취소 금액 (`od_cancel_price`). 없거나 숫자가 아니면 0.
   final int cancelPrice;
+
+  /// 취소 금액 필드가 없거나 숫자로 읽히지 않음
+  final bool cancelPriceMissing;
   final bool isPrescriptionOrder;
 
   /// 상담(처방) 완료 — hp_9=prescription + hp_10=completion + hp_mdatetime
@@ -503,6 +506,7 @@ class OrderDetailModel {
     this.pointDiscount = 0,
     required this.totalPrice,
     this.cancelPrice = 0,
+    this.cancelPriceMissing = false,
     this.isPrescriptionOrder = false,
     this.isConsultationDone = false,
     required this.paymentMethod,
@@ -581,6 +585,9 @@ class OrderDetailModel {
                 'true' ||
             (NodeValueParser.asInt(normalized['is_consultation_done']) ?? 0) ==
                 1;
+    final parsedCancelPrice = NodeValueParser.asInt(
+      normalized['cancelPrice'] ?? normalized['od_cancel_price'],
+    );
 
     final receiptUrl = NodeValueParser.asString(normalized['cardReceiptUrl']) ??
         NodeValueParser.asString(normalized['card_receipt_url']) ??
@@ -620,10 +627,8 @@ class OrderDetailModel {
               normalized['pointDiscount'] ?? normalized['point_discount']) ??
           0,
       totalPrice: NodeValueParser.asInt(normalized['totalPrice']) ?? 0,
-      cancelPrice: NodeValueParser.asInt(
-            normalized['cancelPrice'] ?? normalized['od_cancel_price'],
-          ) ??
-          0,
+      cancelPrice: parsedCancelPrice ?? 0,
+      cancelPriceMissing: parsedCancelPrice == null,
       isPrescriptionOrder: resolveIsPrescriptionOrder(
         topLevelFlag: topLevelPrescription,
         items: productList,

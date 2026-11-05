@@ -106,15 +106,7 @@ class _DeliveryDetailPaymentSectionState
     return DateDisplayFormatter.formatOrderDateTime(widget.order.cancelDate);
   }
 
-  int get _cancelledAmount {
-    if (widget.order.cancelPrice > 0) return widget.order.cancelPrice;
-    if (widget.order.totalPrice > 0) return widget.order.totalPrice;
-    final computed = widget.order.productPrice +
-        widget.order.deliveryFee -
-        _coupon -
-        _point;
-    return computed > 0 ? computed : 0;
-  }
+  int get _cancelledAmount => widget.order.cancelPrice;
 
   @override
   Widget build(BuildContext context) {
