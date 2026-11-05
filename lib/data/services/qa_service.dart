@@ -259,6 +259,7 @@ class QaService {
         }
       }
     } catch (e) {
+      if ('$e'.contains('문의')) rethrow;
       throw Exception('문의 상세 조회 실패: $e');
     }
   }
@@ -268,38 +269,61 @@ class QaService {
       '${ApiEndpoints.qaDetail}/$wrId',
     );
 
-    final responseData = json.decode(response.body);
-
-    if (responseData['success'] == true && responseData['data'] != null) {
-      final data = responseData['data'];
-      if (data is Map) {
-        final map = Map<String, dynamic>.from(data);
-        final extracted = _repliesFromDetailMap(map);
-        final threadRaw = responseData['thread'];
-        final thread = threadRaw is List
-            ? threadRaw
-                .whereType<Map>()
-                .map((json) =>
-                    QaInquiry.fromJson(Map<String, dynamic>.from(json)))
-                .toList()
-            : const <QaInquiry>[];
-        final rootWrId = NodeValueParser.asInt(responseData['root_wr_id']);
-        final payload = QaDetailPayload(
-          inquiry: QaInquiry.fromJson(map),
-          nestedReplies: extracted.replies,
-          thread: thread,
-          rootWrId: rootWrId,
-          fallbackReplyText: _extractReplyText(map),
-          fallbackReplyDatetime: _extractReplyDatetime(map),
-          repliesIncluded: extracted.included,
-        );
-        _detailCache[wrId] = payload;
-        _detailCacheAt[wrId] = DateTime.now();
-        return payload;
-      }
+    dynamic responseData;
+    try {
+      responseData = json.decode(response.body);
+    } catch (_) {
+      throw Exception('문의 본문 응답을 읽지 못했습니다. (${response.statusCode})');
     }
 
-    return null;
+    if (responseData is Map &&
+        responseData['success'] == true &&
+        responseData['data'] is Map) {
+      final map = Map<String, dynamic>.from(responseData['data'] as Map);
+      final extracted = _repliesFromDetailMap(map);
+      final threadRaw = responseData['thread'];
+      final thread = threadRaw is List
+          ? threadRaw
+              .whereType<Map>()
+              .map((json) => QaInquiry.fromJson(Map<String, dynamic>.from(json)))
+              .toList()
+          : const <QaInquiry>[];
+      final rootWrId = NodeValueParser.asInt(responseData['root_wr_id']);
+      final payload = QaDetailPayload(
+        inquiry: QaInquiry.fromJson(map),
+        nestedReplies: extracted.replies,
+        thread: thread,
+        rootWrId: rootWrId,
+        fallbackReplyText: _extractReplyText(map),
+        fallbackReplyDatetime: _extractReplyDatetime(map),
+        repliesIncluded: extracted.included,
+      );
+      _detailCache[wrId] = payload;
+      _detailCacheAt[wrId] = DateTime.now();
+      return payload;
+    }
+
+    if (_isMissingInquiry(responseData, response.statusCode)) return null;
+    throw Exception(_detailFailureReason(responseData, response.statusCode));
+  }
+
+  static bool _isMissingInquiry(dynamic body, int statusCode) {
+    if (statusCode == 404) return true;
+    if (body is Map) {
+      final message = body['message']?.toString() ?? '';
+      if (message.contains('찾을 수 없습니다')) return true;
+    }
+    return false;
+  }
+
+  static String _detailFailureReason(dynamic body, int statusCode) {
+    if (body is Map) {
+      for (final key in ['message', 'error']) {
+        final text = body[key]?.toString().trim() ?? '';
+        if (text.isNotEmpty) return text;
+      }
+    }
+    return '문의 본문 조회에 실패했습니다. ($statusCode)';
   }
 
   /// 문의 답변 목록 조회
@@ -310,14 +334,17 @@ class QaService {
       );
 
       final decoded = json.decode(response.body);
-      if (decoded is! Map) return [];
+      if (decoded is! Map) {
+        throw Exception('답변 목록 응답을 읽지 못했습니다. (${response.statusCode})');
+      }
 
       final responseData = NodeValueParser.normalizeMap(
         Map<String, dynamic>.from(decoded),
       );
 
-      if (responseData['success'] == true && responseData['data'] != null) {
+      if (response.statusCode == 200 && responseData['success'] == true) {
         final data = responseData['data'];
+        if (data == null) return [];
         if (data is List) {
           return data
               .whereType<Map>()
@@ -328,10 +355,21 @@ class QaService {
         return _repliesFromListApiData(data);
       }
 
-      return [];
+      throw Exception(_replyFailureReason(responseData, response.statusCode));
     } catch (e) {
+      if ('$e'.contains('답변')) rethrow;
       throw Exception('답변 목록 조회 실패: $e');
     }
+  }
+
+  static String _replyFailureReason(dynamic body, int statusCode) {
+    if (body is Map) {
+      for (final key in ['message', 'error']) {
+        final text = body[key]?.toString().trim() ?? '';
+        if (text.isNotEmpty) return text;
+      }
+    }
+    return '답변 목록 조회에 실패했습니다. ($statusCode)';
   }
 
   /// 문의 첨부 사진 업로드

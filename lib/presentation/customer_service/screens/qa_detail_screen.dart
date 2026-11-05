@@ -3,12 +3,16 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_assets.dart';
+import '../../../core/logging/failure_log.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../data/models/qa/qa_inquiry_model.dart';
 import '../../../data/repositories/product/product_repository.dart';
+import '../../../data/services/auth_service.dart';
 import '../../../data/services/qa_service.dart';
+import '../../common/widgets/app_network_image.dart';
 import '../../common/widgets/centered_empty_state.dart';
+import '../../common/widgets/load_failure_notice.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../health/health_common/widgets/health_app_bar.dart';
@@ -35,8 +39,10 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
   int? _rootWrId;
   final Map<int, List<QaInquiry>> _repliesByWrId = {};
   bool _isLoading = true;
-  String? _errorMessage;
+  bool _loadFailed = false;
   String? _resolvedImageUrl;
+  bool _productImageFailed = false;
+  bool _repliesFailed = false;
 
   @override
   void initState() {
@@ -47,10 +53,11 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
   Future<void> _load() async {
     setState(() {
       _isLoading = true;
-      _errorMessage = null;
+      _loadFailed = false;
     });
     try {
       final payload = await QaService.getDetail(widget.wrId);
+      if (!mounted) return;
       if (payload != null) {
         final replyMap = <int, List<QaInquiry>>{};
         if (payload.repliesIncluded) {
@@ -61,6 +68,9 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
           _thread = payload.thread;
           _rootWrId = payload.rootWrId;
           _resolvedImageUrl = null;
+          _loadFailed = false;
+          _productImageFailed = false;
+          _repliesFailed = false;
           _repliesByWrId
             ..clear()
             ..addAll(replyMap);
@@ -72,13 +82,23 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
         }
       } else {
         setState(() {
-          _errorMessage = '문의를 불러오는데 실패했습니다.';
+          _inquiry = null;
+          _thread = [];
+          _loadFailed = false;
           _isLoading = false;
         });
       }
     } catch (e) {
+      if (!mounted) return;
+      await FailureLog.record(
+        code: 'qa.detail',
+        mbId: AuthService.currentUser?.id ?? '',
+        reason: e.toString(),
+        detail: {'wrId': widget.wrId},
+      );
+      if (!mounted) return;
       setState(() {
-        _errorMessage = '문의를 불러오는 중 오류가 발생했습니다: $e';
+        _loadFailed = true;
         _isLoading = false;
       });
     }
@@ -112,16 +132,40 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
     final category = root.inquiryCategoryLabel;
     if (category != '상품' && category != '주문') return;
     final needImage = (root.subjectImageUrl ?? '').trim().isEmpty;
-    if (!needImage) return;
+    if (!needImage) {
+      if (mounted) setState(() => _productImageFailed = false);
+      return;
+    }
     final itId = (root.subjectProductCode ?? '').trim();
     if (itId.isEmpty) return;
     try {
       final product = await ProductRepository.getProductDetail(itId);
-      if (!mounted || product == null) return;
+      if (!mounted) return;
+      if (product == null) {
+        await _recordDetailFailure('상품 이미지를 찾지 못했습니다.');
+        setState(() => _productImageFailed = true);
+        return;
+      }
       final image = (product.imageUrl ?? '').trim();
-      if (image.isEmpty) return;
-      setState(() => _resolvedImageUrl = image);
-    } catch (_) {}
+      setState(() {
+        _resolvedImageUrl = image.isEmpty ? null : image;
+        _productImageFailed = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      await _recordDetailFailure(e.toString());
+      if (!mounted) return;
+      setState(() => _productImageFailed = true);
+    }
+  }
+
+  Future<void> _recordDetailFailure(String reason) {
+    return FailureLog.record(
+      code: 'qa.detail',
+      mbId: AuthService.currentUser?.id ?? '',
+      reason: reason,
+      detail: {'wrId': widget.wrId},
+    );
   }
 
   Future<void> _loadReplies() async {
@@ -136,11 +180,22 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
         map[targets[i]] = results[i];
       }
       setState(() {
+        _repliesFailed = false;
         _repliesByWrId
           ..clear()
           ..addAll(map);
       });
-    } catch (_) {}
+    } catch (e) {
+      if (!mounted) return;
+      await FailureLog.record(
+        code: 'qa.replies',
+        mbId: AuthService.currentUser?.id ?? '',
+        reason: e.toString(),
+        detail: {'wrId': widget.wrId},
+      );
+      if (!mounted) return;
+      setState(() => _repliesFailed = true);
+    }
   }
 
   bool _isAnswered(QaInquiry q) {
@@ -239,11 +294,12 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
       }
     }
 
-    return Image.network(
-      ImageUrlHelper.getImageUrl(url),
+    return AppNetworkImage(
+      url: ImageUrlHelper.getImageUrl(url),
       width: w,
       height: h,
       fit: BoxFit.cover,
+      preferHtmlElementOnWeb: false,
       errorBuilder: (_, __, ___) => broken,
     );
   }
@@ -264,7 +320,15 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator(color: _pink));
     }
-    if (_errorMessage != null || _rootQuestion == null) {
+    if (_loadFailed) {
+      return Center(
+        child: LoadFailureNotice(
+          message: '문의를 불러오지 못했습니다',
+          onRetry: _load,
+        ),
+      );
+    }
+    if (_rootQuestion == null) {
       return CenteredEmptyState(
         iconWidget: CenteredEmptyState.assetIcon(
           context,
@@ -284,10 +348,16 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
     return ListView(
       padding: EdgeInsets.all(healthDp(context, 20)),
       children: [
-        QaDetailProductCard(
-          inquiry: root,
-          fallbackImageUrl: _resolvedImageUrl,
-        ),
+        if (_productImageFailed)
+          LoadFailureNotice(
+            message: '문의를 불러오지 못했습니다',
+            onRetry: _resolveProductCardExtras,
+          )
+        else
+          QaDetailProductCard(
+            inquiry: root,
+            fallbackImageUrl: _resolvedImageUrl,
+          ),
         SizedBox(height: healthDp(context, 24)),
         _buildTextSection(
           context,
@@ -305,6 +375,8 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
             body: _answerTextFor(root),
             trailing: _answerDateFor(root),
           )
+        else if (_repliesFailed)
+          _buildReplyFailure(context)
         else
           _buildPendingAnswer(context),
       ],
@@ -452,6 +524,20 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
             ],
           ),
         ],
+      ],
+    );
+  }
+
+  Widget _buildReplyFailure(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionTitle(context, title: '답변 내용'),
+        SizedBox(height: healthDp(context, 8)),
+        LoadFailureNotice(
+          message: '답변을 불러오지 못했습니다',
+          onRetry: _loadReplies,
+        ),
       ],
     );
   }
