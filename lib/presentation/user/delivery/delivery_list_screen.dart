@@ -47,6 +47,9 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
   static const String _loadFailMessage = '주문 내역을 불러오지 못했습니다.';
   int _ordersLoadGen = 0;
   static const int _pageSize = 10;
+
+  /// 마이페이지 미리받기와 같은 크기. 취소 건을 거르고 10장을 채우려고 10건씩 여러 번 받지 않는다.
+  static const int _fetchSize = 80;
   String _selectedProductType = DeliveryProductType.prescription;
   String _selectedStatus = 'all';
   final ScrollController _scrollController = ScrollController();
@@ -163,7 +166,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
           period: 0,
           status: 'all',
           page: page,
-          size: _pageSize,
+          size: _fetchSize,
           forceRefresh: force || append || page > 0,
         );
         if (gen != _ordersLoadGen) return;
@@ -193,7 +196,26 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
         reviewed.addAll(pageReviewed);
         hasNext = _resultHasNext(result, pageOrders.length);
         page++;
-        if (_filteredCount(orders) >= targetCount || !hasNext) break;
+        final filled = _filteredCount(orders) >= targetCount || !hasNext;
+        if (!filled &&
+            !append &&
+            mounted &&
+            gen == _ordersLoadGen &&
+            _filteredCount(orders) > 0) {
+          setState(() {
+            final shown = List<OrderListModel>.from(orders)
+              ..sort((a, b) => b.orderDateTime.compareTo(a.orderDateTime));
+            _allOrders = shown;
+            _reviewedItIdsByOd = Map<String, List<String>>.from(reviewed);
+            _nextPage = page;
+            _hasNext = hasNext;
+            _loadFailed = false;
+            _isLoading = false;
+            _isLoadingMore = true;
+            _applyFilter();
+          });
+        }
+        if (filled) break;
       }
 
       if (!mounted || gen != _ordersLoadGen) return;
@@ -251,7 +273,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
   }
 
   bool _resultHasNext(Map<String, dynamic> result, int fetchedCount) {
-    if (fetchedCount > _pageSize) return false;
+    if (fetchedCount > _fetchSize) return false;
     final totalPages = int.tryParse('${result['totalPages'] ?? ''}');
     final currentPage = int.tryParse('${result['currentPage'] ?? ''}');
     if (totalPages != null && totalPages > 0 && currentPage != null) {
@@ -259,10 +281,10 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
     }
     final totalItems = int.tryParse('${result['totalItems'] ?? ''}');
     if (totalItems != null && totalItems > 0 && currentPage != null) {
-      return (currentPage + 1) * _pageSize < totalItems;
+      return (currentPage + 1) * _fetchSize < totalItems;
     }
     if (result['hasNext'] == true) return true;
-    return fetchedCount >= _pageSize;
+    return fetchedCount >= _fetchSize;
   }
 
   bool get _canLoadMore =>
@@ -311,8 +333,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
     return map;
   }
 
-  /// 카드를 그리기 전에 완료 주문의 리뷰 작성 it_id를 확정한다.
-  /// 목록 응답만 보면 리뷰가 있는 주문도 리뷰쓰기로 먼저 그려진다.
+  /// 완료 주문의 리뷰 it_id. 목록이 주문마다 값을 주면 그 값을 쓰고, 빠졌을 때만 리뷰 API를 부른다.
   Future<Map<String, List<String>>> _reviewedItIdsBeforePaint(
     String mbId,
     List<OrderListModel> orders,
@@ -330,6 +351,8 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
         id: List<String>.from(fromList[id] ?? const <String>[]),
     };
     if (completedIds.isEmpty) return merged;
+    // 목록 응답이 완료 주문마다 리뷰 it_id(없으면 빈 배열)를 주면 추가 조회를 하지 않는다.
+    if (completedIds.every(fromList.containsKey)) return merged;
 
     final requested = completedIds.toSet();
     final fetched = await ReviewService.getReviewedItIdsByOrders(
