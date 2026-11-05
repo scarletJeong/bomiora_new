@@ -7,7 +7,6 @@ import '../../../../data/models/user/user_model.dart';
 import '../../../../data/models/point/point_history_model.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/centered_empty_state.dart';
-import '../../../common/widgets/load_failure_notice.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
 import '../widgets/point_info_bottomup.dart';
@@ -160,6 +159,13 @@ class _PointScreenState extends State<PointScreen> {
     });
   }
 
+  Future<void> _reloadFailed() async {
+    await Future.wait([
+      if (_pointFailed) _loadCurrentPoint(),
+      if (_historyFailed) _loadPointHistory(),
+    ]);
+  }
+
   @override
   Widget build(BuildContext context) {
     final baseTheme = Theme.of(context);
@@ -217,8 +223,8 @@ class _PointScreenState extends State<PointScreen> {
         ),
       );
     }
-    final showHistoryFailure = _historyFailed;
-    final showEmpty = !showHistoryFailure && _displayedHistory.isEmpty;
+    final showLoadFailure = _pointFailed || _historyFailed;
+    final showEmpty = !showLoadFailure && _displayedHistory.isEmpty;
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -231,7 +237,32 @@ class _PointScreenState extends State<PointScreen> {
           _buildAvailablePointSection(),
           SizedBox(height: healthDp(context, 20)),
           _buildHistoryTabs(),
-          if (showEmpty)
+          if (showLoadFailure)
+            Expanded(
+              child: _pointReloading || _historyReloading
+                  ? const Center(
+                      child: CircularProgressIndicator(color: _pink),
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        SizedBox(height: healthDp(context, 28)),
+                        Text(
+                          '포인트 내역을 불러오지 못했습니다.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: _textSub,
+                            fontSize: healthSp(context, 14),
+                            fontWeight: FontWeight.w500,
+                            height: 1.5,
+                          ),
+                        ),
+                        SizedBox(height: healthDp(context, 16)),
+                        _buildReloadButton(),
+                      ],
+                    ),
+            )
+          else if (showEmpty)
             const Expanded(child: SizedBox.shrink())
           else
             Expanded(
@@ -249,15 +280,6 @@ class _PointScreenState extends State<PointScreen> {
         ],
       ),
         ),
-        if (showHistoryFailure)
-          PageCenteredEmptyOverlay(
-            child: _historyReloading
-                ? const CircularProgressIndicator(color: _pink)
-                : LoadFailureNotice(
-                    message: '포인트 내역을 불러오지 못했습니다.',
-                    onRetry: _loadPointHistory,
-                  ),
-          ),
         if (showEmpty)
           PageCenteredEmptyOverlay(
             child: CenteredEmptyState(
@@ -317,22 +339,8 @@ class _PointScreenState extends State<PointScreen> {
               ),
             ],
           ),
-          SizedBox(height: healthDp(context, 8)),
-          if (_pointReloading && !_isLoading)
-            SizedBox(
-              width: healthDp(context, 20),
-              height: healthDp(context, 20),
-              child: const CircularProgressIndicator(
-                strokeWidth: 2,
-                color: _pink,
-              ),
-            )
-          else if (_pointFailed)
-            LoadFailureNotice(
-              message: '포인트를 불러오지 못했습니다.',
-              onRetry: _loadCurrentPoint,
-            )
-          else
+          if (!_pointFailed) ...[
+            SizedBox(height: healthDp(context, 8)),
             Text(
               pointText,
               style: TextStyle(
@@ -341,7 +349,44 @@ class _PointScreenState extends State<PointScreen> {
                 fontWeight: FontWeight.w700,
               ),
             ),
+          ],
         ],
+      ),
+    );
+  }
+
+  Widget _buildReloadButton() {
+    final reloading = _pointReloading || _historyReloading;
+    return SizedBox(
+      width: double.infinity,
+      height: healthDp(context, 44),
+      child: ElevatedButton(
+        onPressed: reloading ? null : _reloadFailed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: _pink,
+          foregroundColor: Colors.white,
+          disabledBackgroundColor: _pink,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(healthDp(context, 10)),
+          ),
+        ),
+        child: reloading
+            ? SizedBox(
+                width: healthDp(context, 18),
+                height: healthDp(context, 18),
+                child: const CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
+            : Text(
+                '다시 불러오기',
+                style: TextStyle(
+                  fontSize: healthSp(context, 14),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
       ),
     );
   }
