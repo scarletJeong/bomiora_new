@@ -214,18 +214,20 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen>
                 children: [
                   Text(
                     '생리주기 정보가 없습니다',
+                    textScaler: TextScaler.noScaling,
                     style: TextStyle(
-                      fontSize: 18,
+                      fontSize: healthSp(context, 18),
                       fontWeight: FontWeight.bold,
-                      color: Colors.grey[600],
+                      color: const Color(0xFF898686),
                     ),
                   ),
                   SizedBox(height: healthDp(context, 8)),
                   Text(
                     '첫 번째 생리주기 정보를 입력해주세요',
+                    textScaler: TextScaler.noScaling,
                     style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[500],
+                      fontSize: healthSp(context, 14),
+                      color: const Color(0xFF898686),
                     ),
                   ),
                 ],
