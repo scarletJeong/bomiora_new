@@ -295,7 +295,7 @@ class _ReviewBestScreenState extends State<ReviewBestScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            '의료법에 의거하여 의약품 후기는',
+            '로그인 후 이용 가능합니다.',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: healthSp(context, 15),
@@ -303,24 +303,6 @@ class _ReviewBestScreenState extends State<ReviewBestScreen> {
               color: Colors.grey[800],
               fontFamily: _font,
               fontWeight: FontWeight.w500,
-            ),
-          ),
-          SizedBox(height: healthDp(context, 8)),
-          Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: healthDp(context, 8),
-              vertical: healthDp(context, 4),
-            ),
-            color: _pink,
-            child: Text(
-              '로그인 후 확인이 가능합니다',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: healthSp(context, 15),
-                color: Colors.white,
-                fontFamily: _font,
-                fontWeight: FontWeight.w500,
-              ),
             ),
           ),
           SizedBox(height: healthDp(context, 24)),
