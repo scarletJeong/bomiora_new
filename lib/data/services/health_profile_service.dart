@@ -16,6 +16,23 @@ class HealthProfileService {
   static const Duration _memTtl = Duration(minutes: 2);
   static final Map<String, Future<HealthProfileModel?>> _inFlight = {};
 
+  static bool _isFresh(String id) {
+    final cachedAt = _memCacheAt[id];
+    return cachedAt != null &&
+        DateTime.now().difference(cachedAt) < _memTtl &&
+        _memCache.containsKey(id);
+  }
+
+  /// 미리받기가 끝나 있으면 true. 문진표가 없는 회원도 true다.
+  static bool hasFresh(String userId) => _isFresh(userId.trim());
+
+  /// [hasFresh]일 때만 의미 있다. 문진표가 없으면 null.
+  static HealthProfileModel? peek(String userId) {
+    final id = userId.trim();
+    if (!_isFresh(id)) return null;
+    return _memCache[id];
+  }
+
   // 건강프로필 조회
   static Future<HealthProfileModel?> getHealthProfile(String userId) async {
     final id = userId.trim();
