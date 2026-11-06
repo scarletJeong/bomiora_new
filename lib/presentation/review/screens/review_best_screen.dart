@@ -78,19 +78,25 @@ class _ReviewBestScreenState extends State<ReviewBestScreen> {
 
   GlobalKey _keyFor(int mrNo) => _itemKeys.putIfAbsent(mrNo, () => GlobalKey());
 
-  Future<void> _load({int? focusMrNo}) async {
-    setState(() {
-      _loading = true;
-      _loadingMore = false;
-      _page = 0;
-      _hasNext = false;
-      _didScrollToInitial = false;
-    });
+  Future<void> _load({int? focusMrNo, bool fromPullRefresh = false}) async {
+    if (fromPullRefresh) {
+      if (_loadingMore) {
+        setState(() => _loadingMore = false);
+      }
+    } else {
+      setState(() {
+        _loading = true;
+        _loadingMore = false;
+        _page = 0;
+        _hasNext = false;
+        _didScrollToInitial = false;
+      });
+    }
     final first = await _fetchPage(page: 0, append: false);
     if (!mounted) return;
 
     final target = focusMrNo ?? widget.initialMrNo;
-    if (first.ok && target != null && target > 0) {
+    if (!fromPullRefresh && first.ok && target != null && target > 0) {
       var guard = 0;
       while (mounted &&
           _hasNext &&
@@ -104,7 +110,7 @@ class _ReviewBestScreenState extends State<ReviewBestScreen> {
     if (!mounted) return;
     setState(() => _loading = false);
 
-    if (target != null && target > 0) {
+    if (!fromPullRefresh && target != null && target > 0) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _scrollToMrNo(target);
       });
@@ -345,7 +351,7 @@ class _ReviewBestScreenState extends State<ReviewBestScreen> {
             children: [
               RefreshIndicator(
             color: _pink,
-            onRefresh: _load,
+            onRefresh: () => _load(fromPullRefresh: true),
             child: CustomScrollView(
               controller: _scrollController,
               cacheExtent: 5000,
@@ -365,14 +371,7 @@ class _ReviewBestScreenState extends State<ReviewBestScreen> {
                       ),
                     ),
                   ),
-                if (_loading)
-                  const SliverFillRemaining(
-                    hasScrollBody: false,
-                    child: Center(
-                      child: CircularProgressIndicator(color: _pink),
-                    ),
-                  )
-                else if (_reviews.isEmpty)
+                if (_reviews.isEmpty)
                   const SliverFillRemaining(
                     hasScrollBody: false,
                     child: SizedBox.shrink(),
