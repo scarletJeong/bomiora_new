@@ -342,80 +342,83 @@ class _ReviewBestScreenState extends State<ReviewBestScreen> {
   }
 
   Widget _buildReviewPage(BuildContext context, double padH) {
-    final showEmpty = !_loading && !_loadFailed && _reviews.isEmpty;
-    final showFailure = !_loading && _loadFailed && _reviews.isEmpty;
-    return _loading && _reviews.isEmpty
-        ? const Center(child: CircularProgressIndicator(color: _pink))
-        : Stack(
-            fit: StackFit.expand,
-            children: [
-              RefreshIndicator(
-            color: _pink,
-            onRefresh: () => _load(fromPullRefresh: true),
-            child: CustomScrollView(
+    if (_loading && _reviews.isEmpty) {
+      return const Center(child: CircularProgressIndicator(color: _pink));
+    }
+    if (_reviews.isEmpty) {
+      return RefreshIndicator(
+        color: _pink,
+        onRefresh: () => _load(fromPullRefresh: true),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return ListView(
               controller: _scrollController,
-              cacheExtent: 5000,
               physics: const AlwaysScrollableScrollPhysics(),
-              slivers: [
-                if (!_loadFailed)
-                  SliverPadding(
-                    padding: EdgeInsets.fromLTRB(padH, 0, padH, 0),
-                    sliver: SliverToBoxAdapter(
-                      child: Column(
-                        children: [
-                          _buildCountRow(context),
-                          SizedBox(height: healthDp(context, 10)),
-                          _buildStatsCard(context),
-                          SizedBox(height: healthDp(context, 20)),
-                        ],
-                      ),
-                    ),
-                  ),
-                if (_reviews.isEmpty)
-                  const SliverFillRemaining(
-                    hasScrollBody: false,
-                    child: SizedBox.shrink(),
-                  )
-                else
-                  SliverPadding(
-                    padding: EdgeInsets.fromLTRB(
-                      padH,
-                      0,
-                      padH,
-                      healthDp(context, 40),
-                    ),
-                    sliver: SliverList(
-                      delegate: SliverChildListDelegate([
-                        ..._buildReviewItems(context),
-                        if (_hasNext) ...[
-                          SizedBox(height: healthDp(context, 24)),
-                          _buildLoadMoreButton(context),
-                        ],
-                      ]),
-                    ),
-                  ),
+              children: [
+                SizedBox(
+                  height: constraints.maxHeight,
+                  child: _loadFailed
+                      ? Center(
+                          child: LoadFailureNotice(
+                            message: '베스트 리뷰를 불러오지 못했습니다',
+                            onRetry: _load,
+                          ),
+                        )
+                      : CenteredEmptyState(
+                          iconWidget: CenteredEmptyState.assetIcon(
+                            context,
+                            AppAssets.emptyReviewIcon,
+                          ),
+                          message: '등록된 베스트 리뷰가 없습니다.',
+                        ),
+                ),
               ],
-            ),
+            );
+          },
+        ),
+      );
+    }
+    return RefreshIndicator(
+      color: _pink,
+      onRefresh: () => _load(fromPullRefresh: true),
+      child: CustomScrollView(
+        controller: _scrollController,
+        cacheExtent: 5000,
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          SliverPadding(
+            padding: EdgeInsets.fromLTRB(padH, 0, padH, 0),
+            sliver: SliverToBoxAdapter(
+              child: Column(
+                children: [
+                  _buildCountRow(context),
+                  SizedBox(height: healthDp(context, 10)),
+                  _buildStatsCard(context),
+                  SizedBox(height: healthDp(context, 20)),
+                ],
               ),
-              if (showEmpty)
-                PageCenteredEmptyOverlay(
-                  child: CenteredEmptyState(
-                    iconWidget: CenteredEmptyState.assetIcon(
-                      context,
-                      AppAssets.emptyProductReviewIcon,
-                    ),
-                    message: '등록된 베스트 리뷰가 없습니다.',
-                  ),
-                ),
-              if (showFailure)
-                PageCenteredEmptyOverlay(
-                  child: LoadFailureNotice(
-                    message: '베스트 리뷰를 불러오지 못했습니다',
-                    onRetry: _load,
-                  ),
-                ),
-            ],
-          );
+            ),
+          ),
+          SliverPadding(
+            padding: EdgeInsets.fromLTRB(
+              padH,
+              0,
+              padH,
+              healthDp(context, 40),
+            ),
+            sliver: SliverList(
+              delegate: SliverChildListDelegate([
+                ..._buildReviewItems(context),
+                if (_hasNext) ...[
+                  SizedBox(height: healthDp(context, 24)),
+                  _buildLoadMoreButton(context),
+                ],
+              ]),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildCountRow(BuildContext context) {
