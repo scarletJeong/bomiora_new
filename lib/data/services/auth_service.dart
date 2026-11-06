@@ -18,6 +18,7 @@ import 'recent_view_service.dart';
 import 'wish_service.dart';
 import 'address_service.dart';
 import 'notification_service.dart';
+import 'health_profile_service.dart';
 import '../repositories/health/dashboard/health_dashboard_repository.dart';
 
 class AuthService {
@@ -35,7 +36,7 @@ class AuthService {
     sessionTick.value++;
   }
 
-  /// 찜·배송지 목록을 로그인/스플래시에서 미리 받아 화면 진입 시 네트워크를 건너뛴다.
+  /// 찜·배송지·문진표를 로그인/스플래시에서 미리 받아 화면 진입 시 네트워크를 건너뛴다.
   static void prefetchMemberLists([String? mbId]) {
     unawaited(_prefetchMemberLists(mbId));
   }
@@ -48,6 +49,7 @@ class AuthService {
         WishService.getWishList(),
         AddressService.getAddressList(id),
         NotificationService.loadSettings(),
+        HealthProfileService.getHealthProfile(id).then((_) {}),
         HealthDashboardRepository.fetchDashboard(
           mbId: id,
           date: DateTime.now(),

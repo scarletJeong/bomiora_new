@@ -57,6 +57,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
   bool _isLoading = true;
   bool _loadFailed = false;
   bool _initialPromptShown = false;
+  bool _belowFoldReady = false;
 
   /// 스크롤 진행률 — setState 없이 프로그레스바만 갱신(스크롤 끊김 방지)
   final ValueNotifier<double> _scrollProgress = ValueNotifier(0);
@@ -70,9 +71,20 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
   @override
   void initState() {
     super.initState();
+    final known = AuthService.currentUser;
+    if (known != null && HealthProfileService.hasFresh(known.id)) {
+      _currentUser = known;
+      _healthProfile = HealthProfileService.peek(known.id);
+      _isLoading = false;
+      _loadFailed = false;
+    }
     if (_isPrescriptionBooking) {
       unawaited(ShopDefaultService.getReservationSettings());
     }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _belowFoldReady) return;
+      setState(() => _belowFoldReady = true);
+    });
     _loadData();
   }
 
@@ -98,18 +110,39 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
   }
 
   Future<void> _loadData() async {
-    setState(() => _isLoading = true);
+    final keepShown = !_isLoading && !_loadFailed && _currentUser != null;
+    if (!keepShown && mounted && !_isLoading) {
+      setState(() => _isLoading = true);
+    }
     try {
+      final known = _currentUser ?? AuthService.currentUser;
+      final earlyProfile = known == null
+          ? null
+          : HealthProfileService.getHealthProfile(known.id);
       final user = await AuthService.getUser();
+      if (!mounted) return;
       if (user != null) {
-        setState(() => _currentUser = user);
-        await _loadHealthProfile();
-      } else if (mounted) {
-        setState(() {
-          _currentUser = null;
-          _healthProfile = null;
-          _loadFailed = false;
-        });
+        _currentUser = user;
+        if (earlyProfile != null && known != null && known.id == user.id) {
+          try {
+            _healthProfile = await earlyProfile;
+            _loadFailed = false;
+          } catch (e) {
+            _healthProfile = null;
+            _loadFailed = true;
+            await FailureLog.record(
+              code: 'health_profile.list',
+              mbId: user.id,
+              reason: e.toString(),
+            );
+          }
+        } else {
+          await _loadHealthProfile();
+        }
+      } else {
+        _currentUser = null;
+        _healthProfile = null;
+        _loadFailed = false;
       }
     } catch (_) {
     } finally {
@@ -323,28 +356,30 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
               onEdit: () => _openSectionForEdit([0], screenTitle: '기본정보'),
               child: _buildBasicInfoCard(profile),
             ),
-            SizedBox(height: healthDp(context, 30)),
-            _sectionBlock(
-              key: _sectionKeyDietExercise,
-              title: '식습관 및 운동',
-              onEdit: () => _openSectionForEdit(
-                [1, 2],
-                screenTitle: '식습관 및 운동',
+            if (_belowFoldReady) ...[
+              SizedBox(height: healthDp(context, 30)),
+              _sectionBlock(
+                key: _sectionKeyDietExercise,
+                title: '식습관 및 운동',
+                onEdit: () => _openSectionForEdit(
+                  [1, 2],
+                  screenTitle: '식습관 및 운동',
+                ),
+                child: _buildDietExerciseCard(profile),
               ),
-              child: _buildDietExerciseCard(profile),
-            ),
-            SizedBox(height: healthDp(context, 30)),
-            _sectionBlock(
-              key: _sectionKeyHealth,
-              title: '건강 정보',
-              onEdit: () => _openSectionForEdit(
-                [3],
-                screenTitle: '건강 정보',
+              SizedBox(height: healthDp(context, 30)),
+              _sectionBlock(
+                key: _sectionKeyHealth,
+                title: '건강 정보',
+                onEdit: () => _openSectionForEdit(
+                  [3],
+                  screenTitle: '건강 정보',
+                ),
+                child: _buildHealthInfoCard(profile),
               ),
-              child: _buildHealthInfoCard(profile),
-            ),
-            SizedBox(height: healthDp(context, 30)),
-            _buildBottomActions(),
+              SizedBox(height: healthDp(context, 30)),
+              _buildBottomActions(),
+            ],
           ],
         ),
       ),
