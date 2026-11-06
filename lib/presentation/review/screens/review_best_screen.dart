@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_assets.dart';
+import '../../../core/logging/failure_log.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../data/models/review/main_home_review_model.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/review_service.dart';
 import '../../common/widgets/app_network_image.dart';
+import '../../common/widgets/app_toast_overlay.dart';
 import '../../common/widgets/app_star_rating.dart';
 import '../../common/widgets/centered_empty_state.dart';
+import '../../common/widgets/load_failure_notice.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../health/health_common/widgets/health_app_bar.dart';
@@ -38,6 +41,7 @@ class _ReviewBestScreenState extends State<ReviewBestScreen> {
   bool _hasNext = false;
   bool _loading = true;
   bool _loadingMore = false;
+  bool _loadFailed = false;
   List<MainHomeReviewModel> _reviews = [];
   MainReviewStats _stats = const MainReviewStats();
   int? _expandedMrNo;
@@ -82,11 +86,11 @@ class _ReviewBestScreenState extends State<ReviewBestScreen> {
       _hasNext = false;
       _didScrollToInitial = false;
     });
-    final ok = await _fetchPage(page: 0, append: false);
+    final first = await _fetchPage(page: 0, append: false);
     if (!mounted) return;
 
     final target = focusMrNo ?? widget.initialMrNo;
-    if (ok && target != null && target > 0) {
+    if (first.ok && target != null && target > 0) {
       var guard = 0;
       while (mounted &&
           _hasNext &&
@@ -94,7 +98,7 @@ class _ReviewBestScreenState extends State<ReviewBestScreen> {
           guard < 30) {
         guard += 1;
         final more = await _fetchPage(page: _page + 1, append: true);
-        if (!more) break;
+        if (!more.ok) break;
       }
     }
     if (!mounted) return;
@@ -110,27 +114,62 @@ class _ReviewBestScreenState extends State<ReviewBestScreen> {
   Future<void> _loadMore() async {
     if (_loading || _loadingMore || !_hasNext) return;
     setState(() => _loadingMore = true);
-    await _fetchPage(page: _page + 1, append: true);
+    final page = _page + 1;
+    final more = await _fetchPage(
+      page: page,
+      append: true,
+      logListFailure: false,
+    );
     if (!mounted) return;
     setState(() => _loadingMore = false);
+    if (more.ok) return;
+
+    const message = '베스트 리뷰를 더 불러오지 못했습니다.';
+    AppToastOverlay.showAlert(context, message);
+    await FailureLog.record(
+      code: 'review.best.more',
+      mbId: AuthService.currentUser?.id ?? '',
+      reason: message,
+      detail: {
+        'page': page,
+        if (more.message != null && more.message!.trim().isNotEmpty)
+          'cause': more.message!.trim(),
+      },
+    );
   }
 
-  Future<bool> _fetchPage({required int page, required bool append}) async {
+  Future<({bool ok, String? message})> _fetchPage({
+    required int page,
+    required bool append,
+    bool logListFailure = true,
+  }) async {
     final result = await ReviewService.getMainHomeReviewsBest(
       page: page,
       size: _pageSize,
     );
-    if (!mounted) return false;
+    if (!mounted) return (ok: false, message: null);
     if (result['success'] != true) {
+      final reason =
+          result['message']?.toString().trim().isNotEmpty == true
+              ? result['message'].toString()
+              : '베스트 리뷰를 불러올 수 없습니다.';
+      if (logListFailure) {
+        await FailureLog.record(
+          code: 'review.best.list',
+          mbId: AuthService.currentUser?.id ?? '',
+          reason: reason,
+        );
+      }
+      if (!mounted) return (ok: false, message: reason);
       if (!append) {
         setState(() {
           _reviews = [];
           _hasNext = false;
           _page = 0;
-          _stats = const MainReviewStats();
+          _loadFailed = true;
         });
       }
-      return false;
+      return (ok: false, message: reason);
     }
 
     final incoming = List<MainHomeReviewModel>.from(
@@ -152,8 +191,9 @@ class _ReviewBestScreenState extends State<ReviewBestScreen> {
       _page = _asInt(result['currentPage'], fallback: page);
       _hasNext = result['hasNext'] == true;
       _stats = stats;
+      _loadFailed = false;
     });
-    return true;
+    return (ok: true, message: null);
   }
 
   /// 헤더(카운트+통계) + 카드(이미지 320 등) 대략 높이 — healthDp 기준
@@ -314,7 +354,8 @@ class _ReviewBestScreenState extends State<ReviewBestScreen> {
   }
 
   Widget _buildReviewPage(BuildContext context, double padH) {
-    final showEmpty = !_loading && _reviews.isEmpty;
+    final showEmpty = !_loading && !_loadFailed && _reviews.isEmpty;
+    final showFailure = !_loading && _loadFailed && _reviews.isEmpty;
     return _loading && _reviews.isEmpty
         ? const Center(child: CircularProgressIndicator(color: _pink))
         : Stack(
@@ -328,19 +369,20 @@ class _ReviewBestScreenState extends State<ReviewBestScreen> {
               cacheExtent: 5000,
               physics: const AlwaysScrollableScrollPhysics(),
               slivers: [
-                SliverPadding(
-                  padding: EdgeInsets.fromLTRB(padH, 0, padH, 0),
-                  sliver: SliverToBoxAdapter(
-                    child: Column(
-                      children: [
-                        _buildCountRow(context),
-                        SizedBox(height: healthDp(context, 10)),
-                        _buildStatsCard(context),
-                        SizedBox(height: healthDp(context, 20)),
-                      ],
+                if (!_loadFailed)
+                  SliverPadding(
+                    padding: EdgeInsets.fromLTRB(padH, 0, padH, 0),
+                    sliver: SliverToBoxAdapter(
+                      child: Column(
+                        children: [
+                          _buildCountRow(context),
+                          SizedBox(height: healthDp(context, 10)),
+                          _buildStatsCard(context),
+                          SizedBox(height: healthDp(context, 20)),
+                        ],
+                      ),
                     ),
                   ),
-                ),
                 if (_loading)
                   const SliverFillRemaining(
                     hasScrollBody: false,
@@ -382,6 +424,13 @@ class _ReviewBestScreenState extends State<ReviewBestScreen> {
                       AppAssets.emptyProductReviewIcon,
                     ),
                     message: '등록된 베스트 리뷰가 없습니다.',
+                  ),
+                ),
+              if (showFailure)
+                PageCenteredEmptyOverlay(
+                  child: LoadFailureNotice(
+                    message: '베스트 리뷰를 불러오지 못했습니다',
+                    onRetry: _load,
                   ),
                 ),
             ],
