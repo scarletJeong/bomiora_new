@@ -134,7 +134,7 @@ class _CartIntegrationScreenState extends State<CartIntegrationScreen> {
                 fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
               ),
             ),
-            if (count != null) ...[
+            if (selected && count != null) ...[
               SizedBox(width: healthDp(context, 4)),
               Text(
                 '$count',

@@ -79,6 +79,7 @@ class _CartScreenState extends State<CartScreen> {
 
   void _scheduleDisplayedCount() {
     if (widget.onDisplayedCount == null || _countNotifyScheduled) return;
+    if (isLoading && cartItems.isEmpty) return;
     _countNotifyScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _countNotifyScheduled = false;
@@ -940,124 +941,124 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   Widget _buildSelectAllRow() {
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.only(bottom: healthDp(context, 8)),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(
-          bottom: BorderSide(
-            color: Colors.grey[300]!,
-            width: healthDp(context, 1),
-          ),
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _lightCheckbox(
+              base: 20,
+              value: _availableDisplayedItemIds.isNotEmpty &&
+                  _availableDisplayedItemIds.difference(selectedItems).isEmpty,
+              onChanged: (bool? value) {
+                setState(() {
+                  final shouldSelect = value ?? false;
+                  if (shouldSelect) {
+                    selectedItems.addAll(_availableDisplayedItemIds);
+                  } else {
+                    selectedItems.removeAll(_displayedItemIds);
+                  }
+                  selectAll = _availableDisplayedItemIds.isNotEmpty &&
+                      _availableDisplayedItemIds
+                          .difference(selectedItems)
+                          .isEmpty;
+                });
+                _persistCartSelection();
+              },
+            ),
+            SizedBox(width: healthDp(context, 5)),
+            Text(
+              '전체 선택',
+              style: TextStyle(
+                color: const Color(0xFF1A1A1E),
+                fontSize: healthSp(context, 14),
+                fontFamily: 'Gmarket Sans TTF',
+                fontWeight: FontWeight.w300,
+              ),
+            ),
+          ],
         ),
-      ),
-      child: Row(
-        children: [
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _lightCheckbox(
-                value: _availableDisplayedItemIds.isNotEmpty &&
-                    _availableDisplayedItemIds
-                        .difference(selectedItems)
-                        .isEmpty,
-                onChanged: (bool? value) {
-                  setState(() {
-                    final shouldSelect = value ?? false;
-                    if (shouldSelect) {
-                      selectedItems.addAll(_availableDisplayedItemIds);
-                    } else {
-                      selectedItems.removeAll(_displayedItemIds);
-                    }
-                    selectAll = _availableDisplayedItemIds.isNotEmpty &&
-                        _availableDisplayedItemIds
-                            .difference(selectedItems)
-                            .isEmpty;
-                  });
-                  _persistCartSelection();
-                },
-              ),
-              SizedBox(width: healthDp(context, 4)),
-              Text(
-                '전체선택',
-                style: TextStyle(
-                  fontSize: healthSp(context, 13),
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w300,
-                  color: Colors.black87,
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (_hasSoldOutItems) ...[
+              InkWell(
+                onTap: _deleteSoldOutItems,
+                borderRadius: BorderRadius.circular(healthDp(context, 50)),
+                child: Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: healthDp(context, 14),
+                    vertical: healthDp(context, 10),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  decoration: ShapeDecoration(
+                    shape: RoundedRectangleBorder(
+                      side: BorderSide(
+                        width: healthDp(context, 1),
+                        color: const Color(0xFFEBEBEB),
+                      ),
+                      borderRadius:
+                          BorderRadius.circular(healthDp(context, 50)),
+                    ),
+                  ),
+                  child: Opacity(
+                    opacity: 0.86,
+                    child: Text(
+                      '품절삭제',
+                      style: TextStyle(
+                        color: const Color(0xFFD2D2D2),
+                        fontSize: healthSp(context, 12),
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
                 ),
               ),
+              SizedBox(width: healthDp(context, 8)),
             ],
-          ),
-          const Spacer(),
-          InkWell(
-            onTap: _hasSoldOutItems ? _deleteSoldOutItems : null,
-            borderRadius: BorderRadius.circular(healthDp(context, 50)),
-            child: Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: healthDp(context, 14),
-                vertical: healthDp(context, 10),
-              ),
-              clipBehavior: Clip.antiAlias,
-              decoration: ShapeDecoration(
-                color: const Color(0xFFF9F9F9),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(healthDp(context, 50)),
+            InkWell(
+              onTap: _selectedDisplayedItemIds.isEmpty
+                  ? null
+                  : () => _deleteSelectedItems(),
+              borderRadius: BorderRadius.circular(healthDp(context, 50)),
+              child: Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: healthDp(context, 14),
+                  vertical: healthDp(context, 10),
                 ),
-              ),
-              child: Text(
-                '품절삭제',
-                style: TextStyle(
-                  color: _hasSoldOutItems
-                      ? const Color(0xFF898686)
-                      : const Color(0xFFD2D2D2),
-                  fontSize: healthSp(context, 12),
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w500,
+                clipBehavior: Clip.antiAlias,
+                decoration: ShapeDecoration(
+                  color: const Color(0xFFF9F9F9),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(healthDp(context, 50)),
+                  ),
                 ),
-              ),
-            ),
-          ),
-          SizedBox(width: healthDp(context, 6)),
-          InkWell(
-            onTap: _selectedDisplayedItemIds.isEmpty
-                ? null
-                : () => _deleteSelectedItems(),
-            borderRadius: BorderRadius.circular(healthDp(context, 50)),
-            child: Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: healthDp(context, 14),
-                vertical: healthDp(context, 10),
-              ),
-              clipBehavior: Clip.antiAlias,
-              decoration: ShapeDecoration(
-                color: const Color(0xFFF9F9F9),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(healthDp(context, 50)),
-                ),
-              ),
-              child: Text(
-                '선택삭제',
-                style: TextStyle(
-                  color: const Color(0xFF898686),
-                  fontSize: healthSp(context, 12),
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w500,
+                child: Text(
+                  '선택삭제',
+                  style: TextStyle(
+                    color: const Color(0xFF898686),
+                    fontSize: healthSp(context, 12),
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
+      ],
     );
   }
 
   Widget _lightCheckbox({
     required bool value,
     required ValueChanged<bool?>? onChanged,
+    double base = 18,
   }) {
-    const double checkboxBase = 18;
+    final double checkboxBase = base;
     final boxSize = healthDp(context, checkboxBase);
     final scale = boxSize / checkboxBase;
     const borderColor = Color(0xFFD2D2D2);
