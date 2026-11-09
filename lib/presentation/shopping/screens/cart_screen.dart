@@ -685,9 +685,9 @@ class _CartScreenState extends State<CartScreen> {
                           controller: _scrollController,
                           revealAfterOffset: healthDp(context, 44),
                           barPadding: EdgeInsets.fromLTRB(
-                            healthDp(context, 27),
-                            healthDp(context, 8),
-                            healthDp(context, 27),
+                            healthDp(context, 20),
+                            healthDp(context, 10),
+                            healthDp(context, 20),
                             0,
                           ),
                           topBar: _buildSelectAllRow(),
@@ -710,11 +710,11 @@ class _CartScreenState extends State<CartScreen> {
                                   widget.scrollHeader!,
                                 Padding(
                                   padding: EdgeInsets.fromLTRB(
-                                    healthDp(context, 27),
+                                    healthDp(context, 20),
                                     widget.scrollHeader != null
                                         ? 0
                                         : healthDp(context, 16),
-                                    healthDp(context, 27),
+                                    healthDp(context, 20),
                                     healthDp(context, 16),
                                   ),
                                   child: Column(
@@ -853,10 +853,10 @@ class _CartScreenState extends State<CartScreen> {
 
     return Container(
       padding: EdgeInsets.fromLTRB(
-        healthDp(context, 27),
-        healthDp(context, 8),
-        healthDp(context, 27),
-        healthDp(context, 8) + bottomInset.clamp(0, healthDp(context, 10)),
+        healthDp(context, 20),
+        healthDp(context, 10),
+        healthDp(context, 20),
+        healthDp(context, 10) + bottomInset.clamp(0, healthDp(context, 10)),
       ),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -1357,11 +1357,12 @@ class _CartScreenState extends State<CartScreen> {
                         fontSize: healthSp(context, 10),
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w500,
+                        height: 1.0,
                       ),
                     ),
                     SizedBox(height: healthDp(context, 2)),
                     Text(
-                      item.itName,
+                      item.itName,  //상품명
                       style: TextStyle(
                         color: item.isAvailable
                             ? const Color(0xFF1A1A1A)
@@ -1370,6 +1371,7 @@ class _CartScreenState extends State<CartScreen> {
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w500,
                         letterSpacing: healthSp(context, -1.26),
+                        height: 1.2,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -1396,6 +1398,7 @@ class _CartScreenState extends State<CartScreen> {
                           fontFamily: 'Gmarket Sans TTF',
                           fontWeight: FontWeight.w500,
                           letterSpacing: healthSp(context, -1.08),
+                          height: 1.1,
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
@@ -1406,9 +1409,9 @@ class _CartScreenState extends State<CartScreen> {
               ),
             ],
           ),
-          SizedBox(height: healthDp(context, 12)),
+          SizedBox(height: healthDp(context, 10)),
           _buildReservationNotice(),
-          SizedBox(height: healthDp(context, 20)),
+          SizedBox(height: healthDp(context, 10)),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [

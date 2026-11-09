@@ -85,7 +85,7 @@ class _CartIntegrationScreenState extends State<CartIntegrationScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SizedBox(height: healthDp(context, 5)),
+          SizedBox(height: healthDp(context, 10)),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -127,22 +127,32 @@ class _CartIntegrationScreenState extends State<CartIntegrationScreen> {
             Text(
               label,
               textAlign: TextAlign.center,
+              textHeightBehavior: const TextHeightBehavior(
+                applyHeightToFirstAscent: false,
+                applyHeightToLastDescent: false,
+              ),
               style: TextStyle(
                 color: color,
                 fontSize: healthSp(context, 14),
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                height: 1,
               ),
             ),
             if (selected && count != null) ...[
               SizedBox(width: healthDp(context, 4)),
               Text(
                 '$count',
+                textHeightBehavior: const TextHeightBehavior(
+                  applyHeightToFirstAscent: false,
+                  applyHeightToLastDescent: false,
+                ),
                 style: TextStyle(
                   color: color,
                   fontSize: healthSp(context, 12),
                   fontFamily: 'Gmarket Sans TTF',
                   fontWeight: FontWeight.w700,
+                  height: 1,
                 ),
               ),
             ],

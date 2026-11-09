@@ -670,9 +670,9 @@ class _CartScreenState extends State<CartScreen> {
             controller: _scrollController,
             revealAfterOffset: healthDp(context, 44),
             barPadding: EdgeInsets.fromLTRB(
-              healthDp(context, 27),
+              healthDp(context, 20),
               healthDp(context, 8),
-              healthDp(context, 27),
+              healthDp(context, 20),
               0,
             ),
             topBar: _buildSelectAllRow(),
@@ -694,9 +694,9 @@ class _CartScreenState extends State<CartScreen> {
                     if (widget.scrollHeader != null) widget.scrollHeader!,
                     Padding(
                       padding: EdgeInsets.fromLTRB(
-                        healthDp(context, 27),
+                        healthDp(context, 20),
                         widget.scrollHeader != null ? 0 : healthDp(context, 16),
-                        healthDp(context, 27),
+                        healthDp(context, 20),
                         healthDp(context, 16),
                       ),
                       child: Column(
@@ -885,9 +885,9 @@ class _CartScreenState extends State<CartScreen> {
 
     return Container(
       padding: EdgeInsets.fromLTRB(
-        healthDp(context, 27),
+        healthDp(context, 20),
         healthDp(context, 8),
-        healthDp(context, 27),
+        healthDp(context, 20),
         healthDp(context, 8) + bottomInset.clamp(0, healthDp(context, 10)),
       ),
       decoration: BoxDecoration(
