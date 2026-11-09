@@ -94,6 +94,14 @@ class CartAddGroupCard extends StatelessWidget {
           ),
           if (showBundleTotal) ...[
             SizedBox(height: healthDp(context, cartLayout ? 14 : 12)),
+            if (cartLayout) ...[
+              Container(
+                width: double.infinity,
+                height: healthDp(context, 0.5),
+                color: const Color(0xFFD2D2D2),
+              ),
+              SizedBox(height: healthDp(context, 14)),
+            ],
             Padding(
               padding: EdgeInsets.symmetric(
                 horizontal: cartLayout ? 0 : pad,
@@ -108,7 +116,7 @@ class CartAddGroupCard extends StatelessWidget {
                       fontSize: healthSp(context, cartLayout ? 12 : 10),
                       fontFamily: _kGmarketSans,
                       fontWeight: FontWeight.w500,
-                      height: cartLayout ? null : 1.5,
+                      height: 1.0,
                       letterSpacing: healthSp(
                         context,
                         cartLayout ? -1.08 : -0.90,
@@ -124,7 +132,7 @@ class CartAddGroupCard extends StatelessWidget {
                       fontFamily: _kGmarketSans,
                       fontWeight:
                           cartLayout ? FontWeight.w700 : FontWeight.w500,
-                      height: cartLayout ? null : 1.5,
+                      height: 1.0,
                     ),
                   ),
                 ],
@@ -267,7 +275,8 @@ class _SupplyAddBlock extends StatelessWidget {
           ? EdgeInsets.all(healthDp(context, 12))
           : null,
       iconGapBase: prescriptionCartLayout ? 4 : 6,
-      chevronBase: prescriptionCartLayout ? 11 : 16,
+      chevronBase: 15,
+      chevronGapBase: prescriptionCartLayout ? 8 : 0,
       children: [
         for (var i = 0; i < merged.length; i++) ...[
           if (i > 0 && !prescriptionCartLayout)
@@ -421,12 +430,13 @@ class _SupplyAddRow extends StatelessWidget {
                         fontFamily: _kGmarketSans,
                         fontWeight: FontWeight.w500,
                         letterSpacing: healthSp(context, -0.60),
+                        height: 1.1,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],
-                  SizedBox(height: healthDp(context, 8)),
+                  SizedBox(height: healthDp(context, 10)),
                   Row(
                     children: [
                       if (canEdit)
@@ -437,7 +447,8 @@ class _SupplyAddRow extends StatelessWidget {
                           buttonBase: 24,
                           paddingBase: 2,
                           gapBase: 0,
-                          numberWidthBase: 24,
+                          numberWidthBase: 18,
+                          iconBase: 8,
                         )
                       else
                         Text(
