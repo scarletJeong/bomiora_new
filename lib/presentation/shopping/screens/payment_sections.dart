@@ -69,7 +69,7 @@ extension _PaymentSections on _PaymentScreenState {
 
 
   /// 쿠폰/포인트 + 결제금액 내역 + 총 결제비용
-  Widget _buildCouponPointTotalSection(BuildContext context) {
+  Widget _buildCouponPointTotalSection(BuildContext context) { 
     final showCoupon = !_couponPointDisabled && _applicableCoupons.isNotEmpty;
     final showPoint = !_couponPointDisabled && _myPoint > 0;
     final selectedCouponNos = _selectedCoupons.map((coupon) => coupon.no).toSet();
