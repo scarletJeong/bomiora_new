@@ -1357,8 +1357,6 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
           },
         ),
       );
-      // 두 번째 옵션 드롭다운용 스크롤 여유 (보유포인트 아래가 아니라 옵션 영역 쪽)
-      widgets.add(SizedBox(height: healthDp(context, 180)));
       return widgets;
     }
 
@@ -1398,7 +1396,6 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
           },
         ),
       );
-      widgets.add(SizedBox(height: healthDp(context, 180)));
       return widgets;
     }
 
