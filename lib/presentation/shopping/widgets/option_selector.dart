@@ -1236,7 +1236,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
                 itemFontSizeBase: 14,
                 itemTextAlign: TextAlign.left,
                 scrollWhenItemCountExceeds: 5,
-                maxVisibleItemsWhenScrolling: 4.5,
+                maxVisibleItemsWhenScrolling: 5.5,
                 onChanged: (name) {
                   if (!_hasMainSelection) return;
                   Product? found;
@@ -1293,7 +1293,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
           itemFontSizeBase: 14,
           itemTextAlign: TextAlign.left,
           scrollWhenItemCountExceeds: 5,
-          maxVisibleItemsWhenScrolling: 4.5,
+          maxVisibleItemsWhenScrolling: 5.5,
           onChanged: (label) {
             if (!_supplyStepGroups.contains(label)) return;
             setState(() {
@@ -1345,7 +1345,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
           itemFontSizeBase: 14,
           itemTextAlign: TextAlign.left,
           scrollWhenItemCountExceeds: 5,
-          maxVisibleItemsWhenScrolling: 4.5,
+          maxVisibleItemsWhenScrolling: 5.5,
           onChanged: (label) {
             final monthsMatch = RegExp(r'^(\d+)').firstMatch(label);
             if (monthsMatch == null) return;
@@ -1382,7 +1382,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
           itemFontSizeBase: 14,
           itemTextAlign: TextAlign.left,
           scrollWhenItemCountExceeds: 5,
-          maxVisibleItemsWhenScrolling: 4.5,
+          maxVisibleItemsWhenScrolling: 5.5,
           onChanged: (label) {
             ProductOption? found;
             for (final o in subOptions) {
@@ -1420,7 +1420,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
           itemFontSizeBase: 14,
           itemTextAlign: TextAlign.left,
           scrollWhenItemCountExceeds: 5,
-          maxVisibleItemsWhenScrolling: 4.5,
+          maxVisibleItemsWhenScrolling: 5.5,
           onChanged: (_) => _addSupplyLineFromOption(only),
         ),
       );
@@ -1438,7 +1438,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
         itemFontSizeBase: 14,
         itemTextAlign: TextAlign.left,
         scrollWhenItemCountExceeds: 5,
-        maxVisibleItemsWhenScrolling: 4.5,
+        maxVisibleItemsWhenScrolling: 5.5,
         onChanged: (label) {
           ProductOption? found;
           for (final o in _pickedSupplyOptions) {
