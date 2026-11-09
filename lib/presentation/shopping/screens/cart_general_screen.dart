@@ -601,7 +601,7 @@ class _CartScreenState extends State<CartScreen> {
         CenteredEmptyState(
           iconWidget: CenteredEmptyState.assetIcon(
             context,
-            AppAssets.emptyCartGeneralIcon,
+            AppAssets.emptyCartIcon,
           ),
           message: '로그인 후 이용 가능합니다.',
           trailing: CenteredEmptyState.loginButtonTrailing(
@@ -628,7 +628,7 @@ class _CartScreenState extends State<CartScreen> {
         CenteredEmptyState(
           iconWidget: CenteredEmptyState.assetIcon(
             context,
-            AppAssets.emptyCartGeneralIcon,
+            AppAssets.emptyCartIcon,
           ),
           message: '장바구니에 담긴 상품이 없습니다 \n원하는 상품을 담아보세요',
           trailing: [

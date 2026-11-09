@@ -244,8 +244,7 @@ abstract final class AppAssets {
   static const String emptyDeliveryIcon = '${_img}empty_delivery_icon.svg'; // 주문내역
   static const String emptyCouponIcon = '${_img}empty_coupon_icon.svg'; // 쿠폰
   static const String emptyPointIcon = '${_img}empty_point_icon.svg'; // 포인트
-  static const String emptyCartIcon = '${_img}empty_cart_icon.svg'; // 장바구니(처방제품)
-  static const String emptyCartGeneralIcon = '${_img}empty_cart_general_icon.svg'; // 장바구니(일반 상품)
+  static const String emptyCartIcon = '${_img}empty_cart_icon.svg'; // 장바구니
 
   static const String emptyCategoryIcon = '${_img}empty_category_icon.svg'; // 카테고리 내 상품 없음
   static const String emptyProductReviewIcon = '${_img}empty_product_review_icon.svg'; // 상품 상세 내 리뷰 없음

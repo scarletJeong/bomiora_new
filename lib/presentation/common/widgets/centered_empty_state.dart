@@ -66,7 +66,6 @@ class CenteredEmptyState extends StatelessWidget {
     AppAssets.emptyAddressIcon: [70, 69.2],
     AppAssets.emptyAlarmIcon: [63, 62.9],
     AppAssets.emptyCartIcon: [72, 58.2],
-    AppAssets.emptyCartGeneralIcon: [72, 58.2],
     AppAssets.emptyCategoryIcon: [63, 62.7],
     AppAssets.emptyContentIcon: [80, 55.8],
     AppAssets.emptyCouponIcon: [70, 60.3],
