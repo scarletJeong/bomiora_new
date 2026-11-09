@@ -22,6 +22,7 @@ class SupplyAddExpandBlock extends StatefulWidget {
     required this.count,
     required this.children,
     this.initiallyExpanded = false,
+    this.expandWhenSelected = false,
     this.title,
     this.showSameReservationHint = false,
   });
@@ -29,6 +30,9 @@ class SupplyAddExpandBlock extends StatefulWidget {
   final int count;
   final List<Widget> children;
   final bool initiallyExpanded;
+
+  /// 체크가 켜질 때 한 번 연다. 이후에는 화살표로 접고 펼친다.
+  final bool expandWhenSelected;
   final String? title;
   final bool showSameReservationHint;
 
@@ -42,7 +46,15 @@ class _SupplyAddExpandBlockState extends State<SupplyAddExpandBlock> {
   @override
   void initState() {
     super.initState();
-    _expanded = widget.initiallyExpanded;
+    _expanded = widget.initiallyExpanded || widget.expandWhenSelected;
+  }
+
+  @override
+  void didUpdateWidget(SupplyAddExpandBlock oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!oldWidget.expandWhenSelected && widget.expandWhenSelected) {
+      _expanded = true;
+    }
   }
 
   @override

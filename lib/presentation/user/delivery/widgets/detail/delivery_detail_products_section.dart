@@ -75,6 +75,7 @@ class DeliveryDetailProductsSection extends StatelessWidget {
           CartAddGroupCard(
             group: displayGroups[i],
             selectedItems: const {},
+            supplyInitiallyExpanded: true,
             supplyInteractive: false,
             showBundleTotal: false,
             onToggleSelect: (_, __) {},

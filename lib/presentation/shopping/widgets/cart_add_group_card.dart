@@ -32,6 +32,9 @@ class CartAddGroupCard extends StatelessWidget {
   final bool showBundleTotal;
   final bool supplyInteractive;
 
+  /// 결제·주문 상세처럼 체크가 없을 때 추가상품을 펼친 채로 둔다.
+  final bool supplyInitiallyExpanded;
+
   const CartAddGroupCard({
     super.key,
     required this.group,
@@ -44,6 +47,7 @@ class CartAddGroupCard extends StatelessWidget {
     this.onChildOpenDetail,
     this.showBundleTotal = true,
     this.supplyInteractive = true,
+    this.supplyInitiallyExpanded = false,
   });
 
   @override
@@ -68,6 +72,8 @@ class CartAddGroupCard extends StatelessWidget {
             padding: EdgeInsets.symmetric(horizontal: pad),
             child: _SupplyAddBlock(
               items: children,
+              expandWhenSelected: selectedItems.contains(group.parent.ctId),
+              initiallyExpanded: supplyInitiallyExpanded,
               interactive: supplyInteractive,
               onQuantityChanged: onChildQuantityChanged,
               onDelete: onChildDelete,
@@ -177,6 +183,8 @@ class CartSupplyAddSection extends StatelessWidget {
     this.onDelete,
     this.onOpenDetail,
     this.interactive = true,
+    this.expandWhenSelected = false,
+    this.initiallyExpanded = false,
   });
 
   final List<CartItem> items;
@@ -184,6 +192,8 @@ class CartSupplyAddSection extends StatelessWidget {
   final void Function(CartItem item)? onDelete;
   final void Function(CartItem item)? onOpenDetail;
   final bool interactive;
+  final bool expandWhenSelected;
+  final bool initiallyExpanded;
 
   @override
   Widget build(BuildContext context) {
@@ -193,6 +203,8 @@ class CartSupplyAddSection extends StatelessWidget {
       onDelete: onDelete,
       onOpenDetail: onOpenDetail,
       interactive: interactive,
+      expandWhenSelected: expandWhenSelected,
+      initiallyExpanded: initiallyExpanded,
     );
   }
 }
@@ -205,6 +217,8 @@ class _SupplyAddBlock extends StatelessWidget {
     this.onDelete,
     this.onOpenDetail,
     this.interactive = true,
+    this.expandWhenSelected = false,
+    this.initiallyExpanded = false,
   });
 
   final List<CartItem> items;
@@ -212,6 +226,8 @@ class _SupplyAddBlock extends StatelessWidget {
   final void Function(CartItem item)? onDelete;
   final void Function(CartItem item)? onOpenDetail;
   final bool interactive;
+  final bool expandWhenSelected;
+  final bool initiallyExpanded;
 
   @override
   Widget build(BuildContext context) {
@@ -222,6 +238,8 @@ class _SupplyAddBlock extends StatelessWidget {
 
     return SupplyAddExpandBlock(
       count: merged.length,
+      expandWhenSelected: expandWhenSelected,
+      initiallyExpanded: initiallyExpanded,
       showSameReservationHint: false,
       children: [
         for (var i = 0; i < merged.length; i++) ...[

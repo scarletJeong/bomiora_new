@@ -161,6 +161,8 @@ class CartGroupGeneralCard extends StatelessWidget {
                       SizedBox(height: healthDp(context, 8)),
                       CartSupplyAddSection(
                         items: groups[i].children,
+                        expandWhenSelected:
+                            selectedItems.contains(groups[i].parent.ctId),
                         interactive: !readOnly,
                         onQuantityChanged: readOnly ? null : onQuantityChanged,
                         onDelete: readOnly ? null : onDelete,
