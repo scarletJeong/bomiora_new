@@ -25,6 +25,10 @@ class SupplyAddExpandBlock extends StatefulWidget {
     this.expandWhenSelected = false,
     this.title,
     this.showSameReservationHint = false,
+    this.amountLabel,
+    this.headerPadding,
+    this.iconGapBase = 6,
+    this.chevronBase = 16,
   });
 
   final int count;
@@ -35,6 +39,12 @@ class SupplyAddExpandBlock extends StatefulWidget {
   final bool expandWhenSelected;
   final String? title;
   final bool showSameReservationHint;
+
+  /// 헤더 제목 오른쪽 금액. 비대면 장바구니 추가상품 카드에서만 넘긴다.
+  final String? amountLabel;
+  final EdgeInsetsGeometry? headerPadding;
+  final double iconGapBase;
+  final double chevronBase;
 
   @override
   State<SupplyAddExpandBlock> createState() => _SupplyAddExpandBlockState();
@@ -71,10 +81,11 @@ class _SupplyAddExpandBlockState extends State<SupplyAddExpandBlock> {
     final header = InkWell(
       onTap: () => setState(() => _expanded = !_expanded),
       child: Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: healthDp(context, 10),
-          vertical: healthDp(context, 7),
-        ),
+        padding: widget.headerPadding ??
+            EdgeInsets.symmetric(
+              horizontal: healthDp(context, 10),
+              vertical: healthDp(context, 7),
+            ),
         decoration: BoxDecoration(
           color: Colors.white,
           border: _expanded
@@ -90,17 +101,37 @@ class _SupplyAddExpandBlockState extends State<SupplyAddExpandBlock> {
               width: icon,
               height: icon,
             ),
-            SizedBox(width: healthDp(context, 6)),
+            SizedBox(width: healthDp(context, widget.iconGapBase)),
             Expanded(
-              child: Text(
-                headerTitle,
-                style: TextStyle(
-                  color: _kPink,
-                  fontSize: healthSp(context, 12),
-                  fontFamily: _kGmarketSans,
-                  fontWeight: FontWeight.w500,
-                  height: 1.5,
-                ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      headerTitle,
+                      style: TextStyle(
+                        color: _kPink,
+                        fontSize: healthSp(context, 12),
+                        fontFamily: _kGmarketSans,
+                        fontWeight: FontWeight.w500,
+                        height: 1.5,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if ((widget.amountLabel ?? '').isNotEmpty) ...[
+                    SizedBox(width: healthDp(context, 4)),
+                    Text(
+                      widget.amountLabel!,
+                      style: TextStyle(
+                        color: _kMuted2,
+                        fontSize: healthSp(context, 10),
+                        fontFamily: _kGmarketSans,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
             if (widget.showSameReservationHint) ...[
@@ -124,7 +155,7 @@ class _SupplyAddExpandBlockState extends State<SupplyAddExpandBlock> {
             ],
             Icon(
               _expanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-              size: healthDp(context, 16),
+              size: healthDp(context, widget.chevronBase),
               color: _kPink,
             ),
           ],

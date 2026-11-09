@@ -45,47 +45,40 @@ class _CartIntegrationScreenState extends State<CartIntegrationScreen> {
   }
 
   Widget _buildTabBar() {
-    final radius = healthDp(context, 20);
     return Padding(
-      padding: EdgeInsets.fromLTRB(
-        healthDp(context, 27),
-        healthDp(context, 12),
-        healthDp(context, 27),
-        healthDp(context, 8),
-      ),
-      child: Container(
-        width: double.infinity,
-        height: healthDp(context, 35),
-        decoration: ShapeDecoration(
-          color: const Color(0xFFF9F9F9),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(radius),
+      padding: EdgeInsets.symmetric(horizontal: healthDp(context, 20)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(height: healthDp(context, 5)),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: _buildTabLabel('비대면 진료', 0)),
+              Expanded(child: _buildTabLabel('일반상품', 1)),
+            ],
           ),
-        ),
-        child: Row(
-          children: [
-            Expanded(child: _buildTabLabel('비대면 진료', 0, radius)),
-            Expanded(child: _buildTabLabel('일반상품', 1, radius)),
-          ],
-        ),
+          SizedBox(height: healthDp(context, 20)),
+        ],
       ),
     );
   }
 
-  Widget _buildTabLabel(String label, int index, double radius) {
+  Widget _buildTabLabel(String label, int index) {
     final selected = _selectedTabIndex == index;
     return InkWell(
       onTap: () => _onTabSelected(index),
-      borderRadius: BorderRadius.circular(radius),
       child: Container(
-        height: double.infinity,
-        decoration: ShapeDecoration(
-          color: selected ? Colors.white : Colors.transparent,
-          shape: RoundedRectangleBorder(
-            side: selected
-                ? const BorderSide(width: 0.5, color: Color(0x7F898686))
-                : BorderSide.none,
-            borderRadius: BorderRadius.circular(radius),
+        width: double.infinity,
+        padding: EdgeInsets.only(bottom: healthDp(context, 10)),
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              width: healthDp(context, 1),
+              color: selected
+                  ? const Color(0xFFFF5A8D)
+                  : const Color(0xFFD2D2D2),
+            ),
           ),
         ),
         alignment: Alignment.center,
@@ -93,10 +86,12 @@ class _CartIntegrationScreenState extends State<CartIntegrationScreen> {
           label,
           textAlign: TextAlign.center,
           style: TextStyle(
-            color: selected ? const Color(0xFF1A1A1E) : const Color(0xFF898686),
-            fontSize: healthSp(context, 13),
+            color: selected
+                ? const Color(0xFFFF5A8D)
+                : const Color(0xFF898686),
+            fontSize: healthSp(context, 14),
             fontFamily: 'Gmarket Sans TTF',
-            fontWeight: FontWeight.w500,
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
           ),
         ),
       ),

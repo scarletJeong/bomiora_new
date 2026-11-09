@@ -11,11 +11,27 @@ class QuantityStepper extends StatelessWidget {
     required this.quantity,
     required this.onDecrease,
     required this.onIncrease,
+    this.buttonBase = 28,
+    this.paddingBase = 4,
+    this.gapBase = 10,
+    this.numberWidthBase = 22,
   });
 
   final int quantity;
   final VoidCallback? onDecrease;
   final VoidCallback? onIncrease;
+
+  /// 375 기준 버튼 한 변. 추가상품 줄은 24.
+  final double buttonBase;
+
+  /// 375 기준 바깥 여백. 추가상품 줄은 2.
+  final double paddingBase;
+
+  /// 375 기준 버튼과 숫자 사이. 추가상품 줄은 0.
+  final double gapBase;
+
+  /// 375 기준 숫자 칸 너비.
+  final double numberWidthBase;
 
   static const Color _ink = Color(0xFF1A1A1E);
   static const Color _border = Color(0x7FD2D2D2);
@@ -24,7 +40,7 @@ class QuantityStepper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.all(healthDp(context, 4)),
+      padding: EdgeInsets.all(healthDp(context, paddingBase)),
       decoration: ShapeDecoration(
         color: const Color(0xFFF6F6F6),
         shape: RoundedRectangleBorder(
@@ -33,11 +49,11 @@ class QuantityStepper extends StatelessWidget {
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
-        spacing: healthDp(context, 10),
+        spacing: healthDp(context, gapBase),
         children: [
           _roundButton(context, Icons.remove, onDecrease),
           SizedBox(
-            width: healthDp(context, 22),
+            width: healthDp(context, numberWidthBase),
             child: FittedBox(
               fit: BoxFit.scaleDown,
               child: Text(
@@ -63,7 +79,7 @@ class QuantityStepper extends StatelessWidget {
     IconData icon,
     VoidCallback? onTap,
   ) {
-    final size = healthDp(context, 28);
+    final size = healthDp(context, buttonBase);
     return Material(
       color: Colors.transparent,
       child: InkWell(

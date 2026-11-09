@@ -35,6 +35,9 @@ class CartAddGroupCard extends StatelessWidget {
   /// 결제·주문 상세처럼 체크가 없을 때 추가상품을 펼친 채로 둔다.
   final bool supplyInitiallyExpanded;
 
+  /// 비대면 장바구니 카드. 추가상품 헤더 금액과 본품+추가상품 합계를 쓴다.
+  final bool prescriptionCartLayout;
+
   const CartAddGroupCard({
     super.key,
     required this.group,
@@ -48,6 +51,7 @@ class CartAddGroupCard extends StatelessWidget {
     this.showBundleTotal = true,
     this.supplyInteractive = true,
     this.supplyInitiallyExpanded = false,
+    this.prescriptionCartLayout = false,
   });
 
   @override
@@ -58,6 +62,9 @@ class CartAddGroupCard extends StatelessWidget {
     }
 
     final pad = healthDp(context, 10);
+    final cartLayout = prescriptionCartLayout;
+    final addAmount =
+        children.fold<int>(0, (sum, item) => sum + item.lineAmount);
 
     return buildParentOrMainCard(
       group.parent,
@@ -66,37 +73,46 @@ class CartAddGroupCard extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SizedBox(height: healthDp(context, 12)),
-          // 수량 버튼 왼쪽과 동일 정렬 (카드 내부 +10)
+          SizedBox(height: healthDp(context, cartLayout ? 16 : 12)),
           Padding(
-            padding: EdgeInsets.symmetric(horizontal: pad),
+            padding: EdgeInsets.symmetric(
+              horizontal: cartLayout ? 0 : pad,
+            ),
             child: _SupplyAddBlock(
               items: children,
               expandWhenSelected: selectedItems.contains(group.parent.ctId),
               initiallyExpanded: supplyInitiallyExpanded,
               interactive: supplyInteractive,
+              prescriptionCartLayout: cartLayout,
+              amountLabel: cartLayout
+                  ? '+${PriceFormatter.format(addAmount)}원'
+                  : null,
               onQuantityChanged: onChildQuantityChanged,
               onDelete: onChildDelete,
               onOpenDetail: onChildOpenDetail,
             ),
           ),
           if (showBundleTotal) ...[
-            // 수량 아래 회색선 없이 합계만 (추가상품 박스와 동일 폭)
-            SizedBox(height: healthDp(context, 12)),
+            SizedBox(height: healthDp(context, cartLayout ? 14 : 12)),
             Padding(
-              padding: EdgeInsets.symmetric(horizontal: pad),
+              padding: EdgeInsets.symmetric(
+                horizontal: cartLayout ? 0 : pad,
+              ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   Text(
-                    '묶음 합계',
+                    cartLayout ? '본품+추가상품 합계' : '묶음 합계',
                     style: TextStyle(
                       color: _kMuted2,
-                      fontSize: healthSp(context, 10),
+                      fontSize: healthSp(context, cartLayout ? 12 : 10),
                       fontFamily: _kGmarketSans,
                       fontWeight: FontWeight.w500,
-                      height: 1.5,
-                      letterSpacing: -0.90,
+                      height: cartLayout ? null : 1.5,
+                      letterSpacing: healthSp(
+                        context,
+                        cartLayout ? -1.08 : -0.90,
+                      ),
                     ),
                   ),
                   SizedBox(width: healthDp(context, 10)),
@@ -104,10 +120,11 @@ class CartAddGroupCard extends StatelessWidget {
                     '${PriceFormatter.format(group.groupAmount)}원',
                     style: TextStyle(
                       color: _kInkAlt,
-                      fontSize: healthSp(context, 14),
+                      fontSize: healthSp(context, cartLayout ? 16 : 14),
                       fontFamily: _kGmarketSans,
-                      fontWeight: FontWeight.w500,
-                      height: 1.5,
+                      fontWeight:
+                          cartLayout ? FontWeight.w700 : FontWeight.w500,
+                      height: cartLayout ? null : 1.5,
                     ),
                   ),
                 ],
@@ -219,6 +236,8 @@ class _SupplyAddBlock extends StatelessWidget {
     this.interactive = true,
     this.expandWhenSelected = false,
     this.initiallyExpanded = false,
+    this.prescriptionCartLayout = false,
+    this.amountLabel,
   });
 
   final List<CartItem> items;
@@ -228,6 +247,8 @@ class _SupplyAddBlock extends StatelessWidget {
   final bool interactive;
   final bool expandWhenSelected;
   final bool initiallyExpanded;
+  final bool prescriptionCartLayout;
+  final String? amountLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -241,12 +262,22 @@ class _SupplyAddBlock extends StatelessWidget {
       expandWhenSelected: expandWhenSelected,
       initiallyExpanded: initiallyExpanded,
       showSameReservationHint: false,
+      amountLabel: prescriptionCartLayout ? amountLabel : null,
+      headerPadding: prescriptionCartLayout
+          ? EdgeInsets.all(healthDp(context, 12))
+          : null,
+      iconGapBase: prescriptionCartLayout ? 4 : 6,
+      chevronBase: prescriptionCartLayout ? 11 : 16,
       children: [
         for (var i = 0; i < merged.length; i++) ...[
-          if (i > 0) const Divider(height: 1, thickness: 1, color: _kDivider),
+          if (i > 0 && !prescriptionCartLayout)
+            const Divider(height: 1, thickness: 1, color: _kDivider),
           _SupplyAddRow(
             line: merged[i],
             canEdit: canEdit,
+            prescriptionCartLayout: prescriptionCartLayout,
+            showBottomBorder:
+                prescriptionCartLayout && i < merged.length - 1,
             onDecrease: !canEdit
                 ? null
                 : () {
@@ -289,6 +320,8 @@ class _SupplyAddRow extends StatelessWidget {
     this.onIncrease,
     this.onDelete,
     this.onOpenDetail,
+    this.prescriptionCartLayout = false,
+    this.showBottomBorder = false,
   });
 
   final _MergedSupplyLine line;
@@ -297,15 +330,144 @@ class _SupplyAddRow extends StatelessWidget {
   final VoidCallback? onIncrease;
   final VoidCallback? onDelete;
   final VoidCallback? onOpenDetail;
+  final bool prescriptionCartLayout;
+  final bool showBottomBorder;
 
   @override
   Widget build(BuildContext context) {
     final item = line.primary;
-    final option = item.displayOptionText;
+    final rawOption = item.displayOptionText;
+    final option = prescriptionCartLayout
+        ? rawOption.replaceAll(']_', '] ').trim()
+        : rawOption;
     final thumb = healthDp(context, 44);
     final canDecrease = canEdit &&
         line.totalQty > 1 &&
         (line.primary.ctQty > 1 || line.lines.length > 1);
+    final cart = prescriptionCartLayout;
+
+    if (cart) {
+      return Container(
+        width: double.infinity,
+        padding: EdgeInsets.all(healthDp(context, 12)),
+        decoration: showBottomBorder
+            ? BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(
+                    width: healthDp(context, 1.11),
+                    color: const Color(0x1EFF5A8D),
+                  ),
+                ),
+              )
+            : null,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            GestureDetector(
+              onTap: onOpenDetail,
+              child: CartItemThumbnail(
+                item: item,
+                size: thumb,
+                borderRadius: BorderRadius.circular(healthDp(context, 6)),
+              ),
+            ),
+            SizedBox(width: healthDp(context, 10)),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          item.itName,
+                          style: TextStyle(
+                            color: _kInk,
+                            fontSize: healthSp(context, 12),
+                            fontFamily: _kGmarketSans,
+                            fontWeight: FontWeight.w500,
+                            letterSpacing: healthSp(context, -1.08),
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (onDelete != null)
+                        InkWell(
+                          onTap: onDelete,
+                          borderRadius:
+                              BorderRadius.circular(healthDp(context, 8)),
+                          child: SizedBox(
+                            width: healthDp(context, 16),
+                            height: healthDp(context, 16),
+                            child: Icon(
+                              Icons.close,
+                              size: healthDp(context, 14),
+                              color: const Color(0xFF898686),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  if (option.isNotEmpty) ...[
+                    SizedBox(height: healthDp(context, 2)),
+                    Text(
+                      option,
+                      style: TextStyle(
+                        color: _kMuted2,
+                        fontSize: healthSp(context, 10),
+                        fontFamily: _kGmarketSans,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: healthSp(context, -0.60),
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                  SizedBox(height: healthDp(context, 8)),
+                  Row(
+                    children: [
+                      if (canEdit)
+                        QuantityStepper(
+                          quantity: line.totalQty,
+                          onDecrease: canDecrease ? onDecrease : null,
+                          onIncrease: onIncrease,
+                          buttonBase: 24,
+                          paddingBase: 2,
+                          gapBase: 0,
+                          numberWidthBase: 24,
+                        )
+                      else
+                        Text(
+                          '수량: ${line.totalQty}',
+                          style: TextStyle(
+                            color: _kInk,
+                            fontSize: healthSp(context, 12),
+                            fontFamily: _kGmarketSans,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      const Spacer(),
+                      Text(
+                        '+${PriceFormatter.format(line.totalAmount)}원',
+                        style: TextStyle(
+                          color: _kInkAlt,
+                          fontSize: healthSp(context, 12),
+                          fontFamily: _kGmarketSans,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     return Padding(
       padding: EdgeInsets.all(healthDp(context, 8)),
