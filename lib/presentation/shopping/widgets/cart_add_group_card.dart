@@ -405,7 +405,7 @@ class _SupplyAddRow extends StatelessWidget {
                             child: Icon(
                               Icons.close,
                               size: healthDp(context, 14),
-                              color: const Color(0xFF898686),
+                              color: const Color(0x7FD2D2D2),
                             ),
                           ),
                         ),

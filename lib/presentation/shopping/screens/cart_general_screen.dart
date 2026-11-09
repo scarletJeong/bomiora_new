@@ -35,12 +35,16 @@ class CartScreen extends StatefulWidget {
   /// 통합 장바구니 탭 헤더 (스크롤과 함께 이동)
   final Widget? scrollHeader;
 
+  /// 이 탭에 담긴 줄 수(본품+추가상품)가 바뀔 때
+  final ValueChanged<int>? onDisplayedCount;
+
   const CartScreen({
     super.key,
     this.backToProductId,
     this.initialTabIndex = 0,
     this.embedInParent = false,
     this.scrollHeader,
+    this.onDisplayedCount,
   });
 
   @override
@@ -64,6 +68,27 @@ class _CartScreenState extends State<CartScreen> {
   Future<void>? _pendingQtyUpdate;
   final Map<int, int> _qtyEpochById = {};
   bool _deleteBusy = false;
+  int _lastDisplayedCount = -1;
+  bool _countNotifyScheduled = false;
+
+  @override
+  void setState(VoidCallback fn) {
+    super.setState(fn);
+    _scheduleDisplayedCount();
+  }
+
+  void _scheduleDisplayedCount() {
+    if (widget.onDisplayedCount == null || _countNotifyScheduled) return;
+    _countNotifyScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _countNotifyScheduled = false;
+      if (!mounted) return;
+      final count = _displayedCartItems.length;
+      if (count == _lastDisplayedCount) return;
+      _lastDisplayedCount = count;
+      widget.onDisplayedCount?.call(count);
+    });
+  }
 
   List<CartLineGroup> get _displayedGroups =>
       cartGroupsForTab(cartItems, prescriptionTab: false);

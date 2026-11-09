@@ -35,12 +35,16 @@ class CartScreen extends StatefulWidget {
   /// 통합 장바구니 탭 헤더 (스크롤과 함께 이동)
   final Widget? scrollHeader;
 
+  /// 이 탭에 담긴 줄 수(본품+추가상품)가 바뀔 때
+  final ValueChanged<int>? onDisplayedCount;
+
   const CartScreen({
     super.key,
     this.backToProductId,
     this.initialTabIndex = 0,
     this.embedInParent = false,
     this.scrollHeader,
+    this.onDisplayedCount,
   });
 
   @override
@@ -63,6 +67,27 @@ class _CartScreenState extends State<CartScreen> {
   Future<void>? _pendingQtyUpdate;
   final Map<int, int> _qtyEpochById = {};
   bool _deleteBusy = false;
+  int _lastDisplayedCount = -1;
+  bool _countNotifyScheduled = false;
+
+  @override
+  void setState(VoidCallback fn) {
+    super.setState(fn);
+    _scheduleDisplayedCount();
+  }
+
+  void _scheduleDisplayedCount() {
+    if (widget.onDisplayedCount == null || _countNotifyScheduled) return;
+    _countNotifyScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _countNotifyScheduled = false;
+      if (!mounted) return;
+      final count = _displayedCartItems.length;
+      if (count == _lastDisplayedCount) return;
+      _lastDisplayedCount = count;
+      widget.onDisplayedCount?.call(count);
+    });
+  }
 
   List<CartLineGroup> get _displayedGroups =>
       cartGroupsForTab(cartItems, prescriptionTab: true);
@@ -756,7 +781,6 @@ class _CartScreenState extends State<CartScreen> {
                                         ),
                                       SizedBox(height: healthDp(context, 18)),
                                       _buildCheckoutReserveHint(),
-                                      SizedBox(height: healthDp(context, 16)),
                                       _summaryRow(
                                         '총 구매 금액',
                                         '${PriceFormatter.format(selectedTotalPrice)}원',
@@ -1069,14 +1093,17 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   Widget _buildCheckoutReserveHint() {
-    return SizedBox(
+    return Container(
       width: double.infinity,
+      padding: EdgeInsets.only(bottom: healthDp(context, 20)),
       child: Column(
         mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        spacing: healthDp(context, 5),
         children: [
           Text(
             '※ 처방 예약하기 버튼을 통해 ',
-            textAlign: TextAlign.center,
             style: TextStyle(
               color: const Color(0xFF1A1A1E),
               fontSize: healthSp(context, 12),
@@ -1084,10 +1111,8 @@ class _CartScreenState extends State<CartScreen> {
               fontWeight: FontWeight.w500,
             ),
           ),
-          SizedBox(height: healthDp(context, 5)),
           Text(
             '결제를 완료하셔야 예약이 확정됩니다.',
-            textAlign: TextAlign.center,
             style: TextStyle(
               color: const Color(0xFFFF5A8D),
               fontSize: healthSp(context, 12),
@@ -1306,7 +1331,7 @@ class _CartScreenState extends State<CartScreen> {
                   child: Icon(
                     Icons.close,
                     size: healthDp(context, 16),
-                    color: const Color(0xFF898686),
+                    color: const Color(0x7FD2D2D2),
                   ),
                 ),
               ),
@@ -1384,37 +1409,26 @@ class _CartScreenState extends State<CartScreen> {
           SizedBox(height: healthDp(context, 12)),
           _buildReservationNotice(),
           SizedBox(height: healthDp(context, 20)),
-          Container(
-            width: double.infinity,
-            decoration: BoxDecoration(
-              border: Border(
-                top: BorderSide(
-                  width: healthDp(context, 0.5),
-                  color: const Color(0xFFD2D2D2),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              QuantityStepper(
+                quantity: item.ctQty,
+                onDecrease: item.ctQty > 1
+                    ? () => _updateQuantity(item.ctId, item.ctQty - 1)
+                    : null,
+                onIncrease: () => _updateQuantity(item.ctId, item.ctQty + 1),
+              ),
+              Text(
+                '${PriceFormatter.format(item.lineAmount)}원',
+                style: TextStyle(
+                  color: const Color(0xFF1A1A1A),
+                  fontSize: healthSp(context, 16),
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w500,
                 ),
               ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                QuantityStepper(
-                  quantity: item.ctQty,
-                  onDecrease: item.ctQty > 1
-                      ? () => _updateQuantity(item.ctId, item.ctQty - 1)
-                      : null,
-                  onIncrease: () => _updateQuantity(item.ctId, item.ctQty + 1),
-                ),
-                Text(
-                  '${PriceFormatter.format(item.lineAmount)}원',
-                  style: TextStyle(
-                    color: const Color(0xFF1A1A1A),
-                    fontSize: healthSp(context, 16),
-                    fontFamily: 'Gmarket Sans TTF',
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
+            ],
           ),
           if (footer != null) footer,
         ],

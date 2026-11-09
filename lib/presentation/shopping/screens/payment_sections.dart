@@ -72,6 +72,11 @@ extension _PaymentSections on _PaymentScreenState {
   Widget _buildCouponPointTotalSection(BuildContext context) {
     final showCoupon = !_couponPointDisabled && _applicableCoupons.isNotEmpty;
     final showPoint = !_couponPointDisabled && _myPoint > 0;
+    final selectedCouponNos = _selectedCoupons.map((coupon) => coupon.no).toSet();
+    final remainCouponCount = _applicableCoupons
+        .where((coupon) => !selectedCouponNos.contains(coupon.no))
+        .length;
+    final remainPoint = (_myPoint - _pointDiscount).clamp(0, _myPoint);
     final showCouponPoint = showCoupon || showPoint;
 
     // 쿠폰 카드 안쪽(14)과 맞춰 결제금액·수단은 약 41(≈35~)로 맞춤
@@ -119,7 +124,7 @@ extension _PaymentSections on _PaymentScreenState {
                             ),
                           ),
                           child: Text(
-                            '${_applicableCoupons.length}',
+                            '$remainCouponCount',
                             style: TextStyle(
                               color: _pink,
                               fontSize: healthSp(context, 10),
@@ -156,7 +161,7 @@ extension _PaymentSections on _PaymentScreenState {
                           ),
                         ),
                         Text(
-                          '보유 ${PointService.formatPoint(_myPoint)}점',
+                          '보유 ${PointService.formatPoint(remainPoint)}점',
                           style: TextStyle(
                             color: _muted,
                             fontSize: healthSp(context, 14),
