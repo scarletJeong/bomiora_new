@@ -1021,7 +1021,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
           itemFontSizeBase: 14,
           itemTextAlign: TextAlign.left,
           scrollWhenItemCountExceeds: 6,
-          maxVisibleItemsWhenScrolling: 5.5,
+          maxVisibleItemsWhenScrolling: 6.5,
           onChanged: (step) {
             setState(() {
               _selectedStep = step;
@@ -1053,7 +1053,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
           itemFontSizeBase: 14,
           itemTextAlign: TextAlign.left,
           scrollWhenItemCountExceeds: 6,
-          maxVisibleItemsWhenScrolling: 5.5,
+          maxVisibleItemsWhenScrolling: 6.5,
           onChanged: (key) {
             if (_selectedStep == null) return;
             setState(() => _selectedAxis2 = key);
@@ -1084,7 +1084,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
           itemFontSizeBase: 14,
           itemTextAlign: TextAlign.left,
           scrollWhenItemCountExceeds: 6,
-          maxVisibleItemsWhenScrolling: 5.5,
+          maxVisibleItemsWhenScrolling: 6.5,
           onChanged: (label) {
             final idx = flatLabels.indexOf(label);
             if (idx < 0 || idx >= flat.length) return;
@@ -1117,7 +1117,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
             itemFontSizeBase: 14,
             itemTextAlign: TextAlign.left,
             scrollWhenItemCountExceeds: 6,
-            maxVisibleItemsWhenScrolling: 5.5,
+            maxVisibleItemsWhenScrolling: 6.5,
             onChanged: (label) {
               ProductOption? found;
               for (final o in _dep1Options) {
@@ -1157,7 +1157,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
             itemFontSizeBase: 14,
             itemTextAlign: TextAlign.left,
             scrollWhenItemCountExceeds: 6,
-            maxVisibleItemsWhenScrolling: 5.5,
+            maxVisibleItemsWhenScrolling: 6.5,
             onChanged: (label) {
               ProductOption? found;
               for (final o in _dep2Options) {
