@@ -15,6 +15,7 @@ class QuantityStepper extends StatelessWidget {
     this.paddingBase = 4,
     this.gapBase = 10,
     this.numberWidthBase = 22,
+    this.iconBase = 10,
   });
 
   final int quantity;
@@ -32,6 +33,9 @@ class QuantityStepper extends StatelessWidget {
 
   /// 375 기준 숫자 칸 너비.
   final double numberWidthBase;
+
+  /// 375 기준 +/- 아이콘 크기.
+  final double iconBase;
 
   static const Color _ink = Color(0xFF1A1A1E);
   static const Color _border = Color(0x7FD2D2D2);
@@ -101,7 +105,7 @@ class QuantityStepper extends StatelessWidget {
           ),
           child: Icon(
             icon,
-            size: healthDp(context, 10),
+            size: healthDp(context, iconBase),
             color: onTap == null ? const Color(0xFFD2D2D2) : _pink,
           ),
         ),
