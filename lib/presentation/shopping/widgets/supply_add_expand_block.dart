@@ -28,7 +28,8 @@ class SupplyAddExpandBlock extends StatefulWidget {
     this.amountLabel,
     this.headerPadding,
     this.iconGapBase = 6,
-    this.chevronBase = 16,
+    this.chevronBase = 15,
+    this.chevronGapBase = 0,
   });
 
   final int count;
@@ -45,6 +46,9 @@ class SupplyAddExpandBlock extends StatefulWidget {
   final EdgeInsetsGeometry? headerPadding;
   final double iconGapBase;
   final double chevronBase;
+
+  /// 금액과 펼치기 버튼 사이. 375 기준.
+  final double chevronGapBase;
 
   @override
   State<SupplyAddExpandBlock> createState() => _SupplyAddExpandBlockState();
@@ -113,7 +117,7 @@ class _SupplyAddExpandBlockState extends State<SupplyAddExpandBlock> {
                         fontSize: healthSp(context, 12),
                         fontFamily: _kGmarketSans,
                         fontWeight: FontWeight.w500,
-                        height: 1.5,
+                        height: 1.0,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -153,6 +157,8 @@ class _SupplyAddExpandBlockState extends State<SupplyAddExpandBlock> {
               ),
               SizedBox(width: healthDp(context, 4)),
             ],
+            if (widget.chevronGapBase > 0)
+              SizedBox(width: healthDp(context, widget.chevronGapBase)),
             Icon(
               _expanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
               size: healthDp(context, widget.chevronBase),
