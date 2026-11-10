@@ -159,15 +159,22 @@ class CenteredEmptyState extends StatelessWidget {
   }
 
   Widget _buildContent(BuildContext context) {
-    final iconSize = healthDp(context, 70);
-    final spacing = gap ?? healthDp(context, 15);
+    final iconSize = healthDp(context, 100);
+    final spacing = gap ?? healthDp(context, 10);
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       mainAxisSize: MainAxisSize.min,
       children: [
         if (iconWidget != null) ...[
-          SizedBox(width: iconSize, height: iconSize, child: iconWidget),
+          SizedBox(
+            width: iconSize,
+            height: iconSize,
+            child: FittedBox(
+              fit: BoxFit.contain,
+              child: iconWidget,
+            ),
+          ),
           SizedBox(height: spacing),
         ] else if (icon != null) ...[
           Icon(
@@ -178,7 +185,7 @@ class CenteredEmptyState extends StatelessWidget {
           SizedBox(height: spacing),
         ],
         Padding(
-          padding: EdgeInsets.symmetric(horizontal: healthDp(context, 27)),
+          padding: EdgeInsets.symmetric(horizontal: healthDp(context, 20)),
           child: Text(
             message,
             textAlign: TextAlign.center,
