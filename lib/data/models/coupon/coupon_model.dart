@@ -218,12 +218,12 @@ class Coupon {
     }
   }
 
-  /// `최소 n원 이상`, `최대 m원까지` 조합 (둘 다 없으면 null)
+  /// `n원 이상 구매시 최대 m원 할인` (둘 다 없으면 null)
   String? get minMaxOrderDescription {
     final hasMin = minimum > 0;
     final hasMax = maximum > 0;
     if (hasMin && hasMax) {
-      return '최소 ${_commaWon(minimum)}원 이상, 최대 ${_commaWon(maximum)}원까지';
+      return '${_commaWon(minimum)}원 이상 구매시 최대 ${_commaWon(maximum)}원 할인';
     }
     if (hasMin) return '최소 ${_commaWon(minimum)}원 이상';
     if (hasMax) return '최대 ${_commaWon(maximum)}원까지';
