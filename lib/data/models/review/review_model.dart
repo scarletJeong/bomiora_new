@@ -31,6 +31,8 @@ class ReviewModel {
   final String isRecommend; // 'y' or 'n'
   final int? isGood; // 도움이 돼요 카운트
   final int? czDownload; // 도움쿠폰 다운로드 카운트
+  /// 이 회원이 해당 리뷰의 도움쿠폰을 이미 발급받았는지
+  final bool helpCouponIssued;
   
   // 리뷰 내용
   final String? isPositiveReviewText; // 좋았던 점
@@ -96,6 +98,7 @@ class ReviewModel {
     required this.isRecommend,
     this.isGood,
     this.czDownload,
+    this.helpCouponIssued = false,
     this.isPositiveReviewText,
     this.isNegativeReviewText,
     this.isMoreReviewText,
@@ -338,6 +341,7 @@ class ReviewModel {
       isRecommend: NodeValueParser.asString(normalized['isRecommend']) ?? 'y',
       isGood: NodeValueParser.asInt(normalized['isGood']) ?? 0,
       czDownload: NodeValueParser.asInt(normalized['czDownload']) ?? 0,
+      helpCouponIssued: normalized['helpCouponIssued'] == true,
       isPositiveReviewText: NodeValueParser.asString(normalized['isPositiveReviewText']),
       isNegativeReviewText: NodeValueParser.asString(normalized['isNegativeReviewText']),
       isMoreReviewText: NodeValueParser.asString(normalized['isMoreReviewText']),
@@ -374,6 +378,7 @@ class ReviewModel {
       'isRecommend': isRecommend,
       if (isGood != null) 'isGood': isGood,
       if (czDownload != null) 'czDownload': czDownload,
+      'helpCouponIssued': helpCouponIssued,
       if (isPositiveReviewText != null) 'isPositiveReviewText': isPositiveReviewText,
       if (isNegativeReviewText != null) 'isNegativeReviewText': isNegativeReviewText,
       'isMoreReviewText': isMoreReviewText ?? '',

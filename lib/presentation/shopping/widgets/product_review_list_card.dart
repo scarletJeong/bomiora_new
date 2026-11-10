@@ -796,11 +796,13 @@ class _CouponHelpSection extends StatefulWidget {
 class _CouponHelpSectionState extends State<_CouponHelpSection> {
   late int _downloadCount;
   bool _isDownloading = false;
+  late bool _issued;
 
   @override
   void initState() {
     super.initState();
     _downloadCount = widget.review.czDownload ?? 0;
+    _issued = widget.review.helpCouponIssued;
   }
 
   @override
@@ -808,6 +810,9 @@ class _CouponHelpSectionState extends State<_CouponHelpSection> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.review.isId != widget.review.isId) {
       _downloadCount = widget.review.czDownload ?? 0;
+      _issued = widget.review.helpCouponIssued;
+    } else if (widget.review.helpCouponIssued) {
+      _issued = true;
     }
   }
 
@@ -836,6 +841,7 @@ class _CouponHelpSectionState extends State<_CouponHelpSection> {
 
       if (result['success'] == true) {
         setState(() {
+          _issued = true;
           final next = result['downloadCount'];
           if (next is int) {
             _downloadCount = next;
@@ -852,6 +858,7 @@ class _CouponHelpSectionState extends State<_CouponHelpSection> {
         final message =
             result['message'] as String? ?? '쿠폰 발급에 실패했습니다.';
         if (message.contains('이미 다운로드')) {
+          setState(() => _issued = true);
           AppToastOverlay.showAlert(context, message);
         } else {
           AppToastOverlay.show(context, message);
@@ -950,30 +957,31 @@ class _CouponHelpSectionState extends State<_CouponHelpSection> {
               ],
             ),
           ),
-          Material(
-            color: Colors.white,
-            shape: const CircleBorder(),
-            child: InkWell(
-              onTap: _isDownloading ? null : _onDownloadTap,
-              customBorder: const CircleBorder(),
-              child: SizedBox(
-                width: healthDp(context, widget.compact ? 30 : 40),
-                height: healthDp(context, widget.compact ? 30 : 40),
-                child: _isDownloading
-                    ? Padding(
-                        padding: EdgeInsets.all(healthDp(context, 8)),
-                        child: const CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: _kPink,
+          if (!_issued)
+            Material(
+              color: Colors.white,
+              shape: const CircleBorder(),
+              child: InkWell(
+                onTap: _isDownloading ? null : _onDownloadTap,
+                customBorder: const CircleBorder(),
+                child: SizedBox(
+                  width: healthDp(context, widget.compact ? 30 : 40),
+                  height: healthDp(context, widget.compact ? 30 : 40),
+                  child: _isDownloading
+                      ? Padding(
+                          padding: EdgeInsets.all(healthDp(context, 8)),
+                          child: const CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: _kPink,
+                          ),
+                        )
+                      : SvgPicture.asset(
+                          AppAssets.myReviewCouponCardDownload,
+                          fit: BoxFit.contain,
                         ),
-                      )
-                    : SvgPicture.asset(
-                        AppAssets.myReviewCouponCardDownload,
-                        fit: BoxFit.contain,
-                      ),
+                ),
               ),
             ),
-          ),
         ],
       ),
     );

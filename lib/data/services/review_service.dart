@@ -4,6 +4,7 @@ import '../models/review/review_model.dart';
 import '../models/review/main_home_review_model.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_endpoints.dart';
+import 'auth_service.dart';
 
 // 리뷰 서비스 내부 디버그 콘솔 출력 비활성화
 
@@ -361,9 +362,14 @@ class ReviewService {
       final String withRvkind = (rvkind != null && rvkind.isNotEmpty)
           ? '$queryString&rvkind=$rvkind'
           : queryString;
+      final user = AuthService.currentUser ?? await AuthService.getUser();
+      final mbId = user?.id.trim() ?? '';
+      final withMember = mbId.isEmpty
+          ? withRvkind
+          : '$withRvkind&mbId=${Uri.encodeQueryComponent(mbId)}';
 
       final response = await ApiClient.get(
-        '/api/user/reviews/product/$itId?$withRvkind',
+        '/api/user/reviews/product/$itId?$withMember',
       );
 
       if (response.statusCode == 200) {
