@@ -671,7 +671,14 @@ class _CartScreenState extends State<CartScreen> {
             context,
             AppAssets.emptyCartIcon,
           ),
-          message: '장바구니에 담긴 상품이 없습니다 \n원하는 상품을 담아보세요',
+          message: '장바구니에 담긴 상품이 없습니다',
+          subtitle: '원하는 상품을 담아보세요',
+          subtitleStyle: const TextStyle(
+            color: Color(0xFFB0B0B0),
+            fontSize: 12,
+            fontFamily: 'Gmarket Sans TTF',
+            fontWeight: FontWeight.w300,
+          ),
           trailing: [
             CartEmptyShopButton(prescriptionTab: true),
           ],
