@@ -14,7 +14,7 @@ class QuantityStepper extends StatelessWidget {
     this.buttonBase = 28,
     this.paddingBase = 4,
     this.gapBase = 10,
-    this.numberWidthBase = 22,
+    this.numberWidthBase,
     this.iconBase = 10,
   });
 
@@ -31,8 +31,8 @@ class QuantityStepper extends StatelessWidget {
   /// 375 기준 버튼과 숫자 사이. 추가상품 줄은 0.
   final double gapBase;
 
-  /// 375 기준 숫자 칸 너비.
-  final double numberWidthBase;
+  /// 375 기준 숫자 칸 너비. 없으면 글자 너비만큼만 쓴다.
+  final double? numberWidthBase;
 
   /// 375 기준 +/- 아이콘 크기.
   final double iconBase;
@@ -56,25 +56,29 @@ class QuantityStepper extends StatelessWidget {
         spacing: healthDp(context, gapBase),
         children: [
           _roundButton(context, Icons.remove, onDecrease),
-          SizedBox(
-            width: healthDp(context, numberWidthBase),
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                '$quantity',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: _ink,
-                  fontSize: healthSp(context, 14),
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          ),
+          _quantityLabel(context),
           _roundButton(context, Icons.add, onIncrease),
         ],
       ),
+    );
+  }
+
+  Widget _quantityLabel(BuildContext context) {
+    final text = Text(
+      '$quantity',
+      textAlign: TextAlign.center,
+      style: TextStyle(
+        color: _ink,
+        fontSize: healthSp(context, 14),
+        fontFamily: 'Gmarket Sans TTF',
+        fontWeight: FontWeight.w500,
+      ),
+    );
+    final width = numberWidthBase;
+    if (width == null) return text;
+    return SizedBox(
+      width: healthDp(context, width),
+      child: FittedBox(fit: BoxFit.scaleDown, child: text),
     );
   }
 
