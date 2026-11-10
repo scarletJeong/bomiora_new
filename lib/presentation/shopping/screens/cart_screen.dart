@@ -813,13 +813,33 @@ class _CartScreenState extends State<CartScreen> {
                                         color: const Color(0x7F1A1A1A),
                                       ),
                                       SizedBox(height: healthDp(context, 10)),
-                                      _summaryRow(
-                                        '결제 예정 금액',
-                                        '${PriceFormatter.format(finalPrice)}원',
-                                        fontSize: healthSp(context, 16),
-                                        fontWeight: FontWeight.w500,
-                                        labelColor: const Color(0xFF1A1A1E),
-                                        valueColor: const Color(0xFFFF5A8D),
+                                      Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.center,
+                                        children: [
+                                          Text(
+                                            '결제 예정 금액',
+                                            style: TextStyle(
+                                              color: const Color(0xFF1A1A1E),
+                                              fontSize: healthSp(context, 20),
+                                              fontFamily: 'Gmarket Sans TTF',
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                          SizedBox(width: healthDp(context, 20)),
+                                          Expanded(
+                                            child: Text(
+                                              '${PriceFormatter.format(finalPrice)}원',
+                                              textAlign: TextAlign.end,
+                                              style: TextStyle(
+                                                color: const Color(0xFFFF5A8D),
+                                                fontSize: healthSp(context, 20),
+                                                fontFamily: 'Gmarket Sans TTF',
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ],
                                   ),
