@@ -1210,6 +1210,7 @@ class _CartScreenState extends State<CartScreen> {
               fontSize: healthSp(context, 12),
               fontFamily: 'Gmarket Sans TTF',
               fontWeight: FontWeight.w500,
+              height: 1.0,
             ),
           ),
           SizedBox(height: healthDp(context, 2)),
@@ -1220,6 +1221,7 @@ class _CartScreenState extends State<CartScreen> {
               fontSize: healthSp(context, 12),
               fontFamily: 'Gmarket Sans TTF',
               fontWeight: FontWeight.w500,
+              height: 1.0,
             ),
           ),
         ],
@@ -1294,9 +1296,9 @@ class _CartScreenState extends State<CartScreen> {
         : '한의약품';
     final option = item.displayOptionText.replaceAll(']_', '] ').trim();
 
+    final inset = healthDp(context, 14);
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.all(healthDp(context, 14)),
       clipBehavior: Clip.antiAlias,
       decoration: ShapeDecoration(
         color: Colors.white,
@@ -1309,6 +1311,17 @@ class _CartScreenState extends State<CartScreen> {
         ),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+              inset,
+              inset,
+              inset,
+              footer == null ? inset : 0,
+            ),
+            child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1440,7 +1453,14 @@ class _CartScreenState extends State<CartScreen> {
               ),
             ],
           ),
-          if (footer != null) footer,
+        ],
+            ),
+          ),
+          if (footer != null)
+            Padding(
+              padding: EdgeInsets.only(bottom: inset),
+              child: footer,
+            ),
         ],
       ),
     );
