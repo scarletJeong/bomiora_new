@@ -2093,14 +2093,14 @@ class _GeneralQuantityBottomSheetState extends State<GeneralQuantityBottomSheet>
                   children: [
                     Expanded(
                       child: Text(
-                        keepTextWordsTogether(widget.productName),
+                        widget.productName,
                         softWrap: true,
-                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: const Color(0xFF1A1A1E),
                           fontSize: healthSp(context, 16),
                           fontFamily: _kGmarketSans,
                           fontWeight: FontWeight.w500,
+                          letterSpacing: -0.5,
                         ),
                       ),
                     ),
