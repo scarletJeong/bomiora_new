@@ -810,7 +810,7 @@ class _CartScreenState extends State<CartScreen> {
                                       Divider(
                                         height: healthDp(context, 1),
                                         thickness: healthDp(context, 1),
-                                        color: const Color(0x7F1A1A1A),
+                                        color: const Color(0xFFD2D2D2),
                                       ),
                                       SizedBox(height: healthDp(context, 10)),
                                       Row(
@@ -1316,9 +1316,9 @@ class _CartScreenState extends State<CartScreen> {
         : '한의약품';
     final option = item.displayOptionText.replaceAll(']_', '] ').trim();
 
-    final inset = healthDp(context, 14);
     return Container(
       width: double.infinity,
+      padding: EdgeInsets.all(healthDp(context, 14)),
       clipBehavior: Clip.antiAlias,
       decoration: ShapeDecoration(
         color: Colors.white,
@@ -1331,17 +1331,6 @@ class _CartScreenState extends State<CartScreen> {
         ),
       ),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: EdgeInsets.fromLTRB(
-              inset,
-              inset,
-              inset,
-              footer == null ? inset : 0,
-            ),
-            child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1473,14 +1462,7 @@ class _CartScreenState extends State<CartScreen> {
               ),
             ],
           ),
-        ],
-            ),
-          ),
-          if (footer != null)
-            Padding(
-              padding: EdgeInsets.only(bottom: inset),
-              child: footer,
-            ),
+          if (footer != null) footer,
         ],
       ),
     );
