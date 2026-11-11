@@ -17,7 +17,8 @@ extension _PaymentCoupon on _PaymentScreenState {
   }
 
   void _syncCouponLists() {
-    _applicableCoupons = _loadedCoupons.where(_isCouponApplicable).toList();
+    _applicableCoupons = _loadedCoupons.where(_isCouponApplicable).toList()
+      ..sort((a, b) => a.no.compareTo(b.no));
     _selectedCoupons =
         _selectedCoupons.where(_isCouponApplicable).toList();
     // 배송비 변동 등으로 최종액이 3천원 미만이면 쿠폰을 뒤에서부터 해제
