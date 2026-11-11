@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../../core/logging/failure_log.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_endpoints.dart';
 import '../../core/utils/kcp_pay_session_store.dart';
@@ -22,10 +23,24 @@ class KcpPayResume {
 
     final data = await _fetchResult(token);
     if (!context.mounted) return;
-    if (data == null) return;
+    if (data == null) {
+      await _awaitPendingResult(context, token);
+      return;
+    }
 
     if (_isGone(data)) {
       clearKcpPayToken();
+      if (!context.mounted) return;
+      await AppAlertDialog.show(
+        context,
+        title: '',
+        message: '결제 시간이 만료되었습니다',
+      );
+      if (!context.mounted) return;
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        '/home',
+        (route) => false,
+      );
       return;
     }
 
@@ -50,7 +65,13 @@ class KcpPayResume {
       if (decoded is Map) {
         return Map<String, dynamic>.from(decoded);
       }
-    } catch (_) {}
+    } catch (e) {
+      await FailureLog.record(
+        code: 'payment.result',
+        mbId: '',
+        reason: e.toString(),
+      );
+    }
     return null;
   }
 
@@ -75,15 +96,32 @@ class KcpPayResume {
       }
     }
 
-    if (status == 'failed' || status == 'expired') {
-      final prescriptionTab = readKcpPayCartPrescription();
+    if (status == 'expired') {
       clearKcpPayToken();
-      if (status == 'failed' && context.mounted) {
-        final message = (data['message'] ?? '').toString().trim();
+      if (context.mounted) {
         await AppAlertDialog.show(
           context,
           title: '',
-          message: message.isEmpty ? '결제가 완료되지 않았습니다.' : message,
+          message: '결제 시간이 만료되었습니다',
+        );
+      }
+      if (context.mounted) {
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          '/home',
+          (route) => false,
+        );
+      }
+      return true;
+    }
+
+    if (status == 'failed') {
+      final prescriptionTab = readKcpPayCartPrescription();
+      clearKcpPayToken();
+      if (context.mounted) {
+        await AppAlertDialog.show(
+          context,
+          title: '',
+          message: '결제가 완료되지 않았습니다.',
         );
       }
       if (context.mounted && ModalRoute.of(context)?.isCurrent == true) {
@@ -114,6 +152,17 @@ class KcpPayResume {
       if (data == null) continue;
       if (_isGone(data)) {
         clearKcpPayToken();
+        if (!context.mounted) return;
+        await AppAlertDialog.show(
+          context,
+          title: '',
+          message: '결제 시간이 만료되었습니다',
+        );
+        if (!context.mounted) return;
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          '/home',
+          (route) => false,
+        );
         return;
       }
       if (await _handleTerminalResult(context, data)) return;
