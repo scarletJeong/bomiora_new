@@ -887,31 +887,31 @@ class _CartScreenState extends State<CartScreen> {
 
     return Container(
       padding: EdgeInsets.fromLTRB(
-        healthDp(context, 20),
         healthDp(context, 10),
-        healthDp(context, 20),
-        healthDp(context, 10) + bottomInset.clamp(0, healthDp(context, 10)),
+        healthDp(context, 10),
+        healthDp(context, 10),
+        healthDp(context, 10) + bottomInset,
       ),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: healthDp(context, 8),
-            offset: Offset(0, -healthDp(context, 2)),
+            color: Color(0x19000000),
+            blurRadius: 4,
+            offset: Offset(0, -1),
           ),
         ],
       ),
       child: SizedBox(
         width: double.infinity,
-        height: healthDp(context, 40),
+        height: healthDp(context, 45),
         child: ElevatedButton(
           onPressed: selected.isEmpty || _checkoutOpening
               ? null
               : _openPaymentScreen,
           style: ElevatedButton.styleFrom(
-            minimumSize: Size(double.infinity, healthDp(context, 40)),
-            maximumSize: Size(double.infinity, healthDp(context, 40)),
+            minimumSize: Size(double.infinity, healthDp(context, 45)),
+            maximumSize: Size(double.infinity, healthDp(context, 45)),
             padding: EdgeInsets.zero,
             backgroundColor: const Color(0xFFFF5A8D),
             foregroundColor: Colors.white,

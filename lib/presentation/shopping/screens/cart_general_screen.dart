@@ -910,10 +910,10 @@ class _CartScreenState extends State<CartScreen> {
 
     return Container(
       padding: EdgeInsets.fromLTRB(
-        healthDp(context, 20),
-        healthDp(context, 20),
-        healthDp(context, 20),
-        healthDp(context, 20) + bottomInset,
+        healthDp(context, 10),
+        healthDp(context, 10),
+        healthDp(context, 10),
+        healthDp(context, 10) + bottomInset,
       ),
       decoration: const BoxDecoration(
         color: Colors.white,
