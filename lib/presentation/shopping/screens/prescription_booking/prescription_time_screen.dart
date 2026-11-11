@@ -676,20 +676,20 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
                       ),
                       SizedBox(height: healthDp(ctx, 10)),
                       SizedBox(
-                        width: healthDp(ctx, 260),
-                        child: Text(
-                          '연락처를 잘못 입력하시면\n전화 처방이 어려울 수 있으며,\n이로 인한 책임은 고객님께 있음을 안내드립니다.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: const Color(0xFF898686),
-                            fontSize: healthSp(ctx, 10),
-                            fontFamily: 'Gmarket Sans TTF',
-                            fontWeight: FontWeight.w300,
-                            letterSpacing: -0.40,
-                            height: 1,
+                          width: 260,
+                          child: Text(
+                              '연락처를 잘못 입력하시면\n전화 처방이 어려울 수 있으며,\n이로 인한 책임은 고객님께 있음을 안내드립니다.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                  color: const Color(0xFFFF5A8D),
+                                  fontSize: 12,
+                                  fontFamily: 'Gmarket Sans TTF',
+                                  fontWeight: FontWeight.w500,
+                                  letterSpacing: -0.48,
+                                  height: 1.2,
+                              ),
                           ),
-                        ),
-                      ),
+                      )
                     ],
                   ),
                 ),
