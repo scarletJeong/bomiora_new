@@ -472,10 +472,13 @@ class CartItem {
   }
 
   static int _parsePointUsageRate(dynamic value, String ctKind) {
-    final parsed = _parseInt(value);
-    if (parsed > 0) return parsed > 100 ? 100 : parsed;
-    if (_normalizeKind(ctKind) == 'prescription') return 100;
-    return 10;
+    if (value == null || (value is String && value.trim().isEmpty)) {
+      return _normalizeKind(ctKind) == 'prescription' ? 100 : 10;
+    }
+    final number = value is num ? value.toDouble() : double.tryParse('$value');
+    if (number == null || number <= 0) return 0;
+    if (number > 100) return 100;
+    return number.floor();
   }
 
   static String? _composeReservationTimeRange(String? start, String? end) {
