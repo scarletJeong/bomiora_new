@@ -225,38 +225,26 @@ extension _PaymentCoupon on _PaymentScreenState {
 
 
   bool _isCouponMethodDisabled(int method) {
-    if (method == 3) {
-      return _selectedCoupons.any((coupon) => coupon.method == 3);
-    }
-    final others = _selectedCoupons.where((coupon) => coupon.method != 3);
+    if (_selectedCoupons.isEmpty) return false;
     if (method == 1) {
-      return others.any((coupon) => coupon.method != 1);
+      if (_selectedCoupons.any((coupon) => coupon.method != 1)) return true;
+      return _selectedCoupons.where((coupon) => coupon.method == 1).length >= 2;
     }
-    if (others.any((coupon) => coupon.method == 1)) return true;
-    return others.any((coupon) => coupon.method != method);
+    return true;
   }
 
   List<Coupon> _selectionAfterPicking(Coupon picked) {
     final next = List<Coupon>.from(_selectedCoupons);
     final method = picked.method;
-    if (method == 3) {
-      next.removeWhere((coupon) => coupon.method == 3);
-      next.add(picked);
-    } else if (method == 1) {
-      next.removeWhere(
-        (coupon) => coupon.method != 1 && coupon.method != 3,
-      );
+    if (method == 1) {
+      next.removeWhere((coupon) => coupon.method != 1);
       if (next.where((coupon) => coupon.method == 1).length < 2) {
         next.add(picked);
       }
     } else {
-      next.removeWhere(
-        (coupon) =>
-            coupon.method != 3 &&
-            (coupon.method == 1 || coupon.method != method),
-      );
-      next.removeWhere((coupon) => coupon.method == method);
-      next.add(picked);
+      next
+        ..clear()
+        ..add(picked);
     }
     return next;
   }
