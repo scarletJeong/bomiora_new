@@ -6,7 +6,7 @@ import '../../shopping/kcp_pay_resume.dart';
 import '../widgets/app_toast_overlay.dart';
 import 'splash_screen.dart';
 
-/// 웹에서 결제 도중 새로고침했을 때, 저장된 결제 결과를 확인하는 스플래시.
+/// 결제 도중 새로고침하거나 앱을 다시 열었을 때, 저장된 결제 결과를 확인하는 스플래시.
 /// 뒤로가기로 이 화면이 다시 열리면 메인으로 보낸다.
 class KcpPayResumeSplash extends StatefulWidget {
   const KcpPayResumeSplash({super.key});
@@ -46,11 +46,12 @@ class _KcpPayResumeSplashState extends State<KcpPayResumeSplash>
     _goHomeAsInvalidPath();
   }
 
-  void _goHomeAsInvalidPath() {
+  Future<void> _goHomeAsInvalidPath() async {
     if (_left || !mounted) return;
     if (ModalRoute.of(context)?.isCurrent != true) return;
     _left = true;
-    clearKcpPayToken();
+    await clearKcpPayToken();
+    if (!mounted) return;
     AppToastOverlay.showAlert(context, '잘못된 경로입니다');
     Navigator.of(context).pushNamedAndRemoveUntil(
       '/home',

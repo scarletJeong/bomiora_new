@@ -209,14 +209,11 @@ class _KcpPayWebViewScreenState extends State<KcpPayWebViewScreen> {
       '${ApiClient.baseUrl}/api/kcp-pay/launch/${Uri.encodeComponent(_token)}';
 
   void _returnUserCancelled() {
-    if (_completed || !mounted) return;
-    _completed = true;
-    _pollingTimer?.cancel();
-    Navigator.pop(context, {
-      'success': false,
-      'error_code': 'USER_CANCELLED',
-      'message': '사용자가 결제를 취소했습니다. 결제하기 버튼으로 다시 시도해 주세요.',
-    });
+    _finish(
+      success: false,
+      errorCode: 'USER_CANCELLED',
+      message: '사용자가 결제를 취소했습니다. 결제하기 버튼으로 다시 시도해 주세요.',
+    );
   }
 
   @override
@@ -224,7 +221,6 @@ class _KcpPayWebViewScreenState extends State<KcpPayWebViewScreen> {
     super.initState();
     _html = widget.html.trim();
     _token = widget.token.trim();
-    if (_token.isNotEmpty) rememberKcpPayToken(_token);
     if (kIsWeb) {
       _cancelWebListener = listenKcpPayCallback(_onBridgePayload);
     }
@@ -233,21 +229,31 @@ class _KcpPayWebViewScreenState extends State<KcpPayWebViewScreen> {
       _bootstrapping = true;
       _runBootstrap(boot);
     } else if (_token.isNotEmpty) {
-      _startPolling();
+      _persistAndPoll();
     }
+  }
+
+  Future<void> _persistAndPoll() async {
+    await rememberKcpPayToken(_token);
+    if (!mounted || _completed) return;
+    _startPolling();
   }
 
   Future<void> _runBootstrap(Future<KcpPaySession> boot) async {
     try {
       final session = await boot;
       if (!mounted || _completed) return;
+      final token = session.token.trim();
+      if (token.isNotEmpty) {
+        await rememberKcpPayToken(token);
+      }
+      if (!mounted || _completed) return;
       setState(() {
         _html = session.html.trim();
-        _token = session.token.trim();
+        _token = token;
         _bootstrapping = false;
       });
       if (_token.isNotEmpty) {
-        rememberKcpPayToken(_token);
         _startPolling();
       }
     } catch (e) {
@@ -296,16 +302,19 @@ class _KcpPayWebViewScreenState extends State<KcpPayWebViewScreen> {
     );
   }
 
-  void _finish({
+  Future<void> _finish({
     required bool success,
     String errorCode = '',
     String message = '',
     String orderId = '',
-  }) {
+  }) async {
     if (_completed || !mounted) return;
     _completed = true;
     _pollingTimer?.cancel();
-    if (!success) clearKcpPayToken();
+    if (!success) {
+      await clearKcpPayToken();
+    }
+    if (!mounted) return;
     Navigator.pop(context, {
       'success': success,
       'error_code': errorCode,

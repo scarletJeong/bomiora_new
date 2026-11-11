@@ -69,7 +69,7 @@ Route<dynamic>? Function(RouteSettings settings)? _appOnGenerateRoute;
 
 Widget _rootEntry() {
   if (kDevForceLoginScreenFirst) return const LoginScreen();
-  if (kIsWeb && (readKcpPayToken() ?? '').isNotEmpty) {
+  if ((readKcpPayToken() ?? '').isNotEmpty) {
     return const KcpPayResumeSplash();
   }
   return const SplashScreen();
@@ -201,6 +201,7 @@ void main() async {
   await KakaoAuthService.initialize();
   await NaverAuthService.initialize();
   await InfCodeTracker.init();
+  await loadKcpPaySession();
 
   runApp(const BomioraApp());
 }

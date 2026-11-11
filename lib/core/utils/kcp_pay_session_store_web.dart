@@ -3,13 +3,15 @@ import 'dart:html' as html;
 const String _kcpPayTokenKey = 'bomiora_kcp_pay_token';
 const String _kcpPayCartKey = 'bomiora_kcp_pay_cart';
 
-void rememberKcpPayToken(String token) {
+Future<void> loadKcpPaySession() async {}
+
+Future<void> rememberKcpPayToken(String token) async {
   final value = token.trim();
   if (value.isEmpty) return;
   html.window.sessionStorage[_kcpPayTokenKey] = value;
 }
 
-void rememberKcpPayCart({required bool prescriptionTab}) {
+Future<void> rememberKcpPayCart({required bool prescriptionTab}) async {
   html.window.sessionStorage[_kcpPayCartKey] = prescriptionTab ? 'rx' : 'general';
 }
 
@@ -23,7 +25,7 @@ bool readKcpPayCartPrescription() {
   return html.window.sessionStorage[_kcpPayCartKey] == 'rx';
 }
 
-void clearKcpPayToken() {
+Future<void> clearKcpPayToken() async {
   html.window.sessionStorage.remove(_kcpPayTokenKey);
   html.window.sessionStorage.remove(_kcpPayCartKey);
 }

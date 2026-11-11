@@ -152,9 +152,7 @@ extension _PaymentCheckout on _PaymentScreenState {
       Future<KcpPaySession> bootstrap() async {
         await _maybeSaveDefaultAddress(user.id);
         final cartReturnUrl = kIsWeb ? await _paymentCartReturnUrl() : '';
-        if (kIsWeb) {
-          rememberKcpPayCart(prescriptionTab: _paymentIsPrescription);
-        }
+        await rememberKcpPayCart(prescriptionTab: _paymentIsPrescription);
         final response = await ApiClient.post(
           ApiEndpoints.kcpPayRequest,
           {
@@ -265,6 +263,8 @@ extension _PaymentCheckout on _PaymentScreenState {
 
       if (!mounted) return;
       if (result == null) {
+        await clearKcpPayToken();
+        if (!mounted) return;
         AppToastOverlay.showAlert(context, '결제가 완료되지 않았습니다.');
         return;
       }
@@ -278,7 +278,7 @@ extension _PaymentCheckout on _PaymentScreenState {
       final token = (resultMap['token'] ?? '').toString().trim();
 
       if (success) {
-        clearKcpPayToken();
+        await clearKcpPayToken();
         // 가상계좌 등에서 order_id 누락 시 결과 API로 한 번 더 보정
         if (orderId.isEmpty && token.isNotEmpty) {
           try {
@@ -342,10 +342,13 @@ extension _PaymentCheckout on _PaymentScreenState {
           return;
         }
         if (code == '3001' || code == 'USER_CANCELLED') {
+          await clearKcpPayToken();
+          if (!mounted) return;
           AppToastOverlay.show(context, '결제가 완료되지 않았습니다.');
           return;
         }
-        clearKcpPayToken();
+        await clearKcpPayToken();
+        if (!mounted) return;
 
         AppToastOverlay.show(
           context,

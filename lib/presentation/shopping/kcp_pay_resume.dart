@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/logging/failure_log.dart';
@@ -10,14 +9,13 @@ import '../../core/utils/kcp_pay_session_store.dart';
 import '../common/widgets/app_alert_dialog.dart';
 import 'utils/cart_navigation.dart';
 
-/// 새로고침으로 결제 화면이 사라져도, 진행 중이던 결제 토큰으로 결과를 이어서 확인한다.
-/// WebView는 다시 열지 않고 결과 API만 폴링한다.
+/// 새로고침이나 앱을 다시 열어도, 진행 중이던 결제 토큰으로 결과를 이어서 확인한다.
+/// 결제창은 다시 열지 않고 결과 API만 폴링한다.
 class KcpPayResume {
   static const _pollInterval = Duration(milliseconds: 800);
   static const _pollTimeout = Duration(seconds: 90);
 
   static Future<void> tryResume(BuildContext context) async {
-    if (!kIsWeb) return;
     final token = readKcpPayToken();
     if (token == null || token.isEmpty || !context.mounted) return;
 
@@ -29,7 +27,7 @@ class KcpPayResume {
     }
 
     if (_isGone(data)) {
-      clearKcpPayToken();
+      await clearKcpPayToken();
       if (!context.mounted) return;
       await AppAlertDialog.show(
         context,
@@ -45,6 +43,7 @@ class KcpPayResume {
     }
 
     if (await _handleTerminalResult(context, data)) return;
+    if (!context.mounted) return;
 
     final status = (data['status'] ?? '').toString();
     if (status == 'pending') {
@@ -82,7 +81,7 @@ class KcpPayResume {
   ) async {
     final status = (data['status'] ?? '').toString();
     if (data['success'] == true || status == 'success') {
-      _openComplete(context, (data['order_id'] ?? '').toString());
+      await _openComplete(context, (data['order_id'] ?? '').toString());
       return true;
     }
 
@@ -91,13 +90,13 @@ class KcpPayResume {
       final resCd = (data['res_cd'] ?? '').toString().trim();
       final orderId = (data['order_id'] ?? '').toString().trim();
       if (resCd == '0000' && orderId.isNotEmpty) {
-        _openComplete(context, orderId);
+        await _openComplete(context, orderId);
         return true;
       }
     }
 
     if (status == 'expired') {
-      clearKcpPayToken();
+      await clearKcpPayToken();
       if (context.mounted) {
         await AppAlertDialog.show(
           context,
@@ -116,7 +115,7 @@ class KcpPayResume {
 
     if (status == 'failed') {
       final prescriptionTab = readKcpPayCartPrescription();
-      clearKcpPayToken();
+      await clearKcpPayToken();
       if (context.mounted) {
         await AppAlertDialog.show(
           context,
@@ -151,7 +150,7 @@ class KcpPayResume {
       if (!context.mounted) return;
       if (data == null) continue;
       if (_isGone(data)) {
-        clearKcpPayToken();
+        await clearKcpPayToken();
         if (!context.mounted) return;
         await AppAlertDialog.show(
           context,
@@ -182,8 +181,9 @@ class KcpPayResume {
     );
   }
 
-  static void _openComplete(BuildContext context, String orderId) {
-    clearKcpPayToken();
+  static Future<void> _openComplete(BuildContext context, String orderId) async {
+    await clearKcpPayToken();
+    if (!context.mounted) return;
     Navigator.of(context).pushNamedAndRemoveUntil(
       '/payment-complete',
       (route) => route.isFirst,
