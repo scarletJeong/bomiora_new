@@ -14,6 +14,7 @@ class ContentPopup extends StatelessWidget {
     this.subtitleFontSize = 16,
     this.bodyFontSize = 14,
     this.confirmFontSize = 16,
+    this.heightBase = 607,
   });
 
   final String title;
@@ -24,6 +25,7 @@ class ContentPopup extends StatelessWidget {
   final double subtitleFontSize;
   final double bodyFontSize;
   final double confirmFontSize;
+  final double heightBase;
 
   static const Color _kInk = Color(0xFF1A1A1E);
   static const Color _kPink = Color(0xFFFF5A8D);
@@ -40,6 +42,7 @@ class ContentPopup extends StatelessWidget {
     double subtitleFontSize = 16,
     double bodyFontSize = 14,
     double confirmFontSize = 16,
+    double heightBase = 607,
   }) async {
     final result = await showDialog<bool>(
       context: context,
@@ -53,6 +56,7 @@ class ContentPopup extends StatelessWidget {
         subtitleFontSize: subtitleFontSize,
         bodyFontSize: bodyFontSize,
         confirmFontSize: confirmFontSize,
+        heightBase: heightBase,
       ),
     );
     return result == true;
@@ -71,7 +75,7 @@ class ContentPopup extends StatelessWidget {
       ),
       child: Container(
         width: healthDp(context, 355),
-        height: healthDp(context, 607),
+        height: healthDp(context, heightBase),
         padding: EdgeInsets.symmetric(
           horizontal: healthDp(context, 20),
           vertical: healthDp(context, 30),
