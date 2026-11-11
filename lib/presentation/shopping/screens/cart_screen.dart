@@ -842,57 +842,82 @@ class _CartScreenState extends State<CartScreen> {
                                         ),
                                       SizedBox(height: healthDp(context, 18)),
                                       _buildCheckoutReserveHint(),
-                                      _summaryRow(
-                                        '총 구매 금액',
-                                        '${PriceFormatter.format(selectedTotalPrice)}원',
-                                        fontSize: healthSp(context, 14),
-                                        fontWeight: FontWeight.w500,
-                                        labelColor: const Color(0xFF898686),
-                                        valueColor: const Color(0xFF1A1A1E),
-                                      ),
-                                      SizedBox(height: healthDp(context, 10)),
-                                      _summaryRow(
-                                        '배송비',
-                                        '${PriceFormatter.format(selectedShippingCost)}원',
-                                        fontSize: healthSp(context, 14),
-                                        fontWeight: FontWeight.w500,
-                                        labelColor: const Color(0xFF898686),
-                                        valueColor: const Color(0xFF1A1A1E),
-                                      ),
-                                      SizedBox(height: healthDp(context, 10)),
-                                      Divider(
-                                        height: healthDp(context, 1),
-                                        thickness: healthDp(context, 1),
-                                        color: const Color(0xFFD2D2D2),
-                                      ),
-                                      SizedBox(height: healthDp(context, 10)),
-                                      Row(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.center,
-                                        children: [
-                                          Text(
-                                            '결제 예정 금액',
-                                            style: TextStyle(
-                                              color: const Color(0xFF1A1A1E),
-                                              fontSize: healthSp(context, 20),
-                                              fontFamily: 'Gmarket Sans TTF',
+                                      Padding(
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: healthDp(context, 10),
+                                        ),
+                                        child: Column(
+                                          children: [
+                                            _summaryRow(
+                                              '총 구매 금액',
+                                              '${PriceFormatter.format(selectedTotalPrice)}원',
+                                              fontSize: healthSp(context, 14),
                                               fontWeight: FontWeight.w500,
+                                              labelColor:
+                                                  const Color(0xFF898686),
+                                              valueColor:
+                                                  const Color(0xFF1A1A1E),
                                             ),
-                                          ),
-                                          SizedBox(width: healthDp(context, 20)),
-                                          Expanded(
-                                            child: Text(
-                                              '${PriceFormatter.format(finalPrice)}원',
-                                              textAlign: TextAlign.end,
-                                              style: TextStyle(
-                                                color: const Color(0xFFFF5A8D),
-                                                fontSize: healthSp(context, 20),
-                                                fontFamily: 'Gmarket Sans TTF',
-                                                fontWeight: FontWeight.w700,
-                                              ),
+                                            SizedBox(
+                                                height: healthDp(context, 10)),
+                                            _summaryRow(
+                                              '배송비',
+                                              '${PriceFormatter.format(selectedShippingCost)}원',
+                                              fontSize: healthSp(context, 14),
+                                              fontWeight: FontWeight.w500,
+                                              labelColor:
+                                                  const Color(0xFF898686),
+                                              valueColor:
+                                                  const Color(0xFF1A1A1E),
                                             ),
-                                          ),
-                                        ],
+                                            SizedBox(
+                                                height: healthDp(context, 10)),
+                                            Divider(
+                                              height: healthDp(context, 1),
+                                              thickness: healthDp(context, 1),
+                                              color: const Color(0xFFD2D2D2),
+                                            ),
+                                            SizedBox(
+                                                height: healthDp(context, 10)),
+                                            Row(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.center,
+                                              children: [
+                                                Text(
+                                                  '결제 예정 금액',
+                                                  style: TextStyle(
+                                                    color: const Color(
+                                                        0xFF1A1A1E),
+                                                    fontSize:
+                                                        healthSp(context, 20),
+                                                    fontFamily:
+                                                        'Gmarket Sans TTF',
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                                SizedBox(
+                                                    width: healthDp(
+                                                        context, 20)),
+                                                Expanded(
+                                                  child: Text(
+                                                    '${PriceFormatter.format(finalPrice)}원',
+                                                    textAlign: TextAlign.end,
+                                                    style: TextStyle(
+                                                      color: const Color(
+                                                          0xFFFF5A8D),
+                                                      fontSize: healthSp(
+                                                          context, 20),
+                                                      fontFamily:
+                                                          'Gmarket Sans TTF',
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -1293,7 +1318,7 @@ class _CartScreenState extends State<CartScreen> {
               fontSize: healthSp(context, 12),
               fontFamily: 'Gmarket Sans TTF',
               fontWeight: FontWeight.w500,
-              height: 1.0,
+              height: 1.2,
             ),
           ),
           SizedBox(height: healthDp(context, 2)),
@@ -1304,7 +1329,7 @@ class _CartScreenState extends State<CartScreen> {
               fontSize: healthSp(context, 12),
               fontFamily: 'Gmarket Sans TTF',
               fontWeight: FontWeight.w500,
-              height: 1.0,
+              height: 1.2,
             ),
           ),
         ],
