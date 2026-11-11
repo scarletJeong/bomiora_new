@@ -4,6 +4,7 @@ import '../../../../core/navigation/app_action_gate.dart';
 import '../../../../core/utils/image_url_helper.dart';
 import '../../../../core/utils/price_formatter.dart';
 import '../../../../data/models/delivery/delivery_model.dart';
+import '../../../common/widgets/app_network_image.dart';
 import '../../../common/widgets/app_toast_overlay.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
@@ -290,9 +291,14 @@ class _DeliverySelectListState extends State<DeliverySelectList> {
                       color: _kMuted,
                       size: healthDp(context, 28),
                     )
-                  : Image.network(
-                      url,
+                  : AppNetworkImage(
+                      url: url,
+                      width: thumbW,
+                      height: thumbH,
+                      decodeWidthLogical: thumbW,
+                      decodeHeightLogical: thumbH,
                       fit: BoxFit.cover,
+                      preferHtmlElementOnWeb: false,
                       errorBuilder: (_, __, ___) => Icon(
                         Icons.image_outlined,
                         color: _kMuted,

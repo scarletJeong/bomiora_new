@@ -4,6 +4,7 @@ import '../../../../../core/navigation/app_action_gate.dart';
 import '../../../../../core/utils/image_url_helper.dart';
 import '../../../../../core/utils/price_formatter.dart';
 import '../../../../../data/models/delivery/delivery_model.dart';
+import '../../../../common/widgets/app_network_image.dart';
 import '../../../../health/health_common/health_responsive_scale.dart';
 import '../order_item_subject_groups.dart';
 import 'delivery_detail_products_section.dart';
@@ -169,11 +170,14 @@ class DeliveryDetailGeneralProductsSection extends StatelessWidget {
                   color: DeliveryDetailSectionStyle.muted,
                   size: healthDp(context, 28),
                 )
-              : Image.network(
-                  normalizedUrl,
+              : AppNetworkImage(
+                  url: normalizedUrl,
                   width: thumb,
                   height: thumb,
+                  decodeWidthLogical: thumb,
+                  decodeHeightLogical: thumb,
                   fit: BoxFit.cover,
+                  preferHtmlElementOnWeb: false,
                   errorBuilder: (_, __, ___) => Icon(
                     Icons.image,
                     color: DeliveryDetailSectionStyle.muted,
