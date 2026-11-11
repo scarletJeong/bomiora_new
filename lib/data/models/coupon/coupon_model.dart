@@ -228,15 +228,23 @@ class Coupon {
     }
   }
 
-  /// `n원 이상 구매시 최대 m원 할인` (둘 다 없으면 null)
+  /// 정률(cp_type 1): `n원 이상 구매시 최대 m원 할인`.
+  /// 정액: `n원 이상 구매시 p원 할인`.
   String? get minMaxOrderDescription {
     final hasMin = minimum > 0;
-    final hasMax = maximum > 0;
-    if (hasMin && hasMax) {
-      return '${_commaWon(minimum)}원 이상 구매시 최대 ${_commaWon(maximum)}원 할인';
+    if (type == 1) {
+      final hasMax = maximum > 0;
+      if (hasMin && hasMax) {
+        return '${_commaWon(minimum)}원 이상 구매시 최대 ${_commaWon(maximum)}원 할인';
+      }
+      if (hasMin) return '${_commaWon(minimum)}원 이상 구매시';
+      if (hasMax) return '최대 ${_commaWon(maximum)}원 할인';
+      return null;
     }
-    if (hasMin) return '최소 ${_commaWon(minimum)}원 이상';
-    if (hasMax) return '최대 ${_commaWon(maximum)}원까지';
+    if (hasMin && price > 0) {
+      return '${_commaWon(minimum)}원 이상 구매시 ${_commaWon(price)}원 할인';
+    }
+    if (hasMin) return '${_commaWon(minimum)}원 이상 구매시';
     return null;
   }
 }
