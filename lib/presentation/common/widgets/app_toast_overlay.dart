@@ -48,6 +48,23 @@ class AppToastOverlay {
     );
   }
 
+  /// 장바구니 삭제 토스트. [onUndo]가 있으면 다시담기를 보여 준다.
+  static void showCartDeleted(
+    BuildContext context,
+    String message, {
+    VoidCallback? onUndo,
+    Duration duration = const Duration(seconds: 2),
+  }) {
+    _present(
+      context,
+      message,
+      variant: _AppToastVariant.success,
+      duration: duration,
+      onUndo: onUndo,
+      widthBase: 337,
+    );
+  }
+
   /// 화면을 닫은 뒤에도 띄울 수 있는 알림.
   static void showAlertFromNavigator(
     String message, {
@@ -63,12 +80,15 @@ class AppToastOverlay {
     String message, {
     required _AppToastVariant variant,
     required Duration duration,
+    VoidCallback? onUndo,
+    double widthBase = 301,
   }) {
     final overlay = Overlay.maybeOf(context, rootOverlay: true);
     if (overlay == null) return;
 
     hide();
 
+    final undo = onUndo;
     late final OverlayEntry entry;
     entry = OverlayEntry(
       builder: (ctx) {
@@ -76,7 +96,7 @@ class AppToastOverlay {
         final contentW = MobileAppLayoutWrapper.contentWidthOf(ctx);
         final panelLeft = (screenW - contentW) / 2;
         final scale = healthTextScaleByWidth(contentW);
-        final toastW = 301 * scale;
+        final toastW = widthBase * scale;
         final bottomInset = MediaQuery.paddingOf(ctx).bottom;
         final bottomPad = 24 * scale;
 
@@ -90,7 +110,17 @@ class AppToastOverlay {
             ),
             child: Material(
               color: Colors.transparent,
-              child: _AppToastBar(message: message, variant: variant),
+              child: _AppToastBar(
+                message: message,
+                variant: variant,
+                widthBase: widthBase,
+                onUndo: undo == null
+                    ? null
+                    : () {
+                        hide();
+                        undo();
+                      },
+              ),
             ),
           ),
         );
@@ -114,15 +144,19 @@ class _AppToastBar extends StatelessWidget {
   const _AppToastBar({
     required this.message,
     required this.variant,
+    this.widthBase = 301,
+    this.onUndo,
   });
 
   final String message;
   final _AppToastVariant variant;
+  final double widthBase;
+  final VoidCallback? onUndo;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: healthDp(context, 301),
+      width: healthDp(context, widthBase),
       height: healthDp(context, 49),
       padding: EdgeInsets.all(healthDp(context, 10)),
       clipBehavior: Clip.antiAlias,
@@ -148,17 +182,40 @@ class _AppToastBar extends StatelessWidget {
           ),
           SizedBox(width: healthDp(context, 4)),
           Expanded(
-            child: Text(
-              message,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: healthSp(context, 12),
-                fontFamily: 'Gmarket Sans TTF',
-                fontWeight: FontWeight.w500,
-                height: 1.33,
-              ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    message,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: healthSp(context, 12),
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w500,
+                      height: 1.33,
+                    ),
+                  ),
+                ),
+                if (onUndo != null) ...[
+                  SizedBox(width: healthDp(context, 4)),
+                  GestureDetector(
+                    onTap: onUndo,
+                    behavior: HitTestBehavior.opaque,
+                    child: Text(
+                      '다시담기',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.50),
+                        fontSize: healthSp(context, 12),
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w500,
+                        height: 1.33,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
         ],
