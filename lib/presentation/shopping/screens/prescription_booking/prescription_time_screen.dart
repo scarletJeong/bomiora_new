@@ -1267,7 +1267,6 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
                   fontSize: healthSp(context, 12),
                   fontFamily: 'Gmarket Sans TTF',
                   fontWeight: FontWeight.w300,
-                  decoration: TextDecoration.underline,
                 ),
               ),
             ),
