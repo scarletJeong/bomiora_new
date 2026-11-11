@@ -519,16 +519,18 @@ class _CartScreenState extends State<CartScreen> {
 
   Future<void> _openPaymentScreen(Set<int> selectedIds) async {
     if (_checkoutOpening || selectedIds.isEmpty) return;
+    _checkoutOpening = true;
+    setState(() {});
 
     final hasPayableItem = _displayedCartItems.any(
       (item) => selectedIds.contains(item.ctId) && item.isAvailable,
     );
     if (!hasPayableItem) {
       AppToastOverlay.show(context, '판매 가능한 상품을 선택해 주세요.');
+      if (mounted) setState(() => _checkoutOpening = false);
       return;
     }
 
-    setState(() => _checkoutOpening = true);
     try {
       if (!await _ensureLoggedIn(message: '상품 구매는 로그인 후 이용할 수 있습니다.')) {
         return;
@@ -1151,7 +1153,6 @@ class _CartScreenState extends State<CartScreen> {
           ),
         ),
       ],
-      ),
     );
   }
 

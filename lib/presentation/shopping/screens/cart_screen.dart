@@ -67,6 +67,7 @@ class _CartScreenState extends State<CartScreen> {
   Future<void>? _pendingQtyUpdate;
   final Map<int, int> _qtyEpochById = {};
   bool _deleteBusy = false;
+  bool _checkoutOpening = false;
   int _lastDisplayedCount = -1;
   bool _countNotifyScheduled = false;
 
@@ -537,49 +538,55 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   Future<void> _openPaymentScreen() async {
-    if (!await _ensureLoggedIn(message: '상품 구매는 로그인 후 이용할 수 있습니다.')) {
-      return;
-    }
-    if (_selectedDisplayedItemIds.isEmpty) return;
-    final pendingQty = _pendingQtyUpdate;
-    if (pendingQty != null) await pendingQty;
-    if (!mounted) return;
-    await _refreshSelectedShipping();
-    if (!mounted) return;
-    final priceChanged = await _loadCart(forceRefresh: true);
-    if (!mounted || priceChanged) return;
+    if (_checkoutOpening || _selectedDisplayedItemIds.isEmpty) return;
+    _checkoutOpening = true;
+    setState(() {});
+    try {
+      if (!await _ensureLoggedIn(message: '상품 구매는 로그인 후 이용할 수 있습니다.')) {
+        return;
+      }
+      final pendingQty = _pendingQtyUpdate;
+      if (pendingQty != null) await pendingQty;
+      if (!mounted) return;
+      await _refreshSelectedShipping();
+      if (!mounted) return;
+      final priceChanged = await _loadCart(forceRefresh: true);
+      if (!mounted || priceChanged) return;
 
-    final selectedCartItems = _displayedCartItems
-        .where((item) =>
-            _selectedDisplayedItemIds.contains(item.ctId) && item.isAvailable)
-        .toList();
-    if (selectedCartItems.isEmpty) {
-      AppToastOverlay.show(context, '판매 가능한 상품을 선택해 주세요.');
-      return;
-    }
+      final selectedCartItems = _displayedCartItems
+          .where((item) =>
+              _selectedDisplayedItemIds.contains(item.ctId) && item.isAvailable)
+          .toList();
+      if (selectedCartItems.isEmpty) {
+        AppToastOverlay.show(context, '판매 가능한 상품을 선택해 주세요.');
+        return;
+      }
 
-    final mainItem = selectedCartItems.firstWhere(
-      (e) => !e.isSupplyAdd,
-      orElse: () => selectedCartItems.first,
-    );
+      final mainItem = selectedCartItems.firstWhere(
+        (e) => !e.isSupplyAdd,
+        orElse: () => selectedCartItems.first,
+      );
 
-    await Navigator.push<void>(
-      context,
-      MaterialPageRoute(
-        builder: (context) => PrescriptionProfileScreen(
-          productId: mainItem.itId,
-          productName: mainItem.itName,
-          selectedOptions: _cartItemsToBookingOptions(selectedCartItems),
-          cartCtIdsForCheckout:
-              selectedCartItems.map((e) => e.ctId).toList(),
-          checkoutCartItems: selectedCartItems,
-          checkoutShippingCost: selectedShippingCost,
+      await Navigator.push<void>(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PrescriptionProfileScreen(
+            productId: mainItem.itId,
+            productName: mainItem.itName,
+            selectedOptions: _cartItemsToBookingOptions(selectedCartItems),
+            cartCtIdsForCheckout:
+                selectedCartItems.map((e) => e.ctId).toList(),
+            checkoutCartItems: selectedCartItems,
+            checkoutShippingCost: selectedShippingCost,
+          ),
         ),
-      ),
-    );
+      );
 
-    if (!mounted) return;
-    await _loadCart(showCachedData: false);
+      if (!mounted) return;
+      await _loadCart(showCachedData: false);
+    } finally {
+      if (mounted) setState(() => _checkoutOpening = false);
+    }
   }
 
   void _handleBackNavigation() {
@@ -899,7 +906,9 @@ class _CartScreenState extends State<CartScreen> {
         width: double.infinity,
         height: healthDp(context, 40),
         child: ElevatedButton(
-          onPressed: selected.isEmpty ? null : _openPaymentScreen,
+          onPressed: selected.isEmpty || _checkoutOpening
+              ? null
+              : _openPaymentScreen,
           style: ElevatedButton.styleFrom(
             minimumSize: Size(double.infinity, healthDp(context, 40)),
             maximumSize: Size(double.infinity, healthDp(context, 40)),
@@ -911,14 +920,23 @@ class _CartScreenState extends State<CartScreen> {
               borderRadius: BorderRadius.circular(healthDp(context, 10)),
             ),
           ),
-          child: Text(
-            '처방 예약하기',
-            style: TextStyle(
-              fontSize: healthSp(context, 16),
-              fontFamily: 'Gmarket Sans TTF',
-              fontWeight: FontWeight.w500,
-            ),
-          ),
+          child: _checkoutOpening
+              ? SizedBox(
+                  width: healthDp(context, 20),
+                  height: healthDp(context, 20),
+                  child: const CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : Text(
+                  '처방 예약하기',
+                  style: TextStyle(
+                    fontSize: healthSp(context, 16),
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
         ),
       ),
     );
