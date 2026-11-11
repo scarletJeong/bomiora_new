@@ -305,7 +305,7 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
           appBar: HealthAppBar(
             title: isRx
                 ? (awaiting
-                    ? '진료예약완료 _ 04 예약 대기중'
+                    ? '결제대기중'
                     : '진료예약완료 _ 04 예약완료')
                 : '주문 완료',
             onBack: _handleBlockedBack,
