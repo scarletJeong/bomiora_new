@@ -231,6 +231,12 @@ extension _PaymentCheckout on _PaymentScreenState {
 
         if (!mounted) return;
         OrderService.invalidateOrderList();
+        try {
+          final paidUser = await AuthService.getUser();
+          if (paidUser != null) {
+            CouponService.clearMemberCache(paidUser.id);
+          }
+        } catch (_) {}
         if (orderId.isNotEmpty) {
           Navigator.of(context).pushNamedAndRemoveUntil(
             '/payment-complete',
