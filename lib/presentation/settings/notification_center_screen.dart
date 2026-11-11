@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
@@ -283,7 +284,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                       ),
                       if (items.isEmpty)
                         PageCenteredEmptyOverlay(
-                          child: _loadFailed
+                          child: _loadFailed && !kIsWeb
                               ? LoadFailureNotice(
                                   message: '알림을 불러오지 못했습니다',
                                   onRetry: () =>
