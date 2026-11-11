@@ -697,9 +697,11 @@ class CartService {
         pointRate: 1,
       );
     }
+    var mbId = '';
     try {
       final user = await AuthService.getUser();
       if (user == null) return null;
+      mbId = user.id;
 
       final ids = ctIds.where((id) => id > 0).join(',');
       if (ids.isEmpty) return null;
@@ -711,10 +713,27 @@ class CartService {
         '&ct_status=${Uri.encodeComponent(ctStatus)}'
         '&zip=${Uri.encodeComponent(zipDigits)}',
       );
-      if (response.statusCode != 200) return null;
+      if (response.statusCode != 200) {
+        await FailureLog.record(
+          code: 'payment.shipping',
+          mbId: mbId,
+          reason: '배송비 견적 응답 ${response.statusCode}',
+        );
+        return null;
+      }
 
       final data = json.decode(response.body);
-      if (data is! Map || data['success'] == false) return null;
+      if (data is! Map || data['success'] == false) {
+        final reason = data is Map
+            ? (data['message'] ?? '배송비 견적을 받지 못했습니다.').toString()
+            : '배송비 견적을 받지 못했습니다.';
+        await FailureLog.record(
+          code: 'payment.shipping',
+          mbId: mbId,
+          reason: reason,
+        );
+        return null;
+      }
       int asInt(dynamic raw) {
         if (raw is int) return raw;
         if (raw is num) return raw.toInt();
@@ -736,7 +755,12 @@ class CartService {
         extraShipping: extra < 0 ? 0 : extra,
         pointRate: rate > 0 ? rate : 1,
       );
-    } catch (_) {
+    } catch (e) {
+      await FailureLog.record(
+        code: 'payment.shipping',
+        mbId: mbId,
+        reason: e.toString(),
+      );
       return null;
     }
   }

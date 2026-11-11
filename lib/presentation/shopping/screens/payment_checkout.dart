@@ -141,15 +141,20 @@ extension _PaymentCheckout on _PaymentScreenState {
 
     try {
       final useMobilePay = _useMobileKcpPay(context);
+      final quote = await _loadShippingQuote();
+      if (!mounted) return;
+      if (quote == null) {
+        AppToastOverlay.showAlert(context, '배송비를 확인하지 못했습니다');
+        return;
+      }
+      final baseShipping = quote.baseShipping;
+      final extraShipping = quote.extraShipping;
       Future<KcpPaySession> bootstrap() async {
         await _maybeSaveDefaultAddress(user.id);
         final cartReturnUrl = kIsWeb ? await _paymentCartReturnUrl() : '';
         if (kIsWeb) {
           rememberKcpPayCart(prescriptionTab: _paymentIsPrescription);
         }
-        final quote = await _loadShippingQuote();
-        final baseShipping = quote?.baseShipping ?? _baseShipping;
-        final extraShipping = quote?.extraShipping ?? _extraShipping;
         final response = await ApiClient.post(
           ApiEndpoints.kcpPayRequest,
           {
@@ -268,7 +273,14 @@ extension _PaymentCheckout on _PaymentScreenState {
               final retryData = jsonDecode(retry.body) as Map<String, dynamic>;
               orderId = (retryData['order_id'] ?? '').toString().trim();
             }
-          } catch (_) {}
+          } catch (e) {
+            await FailureLog.record(
+              code: 'payment.result',
+              mbId: user.id,
+              reason: e.toString(),
+              detail: {'token': token},
+            );
+          }
         }
 
         if (!mounted) return;
@@ -278,7 +290,13 @@ extension _PaymentCheckout on _PaymentScreenState {
           if (paidUser != null) {
             CouponService.clearMemberCache(paidUser.id);
           }
-        } catch (_) {}
+        } catch (e) {
+          await FailureLog.record(
+            code: 'payment.coupon.cache',
+            mbId: user.id,
+            reason: e.toString(),
+          );
+        }
         if (orderId.isNotEmpty) {
           Navigator.of(context).pushNamedAndRemoveUntil(
             '/payment-complete',
@@ -318,9 +336,15 @@ extension _PaymentCheckout on _PaymentScreenState {
         await _backToCartAfterPaymentFailure();
       }
     } catch (e) {
+      await FailureLog.record(
+        code: 'payment.request',
+        mbId: user.id,
+        reason: e.toString(),
+      );
       if (!mounted) return;
-      final message =
-          e is KcpPayStartException ? e.message : '결제 요청 중 오류가 발생했습니다.';
+      final message = e is KcpPayStartException && e.message.trim().isNotEmpty
+          ? e.message
+          : '결제 요청 중 오류가 발생했습니다.';
       AppToastOverlay.showAlert(context, message);
     } finally {
       if (mounted) {
