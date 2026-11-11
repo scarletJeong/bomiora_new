@@ -16,8 +16,8 @@ class PrescriptionBookingProgressBar extends StatelessWidget {
   static const Color trackColor = Color(0xFFF6F6F6);
   static const Color fillColor = Color(0xFFFF5A8D);
 
-  /// PreferredSize용 트랙 높이 (375 기준, 기존 2에서 살짝 키움).
-  static const double preferredHeight = 4;
+  /// PreferredSize용 트랙 높이.
+  static const double preferredHeight = 2;
 
   final int currentStep;
   final double stepProgress;
