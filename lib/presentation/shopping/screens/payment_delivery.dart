@@ -66,7 +66,6 @@ extension _PaymentDelivery on _PaymentScreenState {
     _setState(() {
       _baseShipping = quote.baseShipping < 0 ? 0 : quote.baseShipping;
       _extraShipping = quote.extraShipping < 0 ? 0 : quote.extraShipping;
-      _pointRate = quote.pointRate;
       _syncCouponLists();
     });
     return quote;
