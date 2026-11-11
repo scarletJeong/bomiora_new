@@ -4,6 +4,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_assets.dart';
+import '../../../core/logging/failure_log.dart';
 import '../../../data/models/delivery/delivery_model.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/delivery_service.dart' as delivery;
@@ -22,7 +23,6 @@ import '../../user/delivery/widgets/detail/delivery_detail_reservation_products_
 import '../../user/delivery/widgets/delivery_status_filter_bar.dart';
 import '../../user/delivery/widgets/order_flow_dialogs.dart';
 import '../../user/delivery/widgets/reservation_time_change_popup.dart';
-import '../data/payment_complete_preview_data.dart';
 import '../utils/cart_navigation.dart';
 import '../widgets/prescription_booking_progress_bar.dart';
 
@@ -44,7 +44,8 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
   static const String _font = 'Gmarket Sans TTF';
 
   bool _loading = true;
-  String? _error;
+  bool _needsLogin = false;
+  bool _loadFailed = false;
   OrderDetailModel? _order;
   String _deliveryMemo = '';
   bool _handlingBlockedBack = false;
@@ -56,54 +57,82 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
   }
 
   Future<void> _loadOrder() async {
-    if (PaymentCompletePreviewData.shouldUsePreview(widget.orderId)) {
-      final preview = PaymentCompletePreviewData.previewOrder;
-      setState(() {
-        _order = preview;
-        _deliveryMemo = (preview.deliveryMessage ?? '').trim();
-        _loading = false;
-        _error = null;
-      });
-      return;
-    }
-
     setState(() {
       _loading = true;
-      _error = null;
+      _needsLogin = false;
+      _loadFailed = false;
     });
 
+    String mbId = '';
     try {
       final user = await AuthService.getUser();
       if (user == null || user.id.trim().isEmpty) {
+        if (!mounted) return;
         setState(() {
-          _error = '로그인 정보가 없습니다.';
+          _order = null;
+          _needsLogin = true;
+          _loadFailed = false;
+          _loading = false;
+        });
+        return;
+      }
+      mbId = user.id;
+
+      final orderId = widget.orderId.trim();
+      if (orderId.isEmpty) {
+        await FailureLog.record(
+          code: 'payment.complete.load',
+          mbId: mbId,
+          reason: '주문번호가 없습니다.',
+        );
+        if (!mounted) return;
+        setState(() {
+          _order = null;
+          _loadFailed = true;
           _loading = false;
         });
         return;
       }
 
       final result = await delivery.OrderService.getOrderDetail(
-        odId: widget.orderId,
-        mbId: user.id,
+        odId: orderId,
+        mbId: mbId,
       );
 
       if (result['success'] != true || result['order'] is! OrderDetailModel) {
+        await FailureLog.record(
+          code: 'payment.complete.load',
+          mbId: mbId,
+          reason: (result['message'] ?? '주문 정보를 불러오지 못했습니다.').toString(),
+          detail: {'orderId': orderId},
+        );
+        if (!mounted) return;
         setState(() {
-          _error = (result['message'] ?? '주문 정보를 불러오지 못했습니다.').toString();
+          _order = null;
+          _loadFailed = true;
           _loading = false;
         });
         return;
       }
 
       final order = result['order'] as OrderDetailModel;
+      if (!mounted) return;
       setState(() {
         _order = order;
         _deliveryMemo = (order.deliveryMessage ?? '').trim();
         _loading = false;
       });
     } catch (e) {
+      await FailureLog.record(
+        code: 'payment.complete.error',
+        mbId: mbId,
+        reason: e.toString(),
+        detail: {'orderId': widget.orderId},
+      );
+      if (!mounted) return;
       setState(() {
-        _error = '주문 정보를 불러오는 중 오류가 발생했습니다: $e';
+        _order = null;
+        _loadFailed = true;
         _loading = false;
       });
     }
@@ -113,10 +142,6 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
     final next = value.trim();
     final prev = _deliveryMemo;
     if (next == prev || _order == null) return;
-    if (PaymentCompletePreviewData.shouldUsePreview(widget.orderId)) {
-      setState(() => _deliveryMemo = next);
-      return;
-    }
 
     setState(() => _deliveryMemo = next);
 
@@ -318,10 +343,30 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
           ),
           body: _loading
               ? const Center(child: CircularProgressIndicator(color: _pink))
-              : _error != null
-                  ? _buildError()
-                  : _buildContent(context, _order!),
+              : _needsLogin
+                  ? _buildLoginState()
+                  : _loadFailed || _order == null
+                      ? _buildError()
+                      : _buildContent(context, _order!),
         ),
+      ),
+    );
+  }
+
+  Widget _buildLoginState() {
+    return CenteredEmptyState(
+      iconWidget: CenteredEmptyState.assetIcon(
+        context,
+        AppAssets.emptyDeliveryIcon,
+      ),
+      message: '로그인 후 이용 가능합니다.',
+      trailing: CenteredEmptyState.loginButtonTrailing(
+        context,
+        onPressed: () async {
+          await Navigator.pushNamed(context, '/login');
+          if (!mounted) return;
+          await _loadOrder();
+        },
       ),
     );
   }
@@ -332,7 +377,12 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
         context,
         AppAssets.emptyDeliveryIcon,
       ),
-      message: '주문 정보가 없습니다.',
+      message: '주문 정보를 불러오지 못했습니다',
+      trailing: CenteredEmptyState.loginButtonTrailing(
+        context,
+        label: '다시 시도',
+        onPressed: _loadOrder,
+      ),
     );
   }
 
