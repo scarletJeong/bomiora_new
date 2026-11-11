@@ -529,7 +529,6 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
                             fontSize: healthSp(ctx, 20),
                             fontFamily: 'Gmarket Sans TTF',
                             fontWeight: FontWeight.w700,
-                            height: 1,
                           ),
                         ),
                       ),
@@ -568,7 +567,7 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
                                       fontSize: healthSp(ctx, 14),
                                       fontFamily: 'Gmarket Sans TTF',
                                       fontWeight: FontWeight.w700,
-                                      height: 1,
+                                      height: 1.18,
                                     ),
                                   ),
                                 ],
@@ -613,7 +612,6 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
                                         fontSize: healthSp(ctx, 14),
                                         fontFamily: 'Gmarket Sans TTF',
                                         fontWeight: FontWeight.w700,
-                                        height: 1,
                                       ),
                                     ),
                                   ),
@@ -676,20 +674,19 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
                       ),
                       SizedBox(height: healthDp(ctx, 10)),
                       SizedBox(
-                          width: 260,
-                          child: Text(
-                              '연락처를 잘못 입력하시면\n전화 처방이 어려울 수 있으며,\n이로 인한 책임은 고객님께 있음을 안내드립니다.',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                  color: const Color(0xFFFF5A8D),
-                                  fontSize: 12,
-                                  fontFamily: 'Gmarket Sans TTF',
-                                  fontWeight: FontWeight.w500,
-                                  letterSpacing: -0.48,
-                                  height: 1.2,
-                              ),
+                        width: healthDp(ctx, 260),
+                        child: Text(
+                          '연락처를 잘못 입력하시면\n전화 처방이 어려울 수 있으며,\n이로 인한 책임은 고객님께 있음을 안내드립니다.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: const Color(0xFFFF5A8D),
+                            fontSize: healthSp(ctx, 12),
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontWeight: FontWeight.w500,
+                            letterSpacing: healthSp(ctx, -0.48),
                           ),
-                      )
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -701,6 +698,12 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
                       Expanded(
                         child: Material(
                           color: const Color(0xFFF7F7F7),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.only(
+                              bottomLeft: Radius.circular(r20),
+                            ),
+                          ),
+                          clipBehavior: Clip.antiAlias,
                           child: InkWell(
                             onTap: () => Navigator.of(ctx).pop(false),
                             child: Center(
@@ -721,6 +724,12 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
                       Expanded(
                         child: Material(
                           color: const Color(0xFFFF5A8D),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.only(
+                              bottomRight: Radius.circular(r20),
+                            ),
+                          ),
+                          clipBehavior: Clip.antiAlias,
                           child: InkWell(
                             onTap: () => Navigator.of(ctx).pop(true),
                             child: Center(
