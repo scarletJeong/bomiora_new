@@ -867,70 +867,70 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
   Widget _buildBottomActions() {
     final booking = widget.prescriptionBooking;
     if (booking != null) {
-      return Row(
-        children: [
-          SizedBox(
-            width: healthDp(context, 110),
-            height: healthDp(context, 40),
-            child: OutlinedButton(
-              onPressed: _navigateToEditForm,
-              style: OutlinedButton.styleFrom(
-                foregroundColor: _kMuted,
-                side: BorderSide(
-                  width: healthDp(context, 0.5),
-                  color: const Color(0xFFD2D2D2),
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(healthDp(context, 10)),
-                ),
-                padding: EdgeInsets.symmetric(
-                  horizontal: healthDp(context, 10),
-                  vertical: healthDp(context, 10),
-                ),
-              ),
-              child: Text(
-                '전체 수정',
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: _kMuted,
-                  fontSize: healthSp(context, 16),
-                  fontFamily: _kFont,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          ),
-          SizedBox(width: healthDp(context, 10)),
-          Expanded(
-            flex: 3,
-            child: SizedBox(
-              height: healthDp(context, 40),
-              child: FilledButton(
-                onPressed: () => _goToPrescriptionTime(booking),
-                style: FilledButton.styleFrom(
-                  backgroundColor: _kPink,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(healthDp(context, 10)),
+      return SizedBox(
+        width: double.infinity,
+        child: Row(
+          children: [
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: _navigateToEditForm,
+                borderRadius: BorderRadius.circular(healthDp(context, 8)),
+                child: Container(
+                  height: healthDp(context, 45),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: healthDp(context, 10),
                   ),
-                  padding: EdgeInsets.all(healthDp(context, 10)),
-                ),
-                child: Text(
-                  '다음',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: healthSp(context, 16),
-                    fontFamily: _kFont,
-                    fontWeight: FontWeight.w500,
+                  alignment: Alignment.center,
+                  decoration: ShapeDecoration(
+                    shape: RoundedRectangleBorder(
+                      side: BorderSide(
+                        width: healthDp(context, 1),
+                        color: const Color(0x7FD2D2D2),
+                      ),
+                      borderRadius: BorderRadius.circular(healthDp(context, 8)),
+                    ),
+                  ),
+                  child: Text(
+                    '전체 수정',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: const Color(0xFF898686),
+                      fontSize: healthSp(context, 16),
+                      fontFamily: _kFont,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-        ],
+            SizedBox(width: healthDp(context, 10)),
+            Expanded(
+              child: Material(
+                color: _kPink,
+                borderRadius: BorderRadius.circular(healthDp(context, 8)),
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
+                  onTap: () => _goToPrescriptionTime(booking),
+                  child: Container(
+                    height: healthDp(context, 45),
+                    padding: EdgeInsets.all(healthDp(context, 10)),
+                    alignment: Alignment.center,
+                    child: Text(
+                      '다음',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: healthSp(context, 16),
+                        fontFamily: _kFont,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       );
     }
 
