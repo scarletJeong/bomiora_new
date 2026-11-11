@@ -17,6 +17,8 @@ import '../../../core/utils/kcp_pay_session_store.dart';
 import '../../../core/utils/web_kcp_popup.dart';
 import '../../common/widgets/daum_postcode_search_dialog.dart';
 import '../../../core/constants/app_assets.dart';
+import '../../../core/logging/failure_log.dart';
+import '../../common/widgets/centered_empty_state.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_endpoints.dart';
 import '../../../core/utils/price_formatter.dart';
@@ -134,6 +136,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
   bool _deliveryMemoCustomSelected = false;
 
   bool _loading = true;
+  bool _checkoutLoadFailed = false;
 
   bool _submitting = false;
 
@@ -216,6 +219,14 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   Future<void> _loadData() async {
+    if (!_loading || _checkoutLoadFailed) {
+      setState(() {
+        _loading = true;
+        _checkoutLoadFailed = false;
+      });
+    }
+
+    String mbId = '';
     try {
       final user = await AuthService.getUser();
       if (user == null || user.id.isEmpty) {
@@ -223,6 +234,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
         setState(() => _loading = false);
         return;
       }
+      mbId = user.id;
 
       if (widget.prefetch != null) {
         await _applyPrefetch(user, widget.prefetch!);
@@ -251,10 +263,17 @@ class _PaymentScreenState extends State<PaymentScreen> {
         point: point,
         coupons: coupons,
       );
-    } catch (_) {
+    } catch (e) {
+      await FailureLog.record(
+        code: 'payment.checkout.load',
+        mbId: mbId,
+        reason: e.toString(),
+      );
       if (!mounted) return;
-      setState(() => _loading = false);
-      AppToastOverlay.show(context, '주문 정보를 불러오지 못했습니다.');
+      setState(() {
+        _loading = false;
+        _checkoutLoadFailed = true;
+      });
     }
   }
 
@@ -304,6 +323,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
     });
     await _loadShippingQuote(retryIfZero: true);
     if (!mounted) return;
+    _logPointUsageRates();
     setState(() => _loading = false);
   }
 
@@ -334,7 +354,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
       ),
       child: _loading
           ? const Center(child: CircularProgressIndicator(color: const Color(0xFFFF5A8D)))
-          : Column(
+          : _checkoutLoadFailed
+              ? _buildCheckoutLoadFailed()
+              : Column(
               children: [
                 Expanded(
                   child: NotificationListener<ScrollNotification>(
@@ -366,6 +388,21 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 _buildPaymentBottomBar(context),
               ],
             ),
+    );
+  }
+
+  Widget _buildCheckoutLoadFailed() {
+    return CenteredEmptyState(
+      iconWidget: CenteredEmptyState.assetIcon(
+        context,
+        AppAssets.emptyDeliveryIcon,
+      ),
+      message: '주문 정보를 불러오지 못했습니다',
+      trailing: CenteredEmptyState.loginButtonTrailing(
+        context,
+        label: '다시 시도',
+        onPressed: _loadData,
+      ),
     );
   }
 
