@@ -45,41 +45,39 @@ class CartEmptyShopButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: SizedBox(
-        width:healthDp(context, 100),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () => _onTap(context),
-            borderRadius: BorderRadius.circular(healthDp(context, 50)),
-            child: Container(
-              width:    healthDp(context, 44),
-              height: healthDp(context, 32),
-              padding: EdgeInsets.symmetric(
-                horizontal: healthDp(context, 4),
-                vertical: healthDp(context, 6),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _onTap(context),
+          borderRadius: BorderRadius.circular(healthDp(context, 50)),
+          child: Container(
+            height: healthDp(context, 40),
+            padding: EdgeInsets.symmetric(
+              horizontal: healthDp(context, 18),
+            ),
+            clipBehavior: Clip.antiAlias,
+            decoration: ShapeDecoration(
+              color: const Color(0xFFFF5A8D),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(healthDp(context, 50)),
               ),
-              clipBehavior: Clip.antiAlias,
-              decoration: ShapeDecoration(
-                color: const Color(0xFFFF5A8D),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(healthDp(context, 50)),
-                ),
-              ),
-              alignment: Alignment.center,
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
                   '상품 보러 가기',
                   maxLines: 1,
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: healthSp(context, 12),
+                    fontSize: healthSp(context, 16),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w500,
+                    height: 1,
                   ),
                 ),
-              ),
+              ],
             ),
           ),
         ),

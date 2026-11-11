@@ -711,6 +711,7 @@ class _CartScreenState extends State<CartScreen> {
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w300,
           ),
+          trailingGap: healthDp(context, 30),
           trailing: [
             CartEmptyShopButton(prescriptionTab: false),
           ],
