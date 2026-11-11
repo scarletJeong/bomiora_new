@@ -23,10 +23,17 @@ class KcpPaySession {
 }
 
 class KcpPayStartException implements Exception {
-  KcpPayStartException(this.message, {this.errorCode = ''});
+  KcpPayStartException(
+    this.message, {
+    this.errorCode = '',
+    this.baseShipping,
+    this.extraShipping,
+  });
 
   final String message;
   final String errorCode;
+  final int? baseShipping;
+  final int? extraShipping;
 
   @override
   String toString() => message;
@@ -260,6 +267,10 @@ class _KcpPayWebViewScreenState extends State<KcpPayWebViewScreen> {
         'message': e is KcpPayStartException && e.message.trim().isNotEmpty
             ? e.message
             : '결제 요청 중 오류가 발생했습니다.',
+        if (e is KcpPayStartException && e.baseShipping != null)
+          'base_shipping_cost': e.baseShipping,
+        if (e is KcpPayStartException && e.extraShipping != null)
+          'extra_shipping_cost': e.extraShipping,
       });
     }
   }

@@ -144,7 +144,7 @@ extension _PaymentCheckout on _PaymentScreenState {
       final quote = await _loadShippingQuote();
       if (!mounted) return;
       if (quote == null) {
-        AppToastOverlay.showAlert(context, '배송비를 확인하지 못했습니다');
+        await _retryShippingQuote();
         return;
       }
       final baseShipping = quote.baseShipping;
@@ -210,8 +210,22 @@ extension _PaymentCheckout on _PaymentScreenState {
 
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         if (response.statusCode != 200 || data['success'] != true) {
+          final serverMessage =
+              (data['message'] ?? '결제 요청에 실패했습니다.').toString();
+          final quotedBase = data['base_shipping_cost'];
+          final quotedExtra = data['extra_shipping_cost'];
+          if (serverMessage.contains('배송비가 변경') &&
+              quotedBase != null &&
+              quotedExtra != null) {
+            throw KcpPayStartException(
+              '배송비가 변경되었습니다',
+              errorCode: 'SHIPPING_CHANGED',
+              baseShipping: _paymentMoney(quotedBase),
+              extraShipping: _paymentMoney(quotedExtra),
+            );
+          }
           throw KcpPayStartException(
-            (data['message'] ?? '결제 요청에 실패했습니다.').toString(),
+            serverMessage,
             errorCode: (data['error_code'] ?? '').toString(),
           );
         }
@@ -312,6 +326,10 @@ extension _PaymentCheckout on _PaymentScreenState {
         }
       } else {
         final code = _resolvePaymentErrorCode(errorCode, message);
+        if (code == 'SHIPPING_CHANGED' || message.contains('배송비가 변경')) {
+          await _applyReturnedShipping(resultMap, user.id);
+          return;
+        }
         if (code == 'STOCK') {
           await AppAlertDialog.show(
             context,
@@ -353,6 +371,54 @@ extension _PaymentCheckout on _PaymentScreenState {
         });
       }
     }
+  }
+
+  Future<void> _retryShippingQuote() async {
+    final retry = await AppAlertDialog.show(
+      context,
+      title: '',
+      message: '배송비를 확인하지 못했습니다',
+      confirmText: '다시 시도',
+    );
+    if (retry != true || !mounted) return;
+    final again = await _loadShippingQuote();
+    if (!mounted || again != null) return;
+    await AppAlertDialog.show(
+      context,
+      title: '',
+      message: '배송비를 확인하지 못했습니다',
+    );
+  }
+
+  Future<void> _applyReturnedShipping(
+    Map<String, dynamic> resultMap,
+    String mbId,
+  ) async {
+    final hasBase = resultMap.containsKey('base_shipping_cost');
+    final hasExtra = resultMap.containsKey('extra_shipping_cost');
+    if (hasBase && hasExtra) {
+      _setState(() {
+        _baseShipping = _paymentMoney(resultMap['base_shipping_cost']);
+        _extraShipping = _paymentMoney(resultMap['extra_shipping_cost']);
+        _syncCouponLists();
+      });
+    }
+    await FailureLog.record(
+      code: 'payment.shipping',
+      mbId: mbId,
+      reason: '배송비가 변경되었습니다',
+      detail: {
+        'base': _baseShipping,
+        'extra': _extraShipping,
+      },
+    );
+    if (!mounted) return;
+    AppToastOverlay.showAlert(context, '배송비가 변경되었습니다');
+  }
+
+  int _paymentMoney(dynamic raw) {
+    final value = raw is num ? raw.toInt() : int.tryParse('$raw'.trim()) ?? 0;
+    return value < 0 ? 0 : value;
   }
 
   String _resolvePaymentErrorCode(String rawCode, String message) {
