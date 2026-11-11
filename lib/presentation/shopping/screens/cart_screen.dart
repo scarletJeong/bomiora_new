@@ -1531,8 +1531,10 @@ class _CartScreenState extends State<CartScreen> {
               ),
             ],
           ),
-          SizedBox(height: healthDp(context, 10)),
-          _buildReservationNotice(),
+          if (item.isAvailable) ...[
+            SizedBox(height: healthDp(context, 10)),
+            _buildReservationNotice(),
+          ],
           SizedBox(height: healthDp(context, item.isAvailable ? 10 : 20)),
           Container(
             width: double.infinity,
