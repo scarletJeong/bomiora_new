@@ -312,7 +312,7 @@ class _VendorProductCard extends StatelessWidget {
         .where((e) => e.isNotEmpty)
         .toList();
     if (optionParts.isEmpty) return '수량: ${item.ctQty}';
-    return '수량: ${item.ctQty} ㅣ ${optionParts.join(' ㅣ ')}';
+    return '수량: ${item.ctQty} / ${optionParts.join(' / ')}';
   }
 
   @override

@@ -1173,7 +1173,7 @@ class _CartScreenState extends State<CartScreen> {
           .toList();
       if (parts.length >= 2) {
         return Text(
-          '${_formatCartStepLabel(parts.first)}ㅣ${parts.sublist(1).join('ㅣ')}',
+          '${_formatCartStepLabel(parts.first)} / ${parts.sublist(1).join(' / ')}',
           style: _cartOptionMutedStyle(),
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
@@ -1182,7 +1182,7 @@ class _CartScreenState extends State<CartScreen> {
     }
     if (sub.isNotEmpty && opt.isNotEmpty) {
       return Text(
-        '$subㅣ$opt',
+        '$sub / $opt',
         style: _cartOptionMutedStyle(),
         maxLines: 2,
         overflow: TextOverflow.ellipsis,

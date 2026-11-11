@@ -430,7 +430,7 @@ class _PaymentParentBlock extends StatelessWidget {
     );
     final qtyOptionLine = optionParts.isEmpty
         ? '수량: ${item.ctQty}'
-        : '수량: ${item.ctQty} ㅣ ${optionParts.join(' ㅣ ')}';
+        : '수량: ${item.ctQty} / ${optionParts.join(' / ')}';
     final titleStyle = TextStyle(
       color: _kInk,
       fontSize: healthSp(context, 14),
