@@ -18,7 +18,7 @@ class Coupon {
   final int minimum; // cp_minimum
   /// 0 초과면 `cp_price` 는 할인율(%), 0 이면 `cp_price` 는 할인액(원)
   final int maximum; // cp_maximum
-  final int? orderId; // od_id
+  final String? orderId; // od_id. 18자리라 숫자로 바꾸면 끝자리가 달라진다.
   final DateTime? datetime; // cp_datetime
   /// API `applied_product` — `적용상품: …` 문구 (카테고리·상품명 조회 결과)
   final String? appliedProduct;
@@ -72,7 +72,7 @@ class Coupon {
       trunc: NodeValueParser.asInt(normalized['cp_trunc'] ?? normalized['trunc']) ?? 0,
       minimum: NodeValueParser.asInt(normalized['cp_minimum'] ?? normalized['minimum']) ?? 0,
       maximum: NodeValueParser.asInt(normalized['cp_maximum'] ?? normalized['maximum']) ?? 0,
-      orderId: NodeValueParser.asInt(normalized['od_id'] ?? normalized['orderId']),
+      orderId: _readOrderId(normalized['od_id'] ?? normalized['orderId']),
       // 사용일시: 백엔드에 따라 cp_datetime / cl_datetime / datetime 등으로 내려올 수 있음
       datetime: normalized['cp_datetime'] != null ||
               normalized['cl_datetime'] != null ||
@@ -86,6 +86,13 @@ class Coupon {
           : null,
       appliedProduct: NodeValueParser.asString(normalized['applied_product']),
     );
+  }
+
+  static String? _readOrderId(dynamic value) {
+    if (value == null) return null;
+    final text = value.toString().trim();
+    if (text.isEmpty || text == '0' || text == 'null') return null;
+    return text;
   }
 
   static DateTime? _parseDate(dynamic dateValue) {
@@ -144,16 +151,19 @@ class Coupon {
     // 날짜 유효성: 시작일 <= 오늘 <= 종료일
     final dateValid = !today.isBefore(start) && !today.isAfter(end);
     
-    // 미사용: orderId가 null이거나 0
-    final notUsed = orderId == null || orderId == 0;
+    final notUsed = !hasOrderId;
     
     return dateValid && notUsed;
   }
 
-  /// 사용한 쿠폰인지 확인
-  bool get isUsed {
-    return orderId != null && orderId! > 0;
+  /// 주문에 묶인 쿠폰인지. od_id는 문자열로 둔다.
+  bool get hasOrderId {
+    final id = (orderId ?? '').trim();
+    return id.isNotEmpty && id != '0';
   }
+
+  /// 사용한 쿠폰인지 확인
+  bool get isUsed => hasOrderId;
 
   /// 만료된 쿠폰인지 확인
   bool get isExpired {

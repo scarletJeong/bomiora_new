@@ -511,9 +511,7 @@ class _CouponScreenState extends State<CouponScreen> {
     final appliedLine = coupon.displayAppliedLine;
     final minMaxLine = coupon.minMaxOrderDescription;
     final showUsageDetail = tabIndex == 0;
-    final showOrderId = tabIndex == 1 &&
-        coupon.orderId != null &&
-        coupon.orderId! > 0;
+    final showOrderId = tabIndex == 1 && coupon.hasOrderId;
 
     return Container(
       width: double.infinity,
