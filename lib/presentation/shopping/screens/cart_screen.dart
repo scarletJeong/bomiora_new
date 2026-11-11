@@ -1058,11 +1058,10 @@ class _CartScreenState extends State<CartScreen> {
   Widget _lightCheckbox({
     required bool value,
     required ValueChanged<bool?>? onChanged,
-    double base = 18,
+    double base = 20,
   }) {
-    final double checkboxBase = base;
-    final boxSize = healthDp(context, checkboxBase);
-    final scale = boxSize / checkboxBase;
+    final boxSize = healthDp(context, base);
+    final scale = boxSize / 18;
     const borderColor = Color(0xFFD2D2D2);
     const checkPink = Color(0xFFFF5A8D);
 
