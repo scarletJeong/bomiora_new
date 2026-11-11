@@ -1105,50 +1105,58 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
     );
   }
 
-  /// 식사시간 칩 — 동일 width, 한 줄
+  /// 식사시간 칩. 1~3개여도 칸 너비는 4개일 때와 같다.
   Widget _mealTimeChipRow(List<String> items) {
     if (items.isEmpty) return const SizedBox.shrink();
+    const slotCount = 4;
+    final slots = items.length > slotCount ? items.length : slotCount;
     final gap = healthDp(context, 8);
     return Row(
       children: [
-        for (var i = 0; i < items.length; i++) ...[
+        for (var i = 0; i < slots; i++) ...[
           if (i > 0) SizedBox(width: gap),
           Expanded(
-            child: Container(
-              width: double.infinity,
-              padding: EdgeInsets.symmetric(
-                horizontal: healthDp(context, 6),
-                vertical: healthDp(context, 8),
-              ),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: _kChipBg,
-                borderRadius: BorderRadius.circular(healthDp(context, 50)),
-                border: Border.all(
-                  color: const Color(0x0F000000),
-                  width: healthDp(context, 0.5),
-                ),
-              ),
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  items[i],
-                  maxLines: 1,
-                  softWrap: false,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: _kInk,
-                    fontSize: healthSp(context, 14),
-                    fontFamily: _kFont,
-                    fontWeight: FontWeight.w500,
-                    height: 1.2,
-                  ),
-                ),
-              ),
-            ),
+            child: i < items.length
+                ? _mealTimeChip(items[i])
+                : const SizedBox.shrink(),
           ),
         ],
       ],
+    );
+  }
+
+  Widget _mealTimeChip(String text) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(
+        horizontal: healthDp(context, 6),
+        vertical: healthDp(context, 8),
+      ),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: _kChipBg,
+        borderRadius: BorderRadius.circular(healthDp(context, 50)),
+        border: Border.all(
+          color: const Color(0x0F000000),
+          width: healthDp(context, 0.5),
+        ),
+      ),
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(
+          text,
+          maxLines: 1,
+          softWrap: false,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: _kInk,
+            fontSize: healthSp(context, 14),
+            fontFamily: _kFont,
+            fontWeight: FontWeight.w500,
+            height: 1.2,
+          ),
+        ),
+      ),
     );
   }
 
