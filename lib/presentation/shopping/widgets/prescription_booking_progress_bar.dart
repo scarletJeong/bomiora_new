@@ -50,7 +50,7 @@ class PrescriptionBookingProgressBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const h = preferredHeight;
-    final gap = healthDp(context, 4);
+    final gap = healthDp(context, 2);
 
     return SizedBox(
       width: double.infinity,
