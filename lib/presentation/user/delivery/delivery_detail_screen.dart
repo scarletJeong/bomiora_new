@@ -73,10 +73,12 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
     super.initState();
     final odId = widget.orderNumber.trim();
     if (odId.isEmpty) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        Navigator.pushReplacementNamed(context, '/order');
-      });
+      _isLoading = false;
+      FailureLog.record(
+        code: 'order.detail',
+        mbId: AuthService.currentUser?.id ?? '',
+        reason: '주문번호가 없습니다.',
+      );
       return;
     }
     final preview = widget.initialOrder;
@@ -151,7 +153,7 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
   }
 
   /// 목록 카드가 있으면 그 화면을 유지하고 알린다.
-  /// 카드가 없으면 안내 후 주문 내역으로 보낸다.
+  /// 카드가 없으면 상세 화면에 다시 시도와 목록으로 돌아가기를 둔다.
   Future<void> _handleDetailLoadFailure({
     required String mbId,
     required String reason,
@@ -169,10 +171,7 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
     });
     if (hasPreview) {
       AppToastOverlay.showAlert(context, '주문 내역을 불러오지 못했습니다.');
-      return;
     }
-    AppToastOverlay.showAlert(context, '주문 내역을 불러올 수 없습니다.');
-    Navigator.pushReplacementNamed(context, '/order');
   }
 
   Future<void> _loadReviewedItIds(String mbId, String odId) async {
@@ -260,12 +259,83 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
   }
 
   Widget _buildErrorState() {
-    return CenteredEmptyState(
-      iconWidget: CenteredEmptyState.assetIcon(
-        context,
-        AppAssets.emptyDeliveryIcon,
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          healthDp(context, 10),
+          healthDp(context, 28),
+          healthDp(context, 10),
+          healthDp(context, 28),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '주문 내역을 불러오지 못했습니다',
+              textAlign: TextAlign.center,
+              textScaler: TextScaler.noScaling,
+              style: TextStyle(
+                color: const Color(0xFF898686),
+                fontSize: healthSp(context, 14),
+                fontFamily: 'Gmarket Sans TTF',
+                fontWeight: FontWeight.w500,
+                height: 1.5,
+              ),
+            ),
+            SizedBox(height: healthDp(context, 16)),
+            SizedBox(
+              width: double.infinity,
+              height: healthDp(context, 44),
+              child: ElevatedButton(
+                onPressed: _loadOrderDetail,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFFF5A8D),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(healthDp(context, 10)),
+                  ),
+                ),
+                child: Text(
+                  '다시 시도',
+                  textScaler: TextScaler.noScaling,
+                  style: TextStyle(
+                    fontSize: healthSp(context, 14),
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(height: healthDp(context, 8)),
+            SizedBox(
+              width: double.infinity,
+              height: healthDp(context, 44),
+              child: OutlinedButton(
+                onPressed: () {
+                  Navigator.pushReplacementNamed(context, '/order');
+                },
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF898686),
+                  side: const BorderSide(color: Color(0xFFD2D2D2)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(healthDp(context, 10)),
+                  ),
+                ),
+                child: Text(
+                  '주문 목록으로 돌아가기',
+                  textScaler: TextScaler.noScaling,
+                  style: TextStyle(
+                    fontSize: healthSp(context, 14),
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
-      message: '주문 내역을 불러올 수 없습니다.',
     );
   }
 
