@@ -22,6 +22,8 @@ class Coupon {
   final DateTime? datetime; // cp_datetime
   /// API `applied_product` — `적용상품: …` 문구 (카테고리·상품명 조회 결과)
   final String? appliedProduct;
+  /// 주문 취소로 사용이 풀려 다시 돌아온 쿠폰
+  final bool restoredByCancel;
 
   Coupon({
     required this.no,
@@ -41,6 +43,7 @@ class Coupon {
     this.orderId,
     this.datetime,
     this.appliedProduct,
+    this.restoredByCancel = false,
   });
 
   factory Coupon.fromJson(Map<String, dynamic> json) {
@@ -85,7 +88,15 @@ class Coupon {
             )
           : null,
       appliedProduct: NodeValueParser.asString(normalized['applied_product']),
+      restoredByCancel: _readFlag(normalized['cancel_restored']),
     );
+  }
+
+  static bool _readFlag(dynamic value) {
+    if (value == true) return true;
+    if (value == false || value == null) return false;
+    final text = value.toString().trim().toLowerCase();
+    return text == '1' || text == 'true';
   }
 
   static String? _readOrderId(dynamic value) {

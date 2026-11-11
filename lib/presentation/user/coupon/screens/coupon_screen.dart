@@ -534,6 +534,7 @@ class _CouponScreenState extends State<CouponScreen> {
     final minMaxLine = coupon.minMaxOrderDescription;
     final showUsageDetail = tabIndex == 0;
     final showOrderId = tabIndex == 1 && coupon.hasOrderId;
+    final showRestored = tabIndex != 1 && coupon.restoredByCancel;
 
     return Container(
       width: double.infinity,
@@ -557,6 +558,26 @@ class _CouponScreenState extends State<CouponScreen> {
                     context,
                     size: 10,
                     color: _usedRed,
+                    weight: FontWeight.w300,
+                  ),
+                ),
+              ],
+            )
+          else if (showRestored)
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    dateLine,
+                    style: _couponText(context, size: 12, color: _textMain),
+                  ),
+                ),
+                Text(
+                  '취소복원',
+                  style: _couponText(
+                    context,
+                    size: 10,
+                    color: _textSub,
                     weight: FontWeight.w300,
                   ),
                 ),
