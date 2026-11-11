@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
+import '../../../core/logging/failure_log.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_endpoints.dart';
 import '../../../core/utils/kcp_pay_session_store.dart';
@@ -243,6 +244,11 @@ class _KcpPayWebViewScreenState extends State<KcpPayWebViewScreen> {
         _startPolling();
       }
     } catch (e) {
+      await FailureLog.record(
+        code: 'payment.request',
+        mbId: '',
+        reason: e.toString(),
+      );
       if (!mounted || _completed) return;
       _completed = true;
       final code = e is KcpPayStartException && e.errorCode.isNotEmpty
@@ -251,9 +257,9 @@ class _KcpPayWebViewScreenState extends State<KcpPayWebViewScreen> {
       Navigator.pop(context, {
         'success': false,
         'error_code': code,
-        'message': e is KcpPayStartException
+        'message': e is KcpPayStartException && e.message.trim().isNotEmpty
             ? e.message
-            : e.toString().replaceFirst('Exception: ', ''),
+            : '결제 요청 중 오류가 발생했습니다.',
       });
     }
   }
@@ -349,8 +355,13 @@ class _KcpPayWebViewScreenState extends State<KcpPayWebViewScreen> {
         errorCode: (data['error_code'] ?? '').toString(),
         message: (data['message'] ?? '결제가 완료되지 않았습니다.').toString(),
       );
-    } catch (_) {
-      // no-op
+    } catch (e) {
+      await FailureLog.record(
+        code: 'payment.result',
+        mbId: '',
+        reason: e.toString(),
+        detail: {'token': _token},
+      );
     }
   }
 
@@ -358,7 +369,13 @@ class _KcpPayWebViewScreenState extends State<KcpPayWebViewScreen> {
     try {
       await controller.evaluateJavascript(source: _forceMobileUaScript);
       await controller.evaluateJavascript(source: _singleWindowScript);
-    } catch (_) {}
+    } catch (e) {
+      await FailureLog.record(
+        code: 'payment.window',
+        mbId: '',
+        reason: e.toString(),
+      );
+    }
   }
 
   @override
@@ -438,7 +455,13 @@ class _KcpPayWebViewScreenState extends State<KcpPayWebViewScreen> {
                       return null;
                     },
                   );
-                } catch (_) {}
+                } catch (e) {
+                  await FailureLog.record(
+                    code: 'payment.window',
+                    mbId: '',
+                    reason: e.toString(),
+                  );
+                }
                 if (ua == null) return;
                 try {
                   await controller.setSettings(
@@ -447,7 +470,13 @@ class _KcpPayWebViewScreenState extends State<KcpPayWebViewScreen> {
                       preferredContentMode: UserPreferredContentMode.MOBILE,
                     ),
                   );
-                } catch (_) {}
+                } catch (e) {
+                  await FailureLog.record(
+                    code: 'payment.window',
+                    mbId: '',
+                    reason: e.toString(),
+                  );
+                }
               },
               onCreateWindow: (controller, createWindowAction) async {
                 final req = createWindowAction.request;
