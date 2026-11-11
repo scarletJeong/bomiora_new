@@ -135,8 +135,8 @@ class _CouponScreenState extends State<CouponScreen> {
       _loadFailed.value = false;
       _couponLists.value = _CouponTabLists(
         available: _issuedOldestFirst(tabs['available'] ?? const <Coupon>[]),
-        used: _issuedOldestFirst(tabs['used'] ?? const <Coupon>[]),
-        expired: _issuedOldestFirst(tabs['expired'] ?? const <Coupon>[]),
+        used: _recentFirst(tabs['used'] ?? const <Coupon>[], (coupon) => coupon.datetime),
+        expired: _recentFirst(tabs['expired'] ?? const <Coupon>[], (coupon) => coupon.endDate),
       );
     } catch (e) {
       if (!mounted) return;
@@ -154,6 +154,25 @@ class _CouponScreenState extends State<CouponScreen> {
   List<Coupon> _issuedOldestFirst(List<Coupon> source) {
     final list = List<Coupon>.from(source);
     list.sort((a, b) => a.no.compareTo(b.no));
+    return list;
+  }
+
+  /// 기준 시각이 최근인 쿠폰이 위.
+  List<Coupon> _recentFirst(
+    List<Coupon> source,
+    DateTime? Function(Coupon coupon) when,
+  ) {
+    final list = List<Coupon>.from(source);
+    list.sort((a, b) {
+      final aTime = when(a);
+      final bTime = when(b);
+      if (aTime == null && bTime == null) return b.no.compareTo(a.no);
+      if (aTime == null) return 1;
+      if (bTime == null) return -1;
+      final byTime = bTime.compareTo(aTime);
+      if (byTime != 0) return byTime;
+      return b.no.compareTo(a.no);
+    });
     return list;
   }
 
