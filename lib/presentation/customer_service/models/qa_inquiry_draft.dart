@@ -209,17 +209,14 @@ class QaInquiryDraft {
   }
 
   static String? formatOptionText({String? ctOption, String? itSubject}) {
-    final opt = (ctOption ?? '').trim();
+    final opt = (ctOption ?? '')
+        .split(RegExp(r'\s*/\s*|\s*ㅣ\s*|\s*\|\s*|\u001E'))
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .join(' / ');
     final sub = (itSubject ?? '').trim();
-    if (opt.contains(' / ')) {
-      final parts = opt
-          .split(' / ')
-          .map((e) => e.trim())
-          .where((e) => e.isNotEmpty)
-          .toList();
-      if (parts.length >= 2) return parts.join(' | ');
-    }
-    if (sub.isNotEmpty && opt.isNotEmpty) return '$sub | $opt';
+    if (opt.contains(' / ')) return opt;
+    if (sub.isNotEmpty && opt.isNotEmpty) return '$sub / $opt';
     if (opt.isNotEmpty) return opt;
     if (sub.isNotEmpty) return sub;
     return null;
@@ -461,7 +458,9 @@ class QaInquiryDraft {
         item: order.items.isNotEmpty ? order.items.first : null,
         fallbackProductName: order.firstProductName,
         fallbackPrice: order.firstProductPrice ?? order.totalPrice,
-        fallbackOption: order.firstProductOption,
+        fallbackOption: formatOptionText(
+          ctOption: order.firstProductOption,
+        ),
       );
 
   /// 주문 상세에서 1:1 문의 진입 시 상품·주문 정보 프리필

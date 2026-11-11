@@ -70,7 +70,7 @@ String orderItemQtyOptionLine(OrderItem item) {
     rawOption: raw,
   );
   if (parts.isEmpty) return '수량: ${item.ctQty}';
-  return '수량: ${item.ctQty} ㅣ ${parts.join(' ㅣ ')}';
+  return '수량: ${item.ctQty} / ${parts.join(' / ')}';
 }
 
 /// 제목·옵션 줄 수 규칙:

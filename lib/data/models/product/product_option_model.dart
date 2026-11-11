@@ -156,7 +156,11 @@ class ProductOption {
     String? itId,
   }) {
     String normalizeSeparators(String value) {
-      return value.replaceAll(RegExp(r'\s+'), ' ').trim();
+      final parts = value
+          .split(RegExp(r'\s*/\s*|\s*ㅣ\s*|\s*\|\s*'))
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty);
+      return parts.join(' / ');
     }
 
     String fromRaw(String raw) {

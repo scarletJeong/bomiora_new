@@ -415,7 +415,7 @@ class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
     if (raw.isEmpty) return parts;
     parts.addAll(
       raw
-          .split(RegExp(r'\s*\|\s*'))
+          .split(RegExp(r'\s*/\s*|\s*ㅣ\s*|\s*\|\s*'))
           .map((e) => e.trim())
           .where((e) => e.isNotEmpty && e != '수량: $qty'),
     );
@@ -984,7 +984,7 @@ class _SelectableItem {
   String? get optionText {
     final opts = optionParts.where((e) => !e.startsWith('수량:')).toList();
     if (opts.isEmpty) return null;
-    return opts.join(' | ');
+    return opts.join(' / ');
   }
 
   _SelectableItem withMaker(
@@ -1277,7 +1277,7 @@ class _ExtraDropdown extends StatelessWidget {
   String _optionLine(_SelectableItem extra) {
     final opts = extra.optionParts.where((e) => !e.startsWith('수량:')).toList();
     if (opts.isEmpty) return extra.qty > 0 ? '수량: ${extra.qty}' : '';
-    return opts.join(' ㅣ ');
+    return opts.join(' / ');
   }
 
   @override

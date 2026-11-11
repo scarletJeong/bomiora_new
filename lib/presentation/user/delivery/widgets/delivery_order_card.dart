@@ -227,9 +227,13 @@ class _DeliveryOrderCardState extends State<DeliveryOrderCard> {
     var qtyLine = '수량: $qty';
     final opt = ProductOption.visibleLabel(
       ctOption: order.firstProductOption,
-    );
+    )
+        .split(RegExp(r'\s*/\s*|\s*ㅣ\s*|\s*\|\s*'))
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .join(' / ');
     if (opt.isNotEmpty) {
-      qtyLine += 'ㅣ$opt';
+      qtyLine += ' / $opt';
     }
 
     return [
