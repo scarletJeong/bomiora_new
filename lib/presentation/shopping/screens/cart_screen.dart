@@ -649,6 +649,10 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   void _openCartProductDetail(CartItem item) {
+    if (!item.isAvailable) {
+      AppToastOverlay.showAlert(context, '현재 판매가 불가능한 상품입니다.');
+      return;
+    }
     final kind = (item.itKind ?? item.ctKind).trim().toLowerCase();
     final route = kind == 'general'
         ? '/product-general/${item.itId}'
@@ -986,7 +990,7 @@ class _CartScreenState extends State<CartScreen> {
             padding: EdgeInsets.zero,
             backgroundColor: const Color(0xFFFF5A8D),
             foregroundColor: Colors.white,
-            disabledBackgroundColor: Colors.grey[300],
+            disabledBackgroundColor: const Color(0xFFD2D2D2),
             disabledForegroundColor: Colors.white,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(healthDp(context, 10)),

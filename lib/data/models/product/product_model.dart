@@ -27,6 +27,24 @@ class Product {
   /// 연결상품 it_id 목록 (it_supply_items)
   final List<String> supplyItemIds;
 
+  /// 품절·판매중지·재고 없음이면 상세로 들어가지 않는다.
+  bool get isPurchasable {
+    final info = additionalInfo;
+    String? text(dynamic value) {
+      if (value == null) return null;
+      final s = value.toString().trim();
+      return s.isEmpty ? null : s;
+    }
+
+    final soldout = text(info?['it_soldout'] ?? info?['soldout']);
+    if (soldout == '1' || soldout == 'true') return false;
+    final use = text(info?['it_use']);
+    if (use != null && use != '1') return false;
+    final qty = stock;
+    if (qty != null && qty < 99999 && qty <= 0) return false;
+    return true;
+  }
+
   Product({
     required this.id,
     required this.name,

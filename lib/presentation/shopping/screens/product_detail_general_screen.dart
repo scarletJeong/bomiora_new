@@ -186,6 +186,10 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
         await _failProductDetail(serial, '상품을 찾지 못했습니다.');
         return;
       }
+      if (!product.isPurchasable) {
+        _leaveUnsellableProduct();
+        return;
+      }
       _safeSetState(() {
         _product = product;
         _isLoading = false;
@@ -214,6 +218,19 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       if (!mounted || serial != _detailLoadSerial) return;
       await _failProductDetail(serial, e.toString());
     }
+  }
+
+  void _leaveUnsellableProduct() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final nav = Navigator.of(context);
+      if (nav.canPop()) {
+        nav.pop();
+      } else {
+        nav.pushReplacementNamed('/home');
+      }
+      AppToastOverlay.showAlertFromNavigator('현재 판매가 불가능한 상품입니다.');
+    });
   }
 
   Future<void> _failProductDetail(int serial, String reason) async {
