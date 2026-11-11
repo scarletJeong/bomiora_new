@@ -45,6 +45,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
   bool _loggedOut = false;
   bool _loadFailed = false;
   static const String _loadFailMessage = '주문 내역을 불러오지 못했습니다.';
+  static const String _loadMoreFailMessage = '주문 내역을 더 불러오지 못했습니다.';
   int _ordersLoadGen = 0;
   static const int _pageSize = 10;
 
@@ -179,6 +180,12 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
             );
             return;
           }
+          await _reportOrderLoadFailure(
+            gen: gen,
+            mbId: userId,
+            reason: result['message']?.toString() ?? _loadMoreFailMessage,
+            more: true,
+          );
           hasNext = true;
           break;
         }
@@ -234,6 +241,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
         gen: gen,
         mbId: AuthService.currentUser?.id ?? '',
         reason: e.toString(),
+        more: append,
       );
     } finally {
       if (mounted && gen == _ordersLoadGen) {
@@ -249,17 +257,20 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
     required int gen,
     required String mbId,
     required String reason,
+    bool more = false,
   }) async {
+    final keepList = more || _allOrders.isNotEmpty;
+    final message = more ? _loadMoreFailMessage : _loadFailMessage;
     await FailureLog.record(
       code: 'order.list',
       mbId: mbId,
-      reason: reason,
+      reason: more ? message : reason,
+      detail: more && reason != message ? {'cause': reason} : null,
     );
     if (!mounted || gen != _ordersLoadGen) return;
-    final keepList = _allOrders.isNotEmpty;
     setState(() => _loadFailed = !keepList);
     if (keepList) {
-      AppToastOverlay.showAlert(context, _loadFailMessage);
+      AppToastOverlay.showAlert(context, message);
     }
   }
 
