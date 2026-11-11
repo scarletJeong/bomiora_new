@@ -704,6 +704,7 @@ class _ContentListScreenState extends State<ContentListScreen> {
           arguments: {
             'id': contentId,
             if (cat.isNotEmpty) 'category': cat,
+            if (imageUrl.isNotEmpty) 'imageUrl': imageUrl,
           },
         );
       },

@@ -121,12 +121,23 @@ class _GuidebookSectionState extends State<GuidebookSection> {
                           final id = it.id;
                           if (id == null) return;
                           final cat = it.category;
+                          final resolved = ContentService.resolveThumbnailUrl(
+                            it.thumbnailUrl,
+                            fallback: '',
+                          );
+                          final imageUrl = resolved.isEmpty
+                              ? ''
+                              : ImageUrlHelper.contentListThumbUrl(
+                                  resolved,
+                                  width: 480,
+                                );
                           Navigator.pushNamed(
                             context,
                             '/content/detail',
                             arguments: {
                               'id': id,
                               if (cat.isNotEmpty) 'category': cat,
+                              if (imageUrl.isNotEmpty) 'imageUrl': imageUrl,
                             },
                           );
                         },

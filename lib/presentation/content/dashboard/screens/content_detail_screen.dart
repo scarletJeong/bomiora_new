@@ -20,15 +20,22 @@ import '../../../health/health_common/widgets/health_app_bar.dart';
 
 /// 콘텐츠 상세 (본문, 이전/다음 글, 찜·추천·목록) — 본문·제목 등은 API로만 표시
 class ContentDetailScreen extends StatefulWidget {
-  const ContentDetailScreen({super.key, this.contentId});
+  const ContentDetailScreen({super.key, this.contentId, this.initialImageUrl});
 
   final int? contentId;
+
+  /// 목록에서 이미 받아 둔 썸네일. 상세 API를 기다리지 않고 같은 주소를 바로 그린다.
+  final String? initialImageUrl;
 
   static ContentDetailScreen fromArgs(Object? args) {
     if (args is Map<String, dynamic>) {
       final idRaw = args['id'];
       final id = idRaw is num ? idRaw.toInt() : int.tryParse('$idRaw');
-      return ContentDetailScreen(contentId: id);
+      final imageUrl = (args['imageUrl'] ?? '').toString().trim();
+      return ContentDetailScreen(
+        contentId: id,
+        initialImageUrl: imageUrl.isEmpty ? null : imageUrl,
+      );
     }
     return const ContentDetailScreen();
   }
@@ -45,6 +52,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
   String _title = '';
   String _bodyHtml = '';
   String _thumbnailUrl = '';
+  String _previewImageUrl = '';
   String? _prevTitle;
   int? _prevId;
   String? _nextTitle;
@@ -66,6 +74,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
   void initState() {
     super.initState();
     _currentContentId = widget.contentId;
+    _previewImageUrl = (widget.initialImageUrl ?? '').trim();
     final id = widget.contentId;
     if (id != null) {
       _isLoading = true;
@@ -349,15 +358,15 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
                         height: healthDp(context, 1),
                         color: const Color(0x7FD2D2D2),
                       ),
-                      if (!_isLoading) ...[
+                      if (_detailThumbUrl().isNotEmpty) ...[
                         SizedBox(height: healthDp(context, 20)),
                         _buildThumbnail(context),
-                        _buildBodyContent(context),
                       ],
+                      if (!_isLoading) _buildBodyContent(context),
                     ],
                   ),
                 ),
-                if (_isLoading)
+                if (_isLoading && _detailThumbUrl().isEmpty)
                   Center(
                     child: SizedBox(
                       width: healthDp(context, 36),
@@ -557,12 +566,51 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
     );
   }
 
-  Widget _buildThumbnail(BuildContext context) {
+  /// 목록과 같은 가로 480 썸네일 주소. 원본 주소를 다시 받지 않는다.
+  String _listThumbOf(String raw) {
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) return '';
+    if (trimmed.contains('/api/proxy/image') && trimmed.contains('w=')) {
+      return trimmed;
+    }
+    final resolved = ContentService.resolveThumbnailUrl(trimmed, fallback: '');
+    final source = resolved.isNotEmpty ? resolved : trimmed;
+    return ImageUrlHelper.contentListThumbUrl(source, width: 480);
+  }
+
+  String _detailThumbUrl() {
+    final fromPost = _listThumbOf(_thumbnailUrl);
+    if (fromPost.isNotEmpty) return fromPost;
+    return _listThumbOf(_previewImageUrl);
+  }
+
+  bool _bodyAlreadyShowsThumbnail() {
+    final html = _bodyHtml;
+    if (html.isEmpty) return false;
     final raw = _thumbnailUrl.trim();
-    if (raw.isEmpty) return const SizedBox.shrink();
-    final url = ContentService.resolveThumbnailUrl(raw, fallback: '');
+    if (raw.isNotEmpty && html.contains(raw)) return true;
+    final resolved = ContentService.resolveThumbnailUrl(raw, fallback: '');
+    if (resolved.isNotEmpty && html.contains(resolved)) return true;
+    final direct = ImageUrlHelper.browserImageSrc(resolved);
+    return direct.isNotEmpty && html.contains(direct);
+  }
+
+  String _bodyImageUrl(String rawSrc) {
+    final safe = ImageUrlHelper.toWebSafeImageUrl(rawSrc);
+    final thumbKey = ImageUrlHelper.browserImageSrc(
+      ContentService.resolveThumbnailUrl(_thumbnailUrl, fallback: _thumbnailUrl),
+    );
+    final srcKey = ImageUrlHelper.browserImageSrc(safe);
+    if (thumbKey.isNotEmpty && thumbKey == srcKey) {
+      return ImageUrlHelper.contentListThumbUrl(safe, width: 480);
+    }
+    return safe;
+  }
+
+  Widget _buildThumbnail(BuildContext context) {
+    final url = _detailThumbUrl();
     if (url.isEmpty) return const SizedBox.shrink();
-    if (_bodyHtml.contains(raw)) return const SizedBox.shrink();
+    if (_bodyAlreadyShowsThumbnail()) return const SizedBox.shrink();
 
     return Padding(
       padding: EdgeInsets.only(bottom: healthDp(context, 24)),
@@ -646,7 +694,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
                       .trim()
                       .replaceAll('&amp;', '&');
                   if (rawSrc.isEmpty) return const SizedBox.shrink();
-                  final url = ImageUrlHelper.toWebSafeImageUrl(rawSrc);
+                  final url = _bodyImageUrl(rawSrc);
                   return Padding(
                     padding: EdgeInsets.only(bottom: healthDp(context, 8)),
                     child: Align(

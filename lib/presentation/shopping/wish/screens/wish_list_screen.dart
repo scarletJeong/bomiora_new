@@ -826,13 +826,19 @@ class _WishListScreenState extends State<WishListScreen> {
       _ensureContentLoaded(contentId);
     }
 
+    final detailImageUrl = resolvedThumb.isEmpty
+        ? ''
+        : ImageUrlHelper.contentListThumbUrl(resolvedThumb, width: 480);
     final openDetail = contentId == null
         ? null
         : () {
             Navigator.pushNamed(
               context,
               '/content/detail',
-              arguments: {'id': contentId},
+              arguments: {
+                'id': contentId,
+                if (detailImageUrl.isNotEmpty) 'imageUrl': detailImageUrl,
+              },
             );
           };
 

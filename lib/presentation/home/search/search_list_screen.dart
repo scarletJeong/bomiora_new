@@ -319,12 +319,17 @@ class _SearchListScreenState extends State<SearchListScreen> {
     final id = item.id;
     if (id == null) return;
     final cat = item.category;
+    final resolved = _contentThumb(item);
+    final imageUrl = resolved.isEmpty
+        ? ''
+        : ImageUrlHelper.contentListThumbUrl(resolved, width: 480);
     Navigator.pushNamed(
       context,
       '/content/detail',
       arguments: {
         'id': id,
         if (cat.isNotEmpty) 'category': cat,
+        if (imageUrl.isNotEmpty) 'imageUrl': imageUrl,
       },
     );
   }
