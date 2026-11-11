@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/logging/failure_log.dart';
 import '../../../data/models/delivery/delivery_model.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/delivery_service.dart';
@@ -19,19 +20,33 @@ Future<void> reorderFromOrderList(
     return;
   }
 
-  List<OrderItem> products = List<OrderItem>.from(order.items);
+  late final List<OrderItem> products;
   try {
     final detailResult = await OrderService.getOrderDetail(
       odId: order.odId,
       mbId: user.id,
     );
-    if (detailResult['success'] == true) {
-      final detail = detailResult['order'] as OrderDetailModel;
-      if (detail.products.isNotEmpty) {
-        products = detail.products;
-      }
+    if (detailResult['success'] != true ||
+        detailResult['order'] is! OrderDetailModel) {
+      await _reportOrderProductsFailure(
+        context,
+        mbId: user.id,
+        odId: order.odId,
+        cause: detailResult['message']?.toString() ??
+            '주문 상품을 불러오지 못했습니다.',
+      );
+      return;
     }
-  } catch (_) {}
+    products = (detailResult['order'] as OrderDetailModel).products;
+  } catch (e) {
+    await _reportOrderProductsFailure(
+      context,
+      mbId: user.id,
+      odId: order.odId,
+      cause: e.toString(),
+    );
+    return;
+  }
 
   if (products.isEmpty) {
     if (!context.mounted) return;
@@ -49,6 +64,26 @@ Future<void> reorderFromOrderList(
     context,
     prescriptionTab: order.isPrescriptionOrder,
   );
+}
+
+Future<void> _reportOrderProductsFailure(
+  BuildContext context, {
+  required String mbId,
+  required String odId,
+  required String cause,
+}) async {
+  const message = '주문 상품을 불러오지 못했습니다.';
+  await FailureLog.record(
+    code: 'order.products',
+    mbId: mbId,
+    reason: message,
+    detail: {
+      'odId': odId,
+      if (cause.isNotEmpty && cause != message) 'cause': cause,
+    },
+  );
+  if (!context.mounted) return;
+  AppToastOverlay.show(context, message);
 }
 
 bool _showReorderResult(BuildContext context, OrderCartAddResult result) {

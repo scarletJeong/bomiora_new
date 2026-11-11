@@ -791,21 +791,41 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
     // 목록에 상품이 일부만 있으면 상세를 조회해 주문 전체 상품을 담는다
     final needDetail = order.items.length <= 1 && order.odCartCount > 1;
     if (needDetail || order.items.isEmpty) {
+      final user = await AuthService.getUser();
+      if (!mounted) return;
+      if (user == null) {
+        await _reportOrderProductsFailure(
+          order.odId,
+          '로그인이 필요합니다.',
+          mbId: '',
+        );
+        return;
+      }
       try {
-        final user = await AuthService.getUser();
-        if (user != null) {
-          final detailResult = await OrderService.getOrderDetail(
-            odId: order.odId,
+        final detailResult = await OrderService.getOrderDetail(
+          odId: order.odId,
+          mbId: user.id,
+        );
+        final detail = detailResult['order'];
+        if (detailResult['success'] != true ||
+            detail is! OrderDetailModel ||
+            detail.products.isEmpty) {
+          await _reportOrderProductsFailure(
+            order.odId,
+            detailResult['message']?.toString() ?? '주문 상품을 불러오지 못했습니다.',
             mbId: user.id,
           );
-          if (detailResult['success'] == true) {
-            final detail = detailResult['order'] as OrderDetailModel;
-            if (detail.products.isNotEmpty) {
-              draft = QaInquiryDraft.fromOrderDetail(detail);
-            }
-          }
+          return;
         }
-      } catch (_) {}
+        draft = QaInquiryDraft.fromOrderDetail(detail);
+      } catch (e) {
+        await _reportOrderProductsFailure(
+          order.odId,
+          e.toString(),
+          mbId: user.id,
+        );
+        return;
+      }
     }
     if (!mounted) return;
     await Navigator.push(
@@ -869,6 +889,25 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
         result['message']?.toString() ?? '수령확인에 실패했습니다.',
       );
     }
+  }
+
+  Future<void> _reportOrderProductsFailure(
+    String odId,
+    String cause, {
+    required String mbId,
+  }) async {
+    const message = '주문 상품을 불러오지 못했습니다.';
+    await FailureLog.record(
+      code: 'order.products',
+      mbId: mbId,
+      reason: message,
+      detail: {
+        'odId': odId,
+        if (cause.isNotEmpty && cause != message) 'cause': cause,
+      },
+    );
+    if (!mounted) return;
+    AppToastOverlay.show(context, message);
   }
 
   Future<void> _reorder(OrderListModel order) {

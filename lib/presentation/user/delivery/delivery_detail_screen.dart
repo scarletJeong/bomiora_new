@@ -65,6 +65,7 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
   bool _requiresLogin = false;
   String _deliveryMemo = '';
   List<String> _reviewedItIds = const [];
+  bool _reviewStatusKnown = false;
 
   static const Color _kInk = Color(0xFF1A1A1A);
 
@@ -181,15 +182,47 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
         odId: odId,
       );
       if (!mounted) return;
-        setState(() {
+      if (check['success'] != true) {
+        await _reportReviewInfoFailure(
+          mbId,
+          odId,
+          check['message']?.toString() ?? '리뷰 정보를 불러오지 못했습니다.',
+        );
+        return;
+      }
+      setState(() {
+        _reviewStatusKnown = true;
         _reviewedItIds =
             (check['reviewedItIds'] as List<String>?) ?? const <String>[];
       });
-    } catch (_) {}
+    } catch (e) {
+      if (!mounted) return;
+      await _reportReviewInfoFailure(mbId, odId, e.toString());
+    }
   }
 
-  bool _canWriteReview(OrderDetailModel order) {
+  bool _showReviewWrite(OrderDetailModel order) {
+    if (!_reviewStatusKnown) return true;
     return pendingReviewProducts(order, _reviewedItIds).isNotEmpty;
+  }
+
+  Future<void> _reportReviewInfoFailure(
+    String mbId,
+    String odId,
+    String cause,
+  ) async {
+    const message = '리뷰 정보를 불러오지 못했습니다.';
+    await FailureLog.record(
+      code: 'order.review',
+      mbId: mbId,
+      reason: message,
+      detail: {
+        'odId': odId,
+        if (cause.isNotEmpty && cause != message) 'cause': cause,
+      },
+    );
+    if (!mounted) return;
+    AppToastOverlay.show(context, message);
   }
 
   void _goBack() {
@@ -689,7 +722,7 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
           style: DeliveryDetailProductActionStyle.outlinePink,
         ),
       ];
-      if (_canWriteReview(order)) {
+      if (_showReviewWrite(order)) {
         actions.add((
               label: '리뷰쓰기',
               onTap: _writeReviewFromDetail,
@@ -949,20 +982,36 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
       mbId: user.id,
       odId: _orderDetail!.odId,
     );
+    if (check['success'] != true) {
+      await _reportReviewInfoFailure(
+        user.id,
+        _orderDetail!.odId,
+        check['message']?.toString() ?? '리뷰 정보를 불러오지 못했습니다.',
+      );
+      return;
+    }
     final reviewed =
         (check['reviewedItIds'] as List<String>?) ?? const <String>[];
     final pending = pendingReviewProducts(_orderDetail!, reviewed);
     final products = reviewableOrderProducts(_orderDetail!);
     var existing = ReviewService.reviewsOf(check);
     if (existing.isEmpty && reviewed.isNotEmpty) {
-      existing = await ReviewService.reviewsForOrder(
-        mbId: user.id,
-        odId: _orderDetail!.odId,
-      );
+      try {
+        existing = await ReviewService.reviewsForOrder(
+          mbId: user.id,
+          odId: _orderDetail!.odId,
+        );
+      } catch (e) {
+        await _reportReviewInfoFailure(user.id, _orderDetail!.odId, e.toString());
+        return;
+      }
     }
 
     if (!mounted) return;
-    setState(() => _reviewedItIds = reviewed);
+    setState(() {
+      _reviewStatusKnown = true;
+      _reviewedItIds = reviewed;
+    });
 
     if (pending.isEmpty) {
       AppToastOverlay.show(context, '작성할 리뷰가 없습니다.');
