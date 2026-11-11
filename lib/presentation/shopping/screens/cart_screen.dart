@@ -1273,25 +1273,43 @@ class _CartScreenState extends State<CartScreen> {
     );
     if (item.isAvailable) return thumb;
     return Stack(
+      alignment: Alignment.center,
       children: [
-        Opacity(opacity: 0.4, child: thumb),
+        thumb,
         Positioned.fill(
-          child: Center(
-            child: Text(
-              item.unavailableReason ?? '품절',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: healthSp(context, 10),
-                fontFamily: 'Gmarket Sans TTF',
-                fontWeight: FontWeight.w700,
-                shadows: const [
-                  Shadow(color: Colors.black54, blurRadius: 4),
-                ],
-              ),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(4),
             ),
           ),
         ),
+        Text(
+          item.unavailableReason ?? '품절',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: healthSp(context, 14),
+            fontFamily: 'Gmarket Sans TTF',
+            fontWeight: FontWeight.w500,
+          ),
+        ),
       ],
+    );
+  }
+
+  Widget _soldOutCheckbox() {
+    final size = healthDp(context, 20);
+    return Container(
+      width: size,
+      height: size,
+      decoration: ShapeDecoration(
+        color: const Color(0xFFF5F5F5),
+        shape: RoundedRectangleBorder(
+          side: const BorderSide(width: 1, color: Color(0xFFE0E0E0)),
+          borderRadius: BorderRadius.circular(4),
+        ),
+      ),
     );
   }
 
@@ -1354,20 +1372,21 @@ class _CartScreenState extends State<CartScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              SizedBox(
-                width: healthDp(context, 20),
-                height: healthDp(context, 20),
-                child: Center(
-                  child: _lightCheckbox(
-                    value: isSelected,
-                    base: 20,
-                    onChanged: item.isAvailable
-                        ? (bool? value) =>
-                            _toggleParentSelection(item, value ?? false)
-                        : null,
+              if (!item.isAvailable)
+                _soldOutCheckbox()
+              else
+                SizedBox(
+                  width: healthDp(context, 20),
+                  height: healthDp(context, 20),
+                  child: Center(
+                    child: _lightCheckbox(
+                      value: isSelected,
+                      base: 20,
+                      onChanged: (bool? value) =>
+                          _toggleParentSelection(item, value ?? false),
+                    ),
                   ),
                 ),
-              ),
               InkWell(
                 onTap: () => _deleteCartItem(item.ctId),
                 borderRadius: BorderRadius.circular(healthDp(context, 10)),
@@ -1410,9 +1429,7 @@ class _CartScreenState extends State<CartScreen> {
                     Text(
                       item.itName,  //상품명
                       style: TextStyle(
-                        color: item.isAvailable
-                            ? const Color(0xFF1A1A1A)
-                            : const Color(0xFF898686),
+                        color: const Color(0xFF1A1A1A),
                         fontSize: healthSp(context, 14),
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w500,
@@ -1422,18 +1439,6 @@ class _CartScreenState extends State<CartScreen> {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    if (!item.isAvailable) ...[
-                      SizedBox(height: healthDp(context, 4)),
-                      Text(
-                        item.unavailableReason ?? '품절',
-                        style: TextStyle(
-                          color: const Color(0xFFFF5A8D),
-                          fontSize: healthSp(context, 11),
-                          fontFamily: 'Gmarket Sans TTF',
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
                     if (option.isNotEmpty) ...[
                       SizedBox(height: healthDp(context, 4)),
                       Text(
@@ -1457,16 +1462,32 @@ class _CartScreenState extends State<CartScreen> {
           ),
           SizedBox(height: healthDp(context, 10)),
           _buildReservationNotice(),
-          SizedBox(height: healthDp(context, 10)),
-          Row(
+          SizedBox(height: healthDp(context, item.isAvailable ? 10 : 20)),
+          Container(
+            width: double.infinity,
+            decoration: item.isAvailable
+                ? null
+                : const BoxDecoration(
+                    border: Border(
+                      top: BorderSide(width: 0.5, color: Color(0xFFD2D2D2)),
+                    ),
+                  ),
+            child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              QuantityStepper(
-                quantity: item.ctQty,
-                onDecrease: item.ctQty > 1
-                    ? () => _updateQuantity(item.ctId, item.ctQty - 1)
-                    : null,
-                onIncrease: () => _updateQuantity(item.ctId, item.ctQty + 1),
+              Opacity(
+                opacity: item.isAvailable ? 1 : 0.5,
+                child: QuantityStepper(
+                  quantity: item.ctQty,
+                  onDecrease: !item.isAvailable
+                      ? null
+                      : item.ctQty > 1
+                          ? () => _updateQuantity(item.ctId, item.ctQty - 1)
+                          : null,
+                  onIncrease: item.isAvailable
+                      ? () => _updateQuantity(item.ctId, item.ctQty + 1)
+                      : null,
+                ),
               ),
               Text(
                 '${PriceFormatter.format(item.lineAmount)}원',
@@ -1478,6 +1499,7 @@ class _CartScreenState extends State<CartScreen> {
                 ),
               ),
             ],
+          ),
           ),
           if (footer != null) footer,
         ],
@@ -1527,14 +1549,16 @@ class _CartScreenState extends State<CartScreen> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SizedBox(
+              if (!item.isAvailable)
+                _soldOutCheckbox()
+              else
+                SizedBox(
                 width: healthDp(context, 20),
                 height: healthDp(context, 20),
                 child: Center(
                   child: _lightCheckbox(
                     value: isSelected,
-                    onChanged: item.isAvailable
-                        ? (bool? value) {
+                    onChanged: (bool? value) {
                             setState(() {
                               final checked = value ?? false;
                               if (checked) {
@@ -1565,8 +1589,7 @@ class _CartScreenState extends State<CartScreen> {
                                           .isEmpty;
                             });
                             _persistCartSelection();
-                          }
-                        : null,
+                          },
                   ),
                 ),
               ),
@@ -1602,9 +1625,7 @@ class _CartScreenState extends State<CartScreen> {
                               Text(
                                 item.itName,
                                 style: TextStyle(
-                                  color: item.isAvailable
-                                      ? const Color(0xFF1A1A1A)
-                                      : const Color(0xFF898686),
+                                  color: const Color(0xFF1A1A1A),
                                   fontSize: healthSp(context, 14),
                                   fontFamily: 'Gmarket Sans TTF',
                                   fontWeight: FontWeight.w500,
@@ -1613,18 +1634,6 @@ class _CartScreenState extends State<CartScreen> {
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                               ),
-                              if (!item.isAvailable) ...[
-                                SizedBox(height: healthDp(context, 4)),
-                                Text(
-                                  item.unavailableReason ?? '품절',
-                                  style: TextStyle(
-                                    color: const Color(0xFFFF5A8D),
-                                    fontSize: healthSp(context, 11),
-                                    fontFamily: 'Gmarket Sans TTF',
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
                               if (optionRow != null) ...[
                                 SizedBox(height: healthDp(context, 4)),
                                 optionRow,
@@ -1666,16 +1675,25 @@ class _CartScreenState extends State<CartScreen> {
                             ),
                           ),
                           SizedBox(width: healthDp(context, 10)),
-                          QuantityStepper(
-                            quantity: item.ctQty,
-                            onDecrease: item.ctQty > 1
-                                ? () => _updateQuantity(
-                                      item.ctId,
-                                      item.ctQty - 1,
-                                    )
-                                : null,
-                            onIncrease: () =>
-                                _updateQuantity(item.ctId, item.ctQty + 1),
+                          Opacity(
+                            opacity: item.isAvailable ? 1 : 0.5,
+                            child: QuantityStepper(
+                              quantity: item.ctQty,
+                              onDecrease: !item.isAvailable
+                                  ? null
+                                  : item.ctQty > 1
+                                      ? () => _updateQuantity(
+                                            item.ctId,
+                                            item.ctQty - 1,
+                                          )
+                                      : null,
+                              onIncrease: item.isAvailable
+                                  ? () => _updateQuantity(
+                                        item.ctId,
+                                        item.ctQty + 1,
+                                      )
+                                  : null,
+                            ),
                           ),
                         ],
                       ),
