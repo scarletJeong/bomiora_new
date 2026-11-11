@@ -414,21 +414,19 @@ extension _PaymentSections on _PaymentScreenState {
                           letterSpacing: -0.40,
                         ),
                       ),
-                      if (_baseShipping + _extraShipping > 0) ...[
-                        SizedBox(height: healthDp(context, 2)),
-                        Text(
-                          '* 배송비를 제외한 결제 금액의 1.0% 적립',
-                          textAlign: TextAlign.right,
-                          style: TextStyle(
-                            color: _muted,
-                            fontSize: healthSp(context, 10),
-                            fontFamily: 'Gmarket Sans TTF',
-                            fontWeight: FontWeight.w300,
-                            height: 1.5,
-                            letterSpacing: -0.40,
-                          ),
+                      SizedBox(height: healthDp(context, 2)),
+                      Text(
+                        '* 배송비를 제외한 결제 금액의 1% 적립',
+                        textAlign: TextAlign.right,
+                        style: TextStyle(
+                          color: _muted,
+                          fontSize: healthSp(context, 10),
+                          fontFamily: 'Gmarket Sans TTF',
+                          fontWeight: FontWeight.w300,
+                          height: 1.5,
+                          letterSpacing: -0.40,
                         ),
-                      ],
+                      ),
                     ],
                   ),
                 ],
