@@ -86,9 +86,58 @@ class CartGroupGeneralCard extends StatelessWidget {
 
     final pad = healthDp(context, 14);
 
+    final productCards = nestSupplyAdds
+        ? <Widget>[
+            for (var i = 0; i < groups.length; i++) ...[
+              if (i > 0) SizedBox(height: healthDp(context, 10)),
+              _VendorProductCard(
+                item: groups[i].parent,
+                selected: selectedItems.contains(groups[i].parent.ctId),
+                readOnly: readOnly,
+                buildCheckbox: buildCheckbox,
+                buildQtyControl: buildQtyControl,
+                onToggle: (v) => onToggleItem?.call(groups[i].parent, v),
+                onQuantityChanged: (q) =>
+                    onQuantityChanged?.call(groups[i].parent, q),
+                onDelete: () => onDelete?.call(groups[i].parent),
+                onOpenDetail: () => onOpenDetail?.call(groups[i].parent),
+              ),
+              if (groups[i].children.isNotEmpty) ...[
+                SizedBox(height: healthDp(context, 10)),
+                CartSupplyAddSection(
+                  items: groups[i].children,
+                  expandWhenSelected:
+                      selectedItems.contains(groups[i].parent.ctId),
+                  interactive: !readOnly,
+                  onQuantityChanged: readOnly ? null : onQuantityChanged,
+                  onDelete: readOnly ? null : onDelete,
+                  onOpenDetail: onOpenDetail,
+                ),
+              ],
+            ],
+          ]
+        : <Widget>[
+            for (var i = 0; i < items.length; i++) ...[
+              if (i > 0) SizedBox(height: healthDp(context, 10)),
+              _VendorProductCard(
+                item: items[i],
+                selected: selectedItems.contains(items[i].ctId),
+                readOnly: readOnly,
+                buildCheckbox: buildCheckbox,
+                buildQtyControl: buildQtyControl,
+                onToggle: (v) => onToggleItem?.call(items[i], v),
+                onQuantityChanged: (q) => onQuantityChanged?.call(items[i], q),
+                onDelete: () => onDelete?.call(items[i]),
+                onOpenDetail: () => onOpenDetail?.call(items[i]),
+              ),
+            ],
+          ];
+
     return Container(
       width: double.infinity,
+      padding: EdgeInsets.all(pad),
       decoration: ShapeDecoration(
+        color: Colors.white,
         shape: RoundedRectangleBorder(
           side: const BorderSide(width: 1, color: _kBorder),
           borderRadius: BorderRadius.circular(healthDp(context, 15)),
@@ -98,148 +147,81 @@ class CartGroupGeneralCard extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Padding(
-            padding: EdgeInsets.fromLTRB(pad, pad, pad, 0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    if (!readOnly && buildCheckbox != null) ...[
-                      buildCheckbox!(
-                        value: _allSelected,
-                        onChanged: (v) => onToggleVendor?.call(v ?? false),
-                      ),
-                      SizedBox(width: healthDp(context, 5)),
-                    ],
-                    Flexible(
-                      child: Text(
-                        vendorName.isEmpty ? '판매자' : vendorName,
-                        style: TextStyle(
-                          color: const Color(0xFF1A1A1E),
-                          fontSize: healthSp(context, 14),
-                          fontFamily: _kGmarketSans,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
+          Row(
+            children: [
+              if (!readOnly && buildCheckbox != null) ...[
+                buildCheckbox!(
+                  value: _allSelected,
+                  onChanged: (v) => onToggleVendor?.call(v ?? false),
                 ),
-                SizedBox(height: healthDp(context, 10)),
-                if (nestSupplyAdds)
-                  for (var i = 0; i < groups.length; i++) ...[
-                    if (i > 0) ...[
-                      SizedBox(height: healthDp(context, 10)),
-                      Container(
-                        width: double.infinity,
-                        height: 0.5,
-                        color: _kBorder,
-                      ),
-                      SizedBox(height: healthDp(context, 10)),
-                    ],
-                    _VendorProductCard(
-                      item: groups[i].parent,
-                      selected:
-                          selectedItems.contains(groups[i].parent.ctId),
-                      readOnly: readOnly,
-                      compactBottom: groups[i].children.isEmpty &&
-                          groups.length < 2,
-                      buildCheckbox: buildCheckbox,
-                      buildQtyControl: buildQtyControl,
-                      onToggle: (v) =>
-                          onToggleItem?.call(groups[i].parent, v),
-                      onQuantityChanged: (q) =>
-                          onQuantityChanged?.call(groups[i].parent, q),
-                      onDelete: () => onDelete?.call(groups[i].parent),
-                      onOpenDetail: () =>
-                          onOpenDetail?.call(groups[i].parent),
-                    ),
-                    if (groups[i].children.isNotEmpty) ...[
-                      SizedBox(height: healthDp(context, 8)),
-                      CartSupplyAddSection(
-                        items: groups[i].children,
-                        expandWhenSelected:
-                            selectedItems.contains(groups[i].parent.ctId),
-                        interactive: !readOnly,
-                        onQuantityChanged: readOnly ? null : onQuantityChanged,
-                        onDelete: readOnly ? null : onDelete,
-                        onOpenDetail: onOpenDetail,
-                      ),
-                    ],
-                  ]
-                else
-                  for (var i = 0; i < items.length; i++) ...[
-                    if (i > 0) ...[
-                      SizedBox(height: healthDp(context, 10)),
-                      Container(
-                        width: double.infinity,
-                        height: 0.5,
-                        color: _kBorder,
-                      ),
-                      SizedBox(height: healthDp(context, 10)),
-                    ],
-                    _VendorProductCard(
-                      item: items[i],
-                      selected: selectedItems.contains(items[i].ctId),
-                      readOnly: readOnly,
-                      compactBottom: items.length < 2,
-                      buildCheckbox: buildCheckbox,
-                      buildQtyControl: buildQtyControl,
-                      onToggle: (v) => onToggleItem?.call(items[i], v),
-                      onQuantityChanged: (q) =>
-                          onQuantityChanged?.call(items[i], q),
-                      onDelete: () => onDelete?.call(items[i]),
-                      onOpenDetail: () => onOpenDetail?.call(items[i]),
-                    ),
-                  ],
-                if (items.length >= 2)
-                  SizedBox(height: healthDp(context, 7)),
+                SizedBox(width: healthDp(context, 5)),
               ],
-            ),
-          ),
-          if (showBundleTotal && items.length >= 2) ...[
-            // 묶음 합계 위 회색선 — 카드 테두리에서 살짝 띄움
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
-              child: Container(
-                width: double.infinity,
-                height: 0.5,
-                color: _kBorder,
+              Flexible(
+                child: Text(
+                  vendorName.isEmpty ? '판매자' : vendorName,
+                  style: TextStyle(
+                    color: const Color(0xFF1A1A1E),
+                    fontSize: healthSp(context, 14),
+                    fontFamily: _kGmarketSans,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-            ),
-            Padding(
-              padding: EdgeInsets.fromLTRB(pad, healthDp(context, 14), pad, pad),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Text(
-                    '묶음 합계',
+              if (showBundleTotal && items.length >= 2) ...[
+                SizedBox(width: healthDp(context, 5)),
+                Container(
+                  padding: EdgeInsets.all(healthDp(context, 5)),
+                  decoration: ShapeDecoration(
+                    color: const Color(0x0CFF5A8D),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(healthDp(context, 50)),
+                    ),
+                  ),
+                  child: Text(
+                    '묶음배송',
                     style: TextStyle(
-                      color: _kMuted2,
+                      color: const Color(0xFFFF5A8D),
                       fontSize: healthSp(context, 10),
                       fontFamily: _kGmarketSans,
                       fontWeight: FontWeight.w500,
-                      letterSpacing: -0.90,
                     ),
                   ),
-                  SizedBox(width: healthDp(context, 10)),
-                  Text(
-                    '${PriceFormatter.format(_subtotal)}원',
-                    style: TextStyle(
-                      color: const Color(0xFF1A1A1E),
-                      fontSize: healthSp(context, 14),
-                      fontFamily: _kGmarketSans,
-                      fontWeight: FontWeight.w500,
-                    ),
+                ),
+              ],
+            ],
+          ),
+          SizedBox(height: healthDp(context, 10)),
+          ...productCards,
+          if (showBundleTotal && items.length >= 2) ...[
+            SizedBox(height: healthDp(context, 10)),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Text(
+                  '묶음 합계',
+                  style: TextStyle(
+                    color: _kMuted2,
+                    fontSize: healthSp(context, 12),
+                    fontFamily: _kGmarketSans,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: healthSp(context, -1.08),
                   ),
-                ],
-              ),
+                ),
+                SizedBox(width: healthDp(context, 10)),
+                Text(
+                  '${PriceFormatter.format(_subtotal)}원',
+                  style: TextStyle(
+                    color: const Color(0xFF1A1A1E),
+                    fontSize: healthSp(context, 16),
+                    fontFamily: _kGmarketSans,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
             ),
-          ] else
-            SizedBox(height: healthDp(context, items.length < 2 ? 10 : 14)),
+          ],
         ],
       ),
     );
@@ -250,7 +232,6 @@ class _VendorProductCard extends StatelessWidget {
   final CartItem item;
   final bool selected;
   final bool readOnly;
-  final bool compactBottom;
   final Widget Function({
     required bool value,
     required ValueChanged<bool?>? onChanged,
@@ -269,7 +250,6 @@ class _VendorProductCard extends StatelessWidget {
     required this.item,
     required this.selected,
     required this.readOnly,
-    this.compactBottom = false,
     required this.buildCheckbox,
     required this.buildQtyControl,
     required this.onToggle,
@@ -321,156 +301,150 @@ class _VendorProductCard extends StatelessWidget {
     final option = _optionText;
     final interactive = !readOnly;
 
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.fromLTRB(
-        healthDp(context, 10),
-        healthDp(context, readOnly ? 10 : 20),
-        healthDp(context, 10),
-        healthDp(context, readOnly ? 10 : (compactBottom ? 4 : 20)),
-      ),
-      decoration: ShapeDecoration(
-        color: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(healthDp(context, 10)),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (interactive)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                if (buildCheckbox != null)
-                  buildCheckbox!(
-                    value: selected,
-                    onChanged: item.isAvailable
-                        ? (v) => onToggle(v ?? false)
-                        : null,
-                  )
-                else
-                  const SizedBox.shrink(),
-                InkWell(
-                  onTap: onDelete,
-                  borderRadius: BorderRadius.circular(healthDp(context, 10)),
-                  child: SizedBox(
-                    width: healthDp(context, 20),
-                    height: healthDp(context, 20),
-                    child: Icon(
-                      Icons.close,
-                      size: healthDp(context, 16),
-                      color: _kBorder,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          if (interactive) SizedBox(height: healthDp(context, 12)),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (interactive)
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              GestureDetector(
-                onTap: interactive ? onOpenDetail : null,
-                child: _soldOutThumb(
-                  context,
-                  CartItemThumbnail(
-                    item: item,
-                    size: healthDp(context, readOnly ? 72 : 60),
+              if (buildCheckbox != null)
+                buildCheckbox!(
+                  value: selected,
+                  onChanged:
+                      item.isAvailable ? (v) => onToggle(v ?? false) : null,
+                )
+              else
+                const SizedBox.shrink(),
+              InkWell(
+                onTap: onDelete,
+                borderRadius: BorderRadius.circular(healthDp(context, 10)),
+                child: SizedBox(
+                  width: healthDp(context, 20),
+                  height: healthDp(context, 20),
+                  child: Icon(
+                    Icons.close,
+                    size: healthDp(context, 16),
+                    color: _kBorder,
                   ),
-                ),
-              ),
-              SizedBox(width: healthDp(context, readOnly ? 20 : 8)),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (!readOnly && subject.isNotEmpty) ...[
-                      Text(
-                        subject,
-                        style: TextStyle(
-                          color: _kMuted,
-                          fontSize: healthSp(context, 8),
-                          fontFamily: _kGmarketSans,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      SizedBox(height: healthDp(context, 2)),
-                    ],
-                    GestureDetector(
-                      onTap: interactive ? onOpenDetail : null,
-                      child: Text(
-                        item.itName,
-                        style: TextStyle(
-                          color: item.isAvailable ? _kInk : _kMuted,
-                          fontSize: healthSp(context, 14),
-                          fontFamily: _kGmarketSans,
-                          fontWeight: FontWeight.w500,
-                          letterSpacing: -1.26,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    if (!item.isAvailable) ...[
-                      SizedBox(height: healthDp(context, 4)),
-                      Text(
-                        item.unavailableReason ?? '품절',
-                        style: TextStyle(
-                          color: const Color(0xFFFF5A8D),
-                          fontSize: healthSp(context, 11),
-                          fontFamily: _kGmarketSans,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                    if (readOnly) ...[
-                      SizedBox(height: healthDp(context, 5)),
-                      Text(
-                        _qtyOptionLine,
-                        style: TextStyle(
-                          color: _kMuted2,
-                          fontSize: healthSp(context, 10),
-                          fontFamily: _kGmarketSans,
-                          fontWeight: FontWeight.w500,
-                          letterSpacing: -0.40,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      SizedBox(height: healthDp(context, 5)),
-                      Text(
-                        '${PriceFormatter.format(item.lineAmount)}원',
-                        style: TextStyle(
-                          color: _kInk,
-                          fontSize: healthSp(context, 14),
-                          fontFamily: _kGmarketSans,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ] else if (option.isNotEmpty) ...[
-                      SizedBox(height: healthDp(context, 4)),
-                      Text(
-                        option,
-                        style: TextStyle(
-                          color: _kMuted2,
-                          fontSize: healthSp(context, 10),
-                          fontFamily: _kGmarketSans,
-                          fontWeight: FontWeight.w500,
-                          letterSpacing: -0.90,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ],
                 ),
               ),
             ],
           ),
-          if (interactive && buildQtyControl != null) ...[
-            SizedBox(height: healthDp(context, 20)),
-            Row(
+        if (interactive) SizedBox(height: healthDp(context, 10)),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            GestureDetector(
+              onTap: interactive ? onOpenDetail : null,
+              child: _soldOutThumb(
+                context,
+                CartItemThumbnail(
+                  item: item,
+                  size: healthDp(context, 64),
+                ),
+              ),
+            ),
+            SizedBox(width: healthDp(context, 8)),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (subject.isNotEmpty)
+                    Text(
+                      subject,
+                      style: TextStyle(
+                        color: _kMuted,
+                        fontSize: healthSp(context, 10),
+                        fontFamily: _kGmarketSans,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  if (subject.isNotEmpty) SizedBox(height: healthDp(context, 2)),
+                  GestureDetector(
+                    onTap: interactive ? onOpenDetail : null,
+                    child: Text(
+                      item.itName,
+                      style: TextStyle(
+                        color: item.isAvailable ? _kInk : _kMuted,
+                        fontSize: healthSp(context, 14),
+                        fontFamily: _kGmarketSans,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: healthSp(context, -1.26),
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (!item.isAvailable) ...[
+                    SizedBox(height: healthDp(context, 4)),
+                    Text(
+                      item.unavailableReason ?? '품절',
+                      style: TextStyle(
+                        color: const Color(0xFFFF5A8D),
+                        fontSize: healthSp(context, 11),
+                        fontFamily: _kGmarketSans,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                  if (readOnly) ...[
+                    SizedBox(height: healthDp(context, 4)),
+                    Text(
+                      _qtyOptionLine,
+                      style: TextStyle(
+                        color: _kMuted2,
+                        fontSize: healthSp(context, 12),
+                        fontFamily: _kGmarketSans,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: healthSp(context, -1.08),
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    SizedBox(height: healthDp(context, 4)),
+                    Text(
+                      '${PriceFormatter.format(item.lineAmount)}원',
+                      style: TextStyle(
+                        color: _kInk,
+                        fontSize: healthSp(context, 16),
+                        fontFamily: _kGmarketSans,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ] else if (option.isNotEmpty) ...[
+                    SizedBox(height: healthDp(context, 4)),
+                    Text(
+                      option,
+                      style: TextStyle(
+                        color: _kMuted2,
+                        fontSize: healthSp(context, 12),
+                        fontFamily: _kGmarketSans,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: healthSp(context, -1.08),
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+        if (interactive && buildQtyControl != null) ...[
+          SizedBox(height: healthDp(context, 10)),
+          Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              border: Border(
+                top: BorderSide(
+                  width: healthDp(context, 0.5),
+                  color: const Color(0xFFD2D2D2),
+                ),
+              ),
+            ),
+            child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 buildQtyControl!(
@@ -491,9 +465,9 @@ class _VendorProductCard extends StatelessWidget {
                 ),
               ],
             ),
-          ],
+          ),
         ],
-      ),
+      ],
     );
   }
 }

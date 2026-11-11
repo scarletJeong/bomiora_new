@@ -710,7 +710,7 @@ class _CartScreenState extends State<CartScreen> {
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           _buildSelectAllRow(),
-                          SizedBox(height: healthDp(context, 12)),
+                          SizedBox(height: healthDp(context, 10)),
                           ...groupCartByVendor(_displayedGroups).expand(
                             (entry) => [
                               CartGroupGeneralCard(
@@ -792,7 +792,7 @@ class _CartScreenState extends State<CartScreen> {
                                 onDelete: (item) => _deleteCartItem(item.ctId),
                                 onOpenDetail: _openCartProductDetail,
                               ),
-                              SizedBox(height: healthDp(context, 12)),
+                              SizedBox(height: healthDp(context, 10)),
                             ],
                           ),
                           if (_displayedCartItems.isEmpty)
@@ -807,7 +807,7 @@ class _CartScreenState extends State<CartScreen> {
                                 ),
                               ),
                             ),
-                          SizedBox(height: healthDp(context, 18)),
+                          SizedBox(height: healthDp(context, 10)),
                           _buildScrollablePriceSummary(),
                         ],
                       ),
@@ -847,7 +847,9 @@ class _CartScreenState extends State<CartScreen> {
     final selectedShipping = selectedShippingCost;
     final payable = finalPrice;
 
-    return Column(
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
+      child: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         _summaryRow(
@@ -867,13 +869,7 @@ class _CartScreenState extends State<CartScreen> {
           labelColor: const Color(0xFF898686),
           valueColor: const Color(0xFF1A1A1E),
         ),
-        SizedBox(height: healthDp(context, 10)),
-        Divider(
-          height: healthDp(context, 1),
-          thickness: healthDp(context, 1),
-          color: const Color(0xFF898686),
-        ),
-        SizedBox(height: healthDp(context, 10)),
+        SizedBox(height: healthDp(context, 20)),
         Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
@@ -902,6 +898,7 @@ class _CartScreenState extends State<CartScreen> {
           ],
         ),
       ],
+      ),
     );
   }
 
@@ -912,30 +909,30 @@ class _CartScreenState extends State<CartScreen> {
     return Container(
       padding: EdgeInsets.fromLTRB(
         healthDp(context, 20),
-        healthDp(context, 8),
         healthDp(context, 20),
-        healthDp(context, 8) + bottomInset.clamp(0, healthDp(context, 10)),
+        healthDp(context, 20),
+        healthDp(context, 20) + bottomInset,
       ),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: healthDp(context, 8),
-            offset: Offset(0, -healthDp(context, 2)),
+            color: Color(0x19000000),
+            blurRadius: 4,
+            offset: Offset(0, -1),
           ),
         ],
       ),
       child: SizedBox(
         width: double.infinity,
-        height: healthDp(context, 40),
+        height: healthDp(context, 45),
         child: ElevatedButton(
           onPressed: selected.isEmpty || _checkoutOpening
               ? null
               : () => _openPaymentScreen(Set<int>.from(selected)),
           style: ElevatedButton.styleFrom(
-            minimumSize: Size(double.infinity, healthDp(context, 40)),
-            maximumSize: Size(double.infinity, healthDp(context, 40)),
+            minimumSize: Size(double.infinity, healthDp(context, 45)),
+            maximumSize: Size(double.infinity, healthDp(context, 45)),
             padding: EdgeInsets.zero,
             backgroundColor: const Color(0xFFFF5A8D),
             foregroundColor: Colors.white,
@@ -1154,6 +1151,7 @@ class _CartScreenState extends State<CartScreen> {
           ),
         ),
       ],
+      ),
     );
   }
 
