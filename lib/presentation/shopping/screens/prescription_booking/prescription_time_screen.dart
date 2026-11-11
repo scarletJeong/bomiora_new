@@ -1533,6 +1533,7 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
                     onTap: () => Navigator.pop(context),
                     borderRadius: BorderRadius.circular(healthDp(context, 8)),
                     child: Container(
+                      width: healthDp(context, 87),
                       height: healthDp(context, 45),
                       padding: EdgeInsets.symmetric(
                         horizontal: healthDp(context, 10),
@@ -1540,9 +1541,9 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
                       alignment: Alignment.center,
                       decoration: ShapeDecoration(
                         shape: RoundedRectangleBorder(
-                          side: BorderSide(
-                            width: healthDp(context, 1),
-                            color: const Color(0x7FD2D2D2),
+                          side: const BorderSide(
+                            width: 1,
+                            color: Color(0x7FD2D2D2),
                           ),
                           borderRadius:
                               BorderRadius.circular(healthDp(context, 8)),
