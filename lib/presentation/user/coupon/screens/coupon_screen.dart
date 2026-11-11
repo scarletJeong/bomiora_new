@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../../../../core/constants/app_assets.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/services/coupon_service.dart';
 import '../../../../data/models/user/user_model.dart';
 import '../../../../data/models/coupon/coupon_model.dart';
-import '../../../common/widgets/app_toast_overlay.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
-import '../../../common/widgets/login_required_dialog.dart';
 import '../../../common/widgets/centered_empty_state.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
@@ -46,7 +43,6 @@ class _CouponScreenState extends State<CouponScreen> {
   final ValueNotifier<int> _selectedCouponTab = ValueNotifier(0);
   final ValueNotifier<_CouponTabLists> _couponLists =
       ValueNotifier(const _CouponTabLists());
-  final TextEditingController _couponCodeController = TextEditingController();
 
   static const Color _pink = Color(0xFFFF5A8D);
   static const Color _registerDisabled = Color(0xFFD2D2D2);
@@ -100,7 +96,6 @@ class _CouponScreenState extends State<CouponScreen> {
     _reloading.dispose();
     _selectedCouponTab.dispose();
     _couponLists.dispose();
-    _couponCodeController.dispose();
     super.dispose();
   }
 
@@ -139,9 +134,9 @@ class _CouponScreenState extends State<CouponScreen> {
       }
       _loadFailed.value = false;
       _couponLists.value = _CouponTabLists(
-        available: tabs['available'] ?? const <Coupon>[],
-        used: tabs['used'] ?? const <Coupon>[],
-        expired: tabs['expired'] ?? const <Coupon>[],
+        available: _issuedOldestFirst(tabs['available'] ?? const <Coupon>[]),
+        used: _issuedOldestFirst(tabs['used'] ?? const <Coupon>[]),
+        expired: _issuedOldestFirst(tabs['expired'] ?? const <Coupon>[]),
       );
     } catch (e) {
       if (!mounted) return;
@@ -155,39 +150,11 @@ class _CouponScreenState extends State<CouponScreen> {
   String _emptyMessage(int tab) =>
       tab < _emptyMessages.length ? _emptyMessages[tab] : '';
 
-  /// 성공·미시도는 null. 실패면 입력칸 아래에 보일 문구.
-  Future<String?> _registerCoupon() async {
-    final code = _couponCodeController.text.replaceAll('-', '').trim();
-    if (code.length != 16) return null;
-
-    if (_currentUser == null) {
-      await showLoginRequiredDialog(
-        context,
-        message: '쿠폰 등록은 로그인 후 이용할 수 있습니다.',
-      );
-      return null;
-    }
-
-    try {
-      final result = await CouponService.registerCoupon(
-        _currentUser!.id,
-        _couponCodeController.text.trim(),
-      );
-
-      if (!mounted) return null;
-
-      if (result['success'] == true) {
-        _couponCodeController.clear();
-        await _loadCoupons();
-        if (mounted) {
-          AppToastOverlay.show(context, '쿠폰이 성공적으로 등록되었습니다.');
-        }
-        return null;
-      }
-      return result['message']?.toString().trim() ?? '';
-    } catch (e) {
-      return '쿠폰 등록 중 오류가 발생했습니다: $e';
-    }
+  /// 발행이 오래된 쿠폰이 위, 최근 발행이 아래. cp_no 가 발행 순서다.
+  List<Coupon> _issuedOldestFirst(List<Coupon> source) {
+    final list = List<Coupon>.from(source);
+    list.sort((a, b) => a.no.compareTo(b.no));
+    return list;
   }
 
   @override
@@ -240,21 +207,6 @@ class _CouponScreenState extends State<CouponScreen> {
                   children: [
                     _buildCouponFilterTabs(),
                     SizedBox(height: healthDp(context, 10)),
-                    ValueListenableBuilder<int>(
-                      valueListenable: _selectedCouponTab,
-                      builder: (context, tab, _) {
-                        if (tab != 0) return const SizedBox.shrink();
-                        return Padding(
-                          padding: EdgeInsets.only(
-                            bottom: healthDp(context, 10),
-                          ),
-                          child: _CouponRegistrationCard(
-                            controller: _couponCodeController,
-                            onRegister: _registerCoupon,
-                          ),
-                        );
-                      },
-                    ),
                     Expanded(child: _buildCouponBody()),
                   ],
                 ),
@@ -610,259 +562,6 @@ class _CouponScreenState extends State<CouponScreen> {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _CouponRegistrationCard extends StatefulWidget {
-  const _CouponRegistrationCard({
-    required this.controller,
-    required this.onRegister,
-  });
-
-  final TextEditingController controller;
-  final Future<String?> Function() onRegister;
-
-  @override
-  State<_CouponRegistrationCard> createState() =>
-      _CouponRegistrationCardState();
-}
-
-class _CouponRegistrationCardState extends State<_CouponRegistrationCard> {
-  static const Color _pink = Color(0xFFFF5A8D);
-  static const Color _registerDisabled = Color(0xFFD2D2D2);
-  static const Color _border = Color(0x7FD2D2D2);
-  static const Color _textMain = Color(0xFF1A1A1A);
-  static const Color _usedRed = Color(0xFFEF4444);
-
-  final ValueNotifier<String?> _registerError = ValueNotifier(null);
-  final ValueNotifier<bool> _registering = ValueNotifier(false);
-
-  @override
-  void initState() {
-    super.initState();
-    widget.controller.addListener(_onCodeChanged);
-  }
-
-  @override
-  void didUpdateWidget(covariant _CouponRegistrationCard oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.controller != widget.controller) {
-      oldWidget.controller.removeListener(_onCodeChanged);
-      widget.controller.addListener(_onCodeChanged);
-    }
-  }
-
-  @override
-  void dispose() {
-    widget.controller.removeListener(_onCodeChanged);
-    _registerError.dispose();
-    _registering.dispose();
-    super.dispose();
-  }
-
-  void _onCodeChanged() {
-    if (_registerError.value != null) _registerError.value = null;
-  }
-
-  Future<void> _onRegisterTap() async {
-    if (_registering.value) return;
-    final enabled =
-        widget.controller.text.replaceAll('-', '').trim().length == 16;
-    if (!enabled) return;
-
-    _registerError.value = null;
-    _registering.value = true;
-    try {
-      final result = await widget.onRegister();
-      if (!mounted) return;
-      if (result != null) _registerError.value = result;
-    } finally {
-      if (mounted) _registering.value = false;
-    }
-  }
-
-  TextStyle _couponText(
-    BuildContext context, {
-    required double size,
-    required Color color,
-    FontWeight weight = FontWeight.w500,
-    double? height,
-  }) =>
-      TextStyle(
-        color: color,
-        fontSize: healthSp(context, size),
-        fontFamily: 'Gmarket Sans TTF',
-        fontWeight: weight,
-        height: height,
-      );
-
-  @override
-  Widget build(BuildContext context) {
-    final underlineBorder = UnderlineInputBorder(
-      borderSide: BorderSide(width: healthDp(context, 1), color: _border),
-    );
-
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(healthDp(context, 15)),
-      decoration: ShapeDecoration(
-        color: Colors.white,
-        shape: RoundedRectangleBorder(
-          side: BorderSide(width: healthDp(context, 1), color: _border),
-          borderRadius: BorderRadius.circular(healthDp(context, 7)),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '쿠폰등록하기',
-            style: _couponText(context, size: 14, color: _textMain, height: 1),
-          ),
-          SizedBox(height: healthDp(context, 10)),
-          Container(
-            height: healthDp(context, 1),
-            color: const Color(0x7FD2D2D2),
-          ),
-          SizedBox(height: healthDp(context, 10)),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: widget.controller,
-                      maxLength: 19,
-                      textCapitalization: TextCapitalization.characters,
-                      inputFormatters: const [_CouponCodeFormatter()],
-                      autocorrect: false,
-                      enableSuggestions: false,
-                      mouseCursor: SystemMouseCursors.text,
-                      style: _couponText(context, size: 12, color: _textMain),
-                      decoration: InputDecoration(
-                        isDense: true,
-                        counterText: '',
-                        hintText: '쿠폰 코드를 입력해주세요',
-                        hintStyle: _couponText(
-                          context,
-                          size: 12,
-                          color: const Color(0xFFD2D2D2),
-                          weight: FontWeight.w300,
-                        ),
-                        contentPadding: EdgeInsets.symmetric(
-                          vertical: healthDp(context, 10),
-                        ),
-                        border: underlineBorder,
-                        enabledBorder: underlineBorder,
-                        focusedBorder: underlineBorder,
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: healthDp(context, 10)),
-                  ValueListenableBuilder<TextEditingValue>(
-                    valueListenable: widget.controller,
-                    builder: (context, value, _) {
-                      return ValueListenableBuilder<bool>(
-                        valueListenable: _registering,
-                        builder: (context, registering, _) {
-                          final enabled = value.text
-                                  .replaceAll('-', '')
-                                  .trim()
-                                  .length ==
-                              16 &&
-                              !registering;
-                          return GestureDetector(
-                            onTap: enabled ? _onRegisterTap : null,
-                            child: SizedBox(
-                              height: healthDp(context, 34),
-                              child: Container(
-                                padding: EdgeInsets.all(healthDp(context, 10)),
-                                alignment: Alignment.center,
-                                decoration: ShapeDecoration(
-                                  color: enabled ? _pink : _registerDisabled,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(
-                                      healthDp(context, 7),
-                                    ),
-                                  ),
-                                ),
-                                child: Text(
-                                  '등록',
-                                  textAlign: TextAlign.center,
-                                  style: _couponText(
-                                    context,
-                                    size: 12,
-                                    color: Colors.white,
-                                    height: 1,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  ),
-                ],
-              ),
-              ValueListenableBuilder<String?>(
-                valueListenable: _registerError,
-                builder: (context, message, _) {
-                  if (message == null) return const SizedBox.shrink();
-                  final text = message.trim().isEmpty
-                      ? '쿠폰정보를 다시 입력해주세요.'
-                      : message.trim();
-                  return Padding(
-                    padding: EdgeInsets.only(top: healthDp(context, 4)),
-                    child: Text(
-                      text,
-                      style: _couponText(
-                        context,
-                        size: 10,
-                        color: _usedRed,
-                        weight: FontWeight.w300,
-                        height: 1,
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CouponCodeFormatter extends TextInputFormatter {
-  const _CouponCodeFormatter();
-
-  @override
-  TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
-    final raw = newValue.text
-        .toUpperCase()
-        .replaceAll(RegExp(r'[^A-Z0-9]'), '');
-    final clipped = raw.length > 16 ? raw.substring(0, 16) : raw;
-    final buf = StringBuffer();
-    for (var i = 0; i < clipped.length; i++) {
-      if (i > 0 && i % 4 == 0) buf.write('-');
-      buf.write(clipped[i]);
-    }
-    final text = buf.toString();
-    if (text == oldValue.text &&
-        oldValue.selection.baseOffset == text.length) {
-      return oldValue;
-    }
-    return TextEditingValue(
-      text: text,
-      selection: TextSelection.collapsed(offset: text.length),
     );
   }
 }
