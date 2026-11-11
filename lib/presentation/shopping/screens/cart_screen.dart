@@ -987,6 +987,7 @@ class _CartScreenState extends State<CartScreen> {
             backgroundColor: const Color(0xFFFF5A8D),
             foregroundColor: Colors.white,
             disabledBackgroundColor: Colors.grey[300],
+            disabledForegroundColor: Colors.white,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(healthDp(context, 10)),
             ),
@@ -1068,9 +1069,9 @@ class _CartScreenState extends State<CartScreen> {
                   clipBehavior: Clip.antiAlias,
                   decoration: ShapeDecoration(
                     shape: RoundedRectangleBorder(
-                      side: BorderSide(
-                        width: healthDp(context, 1),
-                        color: const Color(0xFFEBEBEB),
+                      side: const BorderSide(
+                        width: 1,
+                        color: Color(0xFFCCCCCC),
                       ),
                       borderRadius:
                           BorderRadius.circular(healthDp(context, 50)),
@@ -1081,7 +1082,7 @@ class _CartScreenState extends State<CartScreen> {
                     child: Text(
                       '품절삭제',
                       style: TextStyle(
-                        color: const Color(0xFFD2D2D2),
+                        color: const Color(0xFF555555),
                         fontSize: healthSp(context, 12),
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w500,
