@@ -70,7 +70,12 @@ class PaymentPrefetchData {
         coupons: results[1] as List<Coupon>,
         point: (results[2] as int?) ?? 0,
       );
-    } catch (_) {
+    } catch (e) {
+      await FailureLog.record(
+        code: 'payment.checkout.load',
+        mbId: id,
+        reason: e.toString(),
+      );
       return null;
     }
   }
@@ -155,8 +160,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
   int _baseShipping = 0;
 
   int _extraShipping = 0;
-
-  double _pointRate = 1;
 
   int _shippingQuoteGen = 0;
 

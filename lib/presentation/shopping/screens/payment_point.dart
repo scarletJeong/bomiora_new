@@ -99,7 +99,7 @@ extension _PaymentPoint on _PaymentScreenState {
     return raw > cap ? cap : raw;
   }
 
-  int get _expectedPoint => (_rewardBase * _pointRate / 100).floor();
+  int get _expectedPoint => (_rewardBase * 0.01).floor();
 
   String _pointFieldText(int value) =>
       value <= 0 ? '' : PointService.formatPoint(value);
@@ -169,5 +169,23 @@ extension _PaymentPoint on _PaymentScreenState {
     if (rate <= 0) return 0;
     if (rate > 100) return 100;
     return rate;
+  }
+
+  void _logPointUsageRates() {
+    final eligibleBase = _pointEligibleBaseAmount;
+    final nonInf = _nonInfluencerAmount;
+    debugPrint(
+      '[point-rate] base=$eligibleBase nonInf=$nonInf '
+      'byRate=$_maxPointByRate minPay=$_maxPointByMinimumPayable '
+      'mine=$_myPoint usable=$_maxUsablePoint',
+    );
+    for (final item in widget.cartItems) {
+      debugPrint(
+        '[point-rate] it=${item.itId} kind=${item.ctKind} '
+        'inf=${item.ctMbInf.trim().isNotEmpty} '
+        'field=${item.pointUsageRate} used=${_pointRateForItem(item)} '
+        'line=${item.lineAmount} name=${item.itName}',
+      );
+    }
   }
 }
