@@ -983,6 +983,40 @@ class CartService {
     }
   }
 
+  /// 삭제한 장바구니 줄을 같은 상품·옵션·수량으로 다시 담는다.
+  static Future<Map<String, dynamic>> restoreCartItems(
+    List<CartItem> items,
+  ) async {
+    final ordered = <CartItem>[
+      ...items.where((item) => (item.parentItId ?? '').trim().isEmpty),
+      ...items.where((item) => (item.parentItId ?? '').trim().isNotEmpty),
+    ];
+    for (final item in ordered) {
+      if (item.itId.trim().isEmpty || item.ctQty <= 0) continue;
+      final odId = item.odId.trim();
+      final result = await addToCart(
+        productId: item.itId,
+        quantity: item.ctQty,
+        price: item.ctPrice,
+        optionId: item.ioId,
+        optionText: item.ctOption,
+        optionPrice: item.ioPrice,
+        ioType: item.ioType,
+        odId: odId.isEmpty || odId == '0' ? null : odId,
+        ctKind: item.isSupplyAdd ? null : item.ctKind,
+        parentItId: item.parentItId,
+        ctStatus: item.ctStatus.trim().isEmpty ? '쇼핑' : item.ctStatus,
+        mbId: item.mbId,
+      );
+      if (result['success'] != true) return result;
+    }
+    invalidateCartCache();
+    return {
+      'success': true,
+      'message': '장바구니에 다시 담았습니다.',
+    };
+  }
+
   /// 장바구니 항목 삭제
   static Future<Map<String, dynamic>> removeCartItem(int ctId) async {
     try {

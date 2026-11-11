@@ -421,30 +421,71 @@ class _CartScreenState extends State<CartScreen> {
         available.isNotEmpty && available.difference(selectedItems).isEmpty;
   }
 
-  Future<void> _commitCartDelete(Set<int> ids, String successMessage) async {
+  Future<void> _commitCartDelete(
+    Set<int> ids,
+    String successMessage, {
+    bool canUndo = true,
+  }) async {
     if (_deleteBusy || ids.isEmpty) return;
     final snapshotItems = List<CartItem>.from(cartItems);
     final snapshotSelected = Set<int>.from(selectedItems);
     final snapshotTotal = totalPrice;
     final snapshotSelectAll = selectAll;
+    final removed =
+        snapshotItems.where((item) => ids.contains(item.ctId)).toList();
     _deleteBusy = true;
     setState(() => _dropCartItems(ids));
-    AppToastOverlay.show(context, successMessage);
+    var deleteFinished = false;
+    var undoAsked = false;
+    Future<void> undo() async {
+      if (undoAsked) return;
+      undoAsked = true;
+      if (!deleteFinished) return;
+      await _restoreDeletedCartItems(removed);
+    }
+
+    AppToastOverlay.showCartDeleted(
+      context,
+      successMessage,
+      onUndo: canUndo ? () { undo(); } : null,
+    );
     _scheduleShippingRefresh();
     final result = await CartService.removeCartItems(ids.toList());
+    deleteFinished = true;
     _deleteBusy = false;
-    if (!mounted || result['success'] == true) return;
-    setState(() {
-      cartItems = snapshotItems;
-      selectedItems = snapshotSelected;
-      totalPrice = snapshotTotal;
-      selectAll = snapshotSelectAll;
-    });
-    _scheduleShippingRefresh();
-    AppToastOverlay.show(
-      context,
-      result['message']?.toString() ?? '장바구니 삭제에 실패했습니다.',
-    );
+    if (!mounted) return;
+    if (result['success'] != true) {
+      setState(() {
+        cartItems = snapshotItems;
+        selectedItems = snapshotSelected;
+        totalPrice = snapshotTotal;
+        selectAll = snapshotSelectAll;
+      });
+      _scheduleShippingRefresh();
+      if (!undoAsked) {
+        AppToastOverlay.show(
+          context,
+          result['message']?.toString() ?? '장바구니 삭제에 실패했습니다.',
+        );
+      }
+      return;
+    }
+    if (undoAsked) {
+      await _restoreDeletedCartItems(removed);
+    }
+  }
+
+  Future<void> _restoreDeletedCartItems(List<CartItem> removed) async {
+    final result = await CartService.restoreCartItems(removed);
+    if (!mounted) return;
+    if (result['success'] != true) {
+      AppToastOverlay.show(
+        context,
+        result['message']?.toString() ?? '다시 담기에 실패했습니다.',
+      );
+      return;
+    }
+    await _loadCart(forceRefresh: true);
   }
 
   Future<void> _deleteCartItem(int ctId) async {
@@ -462,7 +503,7 @@ class _CartScreenState extends State<CartScreen> {
     if (confirmed != true || !mounted) return;
     await _commitCartDelete(
       _expandDeleteIds([ctId]),
-      '장바구니에서 상품이 삭제됐어요.',
+      '장바구니에서 상품이 삭제되었습니다.',
     );
   }
 
@@ -475,7 +516,7 @@ class _CartScreenState extends State<CartScreen> {
     if (selectedDisplayedItems.isEmpty) return;
     await _commitCartDelete(
       _expandDeleteIds(selectedDisplayedItems),
-      '장바구니에서 상품이 삭제됐어요.',
+      '장바구니에서 상품이 삭제되었습니다.',
     );
   }
 
@@ -496,7 +537,11 @@ class _CartScreenState extends State<CartScreen> {
       }
     }
     if (toDelete.isEmpty) return;
-    await _commitCartDelete(toDelete, '품절·판매중지 상품이 삭제됐어요.');
+    await _commitCartDelete(
+      toDelete,
+      '품절·판매중지 상품이 삭제되었습니다.',
+      canUndo: false,
+    );
   }
 
   // 선택된 아이템들의 총구매금액 계산
