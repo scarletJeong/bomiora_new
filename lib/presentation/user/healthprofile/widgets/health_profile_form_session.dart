@@ -875,6 +875,18 @@ class HealthProfileFormSession extends ChangeNotifier {
     return _isYmdValid(y, m, d);
   }
 
+  /// 하루 식사 횟수를 골랐으면 그 횟수만큼 식사시간이 있어야 한다.
+  bool mealTimesFilledForCount() {
+    final expected = HealthProfileFormCommon.expectedMealSlotCount(
+      formData['answer_7']?.toString(),
+    );
+    if (expected <= 0) return true;
+    final filled = HealthProfileFormCommon.mealTimeKeys
+        .where((key) => HealthProfileFormCommon.isRealMealTime(formData[key]))
+        .length;
+    return filled >= expected;
+  }
+
   bool isWizardStepFilled(int stepIndex) {
     if (stepIndex < 0 || stepIndex >= sections.length) return false;
     final section = sections[stepIndex];
@@ -898,6 +910,8 @@ class HealthProfileFormSession extends ChangeNotifier {
       if (!_nonEmptyString(formData['answer_6'])) return false;
       return true;
     }
+
+    if (stepIndex == 1 && !mealTimesFilledForCount()) return false;
 
     for (final q in section.questions) {
       if (!shouldShowQuestion(q)) continue;

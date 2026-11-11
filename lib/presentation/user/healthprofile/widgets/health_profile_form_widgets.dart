@@ -37,6 +37,10 @@ abstract final class HealthProfileFormUi {
       AppToastOverlay.showAlert(context, '문진표를 불러오지 못했습니다');
       return;
     }
+    if (!session.mealTimesFilledForCount()) {
+      AppToastOverlay.showAlert(context, '선택한 식사 횟수만큼 시간을 입력해주세요');
+      return;
+    }
     if (!session.isAllWizardStepsFilled()) {
       AppToastOverlay.showAlert(context, '모든 문진표를 작성해야합니다');
       formKey.currentState?.validate();

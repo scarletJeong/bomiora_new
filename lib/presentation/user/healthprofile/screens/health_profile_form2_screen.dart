@@ -94,6 +94,13 @@ class _HealthProfileForm2State extends State<HealthProfileForm2Screen> {
   }
 
   void _goNext() {
+    if (!session.mealTimesFilledForCount()) {
+      AppToastOverlay.showAlert(
+        context,
+        '선택한 식사 횟수만큼 시간을 입력해주세요',
+      );
+      return;
+    }
     if (!session.isWizardStepFilled(1)) {
       AppToastOverlay.showAlert(context, '이 단계의 항목을 입력해주세요');
       _formKey.currentState?.validate();
