@@ -170,10 +170,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
         await _failProductDetail(serial, '상품을 찾지 못했습니다.');
         return;
       }
-      if (!product.isPurchasable) {
-        _leaveUnsellableProduct();
-        return;
-      }
       _safeSetState(() {
         _product = product;
         _isLoading = false;
@@ -203,19 +199,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       if (!mounted || serial != _detailLoadSerial) return;
       await _failProductDetail(serial, e.toString());
     }
-  }
-
-  void _leaveUnsellableProduct() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final nav = Navigator.of(context);
-      if (nav.canPop()) {
-        nav.pop();
-      } else {
-        nav.pushReplacementNamed('/home');
-      }
-      AppToastOverlay.showAlertFromNavigator('현재 판매가 불가능한 상품입니다.');
-    });
   }
 
   Future<void> _failProductDetail(int serial, String reason) async {
@@ -557,7 +540,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
 
   /// 찜하기 토글
   Future<void> _toggleFavorite() async {
-    if (_product == null) return;
+    if (_product == null || !_product!.isPurchasable) return;
 
     final user = await AuthService.getUser();
     if (user == null || user.id.isEmpty) {
@@ -1667,6 +1650,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   }
 
   Widget _buildBottomActionBar() {
+    final canBuy = _product?.isPurchasable ?? true;
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
@@ -1692,7 +1676,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                 ),
                 clipBehavior: Clip.antiAlias,
                 child: InkWell(
-                  onTap: _toggleFavorite,
+                  onTap: canBuy ? _toggleFavorite : null,
                   child: SizedBox(
                     width: healthDp(context, 40),
                     height: healthDp(context, 40),
@@ -1711,14 +1695,16 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                 child: SizedBox(
                   height: healthDp(context, 40),
                   child: Material(
-                    color: const Color(0xFFFF5A8D),
+                    color: canBuy
+                        ? const Color(0xFFFF5A8D)
+                        : const Color(0xFFD2D2D2),
                     borderRadius: BorderRadius.circular(healthDp(context, 10)),
                     clipBehavior: Clip.antiAlias,
                     child: InkWell(
-                      onTap: _showOptionSelectionDialog,
+                      onTap: canBuy ? _showOptionSelectionDialog : null,
                       child: Center(
                         child: Text(
-                          '처방 예약하기',
+                          canBuy ? '처방 예약하기' : '현재 판매 불가',
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: healthSp(context, 16),
@@ -1740,7 +1726,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
 
   /// 옵션 선택 바텀 시트 표시
   Future<void> _showOptionSelectionDialog() async {
-    if (_product == null) return;
+    if (_product == null || !_product!.isPurchasable) return;
 
     await showProductOptionBottomup(
       context: context,

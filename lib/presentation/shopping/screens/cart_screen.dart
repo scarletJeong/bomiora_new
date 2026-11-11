@@ -649,10 +649,6 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   void _openCartProductDetail(CartItem item) {
-    if (!item.isAvailable) {
-      AppToastOverlay.showAlert(context, '현재 판매가 불가능한 상품입니다.');
-      return;
-    }
     final kind = (item.itKind ?? item.ctKind).trim().toLowerCase();
     final route = kind == 'general'
         ? '/product-general/${item.itId}'

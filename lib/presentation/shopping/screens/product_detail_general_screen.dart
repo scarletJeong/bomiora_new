@@ -186,10 +186,6 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
         await _failProductDetail(serial, '상품을 찾지 못했습니다.');
         return;
       }
-      if (!product.isPurchasable) {
-        _leaveUnsellableProduct();
-        return;
-      }
       _safeSetState(() {
         _product = product;
         _isLoading = false;
@@ -218,19 +214,6 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       if (!mounted || serial != _detailLoadSerial) return;
       await _failProductDetail(serial, e.toString());
     }
-  }
-
-  void _leaveUnsellableProduct() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final nav = Navigator.of(context);
-      if (nav.canPop()) {
-        nav.pop();
-      } else {
-        nav.pushReplacementNamed('/home');
-      }
-      AppToastOverlay.showAlertFromNavigator('현재 판매가 불가능한 상품입니다.');
-    });
   }
 
   Future<void> _failProductDetail(int serial, String reason) async {
@@ -532,7 +515,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
 
   /// 찜하기 토글
   Future<void> _toggleFavorite() async {
-    if (_product == null) return;
+    if (_product == null || !_product!.isPurchasable) return;
 
     final user = await AuthService.getUser();
     if (user == null || user.id.isEmpty) {
@@ -1555,6 +1538,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
   }
 
   Widget _buildBottomActionBar() {
+    final canBuy = _product?.isPurchasable ?? true;
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -1593,7 +1577,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
                         ? const Color(0xFFFF4081)
                         : Colors.grey[600],
                   ),
-                  onPressed: () => _toggleFavorite(),
+                  onPressed: canBuy ? () => _toggleFavorite() : null,
                 ),
               ),
               SizedBox(width: healthDp(context, 10)),
@@ -1601,10 +1585,14 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
                 child: SizedBox(
                   height: healthDp(context, 40),
                   child: ElevatedButton(
-                    onPressed: _showOptionSelectionDialog,
+                    onPressed: canBuy ? _showOptionSelectionDialog : null,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFFF4081),
+                      backgroundColor: canBuy
+                          ? const Color(0xFFFF4081)
+                          : const Color(0xFFD2D2D2),
+                      disabledBackgroundColor: const Color(0xFFD2D2D2),
                       foregroundColor: Colors.white,
+                      disabledForegroundColor: Colors.white,
                       padding: EdgeInsets.zero,
                       shape: RoundedRectangleBorder(
                         borderRadius:
@@ -1612,7 +1600,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
                       ),
                     ),
                     child: Text(
-                      '구매하기',
+                      canBuy ? '구매하기' : '현재 판매 불가',
                       style: TextStyle(
                         fontSize: healthSp(context, 16),
                         fontWeight: FontWeight.w500,
@@ -1631,7 +1619,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
 
   /// 옵션 선택 바텀 시트 표시
   Future<void> _showOptionSelectionDialog() async {
-    if (_product == null) return;
+    if (_product == null || !_product!.isPurchasable) return;
 
     await showProductOptionBottomup(
       context: context,
