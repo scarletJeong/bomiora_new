@@ -7,6 +7,7 @@ import '../../core/network/api_client.dart';
 import '../../core/network/api_endpoints.dart';
 import '../../core/utils/kcp_pay_session_store.dart';
 import '../common/widgets/app_alert_dialog.dart';
+import 'utils/cart_navigation.dart';
 
 /// 새로고침으로 결제 화면이 사라져도, 진행 중이던 결제 토큰으로 결과를 이어서 확인한다.
 /// WebView는 다시 열지 않고 결과 API만 폴링한다.
@@ -75,6 +76,7 @@ class KcpPayResume {
     }
 
     if (status == 'failed' || status == 'expired') {
+      final prescriptionTab = readKcpPayCartPrescription();
       clearKcpPayToken();
       if (status == 'failed' && context.mounted) {
         final message = (data['message'] ?? '').toString().trim();
@@ -82,6 +84,13 @@ class KcpPayResume {
           context,
           title: '',
           message: message.isEmpty ? '결제가 완료되지 않았습니다.' : message,
+        );
+      }
+      if (context.mounted && ModalRoute.of(context)?.isCurrent == true) {
+        await CartNavigation.openCart(
+          context,
+          prescriptionTab: prescriptionTab,
+          clearStack: true,
         );
       }
       return true;

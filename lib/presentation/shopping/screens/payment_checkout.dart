@@ -14,6 +14,33 @@ extension _PaymentCheckout on _PaymentScreenState {
   }
 
 
+  bool get _paymentIsPrescription {
+    if (widget.sourceTitle.contains('처방')) return true;
+    return widget.cartItems.any(
+      (item) => item.isPrescription && !item.isSupplyAdd,
+    );
+  }
+
+  Future<String> _paymentCartReturnUrl() async {
+    final integrated =
+        await PrescriptionPurchaseHistoryService.shouldUseIntegratedCart();
+    final prescription = _paymentIsPrescription;
+    if (integrated) {
+      final tab = prescription ? 0 : 1;
+      return '${Uri.base.origin}/interCart?tab=$tab';
+    }
+    return '${Uri.base.origin}${prescription ? '/cart' : '/generalCart'}';
+  }
+
+  Future<void> _backToCartAfterPaymentFailure() async {
+    if (!mounted) return;
+    await CartNavigation.openCart(
+      context,
+      prescriptionTab: _paymentIsPrescription,
+      clearStack: true,
+    );
+  }
+
   /// KCP PayPlus hidden `pay_method` (영카트 `www/shop/orderform.sub.php` forderform_check 분기와 동일).
   String get _kcpPayMethodBits {
     switch (_paymentMethodIndex) {
@@ -79,12 +106,24 @@ extension _PaymentCheckout on _PaymentScreenState {
 
   Future<void> _requestKcpPayment() async {
     if (_submitting) return;
-    if (!_validateBeforePay()) return;
+    _submitting = true;
+    _setState(() {});
+    if (!_validateBeforePay()) {
+      if (mounted) {
+        _setState(() {
+          _submitting = false;
+        });
+      }
+      return;
+    }
 
     final user = await AuthService.getUser();
     if (user == null || user.id.trim().isEmpty) {
       if (mounted) {
         AppToastOverlay.showAlert(context, '로그인 정보를 확인할 수 없습니다.');
+        _setState(() {
+          _submitting = false;
+        });
       }
       return;
     }
@@ -93,18 +132,21 @@ extension _PaymentCheckout on _PaymentScreenState {
     if (cartIds.isEmpty) {
       if (mounted) {
         AppToastOverlay.showAlert(context, '결제할 상품이 없습니다.');
+        _setState(() {
+          _submitting = false;
+        });
       }
       return;
     }
-
-    _setState(() {
-      _submitting = true;
-    });
 
     try {
       final useMobilePay = _useMobileKcpPay(context);
       Future<KcpPaySession> bootstrap() async {
         await _maybeSaveDefaultAddress(user.id);
+        final cartReturnUrl = kIsWeb ? await _paymentCartReturnUrl() : '';
+        if (kIsWeb) {
+          rememberKcpPayCart(prescriptionTab: _paymentIsPrescription);
+        }
         final quote = await _loadShippingQuote();
         final baseShipping = quote?.baseShipping ?? _baseShipping;
         final extraShipping = quote?.extraShipping ?? _extraShipping;
@@ -154,7 +196,7 @@ extension _PaymentCheckout on _PaymentScreenState {
                     : 'Android')
                 : 'Windows',
             'is_mobile': useMobilePay,
-            if (kIsWeb) 'return_url': '${Uri.base.origin}/',
+            if (kIsWeb) 'return_url': cartReturnUrl,
           },
           additionalHeaders: <String, String>{
             'User-Agent': _kcpRequestUserAgent(mobile: useMobilePay),
@@ -260,6 +302,7 @@ extension _PaymentCheckout on _PaymentScreenState {
                 ? message
                 : '재고 또는 금액이 변경되었습니다. 장바구니를 확인해 주세요.',
           );
+          await _backToCartAfterPaymentFailure();
           return;
         }
         if (code == '3001' || code == 'USER_CANCELLED') {
@@ -272,6 +315,7 @@ extension _PaymentCheckout on _PaymentScreenState {
           context,
           message.isNotEmpty ? message : '결제가 완료되지 않았습니다.',
         );
+        await _backToCartAfterPaymentFailure();
       }
     } catch (e) {
       if (!mounted) return;

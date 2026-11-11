@@ -327,9 +327,14 @@ class _BomioraAppState extends State<BomioraApp> {
         '/interCart': (context) {
           final args = ModalRoute.of(context)?.settings.arguments
               as Map<String, dynamic>?;
-          final tab = args?['initialTabIndex'];
+          final name = ModalRoute.of(context)?.settings.name ?? '';
+          final queryTab = int.tryParse(
+            Uri.tryParse(name)?.queryParameters['tab'] ?? '',
+          );
+          final rawTab = args?['initialTabIndex'] ?? queryTab;
+          final tab = rawTab is int ? rawTab : int.tryParse('${rawTab ?? ''}');
           return CartIntegrationScreen(
-            initialTabIndex: tab is int ? tab : 0,
+            initialTabIndex: tab ?? 0,
             backToProductId: args?['backToProductId']?.toString(),
           );
         },
