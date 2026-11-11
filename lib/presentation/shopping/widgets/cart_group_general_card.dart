@@ -469,16 +469,7 @@ class _VendorProductCard extends StatelessWidget {
         ),
         if (interactive && buildQtyControl != null) ...[
           SizedBox(height: healthDp(context, item.isAvailable ? 10 : 20)),
-          Container(
-            width: double.infinity,
-            decoration: item.isAvailable
-                ? null
-                : const BoxDecoration(
-                    border: Border(
-                      top: BorderSide(width: 0.5, color: Color(0xFFD2D2D2)),
-                    ),
-                  ),
-            child: Row(
+          Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               IgnorePointer(
@@ -504,7 +495,6 @@ class _VendorProductCard extends StatelessWidget {
                 ),
               ),
             ],
-          ),
           ),
         ],
       ],
