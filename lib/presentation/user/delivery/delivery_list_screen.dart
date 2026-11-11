@@ -704,7 +704,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
     }
     final statusText = _selectedStatus == 'all'
         ? '주문'
-        : _getStatusText(_selectedStatus);
+        : _selectedChipLabel();
     return CenteredEmptyState(
       iconWidget: CenteredEmptyState.assetIcon(
         context,
@@ -714,22 +714,15 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
     );
   }
 
-  /// 상태 텍스트 가져오기
-  String _getStatusText(String status) {
-    switch (status) {
-      case 'payment_waiting':
-        return '결제대기중';
-      case 'preparing':
-        return '결제완료';
-      case 'delivering':
-        return '배송중';
-      case 'completed':
-        return '배송완료';
-      case 'cancelled':
-        return '취소';
-      default:
-        return '주문';
+  /// 상태 칩에 적힌 이름
+  String _selectedChipLabel() {
+    final entries = _selectedProductType == DeliveryProductType.prescription
+        ? DeliveryStatusFilterBar.prescriptionStatusEntries
+        : DeliveryStatusFilterBar.generalStatusEntries;
+    for (final entry in entries) {
+      if (entry.key == _selectedStatus) return entry.value;
     }
+    return '주문';
   }
 
 
