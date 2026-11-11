@@ -2,8 +2,7 @@ part of 'payment_screen.dart';
 
 extension _PaymentPoint on _PaymentScreenState {
   int _pointEligibleBaseAmountFor(List<Coupon> coupons) {
-    final base =
-        _nonInfluencerAmount - _productCouponDiscountFor(coupons);
+    final base = _nonInfluencerAmount - _productCouponDiscountFor(coupons);
     return base < 0 ? 0 : base;
   }
 
@@ -166,11 +165,8 @@ extension _PaymentPoint on _PaymentScreenState {
 
   int _pointRateForItem(CartItem item) {
     if (item.ctMbInf.trim().isNotEmpty) return 0;
-    final kind = item.ctKind.toLowerCase();
-    if (kind == 'prescription') return 100;
-    if (kind == 'general') return 10;
     final rate = item.pointUsageRate;
-    if (rate <= 0) return 100;
+    if (rate <= 0) return 0;
     if (rate > 100) return 100;
     return rate;
   }
