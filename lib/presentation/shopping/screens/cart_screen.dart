@@ -1356,7 +1356,7 @@ class _CartScreenState extends State<CartScreen> {
           ),
         ),
         Text(
-          item.unavailableReason ?? '품절',
+          '품절',
           textAlign: TextAlign.center,
           style: TextStyle(
             color: Colors.white,

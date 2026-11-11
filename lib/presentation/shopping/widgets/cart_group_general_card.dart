@@ -316,7 +316,7 @@ class _VendorProductCard extends StatelessWidget {
           ),
         ),
         Text(
-          item.unavailableReason ?? '품절',
+          '품절',
           textAlign: TextAlign.center,
           style: TextStyle(
             color: Colors.white,
