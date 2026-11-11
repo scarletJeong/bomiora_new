@@ -1704,7 +1704,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                       onTap: canBuy ? _showOptionSelectionDialog : null,
                       child: Center(
                         child: Text(
-                          canBuy ? '처방 예약하기' : '현재 판매 불가',
+                          canBuy ? '처방 예약하기' : '판매 불가',
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: healthSp(context, 16),

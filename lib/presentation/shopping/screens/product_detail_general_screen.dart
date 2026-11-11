@@ -1600,7 +1600,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
                       ),
                     ),
                     child: Text(
-                      canBuy ? '구매하기' : '현재 판매 불가',
+                      canBuy ? '구매하기' : '판매 불가',
                       style: TextStyle(
                         fontSize: healthSp(context, 16),
                         fontWeight: FontWeight.w500,
