@@ -969,6 +969,7 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
       subtitleFontSize: 12,
       bodyFontSize: 10,
       confirmFontSize: 12,
+      heightBase: 450,
     );
     if (confirmed && mounted) {
       _agreedRefundPolicy.value = true;
