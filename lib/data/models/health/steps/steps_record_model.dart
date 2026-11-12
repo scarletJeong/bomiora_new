@@ -125,15 +125,15 @@ class StepsRecord {
     return {
       'id': id,
       'user_id': userId,
-      'date': date.toIso8601String().split('T')[0],
+      'date': ApiDateTime.kstDateYmd(date),
       'total_steps': totalSteps,
       'distance': distance,
       'calories': calories,
       'hourly_steps': hourlySteps.map((item) => item.toJson()).toList(),
       'half_hour_steps':
           halfHourSteps.asMap().entries.map((e) => {'slot': e.key, 'steps': e.value}).toList(),
-      'created_at': createdAt.toUtc().toIso8601String(),
-      'updated_at': updatedAt.toUtc().toIso8601String(),
+      'created_at': ApiDateTime.kstDateTimeText(createdAt),
+      'updated_at': ApiDateTime.kstDateTimeText(updatedAt),
       if (stepsDifference != null) 'steps_difference': stepsDifference,
     };
   }

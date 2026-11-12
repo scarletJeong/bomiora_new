@@ -120,8 +120,7 @@ class BloodSugarRecord {
     return {
       if (id != null) 'id': id,
       'mb_id': mbId,
-      // Always send UTC with timezone suffix (Z) to avoid server/client ambiguity.
-      'measured_at': measuredAt.toUtc().toIso8601String(),
+      'measured_at': ApiDateTime.kstDateTimeText(measuredAt),
       'blood_sugar': bloodSugar,
       'measurement_type': measurementType,
       'status': status,

@@ -200,10 +200,7 @@ class MenstrualCycleRecord {
   }
 
   static String _formatDateOnly(DateTime value) {
-    final d = DateTime(value.year, value.month, value.day);
-    return '${d.year.toString().padLeft(4, '0')}-'
-        '${d.month.toString().padLeft(2, '0')}-'
-        '${d.day.toString().padLeft(2, '0')}';
+    return ApiDateTime.kstDateYmd(value);
   }
 
   static String? _parseString(dynamic value) {

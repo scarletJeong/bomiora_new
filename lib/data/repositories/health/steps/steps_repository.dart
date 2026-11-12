@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import '../../../models/health/steps/steps_record_model.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_endpoints.dart';
+import '../../../../core/utils/api_date_time.dart';
 
 class StepsRepository {
   static String get _baseUrl => ApiClient.baseUrl;
@@ -42,7 +43,7 @@ class StepsRepository {
   /// 특정 날짜 일별 총 걸음 — `/api/steps/daily-total` (mb_id: VARCHAR 지원)
   static Future<StepsRecord?> getStepsRecordByMbId(String mbId, DateTime date) async {
     try {
-      final dateStr = date.toIso8601String().split('T')[0];
+      final dateStr = ApiDateTime.kstDateYmd(date);
       final response = await ApiClient.get(
         ApiEndpoints.stepsDailyTotal(mbId: mbId, dateYyyyMmDd: dateStr),
       );
@@ -92,8 +93,8 @@ class StepsRepository {
     try {
       final s = DateTime(start.year, start.month, start.day);
       final e = DateTime(end.year, end.month, end.day);
-      final ss = s.toIso8601String().split('T')[0];
-      final ee = e.toIso8601String().split('T')[0];
+      final ss = ApiDateTime.kstDateYmd(s);
+      final ee = ApiDateTime.kstDateYmd(e);
       final response = await ApiClient.get(
         ApiEndpoints.stepsDailyRange(mbId: mbId, startYyyyMmDd: ss, endYyyyMmDd: ee),
       );
@@ -200,7 +201,7 @@ class StepsRepository {
   // 주간 걸음수 데이터 가져오기
   static Future<List<StepsRecord>> getWeeklyStepsRecords(int userId, DateTime startDate) async {
     try {
-      final startDateStr = startDate.toIso8601String().split('T')[0];
+      final startDateStr = ApiDateTime.kstDateYmd(startDate);
 
       final response = await http.get(
         Uri.parse('$_baseUrl/api/steps/weekly/$userId?startDate=$startDateStr'),

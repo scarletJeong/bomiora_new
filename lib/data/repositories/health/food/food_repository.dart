@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_endpoints.dart';
+import '../../../../core/utils/api_date_time.dart';
 import '../../../../core/utils/image_url_helper.dart';
 
 /// Node.js Buffer 직렬화({ type: 'Buffer', data: [...] })를 UTF-8로 디코딩 후 JSON으로 파싱 (재귀 처리)
@@ -228,14 +229,6 @@ class FoodRecordSummary {
 }
 
 const int _maxMealImages = 3;
-
-/// 달력에서 고른 날짜를 API `record_date`(YYYY-MM-DD)로 — `toIso8601String`은 UTC라 KST에서 하루 밀릴 수 있음
-String _localDateYmd(DateTime date) {
-  final y = date.year;
-  final m = date.month.toString().padLeft(2, '0');
-  final d = date.day.toString().padLeft(2, '0');
-  return '$y-$m-$d';
-}
 
 /// 화면 식사 키(아침/점심/저녁/간식) <-> API food_time
 const Map<String, String> _mealKeyToFoodTime = {
@@ -604,7 +597,7 @@ class FoodRepository {
       }
       return [];
     }
-    final key = '$trimmedMbId|${_localDateYmd(date)}';
+    final key = '$trimmedMbId|${ApiDateTime.kstDateYmd(date)}';
     final cachedAt = _recordsCacheAt[key];
     if (!forceRefresh &&
         cachedAt != null &&
@@ -641,7 +634,7 @@ class FoodRepository {
     bool surfaceFailure = false,
   }) async {
     try {
-      final dateStr = _localDateYmd(date);
+      final dateStr = ApiDateTime.kstDateYmd(date);
       final endpoint =
           '${ApiEndpoints.foodRecords(dateStr)}&mb_id=${Uri.encodeComponent(mbId)}';
       final response = await ApiClient.get(
@@ -714,7 +707,7 @@ class FoodRepository {
     String mealKey,
   ) async {
     try {
-      final dateStr = _localDateYmd(date);
+      final dateStr = ApiDateTime.kstDateYmd(date);
       final foodTime = _mealKeyToFoodTime[mealKey] ?? 'snack';
       final response = await ApiClient.post(
         ApiEndpoints.foodRecordCreate,

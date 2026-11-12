@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_endpoints.dart';
+import '../../../../core/utils/api_date_time.dart';
 import '../../../models/health/blood_pressure/blood_pressure_record_model.dart';
 import '../../../models/health/blood_sugar/blood_sugar_record_model.dart';
 import '../../../models/health/heart_rate/heart_rate_record_model.dart';
@@ -63,7 +64,7 @@ class HealthDashboardRepository {
     required String mbId,
     required DateTime date,
   }) {
-    final dateStr = date.toIso8601String().split('T')[0];
+    final dateStr = ApiDateTime.kstDateYmd(date);
     final key = '${mbId.trim()}|$dateStr';
     final cachedAt = _cacheAt[key];
     if (cachedAt == null || DateTime.now().difference(cachedAt) >= _cacheTtl) {
@@ -149,7 +150,7 @@ class HealthDashboardRepository {
     bool forceRefresh = false,
     bool surfaceFailure = false,
   }) async {
-    final dateStr = date.toIso8601String().split('T')[0];
+    final dateStr = ApiDateTime.kstDateYmd(date);
     final key = '${mbId.trim()}|$dateStr';
     final cachedAt = _cacheAt[key];
     if (!forceRefresh &&

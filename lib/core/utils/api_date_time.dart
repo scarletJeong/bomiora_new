@@ -1,9 +1,44 @@
-/// Node 건강 API와 맞춘 날짜·시각 파싱.
+/// Node 건강 API와 맞춘 날짜·시각.
 ///
-/// 서버는 시각을 UTC ISO-8601(`...Z` 또는 오프셋)로 통일해 내려주고,
-/// 클라이언트는 화면 표시를 위해 [parseInstant]로 **기기 로컬** [DateTime]으로 맞춘다.
+/// 조회·저장에 보내는 연·월·일·시는 한국시간(UTC+9) 벽시계 하나다.
+/// `toIso8601String`의 UTC 날짜는 자정과 오전 9시 이전에 하루 밀린다.
+/// 서버는 타임존 없는 `yyyy-MM-dd HH:mm:ss`를 한국시간으로 읽는다.
+/// 응답의 UTC ISO는 [parseInstant]로 같은 시각의 로컬 [DateTime]이 된다.
 class ApiDateTime {
   ApiDateTime._();
+
+  static const Duration _kstOffset = Duration(hours: 9);
+
+  /// [date] instant의 한국시간 벽시계. 반환값의 UTC 필드가 연·월·일·시다.
+  static DateTime kstWallClock(DateTime date) {
+    final shifted = date.toUtc().add(_kstOffset);
+    return DateTime.utc(
+      shifted.year,
+      shifted.month,
+      shifted.day,
+      shifted.hour,
+      shifted.minute,
+      shifted.second,
+      shifted.millisecond,
+    );
+  }
+
+  /// 한국시간 `yyyy-MM-dd`.
+  static String kstDateYmd(DateTime date) {
+    final k = kstWallClock(date);
+    final m = k.month.toString().padLeft(2, '0');
+    final d = k.day.toString().padLeft(2, '0');
+    return '${k.year}-$m-$d';
+  }
+
+  /// 한국시간 `yyyy-MM-dd HH:mm:ss`.
+  static String kstDateTimeText(DateTime date) {
+    final k = kstWallClock(date);
+    final h = k.hour.toString().padLeft(2, '0');
+    final mi = k.minute.toString().padLeft(2, '0');
+    final s = k.second.toString().padLeft(2, '0');
+    return '${kstDateYmd(date)} $h:$mi:$s';
+  }
 
   /// API instant → 로컬 [DateTime] (동일 시각, 사용자 타임존).
   static DateTime? parseInstant(dynamic value) {

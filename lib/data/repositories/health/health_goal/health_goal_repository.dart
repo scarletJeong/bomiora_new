@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_endpoints.dart';
+import '../../../../core/utils/api_date_time.dart';
 import '../../../models/health/health_goal_record_model.dart';
 
 class HealthGoalRepository {
@@ -106,7 +107,7 @@ class HealthGoalRepository {
         'daily_step_goal': dailyStepGoal,
       };
       if (measuredAt != null) {
-        payload['measured_at'] = measuredAt.toUtc().toIso8601String();
+        payload['measured_at'] = ApiDateTime.kstDateTimeText(measuredAt);
       }
 
       final response = await ApiClient.post(

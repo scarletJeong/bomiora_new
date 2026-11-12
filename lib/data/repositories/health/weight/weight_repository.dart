@@ -1,6 +1,7 @@
 import 'dart:convert';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_endpoints.dart';
+import '../../../../core/utils/api_date_time.dart';
 import '../../../models/health/weight/weight_record_model.dart';
 import '../health_save_result.dart';
 
@@ -153,8 +154,7 @@ class WeightRepository {
     final id = mbId.trim();
     if (id.isEmpty) return;
     final day = DateTime(date.year, date.month, date.day);
-    final dateStr =
-        '${day.year.toString().padLeft(4, '0')}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}';
+    final dateStr = ApiDateTime.kstDateYmd(day);
     try {
       final response = await ApiClient.get(
         '${ApiEndpoints.weightRecords}/$dateStr?mb_id=${Uri.encodeQueryComponent(id)}',

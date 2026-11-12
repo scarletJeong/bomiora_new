@@ -129,7 +129,7 @@ class WeightRecord {
     return {
       if (id != null) 'record_id': id,
       'mb_id': mbId,
-      'measured_at': measuredAt.toUtc().toIso8601String(),
+      'measured_at': ApiDateTime.kstDateTimeText(measuredAt),
       'weight': weight,
       if (height != null) 'height': height,
       if (bmi != null) 'bmi': bmi,

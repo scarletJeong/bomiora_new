@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_endpoints.dart';
+import '../../../../core/utils/api_date_time.dart';
 import '../../../services/health_sync_snapshot.dart';
 
 class HealthAppSyncResult {
@@ -27,14 +28,10 @@ class HealthAppSyncResult {
 /// 건강앱에서 읽은 오늘 값을 Node `POST /api/health/sync` 로 저장.
 class HealthAppSyncRepository {
   static String ymd(DateTime date) {
-    final local = date.toLocal();
-    final y = local.year.toString().padLeft(4, '0');
-    final m = local.month.toString().padLeft(2, '0');
-    final d = local.day.toString().padLeft(2, '0');
-    return '$y-$m-$d';
+    return ApiDateTime.kstDateYmd(date);
   }
 
-  static String iso(DateTime date) => date.toUtc().toIso8601String();
+  static String iso(DateTime date) => ApiDateTime.kstDateTimeText(date);
 
   static Future<HealthAppSyncResult> persistToday({
     required String mbId,

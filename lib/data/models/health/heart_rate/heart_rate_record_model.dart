@@ -39,7 +39,7 @@ class HeartRateRecord {
       if (id != null) 'id': id,
       'mb_id': mbId,
       'heart_rate': heartRate,
-      'measured_at': measuredAt.toUtc().toIso8601String(),
+      'measured_at': ApiDateTime.kstDateTimeText(measuredAt),
       'status': status,
       'source_type': sourceType,
       if (sourceRecordId != null) 'source_record_id': sourceRecordId,

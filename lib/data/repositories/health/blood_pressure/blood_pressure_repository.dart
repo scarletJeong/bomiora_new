@@ -1,6 +1,7 @@
 import 'dart:convert';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_endpoints.dart';
+import '../../../../core/utils/api_date_time.dart';
 import '../../../models/health/blood_pressure/blood_pressure_record_model.dart';
 import '../health_save_result.dart';
 
@@ -211,7 +212,9 @@ class BloodPressureRepository {
   ) async {
     try {
       final response = await ApiClient.get(
-        '${ApiEndpoints.bloodPressureRecords}/range?mb_id=$userId&start_date=${startDate.toIso8601String()}&end_date=${endDate.toIso8601String()}',
+        '${ApiEndpoints.bloodPressureRecords}/range?mb_id=$userId'
+        '&start_date=${Uri.encodeQueryComponent(ApiDateTime.kstDateTimeText(startDate))}'
+        '&end_date=${Uri.encodeQueryComponent(ApiDateTime.kstDateTimeText(endDate))}',
       );
 
       if (response.statusCode == 200) {
