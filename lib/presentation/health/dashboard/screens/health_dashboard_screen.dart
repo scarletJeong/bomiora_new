@@ -57,6 +57,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
 
   bool isLoading = true;
   bool _loadFailed = false;
+  bool _foodLoadFailed = false;
   bool _hasSnapshot = false;
   DateTime? _snapshotDate;
   int _loadGeneration = 0;
@@ -146,6 +147,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
         setState(() {
           currentUser = null;
           _loadFailed = false;
+          _foodLoadFailed = false;
           _hasSnapshot = true;
           _snapshotDate = selectedDate;
           latestWeightRecord = null;
@@ -196,46 +198,39 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
         }
       }
 
-      final results = await Future.wait<dynamic>([
-        includeDashboard
-            ? HealthDashboardRepository.fetchDashboard(
-                mbId: userId,
-                date: selectedDate,
-                forceRefresh: forceRefresh,
-                surfaceFailure: true,
-              )
-            : Future<HealthDashboardPayload?>.value(null),
-        includeFood
-            ? FoodRepository.getRecordsForDate(
-                userId,
-                selectedDate,
-                forceRefresh: forceRefresh,
-                surfaceFailure: true,
-              )
-            : Future<List<FoodRecordSummary>?>.value(null),
-      ]);
-      if (!mounted || generation != _loadGeneration) return;
-      if (includeDashboard && results[0] == null) {
-        throw StateError('health dashboard load failed');
-      }
-      final dashboard = includeDashboard
-          ? results[0] as HealthDashboardPayload?
-          : null;
-
-      final weightRecords = dashboard?.weightRecords ?? <WeightRecord>[];
-      final bpRecords =
-          dashboard?.bloodPressureRecords ?? <BloodPressureRecord>[];
-      final sugarRecords = dashboard?.bloodSugarRecords ?? <BloodSugarRecord>[];
-      final heartRateRecords =
-          dashboard?.heartRateRecords ?? <HeartRateRecord>[];
-      final menstrualCycleRecord = dashboard?.menstrualCycle;
-      final stepsRecord = dashboard?.steps;
-      final healthGoal = dashboard?.healthGoal;
-
-      final foodRecords = includeFood
-          ? results[1] as List<FoodRecordSummary>
-          : null;
+      HealthDashboardPayload? dashboard;
+      var dashboardFailed = false;
       if (includeDashboard) {
+        try {
+          dashboard = await HealthDashboardRepository.fetchDashboard(
+            mbId: userId,
+            date: selectedDate,
+            forceRefresh: forceRefresh,
+            surfaceFailure: true,
+          );
+          dashboardFailed = dashboard == null;
+        } catch (_) {
+          dashboardFailed = true;
+        }
+      }
+
+      List<FoodRecordSummary>? foodRecords;
+      var foodFailed = false;
+      if (includeFood) {
+        try {
+          foodRecords = await FoodRepository.getRecordsForDate(
+            userId,
+            selectedDate,
+            forceRefresh: forceRefresh,
+            surfaceFailure: true,
+          );
+        } catch (_) {
+          foodFailed = true;
+        }
+      }
+      if (!mounted || generation != _loadGeneration) return;
+
+      if (includeDashboard && !dashboardFailed) {
         unawaited(
           HealthDashboardRepository.fetchDashboard(
             mbId: userId,
@@ -245,86 +240,132 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
         );
       }
 
-      // 선택한 날짜에 측정 기록이 있을 때만 사용 (다른 날의 최신 체중으로 채우지 않음)
-      final WeightRecord? weightRecord = _latestOfDate(
-        weightRecords,
-        (e) => e.measuredAt,
-      );
-      final bloodPressureRecord = _latestOfDate(bpRecords, (e) => e.measuredAt);
-      final bloodSugarRecord = _latestOfDate(sugarRecords, (e) => e.measuredAt);
-      final heartRateRecord =
-          _latestOfDate(heartRateRecords, (e) => e.measuredAt);
-
       setState(() {
         currentUser = user;
         if (includeDashboard) {
-          _hasSnapshot = true;
-          _snapshotDate = selectedDate;
-          _loadFailed = false;
-        } else if (_snapshotMatchesSelection()) {
-          _loadFailed = false;
-        }
-        if (includeDashboard) {
-          latestWeightRecord = weightRecord;
-          latestBloodPressureRecord = bloodPressureRecord;
-          latestBloodSugarRecord = bloodSugarRecord;
-          latestMenstrualCycleRecord = menstrualCycleRecord;
-          latestHeartRateRecord = heartRateRecord;
-          latestStepsRecord = stepsRecord;
-          latestHealthGoal = healthGoal;
-
-          _applyBodyMetrics(weightRecord);
-
-          if (bloodPressureRecord != null) {
-            systolicBP = bloodPressureRecord.systolic;
-            diastolicBP = bloodPressureRecord.diastolic;
+          if (dashboardFailed || dashboard == null) {
+            _loadFailed = true;
+            _hasSnapshot = false;
+            _snapshotDate = null;
+            _clearHealthRecords();
           } else {
-            systolicBP = 0;
-            diastolicBP = 0;
+            _loadFailed = false;
+            _hasSnapshot = true;
+            _snapshotDate = selectedDate;
+            _writeHealthDashboard(user, dashboard);
           }
-
-          heartRate = heartRateRecord?.heartRate ?? 0;
-          steps = stepsRecord?.totalSteps ?? 0;
         }
-
-        if (foodRecords != null) {
-          consumedCalories =
-              foodRecords.fold<int>(0, (sum, r) => sum + (r.calories ?? 0));
-          totalCarbs =
-              foodRecords.fold<num>(0, (sum, r) => sum + (r.carbs ?? 0));
-          totalProtein =
-              foodRecords.fold<num>(0, (sum, r) => sum + (r.protein ?? 0));
-          totalFat = foodRecords.fold<num>(0, (sum, r) => sum + (r.fat ?? 0));
-          totalOther =
-              foodRecords.fold<num>(0, (sum, r) => sum + (r.other ?? 0));
-          mealImagePaths.updateAll((_, __) => <String>[]);
-          final breakfast = FoodRepository.recordForMealKey(foodRecords, '아침');
-          final lunch = FoodRepository.recordForMealKey(foodRecords, '점심');
-          final dinner = FoodRepository.recordForMealKey(foodRecords, '저녁');
-          final snack = FoodRepository.recordForMealKey(foodRecords, '간식');
-          mealCalories['Breakfast'] = breakfast?.calories ?? 0;
-          mealCalories['Lunch'] = lunch?.calories ?? 0;
-          mealCalories['Dinner'] = dinner?.calories ?? 0;
-          mealCalories['Snack'] = snack?.calories ?? 0;
-          mealHasRecord['Breakfast'] = breakfast != null;
-          mealHasRecord['Lunch'] = lunch != null;
-          mealHasRecord['Dinner'] = dinner != null;
-          mealHasRecord['Snack'] = snack != null;
-          mealImagePaths['Breakfast'] = breakfast?.imagePaths ?? const [];
-          mealImagePaths['Lunch'] = lunch?.imagePaths ?? const [];
-          mealImagePaths['Dinner'] = dinner?.imagePaths ?? const [];
-          mealImagePaths['Snack'] = snack?.imagePaths ?? const [];
+        if (includeFood) {
+          if (foodFailed || foodRecords == null) {
+            _foodLoadFailed = true;
+            _clearFoodRecords();
+          } else {
+            _foodLoadFailed = false;
+            _writeFoodRecords(foodRecords);
+          }
         }
-
         isLoading = false;
       });
     } catch (_) {
       if (!mounted || generation != _loadGeneration) return;
       setState(() {
         isLoading = false;
-        _loadFailed = true;
+        if (includeDashboard) {
+          _loadFailed = true;
+          _hasSnapshot = false;
+          _snapshotDate = null;
+          _clearHealthRecords();
+        }
+        if (includeFood) {
+          _foodLoadFailed = true;
+          _clearFoodRecords();
+        }
       });
     }
+  }
+
+  void _clearHealthRecords() {
+    latestWeightRecord = null;
+    latestBloodPressureRecord = null;
+    latestBloodSugarRecord = null;
+    latestMenstrualCycleRecord = null;
+    latestHeartRateRecord = null;
+    latestStepsRecord = null;
+    latestHealthGoal = null;
+    currentWeight = 0.0;
+    height = 0.0;
+    bmi = 0.0;
+    steps = 0;
+    heartRate = 0;
+    systolicBP = 0;
+    diastolicBP = 0;
+  }
+
+  void _clearFoodRecords() {
+    consumedCalories = 0;
+    totalCarbs = 0;
+    totalProtein = 0;
+    totalFat = 0;
+    totalOther = 0;
+    mealCalories.updateAll((_, __) => 0);
+    mealHasRecord.updateAll((_, __) => false);
+    mealImagePaths.updateAll((_, __) => const []);
+  }
+
+  void _writeHealthDashboard(UserModel user, HealthDashboardPayload dashboard) {
+    final weightRecord =
+        _latestOfDate(dashboard.weightRecords, (e) => e.measuredAt);
+    final bloodPressureRecord =
+        _latestOfDate(dashboard.bloodPressureRecords, (e) => e.measuredAt);
+    final bloodSugarRecord =
+        _latestOfDate(dashboard.bloodSugarRecords, (e) => e.measuredAt);
+    final heartRateRecord =
+        _latestOfDate(dashboard.heartRateRecords, (e) => e.measuredAt);
+
+    currentUser = user;
+    latestWeightRecord = weightRecord;
+    latestBloodPressureRecord = bloodPressureRecord;
+    latestBloodSugarRecord = bloodSugarRecord;
+    latestMenstrualCycleRecord = dashboard.menstrualCycle;
+    latestHeartRateRecord = heartRateRecord;
+    latestStepsRecord = dashboard.steps;
+    latestHealthGoal = dashboard.healthGoal;
+    _applyBodyMetrics(weightRecord);
+    if (bloodPressureRecord != null) {
+      systolicBP = bloodPressureRecord.systolic;
+      diastolicBP = bloodPressureRecord.diastolic;
+    } else {
+      systolicBP = 0;
+      diastolicBP = 0;
+    }
+    heartRate = heartRateRecord?.heartRate ?? 0;
+    steps = dashboard.steps?.totalSteps ?? 0;
+  }
+
+  void _writeFoodRecords(List<FoodRecordSummary> foodRecords) {
+    consumedCalories =
+        foodRecords.fold<int>(0, (sum, r) => sum + (r.calories ?? 0));
+    totalCarbs = foodRecords.fold<num>(0, (sum, r) => sum + (r.carbs ?? 0));
+    totalProtein =
+        foodRecords.fold<num>(0, (sum, r) => sum + (r.protein ?? 0));
+    totalFat = foodRecords.fold<num>(0, (sum, r) => sum + (r.fat ?? 0));
+    totalOther = foodRecords.fold<num>(0, (sum, r) => sum + (r.other ?? 0));
+    final breakfast = FoodRepository.recordForMealKey(foodRecords, '아침');
+    final lunch = FoodRepository.recordForMealKey(foodRecords, '점심');
+    final dinner = FoodRepository.recordForMealKey(foodRecords, '저녁');
+    final snack = FoodRepository.recordForMealKey(foodRecords, '간식');
+    mealCalories['Breakfast'] = breakfast?.calories ?? 0;
+    mealCalories['Lunch'] = lunch?.calories ?? 0;
+    mealCalories['Dinner'] = dinner?.calories ?? 0;
+    mealCalories['Snack'] = snack?.calories ?? 0;
+    mealHasRecord['Breakfast'] = breakfast != null;
+    mealHasRecord['Lunch'] = lunch != null;
+    mealHasRecord['Dinner'] = dinner != null;
+    mealHasRecord['Snack'] = snack != null;
+    mealImagePaths['Breakfast'] = breakfast?.imagePaths ?? const [];
+    mealImagePaths['Lunch'] = lunch?.imagePaths ?? const [];
+    mealImagePaths['Dinner'] = dinner?.imagePaths ?? const [];
+    mealImagePaths['Snack'] = snack?.imagePaths ?? const [];
   }
 
   bool _isSameDay(DateTime a, DateTime b) =>
@@ -353,35 +394,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
   }
 
   void _applyHealthDashboard(UserModel user, HealthDashboardPayload dashboard) {
-    final weightRecord =
-        _latestOfDate(dashboard.weightRecords, (e) => e.measuredAt);
-    final bloodPressureRecord =
-        _latestOfDate(dashboard.bloodPressureRecords, (e) => e.measuredAt);
-    final bloodSugarRecord =
-        _latestOfDate(dashboard.bloodSugarRecords, (e) => e.measuredAt);
-    final heartRateRecord =
-        _latestOfDate(dashboard.heartRateRecords, (e) => e.measuredAt);
-
-    setState(() {
-      currentUser = user;
-      latestWeightRecord = weightRecord;
-      latestBloodPressureRecord = bloodPressureRecord;
-      latestBloodSugarRecord = bloodSugarRecord;
-      latestMenstrualCycleRecord = dashboard.menstrualCycle;
-      latestHeartRateRecord = heartRateRecord;
-      latestStepsRecord = dashboard.steps;
-      latestHealthGoal = dashboard.healthGoal;
-      _applyBodyMetrics(weightRecord);
-      if (bloodPressureRecord != null) {
-        systolicBP = bloodPressureRecord.systolic;
-        diastolicBP = bloodPressureRecord.diastolic;
-      } else {
-        systolicBP = 0;
-        diastolicBP = 0;
-      }
-      heartRate = heartRateRecord?.heartRate ?? 0;
-      steps = dashboard.steps?.totalSteps ?? 0;
-    });
+    setState(() => _writeHealthDashboard(user, dashboard));
   }
 
   /// 선택한 날짜와 같은 날 기록만 남기고, measuredAt 기준 가장 최신 1건.
@@ -443,8 +456,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
               )
             : LayoutBuilder(
                 builder: (context, constraints) {
-                  final shortSheet =
-                      _loadFailed && !_snapshotMatchesSelection();
+                  final shortSheet = _loadFailed;
                   final viewportHeight = constraints.maxHeight.isFinite
                       ? constraints.maxHeight
                       : MediaQuery.sizeOf(context).height;
@@ -540,16 +552,31 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
                                             actionLabel: '다시 시도',
                                             onPressed: () {
                                               _loadData(
-                                                showBlockingLoader:
-                                                    !_snapshotMatchesSelection(),
+                                                showBlockingLoader: true,
                                                 forceRefresh: true,
                                               );
                                             },
                                           ),
-                                        if (_snapshotMatchesSelection()) ...[
+                                        if (!_loadFailed &&
+                                            _snapshotMatchesSelection()) ...[
                                           _buildBodyMetricsSection(),
                                           SizedBox(
                                               height: healthDp(context, 14)),
+                                          if (_foodLoadFailed)
+                                            _buildRecordGate(
+                                              message: '식단을 불러오지 못했습니다',
+                                              actionLabel: '다시 시도',
+                                              compact: true,
+                                              onPressed: () {
+                                                _loadData(
+                                                  showBlockingLoader: false,
+                                                  forceRefresh: true,
+                                                  includeDashboard: false,
+                                                  includeFood: true,
+                                                );
+                                              },
+                                            )
+                                          else
                                           TodayMealSection(
                                             consumedCalories: consumedCalories,
                                             targetCalories: targetCalories,
@@ -650,13 +677,14 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
     required String message,
     required String actionLabel,
     required VoidCallback onPressed,
+    bool compact = false,
   }) {
     return Padding(
       padding: EdgeInsets.fromLTRB(
         healthDp(context, 10),
-        healthDp(context, 28),
+        healthDp(context, compact ? 8 : 28),
         healthDp(context, 10),
-        healthDp(context, 36),
+        healthDp(context, compact ? 8 : 36),
       ),
       child: Column(
         children: [
