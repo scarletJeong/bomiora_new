@@ -156,7 +156,7 @@ class _CancelMemberScreenState extends State<CancelMemberScreen> {
                       width: healthDp(context, 64),
                       height: healthDp(context, 64),
                       decoration: ShapeDecoration(
-                        color: const Color(0x19FF5C8F),
+                        color: const Color(0x19FF5A8D),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(9999),
                         ),
@@ -421,11 +421,11 @@ class _MetricCard extends StatelessWidget {
       child: Container(
       padding: EdgeInsets.all(healthDp(context, 16)),
       decoration: ShapeDecoration(
-        color: const Color(0x0CFF5C8F),
+        color: const Color(0x0CFF5A8D),
         shape: RoundedRectangleBorder(
           side: BorderSide(
             width: healthDp(context, 1),
-            color: const Color(0x19FF5C8F),
+            color: const Color(0x19FF5A8D),
           ),
           borderRadius: BorderRadius.circular(healthDp(context, 12)),
         ),
@@ -452,7 +452,7 @@ class _MetricCard extends StatelessWidget {
               Text(
                 valueText,
                 style: TextStyle(
-                  color: const Color(0xFFFF5C8F),
+                  color: const Color(0xFFFF5A8D),
                   fontSize: healthSp(context, 20),
                   fontFamily: 'Gmarket Sans TTF',
                   fontWeight: FontWeight.w700,

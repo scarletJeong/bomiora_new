@@ -434,7 +434,7 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
     final fullAddress = detail.isEmpty ? address1 : '$address1 $detail';
 
     const bodyStyle = TextStyle(
-      color: Color(0xFF898383),
+      color: Color(0xFF898686),
       fontSize: 12,
       fontFamily: 'Gmarket Sans TTF',
       fontWeight: FontWeight.w500,
@@ -444,12 +444,12 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
       width: double.infinity,
       padding: EdgeInsets.all(healthDp(context, 10)),
       decoration: ShapeDecoration(
-        color: isDefault ? const Color(0x0CFF5C8F) : Colors.white,
+        color: isDefault ? const Color(0x0CFF5A8D) : Colors.white,
         shape: RoundedRectangleBorder(
           side: BorderSide(
             width: healthDp(context, 1),
             color: isDefault
-                ? const Color(0xFFFF5C8F)
+                ? const Color(0xFFFF5A8D)
                 : const Color(0xFFD2D2D2),
           ),
           borderRadius: BorderRadius.circular(healthDp(context, 12)),

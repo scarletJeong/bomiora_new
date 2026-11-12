@@ -207,7 +207,17 @@ class _MyPageScreenState extends State<MyPageScreen> {
     setState(() => _currentUser = refreshed);
   }
 
+  Future<void> _openLogin() async {
+    await Navigator.pushNamed(context, '/login');
+    if (!mounted) return;
+    await _loadCurrentUser();
+  }
+
   Future<void> _openStatsDetail(String route) async {
+    if (_currentUser == null) {
+      await _openLogin();
+      return;
+    }
     await Navigator.pushNamed(context, route);
     if (!mounted || _currentUser == null) return;
     await _loadMyPageStats();
@@ -568,11 +578,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
         ),
         SizedBox(width: healthDp(context, 8)),
         ElevatedButton(
-          onPressed: () async {
-            await Navigator.pushNamed(context, '/login');
-            if (!mounted) return;
-            await _loadCurrentUser();
-          },
+          onPressed: _openLogin,
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFFFF5A8D),
             padding: EdgeInsets.symmetric(
@@ -598,21 +604,28 @@ class _MyPageScreenState extends State<MyPageScreen> {
   }
 
   Widget _buildStatsRow() {
-    final orderVal = _orderLoading
-        ? '…'
-        : _orderFailed
-            ? '다시 시도'
-            : '$_orderCount';
-    final couponVal = _couponLoading
-        ? '…'
-        : _couponFailed
-            ? '다시 시도'
-            : '$_couponCount';
-    final pointVal = _pointLoading
-        ? '…'
-        : _pointFailed
-            ? '다시 시도'
-            : PointService.formatPoint(_pointBalance);
+    final loggedIn = _currentUser != null;
+    final orderVal = !loggedIn
+        ? '-'
+        : _orderLoading
+            ? '…'
+            : _orderFailed
+                ? '다시 시도'
+                : '$_orderCount';
+    final couponVal = !loggedIn
+        ? '-'
+        : _couponLoading
+            ? '…'
+            : _couponFailed
+                ? '다시 시도'
+                : '$_couponCount';
+    final pointVal = !loggedIn
+        ? '-'
+        : _pointLoading
+            ? '…'
+            : _pointFailed
+                ? '다시 시도'
+                : PointService.formatPoint(_pointBalance);
 
     Widget statCard({
       required String icon,
@@ -731,13 +744,15 @@ class _MyPageScreenState extends State<MyPageScreen> {
           iconWidth375: 32,
           iconHeight375: 32,
           value: orderVal,
-          unit: _orderFailed ? '' : '건',
+          unit: !loggedIn || _orderFailed ? '' : '건',
           label: '주문/배송내역',
-          onTap: _orderLoading
-              ? () {}
-              : _orderFailed
-                  ? _loadOrderCount
-                  : () => _openStatsDetail('/order'),
+          onTap: !loggedIn
+              ? _openLogin
+              : _orderLoading
+                  ? () {}
+                  : _orderFailed
+                      ? _loadOrderCount
+                      : () => _openStatsDetail('/order'),
         ),
         SizedBox(width: healthDp(context, 14)),
         statCard(
@@ -745,13 +760,15 @@ class _MyPageScreenState extends State<MyPageScreen> {
           iconWidth375: 32,
           iconHeight375: 32,
           value: couponVal,
-          unit: _couponFailed ? '' : '장',
+          unit: !loggedIn || _couponFailed ? '' : '장',
           label: '쿠폰',
-          onTap: _couponLoading
-              ? () {}
-              : _couponFailed
-                  ? _loadCouponCount
-                  : () => _openStatsDetail('/coupon'),
+          onTap: !loggedIn
+              ? _openLogin
+              : _couponLoading
+                  ? () {}
+                  : _couponFailed
+                      ? _loadCouponCount
+                      : () => _openStatsDetail('/coupon'),
         ),
         SizedBox(width: healthDp(context, 14)),
         statCard(
@@ -759,13 +776,15 @@ class _MyPageScreenState extends State<MyPageScreen> {
           iconWidth375: 32,
           iconHeight375: 32,
           value: pointVal,
-          unit: _pointFailed ? '' : 'P',
+          unit: !loggedIn || _pointFailed ? '' : 'P',
           label: '포인트',
-          onTap: _pointLoading
-              ? () {}
-              : _pointFailed
-                  ? _loadPointBalance
-                  : () => _openStatsDetail('/point'),
+          onTap: !loggedIn
+              ? _openLogin
+              : _pointLoading
+                  ? () {}
+                  : _pointFailed
+                      ? _loadPointBalance
+                      : () => _openStatsDetail('/point'),
         ),
       ],
     );

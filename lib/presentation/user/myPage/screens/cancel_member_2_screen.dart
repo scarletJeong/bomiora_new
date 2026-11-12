@@ -311,7 +311,7 @@ class _ReasonTile extends StatelessWidget {
               child: Text(
                 title,
                 style: TextStyle(
-                  color: const Color(0xFF0F172A),
+                  color: const Color(0xFF1A1A1A),
                   fontSize: healthSp(context, 14),
                   fontFamily: 'Gmarket Sans TTF',
                   fontWeight: FontWeight.w500,
@@ -356,11 +356,11 @@ class _RadioDot extends StatelessWidget {
       width: outer,
       height: outer,
       decoration: ShapeDecoration(
-        color: const Color(0xFFFF5C8F),
+        color: const Color(0xFFFF5A8D),
         shape: RoundedRectangleBorder(
           side: BorderSide(
             width: healthDp(context, 2),
-            color: const Color(0xFFFF5C8F),
+            color: const Color(0xFFFF5A8D),
           ),
           borderRadius: BorderRadius.circular(9999),
         ),

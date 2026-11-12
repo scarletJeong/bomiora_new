@@ -535,7 +535,7 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
                   _BoxField(
                     controller: _subjectController,
                     hintText: '예) 집, 회사 등 배송지명을 입력해 주세요.',
-                    hintColor: const Color(0xFF898383),
+                    hintColor: const Color(0xFF898686),
                     highlightBorder: _subjectController.text.trim().isEmpty,
                   ),
                 ],
@@ -721,7 +721,7 @@ class _SubjectChip extends StatelessWidget {
               style: TextStyle(
                 color: selected
                     ? const Color(0xFF1A1A1E)
-                    : const Color(0xFF898383),
+                    : const Color(0xFF898686),
                 fontSize: healthSp(context, 12),
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: FontWeight.w500,

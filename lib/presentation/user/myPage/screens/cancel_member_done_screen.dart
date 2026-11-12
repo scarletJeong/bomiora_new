@@ -44,7 +44,7 @@ class CancelMemberDoneScreen extends StatelessWidget {
                       width: healthDp(context, 160),
                       height: healthDp(context, 160),
                       decoration: ShapeDecoration(
-                        color: const Color(0x19FF5C8F),
+                        color: const Color(0x19FF5A8D),
                         shape: RoundedRectangleBorder(
                           borderRadius:
                               BorderRadius.circular(healthDp(context, 100)),
