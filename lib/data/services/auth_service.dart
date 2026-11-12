@@ -14,6 +14,7 @@ import 'kakao_auth_service.dart';
 import 'last_login_via_service.dart';
 import 'naver_auth_service.dart';
 import 'prescription_purchase_history_service.dart';
+import 'recent_search_service.dart';
 import 'recent_view_service.dart';
 import 'wish_service.dart';
 import 'address_service.dart';
@@ -176,6 +177,10 @@ class AuthService {
 
     try {
       CartService.invalidateCartCache();
+    } catch (_) {}
+
+    try {
+      await RecentSearchService.clear();
     } catch (_) {}
 
     try {
@@ -547,6 +552,39 @@ class AuthService {
       return {
         'success': false,
         'message': '관리자 페이지 연결에 실패했습니다.',
+      };
+    }
+  }
+
+  /// 탈퇴 전 진행 중 주문·상담·예약 건수
+  static Future<Map<String, dynamic>> getWithdrawPending(String mbId) async {
+    try {
+      final id = Uri.encodeQueryComponent(mbId.trim());
+      final response = await ApiClient.get(
+        '${ApiEndpoints.withdrawPending}?mbId=$id',
+      );
+      final data = json.decode(response.body);
+      if (response.statusCode == 200 && data is Map && data['success'] == true) {
+        int n(dynamic value) => int.tryParse('$value') ?? 0;
+        return {
+          'success': true,
+          'paymentWaiting': n(data['paymentWaiting']),
+          'paid': n(data['paid']),
+          'preparing': n(data['preparing']),
+          'consultationDone': n(data['consultationDone']),
+          'ongoingReservation': n(data['ongoingReservation']),
+        };
+      }
+      return {
+        'success': false,
+        'message': data is Map
+            ? (data['message']?.toString() ?? '진행 중인 내역을 불러오지 못했습니다.')
+            : '진행 중인 내역을 불러오지 못했습니다.',
+      };
+    } catch (_) {
+      return {
+        'success': false,
+        'message': '진행 중인 내역을 불러오지 못했습니다.',
       };
     }
   }

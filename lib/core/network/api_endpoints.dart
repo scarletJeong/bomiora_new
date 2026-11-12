@@ -10,6 +10,7 @@ class ApiEndpoints {
   static const String findId = '/api/auth/find-id';
   static const String resetPassword = '/api/auth/reset-password';
   static const String withdraw = '/api/auth/withdraw';
+  static const String withdrawPending = '/api/auth/withdraw-pending';
   static const String forgotPassword = '/api/auth/forgot-password';
   static const String verifyToken = '/api/auth/verify';
   static const String otpSend = '/api/auth/otp/send';
