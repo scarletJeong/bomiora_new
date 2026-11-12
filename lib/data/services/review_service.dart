@@ -159,17 +159,24 @@ class ReviewService {
 
   /// 베스트 리뷰 목록 페이지 (`GET /api/user/reviews/main/best`)
   ///
-  /// [page] 0부터. [mrNo]가 있으면 해당 리뷰가 속한 페이지로 맞춤.
+  /// [page] 0부터. [locateOnly]면 `page` 없이 [mrNo]만 보내 그 리뷰의 페이지 번호를 받는다.
+  /// [forceRefresh]면 1분 저장을 쓰지 않고 서버에 다시 요청한다.
   static Future<Map<String, dynamic>> getMainHomeReviewsBest({
     int page = 0,
     int size = 5,
     int? mrNo,
+    bool locateOnly = false,
+    bool forceRefresh = false,
   }) async {
-    final key = '$page|$size|${mrNo ?? 0}';
-    final cachedAt = _bestCacheAt[key];
-    if (cachedAt != null &&
-        DateTime.now().difference(cachedAt) < _bestCacheTtl) {
-      return Map<String, dynamic>.from(_bestCache[key]!);
+    final key = locateOnly
+        ? 'locate|$size|${mrNo ?? 0}'
+        : '$page|$size|${mrNo ?? 0}';
+    if (!forceRefresh) {
+      final cachedAt = _bestCacheAt[key];
+      if (cachedAt != null &&
+          DateTime.now().difference(cachedAt) < _bestCacheTtl) {
+        return Map<String, dynamic>.from(_bestCache[key]!);
+      }
     }
     final pending = _bestInFlight[key];
     if (pending != null) return pending;
@@ -178,6 +185,7 @@ class ReviewService {
       page: page,
       size: size,
       mrNo: mrNo,
+      locateOnly: locateOnly,
     );
     _bestInFlight[key] = request;
     try {
@@ -196,12 +204,12 @@ class ReviewService {
     required int page,
     required int size,
     int? mrNo,
+    bool locateOnly = false,
   }) async {
     try {
-      var query = 'page=$page&size=$size';
-      if (mrNo != null && mrNo > 0) {
-        query = '$query&mrNo=$mrNo';
-      }
+      final query = locateOnly
+          ? 'size=$size${mrNo != null && mrNo > 0 ? '&mrNo=$mrNo' : ''}'
+          : 'page=$page&size=$size${mrNo != null && mrNo > 0 ? '&mrNo=$mrNo' : ''}';
       final response = await ApiClient.get(
         '${ApiEndpoints.mainHomeReviewsBest}?$query',
       );

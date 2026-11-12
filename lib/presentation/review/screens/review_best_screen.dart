@@ -51,7 +51,6 @@ class _ReviewBestScreenState extends State<ReviewBestScreen> {
   @override
   void initState() {
     super.initState();
-    _expandedMrNo = widget.initialMrNo;
     _loadAuth();
     _load(focusMrNo: widget.initialMrNo);
   }
@@ -92,29 +91,59 @@ class _ReviewBestScreenState extends State<ReviewBestScreen> {
         _didScrollToInitial = false;
       });
     }
-    final first = await _fetchPage(page: 0, append: false);
-    if (!mounted) return;
-
     final target = focusMrNo ?? widget.initialMrNo;
-    if (!fromPullRefresh && first.ok && target != null && target > 0) {
-      var guard = 0;
-      while (mounted &&
-          _hasNext &&
-          !_reviews.any((review) => review.mrNo == target) &&
-          guard < 30) {
-        guard += 1;
-        final more = await _fetchPage(page: _page + 1, append: true);
-        if (!more.ok) break;
-      }
+    if (!fromPullRefresh && target != null && target > 0) {
+      await _loadThroughTarget(target);
+    } else {
+      await _fetchPage(
+        page: 0,
+        append: false,
+        forceRefresh: fromPullRefresh,
+      );
     }
     if (!mounted) return;
     setState(() => _loading = false);
 
-    if (!fromPullRefresh && target != null && target > 0) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _scrollToMrNo(target);
-      });
+    if (fromPullRefresh || target == null || target <= 0 || _loadFailed) {
+      return;
     }
+    final found = _reviews.any((review) => review.mrNo == target);
+    if (!found) {
+      setState(() => _expandedMrNo = null);
+      return;
+    }
+    setState(() => _expandedMrNo = target);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollToMrNo(target);
+    });
+  }
+
+  /// `mrNo`로 페이지 번호를 받은 뒤 0페이지부터 그 페이지까지 합친다.
+  Future<void> _loadThroughTarget(int target) async {
+    final located = await ReviewService.getMainHomeReviewsBest(
+      size: _pageSize,
+      mrNo: target,
+      locateOnly: true,
+    );
+    if (!mounted) return;
+    if (located['success'] != true) {
+      await _applyBestResult(located, page: 0, append: false);
+      return;
+    }
+    final focusPage = located['focusPage'];
+    if (focusPage is! int || focusPage < 0) {
+      await _fetchPage(page: 0, append: false);
+      return;
+    }
+    if (focusPage == 0) {
+      await _applyBestResult(located, page: 0, append: false);
+      return;
+    }
+    for (var page = 0; page < focusPage; page++) {
+      final more = await _fetchPage(page: page, append: page > 0);
+      if (!mounted || !more.ok) return;
+    }
+    await _applyBestResult(located, page: focusPage, append: true);
   }
 
   Future<void> _loadMore() async {
@@ -148,11 +177,27 @@ class _ReviewBestScreenState extends State<ReviewBestScreen> {
     required int page,
     required bool append,
     bool logListFailure = true,
+    bool forceRefresh = false,
   }) async {
     final result = await ReviewService.getMainHomeReviewsBest(
       page: page,
       size: _pageSize,
+      forceRefresh: forceRefresh,
     );
+    return _applyBestResult(
+      result,
+      page: page,
+      append: append,
+      logListFailure: logListFailure,
+    );
+  }
+
+  Future<({bool ok, String? message})> _applyBestResult(
+    Map<String, dynamic> result, {
+    required int page,
+    required bool append,
+    bool logListFailure = true,
+  }) async {
     if (!mounted) return (ok: false, message: null);
     if (result['success'] != true) {
       final reason =
