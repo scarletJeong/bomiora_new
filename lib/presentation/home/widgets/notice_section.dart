@@ -88,7 +88,7 @@ class _NoticeSectionState extends State<NoticeSection> {
                         Text(
                           '등록된 공지사항이 없습니다.',
                           style: TextStyle(
-                            color: const Color(0x665B3F43),
+                            color: const Color(0xFF898686),
                             fontSize: healthSp(context, 12),
                             fontFamily: 'Gmarket Sans TTF',
                             fontWeight: FontWeight.w400,

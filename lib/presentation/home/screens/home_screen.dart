@@ -848,7 +848,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Text(
               '등록된 상품이 없습니다.',
               style: TextStyle(
-                color: const Color(0x665B3F43),
+                color: const Color(0xFF898686),
                 fontSize: healthSp(context, 12),
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: FontWeight.w400,
@@ -976,7 +976,7 @@ class _CategoryTabChip extends StatelessWidget {
         child: Text(
           label,
           style: TextStyle(
-            color: selected ? const Color(0xFFFF5A8D) : const Color(0xFF383838),
+            color: selected ? const Color(0xFFFF5A8D) : const Color(0xFF1A1A1A),
             fontSize: fontSize,
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w500,

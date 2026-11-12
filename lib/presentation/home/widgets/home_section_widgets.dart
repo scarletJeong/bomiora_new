@@ -34,14 +34,14 @@ class HomeSectionTitleRow extends StatelessWidget {
     final lineFs = healthSp(context, 16);
 
     final lightStyle = TextStyle(
-      color: Colors.black,
+      color: const Color(0xFF1A1A1A),
       fontSize: lineFs,
       fontFamily: 'Gmarket Sans TTF',
       fontWeight: FontWeight.w300,
       height: 1.2,
     );
     final boldStyle = TextStyle(
-      color: Colors.black,
+      color: const Color(0xFF1A1A1A),
       fontSize: lineFs,
       fontFamily: 'Gmarket Sans TTF',
       fontWeight: FontWeight.w700,
@@ -77,7 +77,7 @@ class HomeSectionTitleRow extends StatelessWidget {
             children: [
               Container(
                 width: barW,
-                color: Colors.black,
+                color: const Color(0xFF1A1A1A),
               ),
               SizedBox(width: gapBarToTitle),
               title,
@@ -118,7 +118,7 @@ class HomeListSectionHeader extends StatelessWidget {
             children: [
               Container(
                 width: barW,
-                color: Colors.black,
+                color: const Color(0xFF1A1A1A),
               ),
               SizedBox(width: gapBarToTitle),
               Align(
@@ -126,7 +126,7 @@ class HomeListSectionHeader extends StatelessWidget {
                 child: Text(
                   title,
                   style: TextStyle(
-                    color: Colors.black,
+                    color: const Color(0xFF1A1A1A),
                     fontSize: titleFs,
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w700,
@@ -162,7 +162,7 @@ class HomeListSectionRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final titleFs = healthSp(context, 12);
     final dateFs = healthSp(context, 10);
-    final fg = highlight ? const Color(0xFFFF5A8D) : Colors.black;
+    final fg = highlight ? const Color(0xFFFF5A8D) : const Color(0xFF1A1A1A);
 
     final rowPad = homeListSectionRowVerticalPadding(context);
 

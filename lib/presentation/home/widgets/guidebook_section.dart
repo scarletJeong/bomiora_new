@@ -93,7 +93,7 @@ class _GuidebookSectionState extends State<GuidebookSection> {
                           Text(
                             '등록된 콘텐츠가 없습니다.',
                             style: TextStyle(
-                              color: const Color(0x665B3F43),
+                              color: const Color(0xFF898686),
                               fontSize: healthSp(context, 12),
                               fontFamily: 'Gmarket Sans TTF',
                               fontWeight: FontWeight.w500,
@@ -216,7 +216,7 @@ class _GuidebookCard extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: const Color(0xFF231F20),
+                  color: const Color(0xFF1A1A1A),
                   fontSize: m.titleFs,
                   fontFamily: 'Gmarket Sans TTF',
                   fontWeight: FontWeight.w500,
