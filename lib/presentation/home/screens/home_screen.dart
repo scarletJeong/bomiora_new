@@ -93,18 +93,21 @@ class _HomeScreenState extends State<HomeScreen> {
 
   List<Product> _newProducts = const [];
   bool _newLoading = true;
+  bool _newFailed = false;
   bool _imagesSettledNotified = false;
   int _pendingImages = 0;
   int _settledImages = 0;
 
   List<Product> _mdPickProducts = const [];
   bool _mdPickLoading = true;
+  bool _mdPickFailed = false;
 
   List<ProductCategoryItem> _tabs = const [];
   int _selectedTabIndex = 0;
   int _tabsRequestToken = 0;
   bool _tabsLoading = true;
   bool _categoryListFailed = false;
+  final Set<String> _categoryProductFailed = {};
   final Map<String, List<Product>> _productsByCategory = {};
   bool _categoryLoading = false;
   Future<void> _dietLeadReady = Future<void>.value();
@@ -207,6 +210,7 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         _newProducts = products;
         _newLoading = false;
+        _newFailed = false;
         _pendingImages = products.length >= 2 ? withImage.length : 0;
         _settledImages = 0;
       });
@@ -215,17 +219,46 @@ class _HomeScreenState extends State<HomeScreen> {
           _notifyImagesSettled();
         });
       }
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       setState(() {
         _newProducts = const [];
         _newLoading = false;
+        _newFailed = true;
         _pendingImages = 0;
       });
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _notifyImagesSettled();
       });
+      await _logHomeFailure(
+        'home.new_products',
+        e,
+      );
     }
+  }
+
+  Future<void> _logHomeFailure(
+    String code,
+    Object error, [
+    Map<String, Object?>? detail,
+  ]) async {
+    final user = await AuthService.getUser();
+    await FailureLog.record(
+      code: code,
+      mbId: user?.id ?? '',
+      reason: error.toString(),
+      detail: detail,
+    );
+  }
+
+  Future<void> _retryNewProducts() async {
+    setState(() {
+      _newLoading = true;
+      _newFailed = false;
+      _newProducts = const [];
+    });
+    _newProductsFuture = ProductRepository.getNewProducts(limit: _kNewLimit);
+    await _loadNewProducts();
   }
 
   void _notifyImagesSettled() {
@@ -287,6 +320,12 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadMdPick() async {
+    if (mounted && !_mdPickLoading) {
+      setState(() {
+        _mdPickLoading = true;
+        _mdPickFailed = false;
+      });
+    }
     try {
       final products = await ProductRepository.getMdPickProducts(
         limit: _kMdPickLimit,
@@ -295,13 +334,16 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         _mdPickProducts = products;
         _mdPickLoading = false;
+        _mdPickFailed = false;
       });
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       setState(() {
         _mdPickProducts = const [];
         _mdPickLoading = false;
+        _mdPickFailed = true;
       });
+      await _logHomeFailure('home.md_pick', e);
     }
   }
 
@@ -338,12 +380,10 @@ class _HomeScreenState extends State<HomeScreen> {
         _loadProductsForCurrentTab();
       }
     } catch (e) {
-      final user = await AuthService.getUser();
-      await FailureLog.record(
-        code: 'home.category',
-        mbId: user?.id ?? '',
-        reason: e.toString(),
-        detail: const {'source': 'categories-with-products'},
+      await _logHomeFailure(
+        'home.category',
+        e,
+        const {'source': 'categories-with-products'},
       );
       if (!mounted || requestToken != _tabsRequestToken) return;
       setState(() {
@@ -488,6 +528,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     setState(() {
       _categoryLoading = true;
+      _categoryProductFailed.remove(cacheKey);
     });
 
     try {
@@ -502,11 +543,20 @@ class _HomeScreenState extends State<HomeScreen> {
         _productsByCategory[cacheKey] = products;
         _categoryLoading = false;
       });
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       setState(() {
         _categoryLoading = false;
+        _categoryProductFailed.add(cacheKey);
       });
+      await _logHomeFailure(
+        'home.category.products',
+        e,
+        {
+          'categoryId': tab.categoryId,
+          'productKind': tab.productKind,
+        },
+      );
     }
   }
 
@@ -555,12 +605,15 @@ class _HomeScreenState extends State<HomeScreen> {
       _homeLoadStarted = true;
       _loadBelowFold = false;
       _newLoading = true;
+      _newFailed = false;
       _mdPickLoading = true;
+      _mdPickFailed = false;
       _tabsLoading = true;
       _categoryListFailed = false;
       _newProducts = const [];
       _mdPickProducts = const [];
       _productsByCategory.clear();
+      _categoryProductFailed.clear();
       _bannersFuture = BannerService.fetchMobileBanners();
       _newProductsFuture =
           ProductRepository.getNewProducts(limit: _kNewLimit);
@@ -651,7 +704,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildNewProductBlock() {
-    if (!_newLoading && _newProducts.length < 2) {
+    if (!_newLoading && !_newFailed && _newProducts.length < 2) {
       return const SizedBox.shrink();
     }
 
@@ -670,6 +723,13 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         SizedBox(height: healthDp(context, 20)),
+        if (_newFailed)
+          _buildSectionRetry(
+            height: cardH,
+            message: '상품을 불러오지 못했습니다.',
+            onPressed: _retryNewProducts,
+          )
+        else
         _horizontalProductRow(
           height: cardH,
           loading: _newLoading,
@@ -694,7 +754,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildMdPickBlock() {
-    if (_mdPickLoading || _mdPickProducts.length < 4) {
+    if (_mdPickLoading) return const SizedBox.shrink();
+    if (!_mdPickFailed && _mdPickProducts.length < 4) {
       return const SizedBox.shrink();
     }
 
@@ -714,6 +775,13 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         SizedBox(height: healthDp(context, 20)),
+        if (_mdPickFailed)
+          _buildSectionRetry(
+            height: cardH,
+            message: '상품을 불러오지 못했습니다.',
+            onPressed: _loadMdPick,
+          )
+        else
         _horizontalProductRow(
           height: cardH,
           itemCount: _mdPickProducts.length,
@@ -739,6 +807,9 @@ class _HomeScreenState extends State<HomeScreen> {
         height: healthDp(context, 280),
         child: const Center(child: CircularProgressIndicator(color: const Color(0xFFFF5A8D), strokeWidth: 2)),
       );
+    }
+    if (_categoryListFailed) {
+      return _buildCategoryFailure(context);
     }
     if (_tabs.isEmpty) {
       return _buildCategoryUnavailable(context);
@@ -813,6 +884,27 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _buildCategoryFailure(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: healthDp(context, 20)),
+          child: const HomeSectionTitleRow(
+            line1: '건강을',
+            line2: '채우는 시간',
+          ),
+        ),
+        SizedBox(height: healthDp(context, 20)),
+        _buildSectionRetry(
+          height: healthDp(context, 160),
+          message: '카테고리를 불러오지 못했습니다.',
+          onPressed: _refreshCategoryTabs,
+        ),
+      ],
+    );
+  }
+
   Widget _buildCategoryUnavailable(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -827,6 +919,60 @@ class _HomeScreenState extends State<HomeScreen> {
         SizedBox(height: healthDp(context, 20)),
         _buildCategoryEmptyProducts(context),
       ],
+    );
+  }
+
+  Widget _buildSectionRetry({
+    required double height,
+    required String message,
+    required VoidCallback onPressed,
+  }) {
+    return SizedBox(
+      height: height,
+      width: double.infinity,
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: const Color(0xFF898686),
+                fontSize: healthSp(context, 14),
+                fontFamily: 'Gmarket Sans TTF',
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            SizedBox(height: healthDp(context, 12)),
+            SizedBox(
+              height: healthDp(context, 36),
+              child: ElevatedButton(
+                onPressed: onPressed,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFFF5A8D),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: healthDp(context, 16),
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(healthDp(context, 10)),
+                  ),
+                ),
+                child: Text(
+                  '다시 시도',
+                  style: TextStyle(
+                    fontSize: healthSp(context, 13),
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -867,6 +1013,8 @@ class _HomeScreenState extends State<HomeScreen> {
     required double cardW,
     required double cardH,
   }) {
+    final tabKey = _tabs.isEmpty ? '' : _cacheKeyForTab(_tabs[_selectedTabIndex]);
+    final productFailed = tabKey.isNotEmpty && _categoryProductFailed.contains(tabKey);
     if (_categoryLoading && products.isEmpty) {
       return Center(
         child: SizedBox(
@@ -876,7 +1024,14 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       );
     }
-    if (_categoryListFailed || products.isEmpty) {
+    if (productFailed) {
+      return _buildSectionRetry(
+        height: cardH,
+        message: '상품을 불러오지 못했습니다.',
+        onPressed: _loadProductsForCurrentTab,
+      );
+    }
+    if (products.isEmpty) {
       return _buildCategoryEmptyProducts(context);
     }
 

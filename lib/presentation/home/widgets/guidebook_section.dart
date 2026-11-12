@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_assets.dart';
+import '../../../core/logging/failure_log.dart';
 import '../../../data/models/content/content_post.dart';
 import '../../../core/utils/image_url_helper.dart';
+import '../../../data/services/auth_service.dart';
 import '../../../data/services/content_service.dart';
 import '../../common/widgets/app_clickable.dart';
 import '../../common/widgets/app_network_image.dart';
@@ -21,20 +23,46 @@ class GuidebookSection extends StatefulWidget {
 }
 
 class _GuidebookSectionState extends State<GuidebookSection> {
-  late final Future<List<ContentPost>> _future;
+  int _loadGen = 0;
+  bool _loading = true;
+  bool _failed = false;
+  List<ContentPost> _items = const [];
 
   @override
   void initState() {
     super.initState();
-    _future = _loadLatest();
+    _loadLatest();
   }
 
-  Future<List<ContentPost>> _loadLatest() async {
-    final result = await ContentService.getHomePreviewList();
-    if (!result.failed) {
-      return result.items.take(3).toList();
+  Future<void> _loadLatest({bool showLoading = false}) async {
+    final gen = ++_loadGen;
+    if (showLoading && mounted) {
+      setState(() {
+        _loading = true;
+        _failed = false;
+      });
     }
-    return const [];
+    final result = await ContentService.getHomePreviewList();
+    if (!mounted || gen != _loadGen) return;
+    if (result.failed) {
+      setState(() {
+        _loading = false;
+        _failed = true;
+        _items = const [];
+      });
+      final user = await AuthService.getUser();
+      await FailureLog.record(
+        code: 'home.content',
+        mbId: user?.id ?? '',
+        reason: '건강 컨텐츠를 불러오지 못했습니다.',
+      );
+      return;
+    }
+    setState(() {
+      _loading = false;
+      _failed = false;
+      _items = result.items.take(3).toList();
+    });
   }
 
   @override
@@ -64,16 +92,62 @@ class _GuidebookSectionState extends State<GuidebookSection> {
           SizedBox(height: healthDp(context, 20)),
           SizedBox(
             height: listH,
-            child: FutureBuilder<List<ContentPost>>(
-              future: _future,
-              builder: (context, snapshot) {
-                final items = snapshot.data ?? const [];
-                if (snapshot.connectionState == ConnectionState.waiting) {
+            child: Builder(
+              builder: (context) {
+                final items = _items;
+                if (_loading) {
                   return const Center(
                     child: SizedBox(
                       width: 24,
                       height: 24,
                       child: CircularProgressIndicator(color: const Color(0xFFFF5A8D), strokeWidth: 2),
+                    ),
+                  );
+                }
+                if (_failed) {
+                  return Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '콘텐츠를 불러오지 못했습니다.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: const Color(0xFF898686),
+                            fontSize: healthSp(context, 14),
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        SizedBox(height: healthDp(context, 12)),
+                        SizedBox(
+                          height: healthDp(context, 36),
+                          child: ElevatedButton(
+                            onPressed: () => _loadLatest(showLoading: true),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFFF5A8D),
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              padding: EdgeInsets.symmetric(
+                                horizontal: healthDp(context, 16),
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(
+                                  healthDp(context, 10),
+                                ),
+                              ),
+                            ),
+                            child: Text(
+                              '다시 시도',
+                              style: TextStyle(
+                                fontSize: healthSp(context, 13),
+                                fontFamily: 'Gmarket Sans TTF',
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   );
                 }
