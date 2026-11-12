@@ -303,14 +303,17 @@ class AddressService {
           'message': data['message'] ?? '배송지가 추가되었습니다.',
         };
       }
+      final reason = _serverReason(data) ?? '';
       return {
         'success': false,
-        'message': _serverReason(data) ?? '',
+        'message': reason,
+        'cause': reason.isEmpty ? 'status ${response.statusCode}' : reason,
       };
     } catch (e) {
       return {
         'success': false,
         'message': '',
+        'cause': e.toString(),
       };
     }
   }

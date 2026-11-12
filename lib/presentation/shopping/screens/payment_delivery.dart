@@ -147,16 +147,14 @@ extension _PaymentDelivery on _PaymentScreenState {
     return {'zip1': t, 'zip2': ''};
   }
 
-  Future<void> _maybeSaveDefaultAddress(String mbId) async {
-    if (_hasSavedAddress && !_saveAsDefault) return;
-    if (!_hasSavedAddress) {
-      _saveAsDefault = true;
-    }
+  /// 기본 배송지로 저장하기로 한 경우만 결과를 본다. 실패하면 false.
+  Future<bool> _maybeSaveDefaultAddress(String mbId) async {
+    if (!_saveAsDefault) return true;
     final zipParts = _splitZipForApi(_zipController.text.trim());
     final subject = _addressNameController.text.trim().isNotEmpty
         ? _addressNameController.text.trim()
         : _addressLabelChip;
-    await AddressService.addAddress({
+    final result = await AddressService.addAddress({
       'mbId': mbId,
       'adSubject': subject,
       'adDefault': 1,
@@ -172,6 +170,14 @@ extension _PaymentDelivery on _PaymentScreenState {
       'adJibeon': '',
       'adMemo': _deliveryRequestMemo,
     });
+    if (result['success'] == true) return true;
+    final cause = (result['cause'] ?? result['message'] ?? '').toString().trim();
+    await FailureLog.record(
+      code: 'payment.address',
+      mbId: mbId,
+      reason: cause.isEmpty ? '배송지를 저장하지 못했습니다' : cause,
+    );
+    return false;
   }
 
   Widget _addressChangeButton(BuildContext context) => InkWell(

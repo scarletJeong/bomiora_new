@@ -149,8 +149,13 @@ extension _PaymentCheckout on _PaymentScreenState {
       }
       final baseShipping = quote.baseShipping;
       final extraShipping = quote.extraShipping;
+      final addressSaved = await _maybeSaveDefaultAddress(user.id);
+      if (!mounted) return;
+      if (!addressSaved) {
+        AppToastOverlay.showAlert(context, '배송지를 저장하지 못했습니다');
+        return;
+      }
       Future<KcpPaySession> bootstrap() async {
-        await _maybeSaveDefaultAddress(user.id);
         final cartReturnUrl = kIsWeb ? await _paymentCartReturnUrl() : '';
         await rememberKcpPayCart(prescriptionTab: _paymentIsPrescription);
         final response = await ApiClient.post(
