@@ -16,13 +16,11 @@ import '../../common/widgets/app_toast_overlay.dart';
 import '../../common/widgets/centered_empty_state.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../customer_service/models/qa_inquiry_draft.dart';
-import '../../customer_service/screens/qa_write_screen.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../health/health_common/widgets/health_app_bar.dart';
 import '../../shopping/screens/prescription_booking/prescription_profile_screen.dart';
 import '../../shopping/utils/cart_navigation.dart';
-import '../review/review_write_general_screen.dart';
-import '../review/review_write_screen.dart';
+import 'delivery_list_review.dart';
 import 'widgets/delivery_address_change_popup.dart';
 import 'widgets/delivery_select_list.dart';
 import 'widgets/detail/delivery_detail_address_section.dart';
@@ -1018,38 +1016,23 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
       return;
     }
 
-    final isPrescription = _orderDetail!.isPrescriptionOrder;
-    final bool? result = await Navigator.push<bool>(
+    final reviewWritten = await openOrderReviewWrite(
       context,
-      MaterialPageRoute(
-        builder: (_) => isPrescription
-            ? ReviewWriteScreen(
-                orderDetail: _orderDetail!,
-                selectedProducts: products,
-                reviewedItIds: reviewed,
-                existingReviews: existing,
-              )
-            : ReviewWriteGeneralScreen(
-                orderDetail: _orderDetail!,
-                selectedProducts: products,
-                reviewedItIds: reviewed,
-                existingReviews: existing,
-              ),
-      ),
+      orderDetail: _orderDetail!,
+      selectedProducts: products,
+      reviewedItIds: reviewed,
+      existingReviews: existing,
     );
-    if (result == true && mounted) _loadOrderDetail();
+    if (reviewWritten == true && mounted) _loadOrderDetail();
   }
 
   Future<void> _openInquiry() async {
     final order = _orderDetail;
-    await Navigator.push(
+    await Navigator.pushNamed(
       context,
-      MaterialPageRoute(
-        builder: (_) => QaWriteScreen(
-          prefilledDraft:
-              order != null ? QaInquiryDraft.fromOrderDetail(order) : null,
-        ),
-      ),
+      '/qa/write',
+      arguments:
+          order != null ? QaInquiryDraft.fromOrderDetail(order) : null,
     );
   }
 

@@ -104,7 +104,9 @@ class _QaWriteScreenState extends State<QaWriteScreen> {
   @override
   void initState() {
     super.initState();
-    _selectedProduct = widget.prefilledDraft ?? widget.draft;
+    final routeArgs = ModalRoute.of(context)?.settings.arguments;
+    final fromRoute = routeArgs is QaInquiryDraft ? routeArgs : null;
+    _selectedProduct = widget.prefilledDraft ?? widget.draft ?? fromRoute;
     _contentController.addListener(() {
       if (mounted) setState(() {});
     });

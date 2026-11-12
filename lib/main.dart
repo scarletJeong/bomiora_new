@@ -43,6 +43,7 @@ import 'presentation/customer_service/screens/qa_list_screen.dart';
 import 'presentation/customer_service/screens/qa_detail_screen.dart';
 import 'presentation/customer_service/screens/qa_write_screen.dart';
 import 'presentation/user/point/screens/point_screen.dart';
+import 'presentation/user/delivery/delivery_list_review.dart';
 import 'presentation/user/delivery/delivery_list_screen.dart';
 import 'presentation/user/delivery/delivery_detail_screen.dart';
 import 'data/models/delivery/delivery_model.dart';
@@ -572,6 +573,21 @@ class _BomioraAppState extends State<BomioraApp> {
               ),
             );
           }
+        }
+
+        // 주문 리뷰 작성: /review/write/:od_id
+        if (uri.pathSegments.length == 3 &&
+            uri.pathSegments[0] == 'review' &&
+            uri.pathSegments[1] == 'write' &&
+            uri.pathSegments[2].trim().isNotEmpty) {
+          final odId = Uri.decodeComponent(uri.pathSegments[2].trim());
+          return MaterialPageRoute<bool>(
+            builder: (context) => OrderReviewWriteRoute(odId: odId),
+            settings: RouteSettings(
+              name: routeName,
+              arguments: settings.arguments,
+            ),
+          );
         }
 
         // 홈 베스트 리뷰: /review/best?mr=리뷰번호

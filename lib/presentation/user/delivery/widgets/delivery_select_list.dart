@@ -9,8 +9,6 @@ import '../../../common/widgets/app_toast_overlay.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
-import '../../review/review_write_general_screen.dart';
-import '../../review/review_write_screen.dart';
 
 /// 리뷰 작성 대상 본품만 (추가상품 제외)
 List<OrderItem> reviewableOrderProducts(OrderDetailModel order) {
@@ -109,20 +107,13 @@ class _DeliverySelectListState extends State<DeliverySelectList> {
         .toList(growable: false);
     if (selected.isEmpty) return;
 
-    final isRx = widget.orderDetail.isPrescriptionOrder;
-    final written = await Navigator.push<bool>(
+    final written = await Navigator.pushNamed<bool>(
       context,
-      MaterialPageRoute(
-        builder: (_) => isRx
-            ? ReviewWriteScreen(
-                orderDetail: widget.orderDetail,
-                selectedProducts: selected,
-              )
-            : ReviewWriteGeneralScreen(
-                orderDetail: widget.orderDetail,
-                selectedProducts: selected,
-              ),
-      ),
+      '/review/write/${Uri.encodeComponent(widget.orderDetail.odId.trim())}',
+      arguments: {
+        'orderDetail': widget.orderDetail,
+        'selectedProducts': selected,
+      },
     );
     if (!mounted) return;
     if (written == true) {

@@ -21,7 +21,6 @@ import 'widgets/delivery_address_change_popup.dart';
 import 'widgets/order_flow_dialogs.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../customer_service/models/qa_inquiry_draft.dart';
-import '../../customer_service/screens/qa_write_screen.dart';
 import '../../common/widgets/app_toast_overlay.dart';
 
 /// 주문내역 화면
@@ -828,13 +827,10 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
       }
     }
     if (!mounted) return;
-    await Navigator.push(
+    await Navigator.pushNamed(
       context,
-      MaterialPageRoute(
-        builder: (_) => QaWriteScreen(
-          prefilledDraft: draft,
-        ),
-      ),
+      '/qa/write',
+      arguments: draft,
     );
   }
 
