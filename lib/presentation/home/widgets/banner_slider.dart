@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/logging/failure_log.dart';
 import '../../../core/utils/image_url_helper.dart';
@@ -9,6 +10,7 @@ import '../../../data/models/home/banner_model.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/banner_service.dart';
 import '../../common/widgets/app_network_image.dart';
+import '../../common/widgets/app_toast_overlay.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 
 class BannerSlider extends StatefulWidget {
@@ -193,18 +195,20 @@ class _BannerSliderState extends State<BannerSlider> {
     final uri = Uri.tryParse(raw);
     if (uri == null) {
       await _logBanner('배너 링크 형식이 올바르지 않습니다.', {'url': raw});
+      _showBannerNotice('링크를 열 수 없습니다.');
       return;
     }
 
     final inApp = raw.startsWith('/') || _isInAppHost(uri.host);
     if (!inApp) {
-      await _logBanner('배너 링크가 앱 화면이 아닙니다.', {'url': raw});
+      await _openExternalBanner(uri, raw);
       return;
     }
 
     final route = raw.startsWith('/') ? raw : _inAppRoute(uri);
     if (route == '/' || route.isEmpty) {
       await _logBanner('배너 링크에 이동할 화면이 없습니다.', {'url': raw});
+      _showBannerNotice('이동할 화면이 없습니다.');
       return;
     }
     if (!context.mounted) return;
@@ -215,6 +219,40 @@ class _BannerSliderState extends State<BannerSlider> {
         '등록된 화면이 없습니다.',
         {'url': raw, 'route': route, 'error': e.toString()},
       );
+      _showBannerNotice('화면을 열 수 없습니다.');
+    }
+  }
+
+  void _showBannerNotice(String message) {
+    if (!mounted) return;
+    AppToastOverlay.show(context, message);
+  }
+
+  Future<void> _openExternalBanner(Uri uri, String raw) async {
+    var target = uri;
+    if (!target.hasScheme) {
+      target = Uri.tryParse('https://$raw') ?? uri;
+    }
+    final scheme = target.scheme.toLowerCase();
+    if (scheme != 'http' && scheme != 'https') {
+      await _logBanner('배너 링크를 브라우저로 열 수 없습니다.', {'url': raw});
+      _showBannerNotice('링크를 열 수 없습니다.');
+      return;
+    }
+    try {
+      final opened = await launchUrl(
+        target,
+        mode: LaunchMode.externalApplication,
+      );
+      if (opened) return;
+      await _logBanner('배너 링크를 브라우저로 열 수 없습니다.', {'url': raw});
+      _showBannerNotice('링크를 열 수 없습니다.');
+    } catch (e) {
+      await _logBanner(
+        '배너 링크를 브라우저로 열 수 없습니다.',
+        {'url': raw, 'error': e.toString()},
+      );
+      _showBannerNotice('링크를 열 수 없습니다.');
     }
   }
 
