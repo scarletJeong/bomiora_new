@@ -41,6 +41,7 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
 
   int _selectedSteps = 6000;
   bool _loading = true;
+  bool _loadFailed = false;
   bool _submitting = false;
   int _lastStepsWheelTickMs = 0;
   double _stepsPanAccum = 0;
@@ -122,15 +123,37 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
     final mbId = user?.id;
     if (!mounted) return;
     if (mbId == null || mbId.isEmpty) {
-      setState(() => _loading = false);
+      setState(() {
+        _loading = false;
+        _loadFailed = false;
+      });
       return;
     }
 
-    final latest = await HealthGoalRepository.fetchLatest(mbId);
+    setState(() => _loading = true);
+    final result = await HealthGoalRepository.fetchLatestResult(mbId);
     if (!mounted) return;
+    if (result.failed) {
+      setState(() {
+        _loading = false;
+        _loadFailed = true;
+      });
+      final reason = (result.reason ?? '').trim();
+      await FailureLog.record(
+        code: 'health.goal.load',
+        mbId: mbId,
+        reason: reason.isEmpty ? '목표를 불러오지 못했습니다' : reason,
+      );
+      return;
+    }
 
+    final latest = result.goal;
     setState(() {
       _loading = false;
+      _loadFailed = false;
+      _currentWeightController.clear();
+      _targetWeightController.clear();
+      _selectedSteps = 6000;
       if (latest != null) {
         if (latest.currentWeight != null) {
           _currentWeightController.text =
@@ -177,7 +200,9 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
   }
 
   Future<void> _onRegister() async {
-    if (!_isFormComplete || _isStepGoalMissing) return;
+    if (_loadFailed || _loading || !_isFormComplete || _isStepGoalMissing) {
+      return;
+    }
 
     final current = _parseWeightField(_currentWeightController.text);
     final target = _parseWeightField(_targetWeightController.text);
@@ -248,8 +273,12 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
           textScaler: TextScaler.linear(textScale),
         ),
         child: _loading
-            ? const Center(child: CircularProgressIndicator(color: const Color(0xFFFF5A8D)))
-            : KeyboardAwareFormBody(
+            ? const Center(
+                child: CircularProgressIndicator(color: Color(0xFFFF5A8D)),
+              )
+            : _loadFailed
+                ? _buildLoadFailed()
+                : KeyboardAwareFormBody(
                 pinBottom: true,
                 formPadding: EdgeInsets.fromLTRB(
                   healthDp(context, 27),
@@ -358,6 +387,58 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
                   ),
                 ),
               ),
+      ),
+    );
+  }
+
+  Widget _buildLoadFailed() {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        healthDp(context, 27),
+        healthDp(context, 28),
+        healthDp(context, 27),
+        healthDp(context, 36),
+      ),
+      child: Column(
+        children: [
+          Text(
+            '목표를 불러오지 못했습니다',
+            textAlign: TextAlign.center,
+            textScaler: TextScaler.noScaling,
+            style: TextStyle(
+              color: const Color(0xFF898686),
+              fontSize: healthSp(context, 14),
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w500,
+              height: 1.5,
+            ),
+          ),
+          SizedBox(height: healthDp(context, 16)),
+          SizedBox(
+            width: double.infinity,
+            height: healthDp(context, 44),
+            child: ElevatedButton(
+              onPressed: _loadLatestGoal,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFF5A8D),
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(healthDp(context, 10)),
+                ),
+              ),
+              child: Text(
+                '다시 시도',
+                textScaler: TextScaler.noScaling,
+                style: TextStyle(
+                  fontSize: healthSp(context, 14),
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
