@@ -483,7 +483,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     if (_phoneChanged && !_contactPhoneVerified) {
       if (!mounted) return;
       AppToastOverlay.showAlert(context, '인증번호를 입력하세요');
-      if (!_nicknameReady && !_passwordReady) return;
+      return;
     }
 
     if (_passwordInProgress && !_passwordReady) {
