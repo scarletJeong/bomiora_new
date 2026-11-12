@@ -26,9 +26,22 @@ class OrderService {
 
   static int countOpenOrderHistory(Map<String, dynamic> result) {
     if (result['success'] != true) return 0;
-    final orders = result['orders'];
-    if (orders is! List) return 0;
-    return orders.whereType<OrderListModel>().where((o) => o.countsAsOpenOrderHistory).length;
+    final counts = result['statusCounts'];
+    if (counts is! Map) return 0;
+    final open = _statusCountNum(counts['open']);
+    if (counts.containsKey('open')) return open;
+    return _statusCountNum(counts['payment_waiting']) +
+        _statusCountNum(counts['paid']) +
+        _statusCountNum(counts['consultation_done']) +
+        _statusCountNum(counts['preparing']) +
+        _statusCountNum(counts['delivering']) +
+        _statusCountNum(counts['completed']);
+  }
+
+  static int _statusCountNum(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse('$value'.trim()) ?? 0;
   }
 
   static void invalidateOrderList([String? mbId]) {
@@ -161,6 +174,9 @@ class OrderService {
               ? (data['totalItems'] ?? data['totalElements'] ?? 0)
               : 0,
           'hasNext': data is Map ? (data['hasNext'] ?? false) : false,
+          'statusCounts': data is Map && data['statusCounts'] is Map
+              ? Map<String, dynamic>.from(data['statusCounts'] as Map)
+              : <String, dynamic>{},
         };
       } else {
         final errorData = _decodeBody(response);
