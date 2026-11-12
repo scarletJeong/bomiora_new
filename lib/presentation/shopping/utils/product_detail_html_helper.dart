@@ -319,7 +319,7 @@ class ProductDetailCollapsedPreview extends StatelessWidget {
     this.expanded = false,
     this.margin,
     this.fontFamily = 'Gmarket Sans TTF',
-    this.expandButtonColor = const Color(0xFFFF4081),
+    this.expandButtonColor = const Color(0xFFFF5A8D),
     this.expandButtonHorizontalPadding = 40,
     this.expandButtonGap = 0,
     this.expandButtonHug = false,

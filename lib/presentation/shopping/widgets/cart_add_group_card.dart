@@ -11,7 +11,7 @@ import 'supply_add_expand_block.dart';
 const _kGmarketSans = 'Gmarket Sans TTF';
 const _kInk = Color(0xFF1A1A1A);
 const _kInkAlt = Color(0xFF1A1A1E);
-const _kMuted2 = Color(0xFF898383);
+const _kMuted2 = Color(0xFF898686);
 const _kBorder = Color(0x7FD2D2D2);
 const _kDivider = Color(0x26FF5A8D);
 

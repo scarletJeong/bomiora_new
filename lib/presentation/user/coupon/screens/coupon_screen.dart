@@ -52,7 +52,7 @@ class _CouponScreenState extends State<CouponScreen> {
   static const Color _registerDisabled = Color(0xFFD2D2D2);
   static const Color _border = Color(0x7FD2D2D2);
   static const Color _textMain = Color(0xFF1A1A1A);
-  static const Color _textMuted = Color(0xFF898383);
+  static const Color _textMuted = Color(0xFF898686);
   static const Color _textSub = Color(0xFF898686);
   static const Color _usedRed = Color(0xFFEF4444);
 

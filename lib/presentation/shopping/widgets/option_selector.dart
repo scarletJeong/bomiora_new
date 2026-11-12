@@ -1865,7 +1865,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
         icon: Icon(
           _isFavorite ? Icons.favorite : Icons.favorite_border,
           size: healthDp(context, 22),
-          color: _isFavorite ? const Color(0xFFFF4081) : Colors.grey[600],
+          color: _isFavorite ? const Color(0xFFFF5A8D) : Colors.grey[600],
         ),
         onPressed: () {
           setState(() => _isFavorite = !_isFavorite);
@@ -2184,7 +2184,7 @@ class _GeneralQuantityBottomSheetState extends State<GeneralQuantityBottomSheet>
                                 : Icons.favorite_border,
                             size: healthDp(context, 22),
                             color: _isFavorite
-                                ? const Color(0xFFFF4081)
+                                ? const Color(0xFFFF5A8D)
                                 : Colors.grey[600],
                           ),
                           onPressed: () {
@@ -2226,7 +2226,7 @@ class _GeneralQuantityBottomSheetState extends State<GeneralQuantityBottomSheet>
                       child: ElevatedButton(
                         onPressed: () => widget.onBuyNow(_quantity),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFF4081),
+                          backgroundColor: const Color(0xFFFF5A8D),
                           foregroundColor: Colors.white,
                           padding: EdgeInsets.symmetric(
                             vertical: healthDp(context, 10),

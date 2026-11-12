@@ -244,7 +244,7 @@ extension _PaymentDelivery on _PaymentScreenState {
         child: Text(
           label,
           style: TextStyle(
-            color: selected ? _pink : const Color(0xFF898383),
+            color: selected ? _pink : const Color(0xFF898686),
             fontSize: healthSp(context, 12),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w500,

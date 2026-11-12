@@ -766,7 +766,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
     required int? generalReviewCount,
   }) {
     const pink = Color(0xFFFF5A8D);
-    const gray = Color(0xFF898383);
+    const gray = Color(0xFF898686);
     final gap = healthDp(context, 5);
     final indicatorH = healthDp(context, 1);
     final labelStyle = TextStyle(
@@ -1574,7 +1574,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
                     _isFavorite ? Icons.favorite : Icons.favorite_border,
                     size: healthDp(context, 22),
                     color: _isFavorite
-                        ? const Color(0xFFFF4081)
+                        ? const Color(0xFFFF5A8D)
                         : Colors.grey[600],
                   ),
                   onPressed: canBuy ? () => _toggleFavorite() : null,
@@ -1588,7 +1588,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
                     onPressed: canBuy ? _showOptionSelectionDialog : null,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: canBuy
-                          ? const Color(0xFFFF4081)
+                          ? const Color(0xFFFF5A8D)
                           : const Color(0xFFD2D2D2),
                       disabledBackgroundColor: const Color(0xFFD2D2D2),
                       foregroundColor: Colors.white,

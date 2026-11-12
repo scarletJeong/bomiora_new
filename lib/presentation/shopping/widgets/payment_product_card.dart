@@ -14,7 +14,7 @@ const _kGmarketSans = 'Gmarket Sans TTF';
 const _kPink = Color(0xFFFF5A8D);
 const _kMuted = Color(0xFF898686);
 const _kInk = Color(0xFF1A1A1E);
-const _kOption = Color(0xFF898383);
+const _kOption = Color(0xFF898686);
 const _kBorder = Color(0x7FD2D2D2);
 const _kDivider = Color(0xFFEFEFEF);
 

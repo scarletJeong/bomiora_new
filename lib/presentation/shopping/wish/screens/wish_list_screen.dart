@@ -28,7 +28,7 @@ class _WishListScreenState extends State<WishListScreen> {
   static const Color _border = Color(0x7FD2D2D2);
   static const Color _textMain = Color(0xFF1A1A1E);
   static const Color _textMuted = Color(0xFF898686);
-  static const Color _textSub = Color(0xFF898383);
+  static const Color _textSub = Color(0xFF898686);
   static const Color _chipFill = Color(0x0CFF5A8D);
 
   static const int _pageSize = 5;

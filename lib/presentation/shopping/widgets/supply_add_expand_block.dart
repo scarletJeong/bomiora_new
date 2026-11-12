@@ -12,7 +12,7 @@ const _kMuted = Color(0xFF898686);
 const _kBorderSoft = Color(0x33FF5A8D);
 const _kDivider = Color(0x26FF5A8D);
 const _kInkAlt = Color(0xFF1A1A1E);
-const _kMuted2 = Color(0xFF898383);
+const _kMuted2 = Color(0xFF898686);
 
 /// 추가상품(supply_add) 블록 — 장바구니·주문·문의 등 공통.
 /// 헤더의 화살표로 목록을 열거나 닫는다.

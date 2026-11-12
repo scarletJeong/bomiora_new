@@ -1242,7 +1242,7 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   TextStyle _cartOptionMutedStyle() => TextStyle(
-        color: const Color(0xFF898383),
+        color: const Color(0xFF898686),
         fontSize: healthSp(context, 10),
         fontFamily: 'Gmarket Sans TTF',
         fontWeight: FontWeight.w500,
@@ -1516,7 +1516,7 @@ class _CartScreenState extends State<CartScreen> {
                       Text(
                         option,
                         style: TextStyle(
-                          color: const Color(0xFF898383),
+                          color: const Color(0xFF898686),
                           fontSize: healthSp(context, 12),
                           fontFamily: 'Gmarket Sans TTF',
                           fontWeight: FontWeight.w500,

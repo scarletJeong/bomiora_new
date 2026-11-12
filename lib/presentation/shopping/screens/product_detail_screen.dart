@@ -745,7 +745,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     required int? generalReviewCount,
   }) {
     const pink = Color(0xFFFF5A8D);
-    const gray = Color(0xFF898383);
+    const gray = Color(0xFF898686);
     final gap = healthDp(context, 5);
     final indicatorH = healthDp(context, 1);
     final labelStyle = TextStyle(
