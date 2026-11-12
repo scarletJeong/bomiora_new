@@ -328,61 +328,23 @@ class _ReviewBestScreenState extends State<ReviewBestScreen> {
         title: '베스트 리뷰',
       ),
       child: _loggedIn == false
-          ? Stack(
-              fit: StackFit.expand,
-              children: [
-                const ColoredBox(color: Colors.white),
-                Center(child: _buildGuestLockMessage(context)),
-              ],
+          ? SizedBox.expand(
+              child: ColoredBox(
+                color: Colors.white,
+                child: CenteredEmptyState(
+                  iconWidget: CenteredEmptyState.assetIcon(
+                    context,
+                    AppAssets.emptyReviewIcon,
+                  ),
+                  message: '로그인 후 이용 가능합니다.',
+                  trailing: CenteredEmptyState.loginButtonTrailing(
+                    context,
+                    onPressed: _onGuestLoginTap,
+                  ),
+                ),
+              ),
             )
           : page,
-    );
-  }
-
-  Widget _buildGuestLockMessage(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: healthDp(context, 20)),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            '로그인 후 이용 가능합니다.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: healthSp(context, 15),
-              height: 1.45,
-              color: Colors.grey[800],
-              fontFamily: _font,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          SizedBox(height: healthDp(context, 24)),
-          SizedBox(
-            width: healthDp(context, 200),
-            child: ElevatedButton(
-              onPressed: _onGuestLoginTap,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _pink,
-                foregroundColor: Colors.white,
-                padding: EdgeInsets.symmetric(
-                  vertical: healthDp(context, 12),
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(healthDp(context, 8)),
-                ),
-              ),
-              child: Text(
-                '로그인 하기',
-                style: TextStyle(
-                  fontSize: healthSp(context, 16),
-                  fontWeight: FontWeight.w500,
-                  fontFamily: _font,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 
