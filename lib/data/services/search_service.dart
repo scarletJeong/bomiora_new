@@ -74,75 +74,6 @@ class SearchService {
         .toList(growable: false);
   }
 
-  static String _normalizeSearchText(String? raw) {
-    if (raw == null) return '';
-    return raw
-        .replaceAll(RegExp(r'<[^>]*>'), ' ')
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .trim();
-  }
-
-  static bool _textMatchesQuery(String? raw, String query) {
-    final q = query.trim().toLowerCase();
-    if (q.isEmpty) return false;
-    return _normalizeSearchText(raw).toLowerCase().contains(q);
-  }
-
-  static bool _productTitleMatchesQuery(Product product, String query) {
-    return _textMatchesQuery(product.name, query);
-  }
-
-  static bool _contentTitleMatchesQuery(ContentPost item, String query) {
-    return _textMatchesQuery(item.title, query);
-  }
-
-  static bool _eventTitleMatchesQuery(EventModel event, String query) {
-    return _textMatchesQuery(event.wrSubject, query);
-  }
-
-  static bool _announcementTitleMatchesQuery(
-    AnnouncementModel item,
-    String query,
-  ) {
-    return _textMatchesQuery(item.title, query);
-  }
-
-  static List<Product> _filterProductsByTitle(
-    List<Product> items,
-    String query,
-  ) {
-    return items
-        .where((product) => _productTitleMatchesQuery(product, query))
-        .toList(growable: false);
-  }
-
-  static List<ContentPost> _filterContentsByTitle(
-    List<ContentPost> items,
-    String query,
-  ) {
-    return items
-        .where((item) => _contentTitleMatchesQuery(item, query))
-        .toList(growable: false);
-  }
-
-  static List<EventModel> _filterEventsByTitle(
-    List<EventModel> items,
-    String query,
-  ) {
-    return items
-        .where((event) => _eventTitleMatchesQuery(event, query))
-        .toList(growable: false);
-  }
-
-  static List<AnnouncementModel> _filterAnnouncementsByTitle(
-    List<AnnouncementModel> items,
-    String query,
-  ) {
-    return items
-        .where((item) => _announcementTitleMatchesQuery(item, query))
-        .toList(growable: false);
-  }
-
   static List<EventModel> _parseEvents(dynamic raw) {
     return _asMapList(raw)
         .map((m) => EventModel.fromJson(m))
@@ -281,19 +212,13 @@ class SearchService {
     final apiEventItems = _parseEvents(event['items']);
     final apiAnnouncementItems = _parseAnnouncements(announcement['items']);
 
-    final mergedEvents = _filterEventsByTitle(apiEventItems, q);
-    final mergedAnnouncements =
-        _filterAnnouncementsByTitle(apiAnnouncementItems, q);
-
-    final filteredContentItems = _filterContentsByTitle(contentItems, q);
-
     return SearchResult(
       query: (body['query'] ?? q).toString(),
-      prescriptionProducts: _filterProductsByTitle(apiRxItems, q),
-      storeProducts: _filterProductsByTitle(apiStoreItems, q),
-      events: mergedEvents,
-      announcements: mergedAnnouncements,
-      contents: filteredContentItems,
+      prescriptionProducts: apiRxItems,
+      storeProducts: apiStoreItems,
+      events: apiEventItems,
+      announcements: apiAnnouncementItems,
+      contents: contentItems,
       prescriptionHasMore: _sectionHasMore(rx),
       storeHasMore: _sectionHasMore(store),
       eventHasMore: _sectionHasMore(event),
