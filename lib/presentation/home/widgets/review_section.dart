@@ -8,6 +8,7 @@ import '../../../data/services/auth_service.dart';
 import '../../../data/services/review_service.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../common/widgets/app_clickable.dart';
+import '../../common/widgets/app_network_image.dart';
 import '../../common/widgets/centered_empty_state.dart';
 import 'home_section_widgets.dart';
 
@@ -221,7 +222,7 @@ class _ReviewSectionState extends State<ReviewSection> {
               Text(
                 '등록된 리뷰가 없습니다.',
                 style: TextStyle(
-                  color: const Color(0x665B3F43),
+                  color: const Color(0xFF898686),
                   fontSize: healthSp(context, 12),
                   fontFamily: 'Gmarket Sans TTF',
                   fontWeight: FontWeight.w500,
@@ -296,6 +297,7 @@ class _ReviewCard extends StatelessWidget {
                     primaryUrl: imageUrl!,
                     fallbackUrl: fallbackImageUrl,
                     fit: BoxFit.cover,
+                    decodeHeightLogical: m.cardHeight,
                   )
                 : const ColoredBox(color: Color(0xFFE0E0E0)),
           ),
@@ -364,55 +366,54 @@ class _ReviewCard extends StatelessWidget {
   }
 }
 
-class _ReviewCardImage extends StatefulWidget {
+class _ReviewCardImage extends StatelessWidget {
   final String primaryUrl;
   final String? fallbackUrl;
   final BoxFit fit;
+  final double decodeHeightLogical;
 
   const _ReviewCardImage({
     required this.primaryUrl,
     this.fallbackUrl,
     this.fit = BoxFit.cover,
+    required this.decodeHeightLogical,
   });
 
-  @override
-  State<_ReviewCardImage> createState() => _ReviewCardImageState();
-}
-
-class _ReviewCardImageState extends State<_ReviewCardImage> {
-  @override
-  Widget build(BuildContext context) {
-    return Image.network(
-      widget.primaryUrl,
-      fit: widget.fit,
+  Widget _image(String url) {
+    return AppNetworkImage(
+      url: url,
+      fit: fit,
       alignment: Alignment.center,
+      width: double.infinity,
+      height: decodeHeightLogical,
+      decodeHeightLogical: decodeHeightLogical,
+      preferHtmlElementOnWeb: false,
       errorBuilder: (_, __, ___) {
-        final fallback = widget.fallbackUrl;
-        if (fallback != null &&
-            fallback.isNotEmpty &&
-            fallback != widget.primaryUrl) {
-          return Image.network(
-            fallback,
-            fit: widget.fit,
-            alignment: Alignment.center,
-            errorBuilder: (_, __, ___) =>
-                Container(color: const Color(0xFFE0E0E0)),
-          );
+        final fallback = fallbackUrl;
+        if (fallback != null && fallback.isNotEmpty && fallback != url) {
+          return _image(fallback);
         }
-        return Container(color: const Color(0xFFE0E0E0));
+        return const ColoredBox(color: Color(0xFFE0E0E0));
       },
       loadingBuilder: (context, child, loadingProgress) {
         if (loadingProgress == null) return child;
-        return Container(
-          color: const Color(0xFFE8E8E8),
-          alignment: Alignment.center,
-          child: const SizedBox(
-            width: 22,
-            height: 22,
-            child: CircularProgressIndicator(color: const Color(0xFFFF5A8D), strokeWidth: 2),
+        return const ColoredBox(
+          color: Color(0xFFE8E8E8),
+          child: Center(
+            child: SizedBox(
+              width: 22,
+              height: 22,
+              child: CircularProgressIndicator(
+                color: Color(0xFFFF5A8D),
+                strokeWidth: 2,
+              ),
+            ),
           ),
         );
       },
     );
   }
+
+  @override
+  Widget build(BuildContext context) => _image(primaryUrl);
 }
