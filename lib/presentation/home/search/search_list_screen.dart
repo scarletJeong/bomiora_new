@@ -45,9 +45,9 @@ class _SearchListScreenState extends State<SearchListScreen> {
   static const Color _muted = Color(0xFF898686);
   static const Color _pink = Color(0xFFFF5A8D);
   static const Color _border = Color(0x7FD2D2D2);
+  static const Color _divider = Color(0xFFD2D2D2);
   static const Color _sectionBg = Color(0xFFF9FAFB);
   static const Color _rowBorder = Color(0xFFF3F4F6);
-  static const Color _titleDark = Color(0xFF1F2937);
 
   late final TextEditingController _queryController;
   int _searchRequestId = 0;
@@ -474,7 +474,7 @@ class _SearchListScreenState extends State<SearchListScreen> {
             TextSpan(
               text: title,
               style: TextStyle(
-                color: _titleDark,
+                color: _ink,
                 fontSize: healthSp(context, 12),
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: FontWeight.w500,
@@ -569,7 +569,7 @@ class _SearchListScreenState extends State<SearchListScreen> {
           ),
           decoration: const BoxDecoration(
             border: Border(
-              bottom: BorderSide(color: Color(0x80D2D2D2), width: 1),
+              bottom: BorderSide(color: _divider, width: 1),
             ),
           ),
           child: Row(
@@ -596,7 +596,7 @@ class _SearchListScreenState extends State<SearchListScreen> {
                     Text(
                       title,
                       style: TextStyle(
-                        color: const Color(0xFF1A1A1E),
+                        color: _ink,
                         fontSize: healthSp(context, 14),
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w500,
@@ -610,7 +610,7 @@ class _SearchListScreenState extends State<SearchListScreen> {
                     Text(
                       product.formattedPrice,
                       style: TextStyle(
-                        color: const Color(0xFF1A1A1E),
+                        color: _ink,
                         fontSize: healthSp(context, 14),
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w500,
@@ -654,7 +654,7 @@ class _SearchListScreenState extends State<SearchListScreen> {
           ),
           decoration: const BoxDecoration(
             border: Border(
-              bottom: BorderSide(color: _rowBorder, width: 1),
+              bottom: BorderSide(color: _divider, width: 1),
             ),
           ),
           child: Row(
@@ -683,7 +683,7 @@ class _SearchListScreenState extends State<SearchListScreen> {
                     Text(
                       title,
                       style: TextStyle(
-                        color: const Color(0xFF1A1A1E),
+                        color: _ink,
                         fontSize: healthSp(context, 14),
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w500,
@@ -823,7 +823,7 @@ class _SearchListScreenState extends State<SearchListScreen> {
               focusNode: focusNode,
               onSubmitted: (s) => _commitSearch(s),
               style: TextStyle(
-                color: const Color(0xFF333333),
+                color: _ink,
                 fontSize: healthSp(context, 14),
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: FontWeight.w400,
