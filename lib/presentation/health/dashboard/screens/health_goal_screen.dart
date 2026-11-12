@@ -553,7 +553,7 @@ class _GoalTextField extends StatelessWidget {
             decoration: InputDecoration(
               hintText: hint,
               hintStyle: TextStyle(
-                color: const Color(0xFF898383),
+                color: const Color(0xFF898686),
                 fontSize: healthSp(context, 16),
                 height: 1.0,
                 fontFamily: 'Gmarket Sans TTF',

@@ -223,7 +223,7 @@ class TodayHealthRecordSection extends StatelessWidget {
                                 overflow: TextOverflow.ellipsis,
                                 softWrap: false,
                                 style: TextStyle(
-                                  color: const Color(0xFF8C8888),
+                                  color: const Color(0xFF898686),
                                   fontSize: healthSp(context, 12),
                                   fontFamily: 'Gmarket Sans TTF',
                                   fontWeight: FontWeight.w300,
@@ -265,7 +265,7 @@ class TodayHealthRecordSection extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           softWrap: false,
                           style: TextStyle(
-                            color: const Color(0xFF8C8888),
+                            color: const Color(0xFF898686),
                             fontSize: healthSp(context, 12),
                             fontFamily: 'Gmarket Sans TTF',
                             fontWeight: FontWeight.w300,
@@ -430,7 +430,7 @@ Widget _buildRecordCard(
                     value,
                     textScaler: TextScaler.noScaling,
                     style: TextStyle(
-                      color: const Color(0xFF8C8888),
+                      color: const Color(0xFF898686),
                       fontSize: healthSp(context, 12),
                       fontFamily: 'Gmarket Sans TTF',
                       fontWeight: FontWeight.w300,
@@ -507,7 +507,7 @@ Widget _buildRecordCard(
             Text(
               subtitle,
               style: TextStyle(
-                color: const Color(0xFF8C8888),
+                color: const Color(0xFF898686),
                 fontSize: subtitleFs,
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: FontWeight.w300,
@@ -749,7 +749,7 @@ Widget _buildBottomRecordCard(
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: const Color(0xFF8C8888),
+                      color: const Color(0xFF898686),
                       fontSize: healthSp(context, 12),
                       fontFamily: 'Gmarket Sans TTF',
                       fontWeight: FontWeight.w300,

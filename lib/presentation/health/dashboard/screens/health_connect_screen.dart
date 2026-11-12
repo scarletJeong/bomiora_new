@@ -420,7 +420,7 @@ class _HealthConnectScreenState extends State<HealthConnectScreen> {
           _isConnected ? '$_providerLabel · 연동됨' : _providerLabel,
           textAlign: TextAlign.center,
           style: TextStyle(
-            color: Color(0xFF898383),
+            color: const Color(0xFF898686),
             fontSize: healthSp(context, 12),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w500,
@@ -447,7 +447,7 @@ class _HealthConnectScreenState extends State<HealthConnectScreen> {
         message,
         style: TextStyle(
           fontSize: healthSp(context, 12),
-          color: Color(0xFF555555),
+          color: const Color(0xFF898686),
           height: 1.45,
         ),
       ),
