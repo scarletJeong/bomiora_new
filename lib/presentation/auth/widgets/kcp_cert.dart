@@ -373,8 +373,14 @@ class _KcpCertWebViewScreenState extends State<KcpCertWebViewScreen> {
       }
 
       _startPollingResult();
-    } catch (e) {
+    } catch (e, stack) {
       debugPrint('[KCP] _initializeKcpRequest: catch $e');
+      await FailureLog.record(
+        code: 'auth.kcpPrepare',
+        mbId: '',
+        reason: e.toString(),
+        detail: {'stack': stack.toString()},
+      );
       if (!mounted) {
         debugPrint('[KCP] _initializeKcpRequest: catch 후 unmounted → 에러 UI 스킵');
         return;

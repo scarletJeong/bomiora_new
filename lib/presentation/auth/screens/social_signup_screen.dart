@@ -433,6 +433,34 @@ class _SocialSignupScreenState extends State<SocialSignupScreen> {
     Navigator.of(context).pop();
   }
 
+  bool _isDuplicateSignupMessage(String message) {
+    final m = message.toLowerCase();
+    return message.contains('이미 존재하는 이메일') ||
+        message.contains('이미 있는 아이디') ||
+        message.contains('이미 가입') ||
+        message.contains('이미 등록된') ||
+        message.contains('중복 가입') ||
+        m.contains('duplicate');
+  }
+
+  Future<void> _logSocialSignupFailure(
+    String reason, {
+    required String email,
+    StackTrace? stack,
+  }) async {
+    if (_isDuplicateSignupMessage(reason)) return;
+    await FailureLog.record(
+      code: 'auth.signup',
+      mbId: '',
+      reason: reason,
+      detail: {
+        'provider': widget.provider,
+        'email': email,
+        if (stack != null) 'stack': stack.toString(),
+      },
+    );
+  }
+
   Future<void> _submit([Map<String, bool>? agreements]) async {
     if (_isLoading) return;
     final phoneDigits = _usesDesignedSignup
@@ -451,16 +479,26 @@ class _SocialSignupScreenState extends State<SocialSignupScreen> {
         ? _emailController.text.trim()
         : (widget.email ?? _emailController.text).trim();
     if (email.isEmpty) {
+      final missingEmail = _isKakao
+          ? '카카오 이메일 정보를 가져오지 못했습니다.'
+          : _isNaver
+              ? '네이버 이메일 정보를 가져오지 못했습니다.'
+              : null;
+      if (missingEmail != null && !_needsManualEmail) {
+        await FailureLog.record(
+          code: 'auth.socialLogin',
+          mbId: '',
+          reason: missingEmail,
+          detail: {'provider': widget.provider},
+        );
+      }
+      if (!mounted) return;
       setState(() {
         if (_needsManualEmail) {
           _emailErrorText = '이메일을 입력해주세요.';
           _kakaoStep = _KakaoSignupStep.phone;
         }
-        _errorText = _isKakao
-            ? '카카오 이메일 정보를 가져오지 못했습니다.'
-            : _isNaver
-                ? '네이버 이메일 정보를 가져오지 못했습니다.'
-                : '이메일을 입력해 주세요.';
+        _errorText = missingEmail ?? '이메일을 입력해 주세요.';
       });
       return;
     }
@@ -556,6 +594,8 @@ class _SocialSignupScreenState extends State<SocialSignupScreen> {
     }
 
     final message = result['error']?.toString() ?? '회원가입에 실패했습니다.';
+    await _logSocialSignupFailure(message, email: email);
+    if (!mounted) return;
     setState(() {
       _isLoading = false;
       _errorText = message;
@@ -563,7 +603,12 @@ class _SocialSignupScreenState extends State<SocialSignupScreen> {
     if (_usesDesignedSignup && _kakaoStep == _KakaoSignupStep.agreement) {
       AppToastOverlay.show(context, message);
     }
-    } catch (_) {
+    } catch (e, stack) {
+      await _logSocialSignupFailure(
+        e.toString(),
+        email: email,
+        stack: stack,
+      );
       if (!mounted) return;
       const message = '회원가입에 실패했습니다.';
       setState(() {

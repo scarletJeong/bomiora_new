@@ -84,16 +84,32 @@ class AuthRepository {
         }
       } catch (_) {}
 
+      if (!errorMessage.contains('이미 존재') &&
+          !errorMessage.contains('이미 있는')) {
+        await FailureLog.record(
+          code: 'auth.checkEmail',
+          mbId: '',
+          reason: errorMessage,
+          detail: {'email': email, 'status': response.statusCode},
+        );
+      }
       return {
         'success': false,
         'exists': false,
         'error': errorMessage,
       };
-    } catch (e) {
+    } catch (e, stack) {
+      final reason = '이메일 중복 확인 중 오류가 발생했습니다: $e';
+      await FailureLog.record(
+        code: 'auth.checkEmail',
+        mbId: '',
+        reason: reason,
+        detail: {'email': email, 'stack': stack.toString()},
+      );
       return {
         'success': false,
         'exists': false,
-        'error': '이메일 중복 확인 중 오류가 발생했습니다: $e',
+        'error': reason,
       };
     }
   }
@@ -600,10 +616,18 @@ class AuthRepository {
           fallback: '인증번호 확인에 실패했습니다. (${response.statusCode})',
         ),
       };
-    } catch (e) {
+    } catch (e, stack) {
+      final reason = '인증번호 확인 중 오류가 발생했습니다: $e';
+      await FailureLog.record(
+        code: 'auth.otpVerify',
+        mbId: '',
+        reason: reason,
+        detail: {'purpose': purpose, 'stack': stack.toString()},
+      );
       return {
         'success': false,
-        'error': '인증번호 확인 중 오류가 발생했습니다: $e',
+        'transportFailure': true,
+        'error': reason,
       };
     }
   }

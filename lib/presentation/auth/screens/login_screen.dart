@@ -378,7 +378,16 @@ class _LoginScreenState extends State<LoginScreen> {
           _loginErrorText = '* 아이디 혹은 비밀번호가 일치하지 않습니다.';
         });
       }
-    } catch (_) {
+    } catch (e, stack) {
+      await FailureLog.record(
+        code: 'auth.login',
+        mbId: '',
+        reason: e.toString(),
+        detail: {
+          'email': _emailController.text.trim(),
+          'stack': stack.toString(),
+        },
+      );
       if (mounted) {
         setState(() {
           _loginErrorText = '* 로그인 요청에 실패했습니다. 다시 시도해 주세요.';
@@ -954,6 +963,12 @@ class _LoginScreenState extends State<LoginScreen> {
     final authError = KakaoAuthService.peekWebAuthError();
     if (authError != null && authError.isNotEmpty) {
       KakaoAuthService.clearWebAuthQueryFromUrl();
+      await FailureLog.record(
+        code: 'auth.socialLogin',
+        mbId: '',
+        reason: authError,
+        detail: {'provider': '카카오', 'source': 'web-return'},
+      );
       if (!mounted) return;
       AppToastOverlay.show(context, authError);
       return;
@@ -975,6 +990,15 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final kakaoResult = await KakaoAuthService.fetchWebAuthResult(token);
       if (!kakaoResult['success']) {
+        if (kakaoResult['transportFailure'] != true) {
+          await FailureLog.record(
+            code: 'auth.socialLogin',
+            mbId: '',
+            reason: kakaoResult['error']?.toString() ??
+                '카카오 로그인 결과를 가져오지 못했습니다.',
+            detail: {'provider': '카카오', 'source': 'web-return'},
+          );
+        }
         if (!mounted) return;
         await _showSocialFailure('카카오', kakaoResult);
         return;
@@ -997,6 +1021,12 @@ class _LoginScreenState extends State<LoginScreen> {
     final nickname = kakaoData['nickname']?.toString();
 
     if (kakaoId.isEmpty) {
+      await FailureLog.record(
+        code: 'auth.socialLogin',
+        mbId: '',
+        reason: '카카오 사용자 정보를 가져오지 못했습니다.',
+        detail: {'provider': '카카오'},
+      );
       if (!mounted) return false;
       AppToastOverlay.show(context, '카카오 사용자 정보를 가져오지 못했습니다.');
       return false;
@@ -1027,6 +1057,12 @@ class _LoginScreenState extends State<LoginScreen> {
     final authError = NaverAuthService.peekWebAuthError();
     if (authError != null && authError.isNotEmpty) {
       NaverAuthService.clearWebAuthQueryFromUrl();
+      await FailureLog.record(
+        code: 'auth.socialLogin',
+        mbId: '',
+        reason: authError,
+        detail: {'provider': '네이버', 'source': 'web-return'},
+      );
       if (!mounted) return;
       AppToastOverlay.show(context, authError);
       return;
@@ -1048,6 +1084,15 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final naverResult = await NaverAuthService.fetchWebAuthResult(token);
       if (!naverResult['success']) {
+        if (naverResult['transportFailure'] != true) {
+          await FailureLog.record(
+            code: 'auth.socialLogin',
+            mbId: '',
+            reason: naverResult['error']?.toString() ??
+                '네이버 로그인 결과를 가져오지 못했습니다.',
+            detail: {'provider': '네이버', 'source': 'web-return'},
+          );
+        }
         if (!mounted) return;
         await _showSocialFailure('네이버', naverResult);
         return;
@@ -1071,6 +1116,12 @@ class _LoginScreenState extends State<LoginScreen> {
     final name = naverData['name']?.toString();
 
     if (naverId.isEmpty) {
+      await FailureLog.record(
+        code: 'auth.socialLogin',
+        mbId: '',
+        reason: '네이버 사용자 정보를 가져오지 못했습니다.',
+        detail: {'provider': '네이버'},
+      );
       if (!mounted) return false;
       AppToastOverlay.show(context, '네이버 사용자 정보를 가져오지 못했습니다.');
       return false;
@@ -1117,6 +1168,12 @@ class _LoginScreenState extends State<LoginScreen> {
       final appleData = appleResult['data'] as Map<String, dynamic>;
       final appleId = appleData['appleId']?.toString() ?? '';
       if (appleId.isEmpty) {
+        await FailureLog.record(
+          code: 'auth.socialLogin',
+          mbId: '',
+          reason: 'Apple 사용자 정보를 가져오지 못했습니다.',
+          detail: {'provider': 'Apple'},
+        );
         if (!mounted) return;
         AppToastOverlay.show(context, 'Apple 사용자 정보를 가져오지 못했습니다.');
         return;
