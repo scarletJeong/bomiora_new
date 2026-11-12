@@ -222,6 +222,23 @@ extension _PaymentCheckout on _PaymentScreenState {
               extraShipping: _paymentMoney(quotedExtra),
             );
           }
+          final amountQuote = _amountQuoteOf(data['expected']);
+          if ((data['error_code'] ?? '').toString() == 'AMOUNT_MISMATCH' ||
+              serverMessage.contains('결제 금액 검증')) {
+            if (amountQuote != null) {
+              throw KcpPayStartException(
+                '결제 금액이 변경되었습니다',
+                errorCode: 'AMOUNT_CHANGED',
+                expectedAmount: amountQuote.finalAmount,
+                cartPrice: amountQuote.cartPrice,
+                baseShipping: amountQuote.baseShipping,
+                extraShipping: amountQuote.extraShipping,
+                productCoupon: amountQuote.productCoupon,
+                shippingCoupon: amountQuote.shippingCoupon,
+                usedPoint: amountQuote.usedPoint,
+              );
+            }
+          }
           throw KcpPayStartException(
             serverMessage,
             errorCode: (data['error_code'] ?? '').toString(),
@@ -330,6 +347,12 @@ extension _PaymentCheckout on _PaymentScreenState {
           await _applyReturnedShipping(resultMap, user.id);
           return;
         }
+        if (code == 'AMOUNT_CHANGED' ||
+            message.contains('결제 금액이 변경') ||
+            message.contains('결제 금액 검증')) {
+          await _applyReturnedAmount(resultMap);
+          return;
+        }
         if (code == 'STOCK') {
           await AppAlertDialog.show(
             context,
@@ -374,6 +397,95 @@ extension _PaymentCheckout on _PaymentScreenState {
         });
       }
     }
+  }
+
+  _AmountQuote? _amountQuoteOf(dynamic expected) {
+    if (expected is Map) {
+      final finalRaw = expected['final_amount'];
+      if (finalRaw == null) return null;
+      return _AmountQuote(
+        finalAmount: _paymentMoney(finalRaw),
+        cartPrice: expected.containsKey('cart_price')
+            ? _paymentMoney(expected['cart_price'])
+            : null,
+        baseShipping: expected.containsKey('base_shipping_cost')
+            ? _paymentMoney(expected['base_shipping_cost'])
+            : null,
+        extraShipping: expected.containsKey('extra_shipping_cost')
+            ? _paymentMoney(expected['extra_shipping_cost'])
+            : null,
+        productCoupon: expected.containsKey('coupon_discount')
+            ? _paymentMoney(expected['coupon_discount'])
+            : null,
+        shippingCoupon: expected.containsKey('shipping_coupon_discount')
+            ? _paymentMoney(expected['shipping_coupon_discount'])
+            : null,
+        usedPoint: expected.containsKey('used_point')
+            ? _paymentMoney(expected['used_point'])
+            : null,
+      );
+    }
+    if (expected is num || expected is String) {
+      return _AmountQuote(finalAmount: _paymentMoney(expected));
+    }
+    return null;
+  }
+
+  Future<void> _applyReturnedAmount(Map<String, dynamic> resultMap) async {
+    final quote = _amountQuoteOf(resultMap['expected']) ??
+        (resultMap['expected_amount'] == null
+            ? null
+            : _AmountQuote(finalAmount: _paymentMoney(resultMap['expected_amount'])));
+    if (quote != null) {
+      final cartPrice = resultMap.containsKey('cart_price')
+          ? _paymentMoney(resultMap['cart_price'])
+          : quote.cartPrice;
+      final productCoupon = resultMap.containsKey('product_coupon_discount')
+          ? _paymentMoney(resultMap['product_coupon_discount'])
+          : quote.productCoupon;
+      final shippingCoupon = resultMap.containsKey('shipping_coupon_discount')
+          ? _paymentMoney(resultMap['shipping_coupon_discount'])
+          : quote.shippingCoupon;
+      final usedPoint = resultMap.containsKey('used_point')
+          ? _paymentMoney(resultMap['used_point'])
+          : quote.usedPoint;
+      final baseShipping = resultMap.containsKey('base_shipping_cost')
+          ? _paymentMoney(resultMap['base_shipping_cost'])
+          : quote.baseShipping;
+      final extraShipping = resultMap.containsKey('extra_shipping_cost')
+          ? _paymentMoney(resultMap['extra_shipping_cost'])
+          : quote.extraShipping;
+      final currentProduct = productCoupon ?? _productCouponDiscount;
+      final currentShippingCoupon =
+          shippingCoupon ?? _shippingCouponDiscount;
+      final currentPoint = usedPoint ?? _pointDiscount;
+      final purchase = cartPrice ??
+          (quote.finalAmount -
+              (baseShipping ?? _baseShipping) -
+              (extraShipping ?? _extraShipping) +
+              currentProduct +
+              currentShippingCoupon +
+              currentPoint);
+      _setState(() {
+        _quotedPurchaseAmount = purchase < 0 ? 0 : purchase;
+        if (baseShipping != null) _baseShipping = baseShipping;
+        if (extraShipping != null) _extraShipping = extraShipping;
+        _quotedProductCoupon = currentProduct < 0 ? 0 : currentProduct;
+        _quotedShippingCoupon =
+            currentShippingCoupon < 0 ? 0 : currentShippingCoupon;
+        _quotedPointDiscount = currentPoint < 0 ? 0 : currentPoint;
+        _usedPoint = _quotedPointDiscount!;
+        _writePointField(_usedPoint);
+        _quotedFinalAmount = quote.finalAmount;
+      });
+    }
+    if (!mounted) return;
+    await AppAlertDialog.show(
+      context,
+      title: '',
+      message: '결제 금액이 변경되었습니다',
+      confirmText: '확인',
+    );
   }
 
   Future<void> _retryShippingQuote() async {
@@ -435,4 +547,24 @@ extension _PaymentCheckout on _PaymentScreenState {
     if (message.contains('NO_CODE')) return 'NO_CODE';
     return 'UNKNOWN';
   }
+}
+
+class _AmountQuote {
+  const _AmountQuote({
+    required this.finalAmount,
+    this.cartPrice,
+    this.baseShipping,
+    this.extraShipping,
+    this.productCoupon,
+    this.shippingCoupon,
+    this.usedPoint,
+  });
+
+  final int finalAmount;
+  final int? cartPrice;
+  final int? baseShipping;
+  final int? extraShipping;
+  final int? productCoupon;
+  final int? shippingCoupon;
+  final int? usedPoint;
 }

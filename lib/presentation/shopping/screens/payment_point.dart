@@ -67,8 +67,11 @@ extension _PaymentPoint on _PaymentScreenState {
     return (capped ~/ 100) * 100;
   }
 
-  int get _pointDiscount =>
-      _pointDiscountFor(_selectedCoupons, _usedPoint);
+  int get _pointDiscount {
+    final quoted = _quotedPointDiscount;
+    if (quoted != null) return quoted;
+    return _pointDiscountFor(_selectedCoupons, _usedPoint);
+  }
 
 
   /// 쿠폰·포인트 적용 후 최종 결제액 (하한 검증용).
@@ -82,7 +85,11 @@ extension _PaymentPoint on _PaymentScreenState {
     return amount < 0 ? 0 : amount;
   }
 
-  int get _finalAmount => _finalAmountFor(_selectedCoupons, _usedPoint);
+  int get _finalAmount {
+    final quoted = _quotedFinalAmount;
+    if (quoted != null) return quoted;
+    return _finalAmountFor(_selectedCoupons, _usedPoint);
+  }
 
   bool _keepsMinPayable(List<Coupon> coupons, [int? usedPoint]) {
     return _finalAmountFor(coupons, usedPoint ?? _usedPoint) >=
@@ -117,6 +124,8 @@ extension _PaymentPoint on _PaymentScreenState {
 
   void _onPointChanged() {
     if (_syncingPoint) return;
+    final hadQuote = _quotedFinalAmount != null;
+    if (hadQuote) _clearAmountQuote();
     final raw = _pointController.text.replaceAll(RegExp(r'[^0-9]'), '');
     final value = int.tryParse(raw) ?? 0;
     final capped =
@@ -137,7 +146,7 @@ extension _PaymentPoint on _PaymentScreenState {
       _syncingPoint = false;
     }
 
-    if (safe != _usedPoint) {
+    if (hadQuote || safe != _usedPoint) {
       _setState(() {
         _usedPoint = safe;
       });

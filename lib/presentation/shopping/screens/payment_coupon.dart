@@ -17,6 +17,7 @@ extension _PaymentCoupon on _PaymentScreenState {
   }
 
   void _syncCouponLists() {
+    if (_quotedFinalAmount != null) return;
     _applicableCoupons = _loadedCoupons.where(_isCouponApplicable).toList()
       ..sort((a, b) => a.no.compareTo(b.no));
     _selectedCoupons =
@@ -36,8 +37,11 @@ extension _PaymentCoupon on _PaymentScreenState {
     }
   }
 
-  int get _purchaseAmount =>
-      widget.cartItems.fold(0, (sum, item) => sum + item.lineAmount);
+  int get _purchaseAmount {
+    final quoted = _quotedPurchaseAmount;
+    if (quoted != null) return quoted;
+    return widget.cartItems.fold(0, (sum, item) => sum + item.lineAmount);
+  }
 
 
   /// 배송비 쿠폰 최소 금액. 일반·처방 상품 중 인플루언서가 아닌 라인 금액 합.
@@ -165,11 +169,17 @@ extension _PaymentCoupon on _PaymentScreenState {
     return raw < 0 ? 0 : raw;
   }
 
-  int get _productCouponDiscount =>
-      _productCouponDiscountFor(_selectedCoupons);
+  int get _productCouponDiscount {
+    final quoted = _quotedProductCoupon;
+    if (quoted != null) return quoted;
+    return _productCouponDiscountFor(_selectedCoupons);
+  }
 
-  int get _shippingCouponDiscount =>
-      _shippingCouponDiscountFor(_selectedCoupons);
+  int get _shippingCouponDiscount {
+    final quoted = _quotedShippingCoupon;
+    if (quoted != null) return quoted;
+    return _shippingCouponDiscountFor(_selectedCoupons);
+  }
 
   int get _couponDiscount => _productCouponDiscount;
 
@@ -286,6 +296,7 @@ extension _PaymentCoupon on _PaymentScreenState {
     }
 
     _setState(() {
+      _clearAmountQuote();
       _selectedCoupons = next;
       if (_usedPoint > _maxUsablePoint) {
         _usedPoint = _maxUsablePoint;
@@ -357,6 +368,7 @@ extension _PaymentCoupon on _PaymentScreenState {
           InkWell(
             onTap: () {
               _setState(() {
+                _clearAmountQuote();
                 _selectedCoupons.removeWhere((c) => c.no == coupon.no);
                 if (_usedPoint > _maxUsablePointHundreds) {
                   _usedPoint = _maxUsablePointHundreds;

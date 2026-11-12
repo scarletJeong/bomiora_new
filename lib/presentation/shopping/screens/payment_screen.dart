@@ -161,6 +161,16 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   int _extraShipping = 0;
 
+  int? _quotedPurchaseAmount;
+
+  int? _quotedProductCoupon;
+
+  int? _quotedShippingCoupon;
+
+  int? _quotedPointDiscount;
+
+  int? _quotedFinalAmount;
+
   int _shippingQuoteGen = 0;
 
   List<Coupon> _loadedCoupons = [];
@@ -181,6 +191,14 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
 
   void _setState(VoidCallback fn) => setState(fn);
+
+  void _clearAmountQuote() {
+    _quotedPurchaseAmount = null;
+    _quotedProductCoupon = null;
+    _quotedShippingCoupon = null;
+    _quotedPointDiscount = null;
+    _quotedFinalAmount = null;
+  }
 
   @override
   void initState() {

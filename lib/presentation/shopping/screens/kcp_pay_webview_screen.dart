@@ -28,12 +28,22 @@ class KcpPayStartException implements Exception {
     this.errorCode = '',
     this.baseShipping,
     this.extraShipping,
+    this.cartPrice,
+    this.productCoupon,
+    this.shippingCoupon,
+    this.usedPoint,
+    this.expectedAmount,
   });
 
   final String message;
   final String errorCode;
   final int? baseShipping;
   final int? extraShipping;
+  final int? cartPrice;
+  final int? productCoupon;
+  final int? shippingCoupon;
+  final int? usedPoint;
+  final int? expectedAmount;
 
   @override
   String toString() => message;
@@ -277,6 +287,16 @@ class _KcpPayWebViewScreenState extends State<KcpPayWebViewScreen> {
           'base_shipping_cost': e.baseShipping,
         if (e is KcpPayStartException && e.extraShipping != null)
           'extra_shipping_cost': e.extraShipping,
+        if (e is KcpPayStartException && e.cartPrice != null)
+          'cart_price': e.cartPrice,
+        if (e is KcpPayStartException && e.productCoupon != null)
+          'product_coupon_discount': e.productCoupon,
+        if (e is KcpPayStartException && e.shippingCoupon != null)
+          'shipping_coupon_discount': e.shippingCoupon,
+        if (e is KcpPayStartException && e.usedPoint != null)
+          'used_point': e.usedPoint,
+        if (e is KcpPayStartException && e.expectedAmount != null)
+          'expected_amount': e.expectedAmount,
       });
     }
   }

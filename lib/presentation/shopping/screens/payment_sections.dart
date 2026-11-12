@@ -222,8 +222,9 @@ extension _PaymentSections on _PaymentScreenState {
                         SizedBox(width: healthDp(context, 10)),
                         InkWell(
                           onTap: () {
-                            final max = _maxUsablePointHundreds;
                             _setState(() {
+                              _clearAmountQuote();
+                              final max = _maxUsablePointHundreds;
                               _usedPoint = max;
                               _writePointField(max);
                             });
