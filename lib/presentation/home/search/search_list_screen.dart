@@ -93,10 +93,6 @@ class _SearchListScreenState extends State<SearchListScreen> {
 
   @override
   void dispose() {
-    final lastQuery = _queryController.text.trim();
-    if (lastQuery.isNotEmpty) {
-      unawaited(RecentSearchService.addQuery(lastQuery));
-    }
     _queryController.dispose();
     super.dispose();
   }
@@ -106,6 +102,10 @@ class _SearchListScreenState extends State<SearchListScreen> {
     final next = searchResultLocation(q);
     final current = ModalRoute.of(context)?.settings.name;
     if (current != null && current != next) {
+      if (q.isNotEmpty) {
+        await RecentSearchService.addQuery(q);
+      }
+      if (!mounted) return;
       Navigator.of(context).pushReplacementNamed<void, void>(
         next,
         arguments: const {'fresh': true},
