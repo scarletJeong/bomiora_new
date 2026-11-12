@@ -132,7 +132,7 @@ class _LegalDocumentViewState extends State<LegalDocumentView> {
           fontFamily: _font,
           fontSize: healthSp(context, size),
           fontWeight: FontWeight.w500,
-          color: Colors.black,
+          color: const Color(0xFF1A1A1A),
           height: 1.45,
         ),
       ),

@@ -98,7 +98,7 @@ class _AgreementWidgetState extends State<AgreementWidget> {
                     Text(
                       '약관동의',
                       style: TextStyle(
-                        color: Colors.black,
+                        color: const Color(0xFF1A1A1A),
                         fontSize: healthSp(context, 20),
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w500,
@@ -124,7 +124,7 @@ class _AgreementWidgetState extends State<AgreementWidget> {
                         value: _allChecked,
                         title: '약관 전체 동의',
                         titleStyle: TextStyle(
-                          color: Colors.black,
+                          color: const Color(0xFF1A1A1A),
                           fontSize: healthSp(context, 14),
                           fontFamily: 'Gmarket Sans TTF',
                           fontWeight: FontWeight.w500,
@@ -353,7 +353,7 @@ class _AgreementTableRow extends StatelessWidget {
                           child: Text(
                             title,
                             style: TextStyle(
-                              color: Colors.black,
+                              color: const Color(0xFF1A1A1A),
                               fontSize: healthSp(context, 12),
                               fontFamily: 'Gmarket Sans TTF',
                               fontWeight: FontWeight.w300,

@@ -33,7 +33,7 @@ class _FindPasswordResetScreenState extends State<FindPasswordResetScreen> {
   bool _showPasswordRuleError = false;
 
   static const Color _kHelperMuted = Color(0xFF898686);
-  static const Color _kError = Color(0xFFEF4444);
+  static const Color _kError = Color(0xFFFF5A8D);
 
   String get _email => (widget.resetInfo?['email'] ?? '').toString().trim();
   String get _identifier =>
@@ -346,7 +346,7 @@ class _FindPasswordResetScreenState extends State<FindPasswordResetScreen> {
           Text(
             title,
             style: TextStyle(
-              color: Colors.black,
+              color: const Color(0xFF1A1A1A),
               fontSize: healthSp(context, 16),
               fontFamily: 'Gmarket Sans TTF',
               fontWeight: FontWeight.w500,
@@ -368,7 +368,7 @@ class _FindPasswordResetScreenState extends State<FindPasswordResetScreen> {
               }
             },
             style: TextStyle(
-              color: Colors.black,
+              color: const Color(0xFF1A1A1A),
               fontSize: healthSp(context, 16),
               fontFamily: 'Gmarket Sans TTF',
               fontWeight: FontWeight.w500,

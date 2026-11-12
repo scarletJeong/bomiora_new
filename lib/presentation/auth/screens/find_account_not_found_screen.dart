@@ -120,7 +120,7 @@ class FindAccountNotFoundScreen extends StatelessWidget {
                                     '일치하는 정보가 없습니다.',
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
-                                      color: Colors.black,
+                                      color: const Color(0xFF1A1A1A),
                                       fontSize: healthSp(context, 16),
                                       fontFamily: 'Gmarket Sans TTF',
                                       fontWeight: FontWeight.w500,
@@ -131,7 +131,7 @@ class FindAccountNotFoundScreen extends StatelessWidget {
                                     '입력하신 정보로 가입된 아이디를\n찾을 수 없습니다. 다시 확인해 주세요.',
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
-                                      color: Colors.black,
+                                      color: const Color(0xFF898686),
                                       fontSize: healthSp(context, 14),
                                       fontFamily: 'Gmarket Sans TTF',
                                       fontWeight: FontWeight.w300,

@@ -719,7 +719,7 @@ class _SocialSignupScreenState extends State<SocialSignupScreen> {
                   Text(
                     _errorText!,
                     style: TextStyle(
-                      color: Colors.red.shade700,
+                      color: const Color(0xFFFF5A8D),
                       fontSize: healthSp(context, 13),
                     ),
                   ),
@@ -774,7 +774,7 @@ class _SocialSignupScreenState extends State<SocialSignupScreen> {
                 Text(
                   '환영합니다.',
                   style: TextStyle(
-                    color: Colors.black,
+                    color: const Color(0xFF1A1A1A),
                     fontSize: healthSp(context, 20),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w500,
@@ -1065,7 +1065,7 @@ class _SocialSignupScreenState extends State<SocialSignupScreen> {
 
   TextStyle _kakaoFieldLabelStyle() {
     return TextStyle(
-      color: Colors.black,
+      color: const Color(0xFF1A1A1A),
       fontSize: healthSp(context, 16),
       fontFamily: 'Gmarket Sans TTF',
       fontWeight: FontWeight.w500,
@@ -1101,7 +1101,7 @@ class _SocialSignupScreenState extends State<SocialSignupScreen> {
     return InputDecoration(
       hintText: hintText,
       hintStyle: TextStyle(
-        color: const Color(0xFFB8B8B8),
+        color: const Color(0xFF898686),
         fontSize: healthSp(context, 14),
         fontFamily: 'Gmarket Sans TTF',
         fontWeight: FontWeight.w300,

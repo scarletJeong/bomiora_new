@@ -107,7 +107,7 @@ class HealthAppBar extends StatelessWidget
       style: TextStyle(
         fontFamily: 'Gmarket Sans TTF',
         fontWeight: FontWeight.w500,
-        color: Colors.black,
+        color: const Color(0xFF1A1A1A),
         fontSize: healthSp(context, titleFontSizeBase),
         height: 1,
       ),

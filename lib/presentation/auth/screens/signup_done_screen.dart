@@ -86,7 +86,7 @@ class SignupDoneScreen extends StatelessWidget {
                               Text(
                                 '회원 가입 완료 !',
                                 style: TextStyle(
-                                  color: Colors.black,
+                                  color: const Color(0xFF1A1A1A),
                                   fontSize: healthSp(context, 20),
                                   fontFamily: 'Gmarket Sans TTF',
                                   fontWeight: FontWeight.w500,

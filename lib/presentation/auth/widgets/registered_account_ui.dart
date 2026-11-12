@@ -32,7 +32,7 @@ class RegisteredAccountList extends StatelessWidget {
               sectionTitle!,
               textAlign: TextAlign.left,
               style: TextStyle(
-                color: Colors.black,
+                color: const Color(0xFF1A1A1A),
                 fontSize: healthSp(context, 16),
                 height: 1,
                 fontFamily: 'Gmarket Sans TTF',

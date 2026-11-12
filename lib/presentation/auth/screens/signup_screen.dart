@@ -591,7 +591,7 @@ class _SignupScreenState extends State<SignupScreen> {
                       Text(
                         '환영합니다.',
                         style: TextStyle(
-                          color: Colors.black,
+                          color: const Color(0xFF1A1A1A),
                           fontSize: healthSp(context, 20),
                           fontFamily: 'Gmarket Sans TTF',
                           fontWeight: FontWeight.w500,
@@ -726,7 +726,7 @@ class _SignupScreenState extends State<SignupScreen> {
                         helperText: '*8~16자/문자,숫자,특수문자 모두 혼용',
                         helperColor: _passwordController.text.isNotEmpty &&
                                 !isValidAppPassword(_passwordController.text)
-                            ? const Color(0xFFEF4444)
+                            ? const Color(0xFFFF5A8D)
                             : const Color(0xFF898686),
                       ),
                       SizedBox(height: healthDp(context, 10)),
@@ -886,7 +886,7 @@ class _SignupTextField extends StatelessWidget {
         Text(
           label,
           style: TextStyle(
-            color: Colors.black,
+            color: const Color(0xFF1A1A1A),
             fontSize: healthSp(context, 16),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w500,
@@ -926,7 +926,7 @@ class _SignupTextField extends StatelessWidget {
                   decoration: InputDecoration(
                     hintText: hintText,
                     hintStyle: TextStyle(
-                      color: Color(0xFFB8B8B8),
+                      color: const Color(0xFF898686),
                       fontSize: healthSp(context, 14),
                       fontFamily: 'Gmarket Sans TTF',
                       fontWeight: FontWeight.w300,
@@ -1038,7 +1038,7 @@ class _ReadonlyField extends StatelessWidget {
         Text(
           label,
           style: TextStyle(
-            color: Colors.black,
+            color: const Color(0xFF1A1A1A),
             fontSize: healthSp(context, 16),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w500,
@@ -1091,7 +1091,7 @@ class _PhoneReadonlyField extends StatelessWidget {
         Text(
           '휴대폰 번호',
           style: TextStyle(
-            color: Colors.black,
+            color: const Color(0xFF1A1A1A),
             fontSize: healthSp(context, 16),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w500,

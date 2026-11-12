@@ -630,7 +630,7 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
                               Text(
                                 '회원가입 시 등록한 정보를 입력해 주세요',
                                 style: TextStyle(
-                                  color: Colors.black,
+                                  color: const Color(0xFF1A1A1A),
                                   fontSize: healthSp(context, 16),
                                   fontFamily: 'Gmarket Sans TTF',
                                   fontWeight: FontWeight.w500,
@@ -865,7 +865,7 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
             child: Text(
               '아이디(이메일)를 입력해 주세요.',
               style: TextStyle(
-                color: Colors.black,
+                color: const Color(0xFF1A1A1A),
                 fontSize: healthSp(context, 16),
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: FontWeight.w500,
@@ -944,7 +944,7 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
                 Text(
                   title,
                   style: TextStyle(
-                    color: Colors.black,
+                    color: const Color(0xFF1A1A1A),
                     fontSize: healthSp(context, 16),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w500,
@@ -956,7 +956,7 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
                       ? Icons.keyboard_arrow_up
                       : Icons.keyboard_arrow_down,
                   size: healthDp(context, 18),
-                  color: Colors.black,
+                  color: const Color(0xFF1A1A1A),
                 ),
               ],
             ),
@@ -1025,7 +1025,7 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
                     Text(
                       _emailLookupErrorText!,
                       style: TextStyle(
-                        color: const Color(0xFFEF4444),
+                        color: const Color(0xFFFF5A8D),
                         fontSize: healthSp(context, 12),
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w500,
@@ -1045,7 +1045,7 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
       child: Text(
         label,
         style: TextStyle(
-          color: Colors.black,
+          color: const Color(0xFF1A1A1A),
           fontSize: healthSp(context, 16),
           fontFamily: 'Gmarket Sans TTF',
           fontWeight: FontWeight.w500,
@@ -1077,7 +1077,7 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
         validator: validator,
         onChanged: _handleFieldChanged,
         style: TextStyle(
-          color: Colors.black,
+          color: const Color(0xFF1A1A1A),
           fontSize: healthSp(context, 16),
           fontFamily: 'Gmarket Sans TTF',
           fontWeight: FontWeight.w500,
@@ -1085,7 +1085,7 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
         decoration: InputDecoration(
           hintText: hintText,
           hintStyle: TextStyle(
-            color: const Color(0xFFB0B0B0),
+            color: const Color(0xFF898686),
             fontSize: healthSp(context, 14),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w300,
@@ -1098,39 +1098,39 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
             borderRadius: BorderRadius.circular(healthDp(context, 10)),
             borderSide: BorderSide(
               width: healthDp(context, 1),
-              color: hasError ? const Color(0xFFEF4444) : const Color(0xFFD2D2D2),
+              color: hasError ? const Color(0xFFFF5A8D) : const Color(0xFFD2D2D2),
             ),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(healthDp(context, 10)),
             borderSide: BorderSide(
               width: healthDp(context, 1),
-              color: hasError ? const Color(0xFFEF4444) : const Color(0xFFD2D2D2),
+              color: hasError ? const Color(0xFFFF5A8D) : const Color(0xFFD2D2D2),
             ),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(healthDp(context, 10)),
             borderSide: BorderSide(
               width: healthDp(context, 1),
-              color: hasError ? const Color(0xFFEF4444) : const Color(0xFFFF5A8D),
+              color: hasError ? const Color(0xFFFF5A8D) : const Color(0xFFFF5A8D),
             ),
           ),
           errorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(healthDp(context, 10)),
             borderSide: BorderSide(
               width: healthDp(context, 1),
-              color: const Color(0xFFEF4444),
+              color: const Color(0xFFFF5A8D),
             ),
           ),
           focusedErrorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(healthDp(context, 10)),
             borderSide: BorderSide(
               width: healthDp(context, 1),
-              color: const Color(0xFFEF4444),
+              color: const Color(0xFFFF5A8D),
             ),
           ),
           errorStyle: TextStyle(
-            color: const Color(0xFFEF4444),
+            color: const Color(0xFFFF5A8D),
             fontSize: healthSp(context, 10),
             fontFamily: 'Gmarket Sans TTF',
           ),
@@ -1240,7 +1240,7 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
                     Text(
                       _phoneInlineErrorText!,
                       style: TextStyle(
-                        color: const Color(0xFFEF4444),
+                        color: const Color(0xFFFF5A8D),
                         fontSize: healthSp(context, 12),
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w500,
@@ -1269,7 +1269,7 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
       child: Text(
         value,
         style: TextStyle(
-          color: Colors.black,
+          color: const Color(0xFF1A1A1A),
           fontSize: healthSp(context, 16),
           fontFamily: 'Gmarket Sans TTF',
           fontWeight: FontWeight.w500,
@@ -1342,7 +1342,7 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
                   }
                 },
                 style: TextStyle(
-                  color: Colors.black,
+                  color: const Color(0xFF1A1A1A),
                   fontSize: healthSp(context, 16),
                   fontFamily: 'Gmarket Sans TTF',
                   fontWeight: FontWeight.w500,
@@ -1402,7 +1402,7 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
                   decoration: InputDecoration(
                     hintText: '인증번호 6자리를 입력해 주세요',
                     hintStyle: TextStyle(
-                      color: const Color(0xFFB0B0B0),
+                      color: const Color(0xFF898686),
                       fontSize: healthSp(context, 14),
                       fontFamily: 'Gmarket Sans TTF',
                       fontWeight: FontWeight.w300,
@@ -1416,7 +1416,7 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
                       borderSide: BorderSide(
                         width: healthDp(context, 1),
                         color: _verificationErrorText != null
-                            ? const Color(0xFFEF4444)
+                            ? const Color(0xFFFF5A8D)
                             : const Color(0xFFD2D2D2),
                       ),
                     ),
@@ -1425,7 +1425,7 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
                       borderSide: BorderSide(
                         width: healthDp(context, 1),
                         color: _verificationErrorText != null
-                            ? const Color(0xFFEF4444)
+                            ? const Color(0xFFFF5A8D)
                             : const Color(0xFFD2D2D2),
                       ),
                     ),
@@ -1434,7 +1434,7 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
                       borderSide: BorderSide(
                         width: healthDp(context, 1),
                         color: _verificationErrorText != null
-                            ? const Color(0xFFEF4444)
+                            ? const Color(0xFFFF5A8D)
                             : const Color(0xFFFF5A8D),
                       ),
                     ),
@@ -1449,18 +1449,18 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
                       borderRadius: BorderRadius.circular(healthDp(context, 10)),
                       borderSide: BorderSide(
                         width: healthDp(context, 1),
-                        color: const Color(0xFFEF4444),
+                        color: const Color(0xFFFF5A8D),
                       ),
                     ),
                     focusedErrorBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(healthDp(context, 10)),
                       borderSide: BorderSide(
                         width: healthDp(context, 1),
-                        color: const Color(0xFFEF4444),
+                        color: const Color(0xFFFF5A8D),
                       ),
                     ),
                     errorStyle: TextStyle(
-                      color: const Color(0xFFEF4444),
+                      color: const Color(0xFFFF5A8D),
                       fontSize: healthSp(context, 10),
                       fontFamily: 'Gmarket Sans TTF',
                     ),
@@ -1517,7 +1517,7 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
                 Text(
                   _verificationErrorText!,
                   style: TextStyle(
-                    color: const Color(0xFFEF4444),
+                    color: const Color(0xFFFF5A8D),
                     fontSize: healthSp(context, 12),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w500,
@@ -1564,7 +1564,7 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
                 Text(
                   '휴대폰 본인인증으로 찾기',
                   style: TextStyle(
-                    color: Colors.black,
+                    color: const Color(0xFF1A1A1A),
                     fontSize: healthSp(context, 16),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w500,
@@ -1576,7 +1576,7 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
                       ? Icons.keyboard_arrow_up
                       : Icons.keyboard_arrow_down,
                   size: healthDp(context, 18),
-                  color: Colors.black,
+                  color: const Color(0xFF1A1A1A),
                 ),
               ],
             ),
@@ -1607,7 +1607,7 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
                 Text(
                   '본인 명의의 휴대폰으로 인증이 가능합니다.',
                   style: TextStyle(
-                    color: Colors.black,
+                    color: const Color(0xFF898686),
                     fontSize: healthSp(context, 12),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w300,

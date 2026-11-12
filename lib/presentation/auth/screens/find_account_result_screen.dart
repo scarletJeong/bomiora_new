@@ -256,7 +256,7 @@ class _FindAccountResultScreenState
             _errorText!,
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: Colors.black,
+              color: const Color(0xFFFF5A8D),
               fontSize: healthSp(context, 14),
               fontFamily: 'Gmarket Sans TTF',
               fontWeight: FontWeight.w500,

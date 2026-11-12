@@ -275,7 +275,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         width: healthDp(context, 0.5),
                         color: _autoLogin
                             ? const Color(0xFFFF5A8D)
-                            : const Color(0xFF898383),
+                            : const Color(0xFF898686),
                       ),
                       borderRadius: BorderRadius.circular(healthDp(context, 4)),
                     ),
@@ -292,7 +292,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 Text(
                   '자동로그인',
                   style: TextStyle(
-                    color: const Color(0xFF898383),
+                    color: const Color(0xFF898686),
                     fontSize: healthSp(context, 12),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w500,
@@ -428,7 +428,7 @@ class _LoginScreenState extends State<LoginScreen> {
         decoration: InputDecoration(
           hintText: hintText,
           hintStyle: TextStyle(
-            color: const Color(0x7F707070),
+            color: const Color(0xFF898686),
             fontSize: healthSp(context, 16),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w300,
@@ -519,7 +519,7 @@ class _LoginScreenState extends State<LoginScreen> {
         decoration: InputDecoration(
           hintText: '비밀번호',
           hintStyle: TextStyle(
-            color: const Color(0x7F707070),
+            color: const Color(0xFF898686),
             fontSize: healthSp(context, 16),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w300,
@@ -562,7 +562,7 @@ class _LoginScreenState extends State<LoginScreen> {
               _obscurePassword
                   ? Icons.visibility_off_outlined
                   : Icons.visibility_outlined,
-              color: const Color(0xFF898383),
+              color: const Color(0xFF898686),
               size: healthDp(context, 22),
             ),
             onPressed: () {
@@ -627,7 +627,7 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Text(
               '아이디/비밀번호 찾기',
               style: TextStyle(
-                color: const Color(0xFF898383),
+                color: const Color(0xFF898686),
                 fontSize: healthSp(context, 14),
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: FontWeight.w500,
@@ -638,7 +638,7 @@ class _LoginScreenState extends State<LoginScreen> {
             width: healthDp(context, 1),
             height: healthDp(context, 15),
             margin: EdgeInsets.symmetric(horizontal: healthDp(context, 20)),
-            color: const Color(0xFF898383),
+            color: const Color(0xFF898686),
           ),
           GestureDetector(
             onTap: _isLoading ? null : _openSignup,
@@ -646,7 +646,7 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Text(
               '회원가입',
               style: TextStyle(
-                color: const Color(0xFF898383),
+                color: const Color(0xFF898686),
                 fontSize: healthSp(context, 14),
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: FontWeight.w500,

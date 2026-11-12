@@ -55,7 +55,7 @@ class AgreementPopupDialog extends StatelessWidget {
                   child: Text(
                     title,
                     style: TextStyle(
-                      color: Colors.black,
+                      color: const Color(0xFF1A1A1A),
                       fontSize: healthSp(context, 20),
                       fontFamily: 'Gmarket Sans TTF',
                       fontWeight: FontWeight.w500,
@@ -85,7 +85,7 @@ class AgreementPopupDialog extends StatelessWidget {
                           Text(
                             subtitle,
                             style: TextStyle(
-                              color: Colors.black,
+                              color: const Color(0xFF1A1A1A),
                               fontSize: healthSp(context, 16),
                               fontFamily: 'Gmarket Sans TTF',
                               fontWeight: FontWeight.w500,
@@ -161,7 +161,7 @@ class AgreementStyleConfirmDialog extends StatelessWidget {
                   child: Text(
                     title,
                     style: TextStyle(
-                      color: Colors.black,
+                      color: const Color(0xFF1A1A1A),
                       fontSize: healthSp(context, 20),
                       fontFamily: _fontFamily,
                       fontWeight: FontWeight.w500,
