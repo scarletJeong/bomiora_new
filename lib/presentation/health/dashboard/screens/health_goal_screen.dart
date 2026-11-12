@@ -104,6 +104,8 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
     if (mounted) setState(() {});
   }
 
+  bool get _isStepGoalMissing => _selectedSteps <= 0;
+
   bool get _isFormComplete {
     final current = _parseWeightField(_currentWeightController.text);
     final target = _parseWeightField(_targetWeightController.text);
@@ -111,7 +113,8 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
         current > 0 &&
         target != null &&
         target > 0 &&
-        target < current;
+        target < current &&
+        !_isStepGoalMissing;
   }
 
   Future<void> _loadLatestGoal() async {
@@ -174,7 +177,7 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
   }
 
   Future<void> _onRegister() async {
-    if (!_isFormComplete) return;
+    if (!_isFormComplete || _isStepGoalMissing) return;
 
     final current = _parseWeightField(_currentWeightController.text);
     final target = _parseWeightField(_targetWeightController.text);
@@ -449,6 +452,20 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
             ),
           ),
         ),
+        if (_isStepGoalMissing) ...[
+          SizedBox(height: healthDp(context, 6)),
+          Text(
+            '하루 걸음 수는 0보다 크게 설정해주세요.',
+            textScaler: TextScaler.noScaling,
+            style: TextStyle(
+              color: HealthFocusOutlineBox.focusColor,
+              fontSize: healthSp(context, 10),
+              height: 1.2,
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w300,
+            ),
+          ),
+        ],
       ],
     );
   }
