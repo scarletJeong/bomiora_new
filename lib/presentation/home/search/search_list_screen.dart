@@ -32,9 +32,13 @@ class SearchListScreen extends StatefulWidget {
   const SearchListScreen({
     super.key,
     required this.initialQuery,
+    this.bypassCache = false,
   });
 
   final String initialQuery;
+
+  /// 검색 버튼으로 연 경우. 같은 검색어의 이전 결과를 쓰지 않는다.
+  final bool bypassCache;
 
   @override
   State<SearchListScreen> createState() => _SearchListScreenState();
@@ -84,7 +88,7 @@ class _SearchListScreenState extends State<SearchListScreen> {
     if (initial.isNotEmpty) {
       unawaited(RecentSearchService.addQuery(initial));
     }
-    _runSearch(initial);
+    _runSearch(initial, bypassCache: widget.bypassCache);
   }
 
   @override
@@ -102,7 +106,10 @@ class _SearchListScreenState extends State<SearchListScreen> {
     final next = searchResultLocation(q);
     final current = ModalRoute.of(context)?.settings.name;
     if (current != null && current != next) {
-      Navigator.of(context).pushReplacementNamed<void, void>(next);
+      Navigator.of(context).pushReplacementNamed<void, void>(
+        next,
+        arguments: const {'fresh': true},
+      );
       return;
     }
     if (q.isEmpty) {
@@ -110,10 +117,10 @@ class _SearchListScreenState extends State<SearchListScreen> {
       return;
     }
     await RecentSearchService.addQuery(q);
-    await _runSearch(q);
+    await _runSearch(q, bypassCache: true);
   }
 
-  Future<void> _runSearch(String raw) async {
+  Future<void> _runSearch(String raw, {bool bypassCache = false}) async {
     final q = raw.trim();
     final requestId = ++_searchRequestId;
     if (q.isEmpty) {
@@ -148,7 +155,11 @@ class _SearchListScreenState extends State<SearchListScreen> {
 
     try {
       if (!mounted) return;
-      final result = await SearchService.searchAll(q, limit: _pageSize);
+      final result = await SearchService.searchAll(
+        q,
+        limit: _pageSize,
+        bypassCache: bypassCache,
+      );
       if (!mounted || requestId != _searchRequestId) return;
       setState(() {
         _rx = result.prescriptionProducts;

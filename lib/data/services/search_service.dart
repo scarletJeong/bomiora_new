@@ -160,27 +160,35 @@ class SearchService {
     int limit = 5,
     String? section,
     int offset = 0,
+    bool bypassCache = false,
   }) {
     final q = query.trim();
     final key = '${q.toLowerCase()}|$limit|${section ?? ''}|$offset';
-    final cached = _cache[key];
-    if (cached != null && DateTime.now().difference(cached.$1) < _cacheTtl) {
-      return Future.value(cached.$2);
+    if (!bypassCache) {
+      final cached = _cache[key];
+      if (cached != null && DateTime.now().difference(cached.$1) < _cacheTtl) {
+        return Future.value(cached.$2);
+      }
+      final pending = _inFlight[key];
+      if (pending != null) return pending;
     }
-    final pending = _inFlight[key];
-    if (pending != null) return pending;
 
     final request = _searchAllNetwork(
       q,
       limit: limit,
       section: section,
       offset: offset,
+      bypassCache: bypassCache,
     );
-    _inFlight[key] = request;
+    if (!bypassCache) {
+      _inFlight[key] = request;
+    }
     return request.then((result) {
       _cache[key] = (DateTime.now(), result);
       return result;
-    }).whenComplete(() => _inFlight.remove(key));
+    }).whenComplete(() {
+      if (_inFlight[key] == request) _inFlight.remove(key);
+    });
   }
 
   static int _sectionTotal(Map<String, dynamic> section, int visibleCount) {
@@ -199,6 +207,7 @@ class SearchService {
     int limit = 5,
     String? section,
     int offset = 0,
+    bool bypassCache = false,
   }) async {
     final q = query.trim();
     if (q.isEmpty) {
@@ -221,6 +230,7 @@ class SearchService {
       params['section'] = sectionName;
       params['offset'] = '$offset';
     }
+    if (bypassCache) params['fresh'] = '1';
     final endpoint = Uri(
       path: ApiEndpoints.search,
       queryParameters: params,

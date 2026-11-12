@@ -65,7 +65,10 @@ class _SearchPopupDialogState extends State<_SearchPopupDialog> {
     if (!mounted) return;
     final nav = Navigator.of(context, rootNavigator: true);
     nav.pop();
-    nav.pushNamed<void>(searchResultLocation(q));
+    nav.pushNamed<void>(
+      searchResultLocation(q),
+      arguments: const {'fresh': true},
+    );
   }
 
   Future<void> _onTapRecent(String q) async {

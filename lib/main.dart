@@ -383,6 +383,7 @@ class _BomioraAppState extends State<BomioraApp> {
               as Map<String, dynamic>?;
           return SearchListScreen(
             initialQuery: (args?['query'] ?? '').toString(),
+            bypassCache: args?['fresh'] == true,
           );
         },
         '/signup': (context) {
@@ -611,7 +612,10 @@ class _BomioraAppState extends State<BomioraApp> {
           final query = uri.queryParameters['q'] ??
               (args?['query'] ?? '').toString();
           return MaterialPageRoute(
-            builder: (context) => SearchListScreen(initialQuery: query),
+            builder: (context) => SearchListScreen(
+              initialQuery: query,
+              bypassCache: args?['fresh'] == true,
+            ),
             settings: RouteSettings(
               name: routeName,
               arguments: settings.arguments,
