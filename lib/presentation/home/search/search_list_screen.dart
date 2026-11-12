@@ -4,11 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/constants/app_assets.dart';
+import '../../../core/logging/failure_log.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../data/models/announcement/announcement_model.dart';
 import '../../../data/models/content/content_post.dart';
 import '../../../data/models/event/event_model.dart';
 import '../../../data/models/product/product_model.dart';
+import '../../../data/services/auth_service.dart';
 import '../../../data/services/content_service.dart';
 import '../../../data/services/recent_search_service.dart';
 import '../../../data/services/search_service.dart';
@@ -74,7 +76,8 @@ class _SearchListScreenState extends State<SearchListScreen> {
   String? _loadingSection;
   bool _loading = true;
   bool _initialLoad = true;
-  String? _error;
+  bool _searchFailed = false;
+  final Set<String> _loadMoreFailed = {};
 
   static const int _pageSize = 5;
 
@@ -143,14 +146,16 @@ class _SearchListScreenState extends State<SearchListScreen> {
         _loadingSection = null;
         _loading = false;
         _initialLoad = false;
-        _error = null;
+        _searchFailed = false;
+        _loadMoreFailed.clear();
       });
       return;
     }
 
     setState(() {
       _loading = true;
-      _error = null;
+      _searchFailed = false;
+      _loadMoreFailed.clear();
     });
 
     try {
@@ -180,6 +185,8 @@ class _SearchListScreenState extends State<SearchListScreen> {
         _loadingSection = null;
         _loading = false;
         _initialLoad = false;
+        _searchFailed = false;
+        _loadMoreFailed.clear();
       });
     } catch (e) {
       if (!mounted || requestId != _searchRequestId) return;
@@ -202,8 +209,15 @@ class _SearchListScreenState extends State<SearchListScreen> {
         _loadingSection = null;
         _loading = false;
         _initialLoad = false;
-        _error = e.toString();
+        _searchFailed = true;
+        _loadMoreFailed.clear();
       });
+      final user = await AuthService.getUser();
+      await FailureLog.record(
+        code: 'search.list',
+        mbId: user?.id ?? '',
+        reason: e.toString(),
+      );
     }
   }
 
@@ -243,7 +257,10 @@ class _SearchListScreenState extends State<SearchListScreen> {
     if (q.isEmpty) return;
     final requestId = _searchRequestId;
     final offset = _loadedCount(section);
-    setState(() => _loadingSection = section);
+    setState(() {
+      _loadingSection = section;
+      _loadMoreFailed.remove(section);
+    });
     try {
       final result = await SearchService.searchAll(
         q,
@@ -292,9 +309,18 @@ class _SearchListScreenState extends State<SearchListScreen> {
         }
         _loadingSection = null;
       });
-    } catch (_) {
+    } catch (e) {
       if (!mounted || requestId != _searchRequestId) return;
-      setState(() => _loadingSection = null);
+      setState(() {
+        _loadingSection = null;
+        _loadMoreFailed.add(section);
+      });
+      final user = await AuthService.getUser();
+      await FailureLog.record(
+        code: 'search.more',
+        mbId: user?.id ?? '',
+        reason: e.toString(),
+      );
     }
   }
 
@@ -356,7 +382,8 @@ class _SearchListScreenState extends State<SearchListScreen> {
   }
 
   Widget _buildResults() {
-    final showEmpty = !_loading && (_error != null || _total == 0);
+    final showEmpty = !_loading && !_searchFailed && _total == 0;
+    final showSearchFailed = !_loading && _searchFailed;
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -374,8 +401,10 @@ class _SearchListScreenState extends State<SearchListScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _buildSearchBar(),
-                SizedBox(height: healthDp(context, 12)),
-                _buildResultCountRow(),
+                if (!_searchFailed) ...[
+                  SizedBox(height: healthDp(context, 12)),
+                  _buildResultCountRow(),
+                ],
               ],
             ),
           ),
@@ -389,7 +418,7 @@ class _SearchListScreenState extends State<SearchListScreen> {
               ),
             ),
           )
-        else if (_error != null || _total == 0)
+        else if (_searchFailed || _total == 0)
           const SliverFillRemaining(
             hasScrollBody: false,
             child: SizedBox.shrink(),
@@ -408,7 +437,9 @@ class _SearchListScreenState extends State<SearchListScreen> {
           ),
       ],
         ),
-        if (showEmpty)
+        if (showSearchFailed)
+          PageCenteredEmptyOverlay(child: _buildSearchFailedContent())
+        else if (showEmpty)
           PageCenteredEmptyOverlay(child: _buildGlobalEmptyContent()),
       ],
     );
@@ -515,32 +546,47 @@ class _SearchListScreenState extends State<SearchListScreen> {
         _hPad(context),
         healthDp(context, 12),
       ),
-      child: TextButton(
-        onPressed: loading ? null : () => _loadMore(section),
-        style: TextButton.styleFrom(
-          foregroundColor: _pink,
-          overlayColor: Colors.transparent,
-          minimumSize: Size(double.infinity, healthDp(context, 36)),
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        ),
-        child: loading
-            ? SizedBox(
-                width: healthDp(context, 16),
-                height: healthDp(context, 16),
-                child: const CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: _pink,
-                ),
-              )
-            : Text(
-                '더보기',
-                style: TextStyle(
-                  color: _pink,
-                  fontSize: healthSp(context, 13),
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w500,
-                ),
+      child: Column(
+        children: [
+          TextButton(
+            onPressed: loading ? null : () => _loadMore(section),
+            style: TextButton.styleFrom(
+              foregroundColor: _pink,
+              overlayColor: Colors.transparent,
+              minimumSize: Size(double.infinity, healthDp(context, 36)),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: loading
+                ? SizedBox(
+                    width: healthDp(context, 16),
+                    height: healthDp(context, 16),
+                    child: const CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: _pink,
+                    ),
+                  )
+                : Text(
+                    '더보기',
+                    style: TextStyle(
+                      color: _pink,
+                      fontSize: healthSp(context, 13),
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+          ),
+          if (_loadMoreFailed.contains(section) && !loading)
+            Text(
+              '결과를 더 불러오지 못했습니다.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: _muted,
+                fontSize: healthSp(context, 12),
+                fontFamily: 'Gmarket Sans TTF',
+                fontWeight: FontWeight.w500,
               ),
+            ),
+        ],
       ),
     );
   }
@@ -740,6 +786,54 @@ class _SearchListScreenState extends State<SearchListScreen> {
       title: title,
       imageUrl: _contentThumb(item),
       onTap: () => _openContent(item),
+    );
+  }
+
+  Widget _buildSearchFailedContent() {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: _hPad(context)),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '검색에 실패했습니다.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: _muted,
+              fontSize: healthSp(context, 14),
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          SizedBox(height: healthDp(context, 16)),
+          SizedBox(
+            width: double.infinity,
+            height: healthDp(context, 44),
+            child: ElevatedButton(
+              onPressed: () => _runSearch(
+                _queryController.text,
+                bypassCache: true,
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _pink,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(healthDp(context, 10)),
+                ),
+              ),
+              child: Text(
+                '다시 시도',
+                style: TextStyle(
+                  fontSize: healthSp(context, 14),
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
