@@ -305,10 +305,10 @@ class CouponService {
         'success': false,
         'message': '쿠폰 등록에 실패했습니다.',
       };
-    } catch (e) {
+    } catch (_) {
       return {
         'success': false,
-        'message': '쿠폰 등록 중 오류가 발생했습니다: $e',
+        'message': '쿠폰 등록에 실패했습니다.',
       };
     }
   }

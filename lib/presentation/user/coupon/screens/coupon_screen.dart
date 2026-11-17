@@ -185,8 +185,8 @@ class _CouponScreenState extends State<CouponScreen> {
         return null;
       }
       return result['message']?.toString().trim() ?? '';
-    } catch (e) {
-      return '쿠폰 등록 중 오류가 발생했습니다: $e';
+    } catch (_) {
+      return '쿠폰 등록에 실패했습니다.';
     }
   }
 
