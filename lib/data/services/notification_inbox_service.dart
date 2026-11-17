@@ -81,6 +81,8 @@ class NotificationInboxService {
     }
     if (t == 'coupon' && cpId.isNotEmpty) return 'coupon_$cpId';
     if (t == 'point') {
+      final poId = (data['po_id'] ?? '').toString().trim();
+      if (poId.isNotEmpty) return 'point_$poId';
       final day = (data['ymd'] ?? data['date'])?.toString().trim();
       final stamp = (day != null && day.isNotEmpty)
           ? day
