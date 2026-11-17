@@ -686,7 +686,13 @@ class _LoginScreenState extends State<LoginScreen> {
     );
     if (!mounted || cert == null) return;
 
-    if (cert['popupBlocked'] == true) return;
+    if (cert['popupBlocked'] == true) {
+      AppToastOverlay.showAlert(
+        context,
+        '팝업이 차단되어 본인인증을 진행할 수 없습니다.',
+      );
+      return;
+    }
 
     if (cert['duplicate'] == true) {
       await AppAlertDialog.showAlreadyRegisteredThenLogin(context);

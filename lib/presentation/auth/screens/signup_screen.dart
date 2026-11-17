@@ -203,6 +203,10 @@ class _SignupScreenState extends State<SignupScreen> {
         _certBirthday = null;
         _certGender = null;
       });
+      AppToastOverlay.showAlert(
+        context,
+        '팝업이 차단되어 본인인증을 진행할 수 없습니다.',
+      );
       return;
     }
 

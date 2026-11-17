@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import '../../../core/logging/failure_log.dart';
 import '../../../data/repositories/auth/auth_repository.dart';
+import '../../common/widgets/app_toast_overlay.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../health/health_common/widgets/health_app_bar.dart';
@@ -332,6 +333,14 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
     );
   }
 
+  void _showCertPopupBlocked(Object? result) {
+    if (!mounted || result is! Map || result['popupBlocked'] != true) return;
+    AppToastOverlay.showAlert(
+      context,
+      '팝업이 차단되어 본인인증을 진행할 수 없습니다.',
+    );
+  }
+
   Future<void> _handlePhoneCertNavigation() async {
     if (_isLoading) return;
     if (_selectedTab == _FindAccountTab.password) {
@@ -346,7 +355,7 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
       _isLoading = true;
       setState(() {});
       try {
-        await Navigator.pushNamed(
+        final result = await Navigator.pushNamed(
           context,
           '/kcp-cert',
           arguments: {
@@ -354,6 +363,7 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
             'email': email,
           },
         );
+        _showCertPopupBlocked(result);
       } finally {
         if (mounted) setState(() => _isLoading = false);
       }
@@ -363,13 +373,14 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
     _isLoading = true;
     setState(() {});
     try {
-      await Navigator.pushNamed(
+      final result = await Navigator.pushNamed(
         context,
         '/kcp-cert',
         arguments: {
           'flow': 'find-account',
         },
       );
+      _showCertPopupBlocked(result);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

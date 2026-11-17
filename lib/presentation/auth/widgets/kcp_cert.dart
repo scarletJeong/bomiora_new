@@ -650,10 +650,10 @@ class _KcpCertWebViewScreenState extends State<KcpCertWebViewScreen> {
             }
           } else {
             if (mounted) {
-              debugPrint('[KCP] onJsAlert: maybePop');
-              Navigator.maybePop(context);
+              debugPrint('[KCP] onJsAlert: Navigator.pop(popupBlocked)');
+              Navigator.pop(context, {'popupBlocked': true});
             } else {
-              debugPrint('[KCP] onJsAlert: maybePop unmounted 스킵');
+              debugPrint('[KCP] onJsAlert: pop unmounted 스킵');
             }
           }
           return JsAlertResponse(
