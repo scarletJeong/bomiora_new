@@ -52,6 +52,16 @@ class ReviewService {
 
   static const int maxReviewImages = 3;
 
+  static String _shortReviewError(String raw, String fallback) {
+    final text = raw.trim();
+    if (text.isEmpty) return fallback;
+    const marker = '오류가 발생했습니다';
+    final index = text.indexOf(marker);
+    if (index < 0) return text;
+    final head = text.substring(0, index + marker.length);
+    return head.endsWith('.') ? head : '$head.';
+  }
+
   static Future<void> _logReviewFailure({
     required String code,
     required String mbId,
@@ -128,14 +138,17 @@ class ReviewService {
 
         _invalidateMemberListCache(reviewData.mbId);
         final success = data['success'] ?? true;
-        final message = data['message'] ?? '리뷰가 성공적으로 작성되었습니다.';
+        final rawMessage = (data['message'] ?? '리뷰가 성공적으로 작성되었습니다.').toString();
+        final message = success == true
+            ? rawMessage
+            : _shortReviewError(rawMessage, '리뷰 작성 중 오류가 발생했습니다.');
         if (success == true) {
           PointService.invalidate(reviewData.mbId);
         } else {
           await _logReviewFailure(
             code: 'review.create',
             mbId: reviewData.mbId,
-            reason: message.toString(),
+            reason: rawMessage,
             detail: {'itId': reviewData.itId},
           );
         }
@@ -146,16 +159,16 @@ class ReviewService {
         };
       } else {
         final errorData = json.decode(response.body);
-        final message = errorData['message'] ?? '리뷰 작성에 실패했습니다.';
+        final rawMessage = (errorData['message'] ?? '리뷰 작성에 실패했습니다.').toString();
         await _logReviewFailure(
           code: 'review.create',
           mbId: reviewData.mbId,
-          reason: message.toString(),
+          reason: rawMessage,
           detail: {'itId': reviewData.itId, 'status': response.statusCode},
         );
         return {
           'success': false,
-          'message': message,
+          'message': _shortReviewError(rawMessage, '리뷰 작성 중 오류가 발생했습니다.'),
         };
       }
     } catch (e) {
@@ -167,7 +180,7 @@ class ReviewService {
       );
       return {
         'success': false,
-        'message': '리뷰 작성 중 오류가 발생했습니다: $e',
+        'message': '리뷰 작성 중 오류가 발생했습니다.',
       };
     }
   }
@@ -664,12 +677,15 @@ class ReviewService {
         }
         _invalidateMemberListCache(reviewData.mbId);
         final success = data['success'] ?? true;
-        final message = data['message'] ?? '리뷰가 성공적으로 수정되었습니다.';
+        final rawMessage = (data['message'] ?? '리뷰가 성공적으로 수정되었습니다.').toString();
+        final message = success == true
+            ? rawMessage
+            : _shortReviewError(rawMessage, '리뷰 수정 중 오류가 발생했습니다.');
         if (success != true) {
           await _logReviewFailure(
             code: 'review.update',
             mbId: reviewData.mbId,
-            reason: message.toString(),
+            reason: rawMessage,
             detail: {'isId': isId, 'itId': reviewData.itId},
           );
         }
@@ -680,16 +696,16 @@ class ReviewService {
         };
       } else {
         final errorData = json.decode(response.body);
-        final message = errorData['message'] ?? '리뷰 수정에 실패했습니다.';
+        final rawMessage = (errorData['message'] ?? '리뷰 수정에 실패했습니다.').toString();
         await _logReviewFailure(
           code: 'review.update',
           mbId: reviewData.mbId,
-          reason: message.toString(),
+          reason: rawMessage,
           detail: {'isId': isId, 'status': response.statusCode},
         );
         return {
           'success': false,
-          'message': message,
+          'message': _shortReviewError(rawMessage, '리뷰 수정 중 오류가 발생했습니다.'),
         };
       }
     } catch (e) {
@@ -701,7 +717,7 @@ class ReviewService {
       );
       return {
         'success': false,
-        'message': '리뷰 수정 중 오류가 발생했습니다: $e',
+        'message': '리뷰 수정 중 오류가 발생했습니다.',
       };
     }
   }
