@@ -171,7 +171,7 @@ class _CouponScreenState extends State<CouponScreen> {
     try {
       final result = await CouponService.registerCoupon(
         _currentUser!.id,
-        _couponCodeController.text.trim(),
+        code,
       );
 
       if (!mounted) return null;
