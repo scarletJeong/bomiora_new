@@ -224,16 +224,34 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
     });
   }
 
+  String? _namePhoneMissingMessage({
+    required bool nameEmpty,
+    required bool phoneEmpty,
+  }) {
+    if (nameEmpty && phoneEmpty) return '이름과 휴대폰 번호를 입력해 주세요.';
+    if (nameEmpty) return '이름을 입력해 주세요.';
+    if (phoneEmpty) return '휴대폰 번호를 입력해 주세요.';
+    return null;
+  }
+
   Future<void> _handleSendCode() async {
     if (_isLoading) return;
-    final hasEnoughData = _selectedTab == _FindAccountTab.id
-        ? _idNameController.text.trim().isNotEmpty
-        : _passwordEmailController.text.trim().isNotEmpty &&
-            _passwordNameController.text.trim().isNotEmpty;
-
-    if (!hasEnoughData ||
-        _phoneMidController.text.trim().length < 3 ||
-        _phoneLastController.text.trim().length < 4) {
+    final phoneEmpty = _phoneMidController.text.trim().length < 3 ||
+        _phoneLastController.text.trim().length < 4;
+    if (_selectedTab == _FindAccountTab.password) {
+      final emailEmpty = _passwordEmailController.text.trim().isEmpty;
+      final nameEmpty = _passwordNameController.text.trim().isEmpty;
+      if (emailEmpty || nameEmpty || phoneEmpty) {
+        setState(() {
+          _emailLookupErrorText = emailEmpty ? '가입 이메일을 입력해 주세요.' : null;
+          _phoneInlineErrorText = _namePhoneMissingMessage(
+            nameEmpty: nameEmpty,
+            phoneEmpty: phoneEmpty,
+          );
+        });
+        return;
+      }
+    } else if (_idNameController.text.trim().isEmpty || phoneEmpty) {
       setState(() {
         _phoneInlineErrorText = '이름과 휴대폰 번호를 먼저 입력해 주세요.';
       });
@@ -255,6 +273,7 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
       _verificationErrorText = null;
       _verificationInfoText = null;
       _phoneInlineErrorText = null;
+      _emailLookupErrorText = null;
     });
 
     final purpose = _selectedTab == _FindAccountTab.password
