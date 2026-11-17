@@ -302,7 +302,7 @@ class _RecommendProductBottomSheetState extends State<RecommendProductBottomShee
                           child: Text(
                             widget.headline,
                             style: TextStyle(
-                              color: const Color(0xFF1A1A1E),
+                              color: const Color(0xFF1A1A1A),
                               fontSize: healthSp(context, 16),
                               fontFamily: 'Gmarket Sans TTF',
                               fontWeight: FontWeight.w700,
@@ -349,7 +349,7 @@ class _RecommendProductBottomSheetState extends State<RecommendProductBottomShee
                             TextSpan(
                               text: '|',
                               style: TextStyle(
-                                color: const Color(0xFF1A1A1E),
+                                color: const Color(0xFF1A1A1A),
                                 fontSize: healthSp(context, 18),
                                 fontFamily: 'Gmarket Sans TTF',
                                 fontWeight: FontWeight.w500,
@@ -358,7 +358,7 @@ class _RecommendProductBottomSheetState extends State<RecommendProductBottomShee
                             TextSpan(
                               text: ' ${widget.title}',
                               style: TextStyle(
-                                color: const Color(0xFF1A1A1E),
+                                color: const Color(0xFF1A1A1A),
                                 fontSize: healthSp(context, 16),
                                 fontFamily: 'Gmarket Sans TTF',
                                 fontWeight: FontWeight.w500,
@@ -545,7 +545,7 @@ class RecommendProductSquareRow extends StatelessWidget {
 
 class RecommendSquareProductCard extends StatelessWidget {
   static const Color _brandPink = Color(0xFFFF5A8D);
-  static const Color _textDark = Color(0xFF1A1A1E);
+  static const Color _textDark = Color(0xFF1A1A1A);
   static const String _gmarket = 'Gmarket Sans TTF';
 
   final Product product;

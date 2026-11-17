@@ -856,7 +856,7 @@ class _CartScreenState extends State<CartScreen> {
                                               labelColor:
                                                   const Color(0xFF898686),
                                               valueColor:
-                                                  const Color(0xFF1A1A1E),
+                                                  const Color(0xFF1A1A1A),
                                             ),
                                             SizedBox(
                                                 height: healthDp(context, 10)),
@@ -868,7 +868,7 @@ class _CartScreenState extends State<CartScreen> {
                                               labelColor:
                                                   const Color(0xFF898686),
                                               valueColor:
-                                                  const Color(0xFF1A1A1E),
+                                                  const Color(0xFF1A1A1A),
                                             ),
                                             SizedBox(
                                                 height: healthDp(context, 10)),
@@ -1819,7 +1819,7 @@ class _CartScreenState extends State<CartScreen> {
               fontSize:
                   isTotal ? healthSp(context, 15) : healthSp(context, 13),
               fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
-              color: Colors.black87,
+              color: const Color(0xFF1A1A1A),
             ),
             overflow: TextOverflow.ellipsis,
           ),

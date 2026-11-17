@@ -916,7 +916,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                 Text(
                   '|',
                   style: TextStyle(
-                    color: const Color(0xFF1A1A1E),
+                    color: const Color(0xFF1A1A1A),
                     fontSize: healthSp(context, 24),
                     fontFamily: _kGmarketSans,
                     fontWeight: FontWeight.w200,
@@ -928,7 +928,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                   child: Text(
                     _displayProductName(),
                     style: TextStyle(
-                      color: const Color(0xFF1A1A1E),
+                      color: const Color(0xFF1A1A1A),
                       fontSize: healthSp(context, 20),
                       fontFamily: _kGmarketSans,
                       fontWeight: FontWeight.w700,
@@ -1049,7 +1049,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
               Text(
                 '|',
                 style: TextStyle(
-                  color: const Color(0xFF1A1A1E),
+                  color: const Color(0xFF1A1A1A),
                   fontSize: healthSp(context, 22),
                   fontFamily: _kGmarketSans,
                   fontWeight: FontWeight.w300,
@@ -1060,7 +1060,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
               Text(
                 '추가 상품 구매하기',
                 style: TextStyle(
-                  color: const Color(0xFF1A1A1E),
+                  color: const Color(0xFF1A1A1A),
                   fontSize: healthSp(context, 16),
                   fontFamily: _kGmarketSans,
                   fontWeight: FontWeight.w500,
@@ -1449,7 +1449,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   Widget _buildPriceSection() {
     final discountRate = _product!.discountRate;
     const originalPriceColor = Color(0xFF898686);
-    const priceColor = Color(0xFF1A1A1E);
+    const priceColor = Color(0xFF1A1A1A);
     const discountColor = Color(0xFFFF5A8D);
     final hasOriginalPrice = _product!.originalPrice != null &&
         _product!.originalPrice! > _product!.price;

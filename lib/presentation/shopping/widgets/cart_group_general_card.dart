@@ -17,7 +17,7 @@ Widget _cartGrayLine() {
   return const SizedBox(
     width: double.infinity,
     height: 1,
-    child: ColoredBox(color: _kBorder),
+    child: ColoredBox(color: Color(0xFFD2D2D2)),
   );
 }
 
@@ -237,7 +237,7 @@ class CartGroupGeneralCard extends StatelessWidget {
                 Text(
                   '${PriceFormatter.format(_subtotal)}원',
                   style: TextStyle(
-                    color: const Color(0xFF1A1A1E),
+                    color: const Color(0xFF1A1A1A),
                     fontSize: healthSp(context, 16),
                     fontFamily: _kGmarketSans,
                     fontWeight: FontWeight.w700,

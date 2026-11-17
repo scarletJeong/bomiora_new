@@ -977,7 +977,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
                 Text(
                   '|',
                   style: TextStyle(
-                    color: const Color(0xFF1A1A1E),
+                    color: const Color(0xFF1A1A1A),
                     fontSize: healthSp(context, 24),
                     fontFamily: _kGmarketSans,
                     fontWeight: FontWeight.w200,
@@ -989,7 +989,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
                   child: Text(
                     _product!.name,
                     style: TextStyle(
-                      color: const Color(0xFF1A1A1E),
+                      color: const Color(0xFF1A1A1A),
                       fontSize: healthSp(context, 20),
                       fontFamily: _kGmarketSans,
                       fontWeight: FontWeight.w700,
@@ -1404,7 +1404,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
                     style: TextStyle(
                       fontSize: healthSp(context, 20),
                       fontWeight: FontWeight.w700,
-                      color: const Color(0xFF1A1A1E),
+                      color: const Color(0xFF1A1A1A),
                       fontFamily: _kGmarketSans,
                     ),
                   ),

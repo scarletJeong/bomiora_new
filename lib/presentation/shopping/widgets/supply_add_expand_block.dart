@@ -11,7 +11,7 @@ const _kPink = Color(0xFFFF5A8D);
 const _kMuted = Color(0xFF898686);
 const _kBorderSoft = Color(0x33FF5A8D);
 const _kDivider = Color(0x26FF5A8D);
-const _kInkAlt = Color(0xFF1A1A1E);
+const _kInkAlt = Color(0xFF1A1A1A);
 const _kMuted2 = Color(0xFF898686);
 
 /// 추가상품(supply_add) 블록 — 장바구니·주문·문의 등 공통.

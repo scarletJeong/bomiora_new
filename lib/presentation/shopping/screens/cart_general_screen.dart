@@ -906,7 +906,7 @@ class _CartScreenState extends State<CartScreen> {
           fontSize: healthSp(context, 14),
           fontWeight: FontWeight.w500,
           labelColor: const Color(0xFF898686),
-          valueColor: const Color(0xFF1A1A1E),
+          valueColor: const Color(0xFF1A1A1A),
         ),
         SizedBox(height: healthDp(context, 10)),
         _summaryRow(
@@ -915,13 +915,13 @@ class _CartScreenState extends State<CartScreen> {
           fontSize: healthSp(context, 14),
           fontWeight: FontWeight.w500,
           labelColor: const Color(0xFF898686),
-          valueColor: const Color(0xFF1A1A1E),
+          valueColor: const Color(0xFF1A1A1A),
         ),
         SizedBox(height: healthDp(context, 10)),
         const SizedBox(
           width: double.infinity,
           height:  1.5,
-          child: ColoredBox(color: Color(0x7FD2D2D2)),
+          child: ColoredBox(color: Color(0xFFD2D2D2)),
         ),
         SizedBox(height: healthDp(context, 10)),
         Row(
