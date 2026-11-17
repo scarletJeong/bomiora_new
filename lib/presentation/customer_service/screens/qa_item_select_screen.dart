@@ -232,27 +232,48 @@ class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
         status.contains('반품');
   }
 
+  /// 최근 1개월 주문을 페이지가 끝날 때까지 이어서 받는다.
+  Future<List<OrderListModel>> _loadMonthOrders({
+    required String mbId,
+    required bool forceRefresh,
+  }) async {
+    const pageSize = 30;
+    final orders = <OrderListModel>[];
+    var page = 0;
+    while (page < 100) {
+      final result = await OrderService.getOrderList(
+        mbId: mbId,
+        period: 1,
+        status: 'all',
+        page: page,
+        size: pageSize,
+        lite: true,
+        forceRefresh: forceRefresh,
+      );
+      if (result['success'] != true) {
+        throw Exception(
+          result['message']?.toString() ?? '주문 목록 조회에 실패했습니다.',
+        );
+      }
+      final batch =
+          (result['orders'] as List?)?.whereType<OrderListModel>().toList() ??
+              const <OrderListModel>[];
+      orders.addAll(batch);
+      if (result['hasNext'] != true || batch.isEmpty) break;
+      page++;
+    }
+    return orders;
+  }
+
   Future<void> _loadOrders({bool forceRefresh = false}) async {
     final user = await AuthService.getUser();
     if (user == null) {
       throw Exception('로그인이 필요합니다.');
     }
-    final result = await OrderService.getOrderList(
+    final orders = await _loadMonthOrders(
       mbId: user.id,
-      period: 1,
-      status: 'all',
-      page: 0,
-      size: 30,
-      lite: true,
       forceRefresh: forceRefresh,
     );
-    if (result['success'] != true) {
-      throw Exception(
-        result['message']?.toString() ?? '주문 목록 조회에 실패했습니다.',
-      );
-    }
-    final orders = (result['orders'] as List?)?.whereType<OrderListModel>() ??
-        const <OrderListModel>[];
     final filtered = orders.where((order) {
       if (!_isWithinOneMonth(order)) return false;
       if (_currentTab == QaItemSelectTab.cancel) {
