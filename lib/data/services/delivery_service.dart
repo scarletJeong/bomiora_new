@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import '../models/delivery/delivery_model.dart';
 import '../../core/network/api_client.dart';
 import 'coupon_service.dart';
+import 'point_service.dart';
 
 /// 주문/배송 서비스
 class OrderService {
@@ -275,6 +276,7 @@ class OrderService {
       if (ok) {
         invalidateOrderList(mbId);
         CouponService.clearMemberCache(mbId);
+        PointService.invalidate(mbId);
         return {
           'success': true,
           'cancelRequested': data['cancelRequested'] == true,
@@ -319,6 +321,7 @@ class OrderService {
 
       if (response.statusCode == 200) {
         final data = _decodeBody(response);
+        PointService.invalidate(mbId);
         return {
           'success': true,
           'message': data['message'] ?? '수령 확인되었습니다.',

@@ -5,6 +5,7 @@ import '../models/review/main_home_review_model.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_endpoints.dart';
 import 'auth_service.dart';
+import 'point_service.dart';
 
 // 리뷰 서비스 내부 디버그 콘솔 출력 비활성화
 
@@ -95,8 +96,12 @@ class ReviewService {
         }
 
         _invalidateMemberListCache(reviewData.mbId);
+        final success = data['success'] ?? true;
+        if (success == true) {
+          PointService.invalidate(reviewData.mbId);
+        }
         return {
-          'success': data['success'] ?? true,
+          'success': success,
           'message': data['message'] ?? '리뷰가 성공적으로 작성되었습니다.',
           'review': review,
         };

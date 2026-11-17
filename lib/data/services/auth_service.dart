@@ -13,6 +13,7 @@ import 'cart_service.dart';
 import 'kakao_auth_service.dart';
 import 'last_login_via_service.dart';
 import 'naver_auth_service.dart';
+import 'point_service.dart';
 import 'prescription_purchase_history_service.dart';
 import 'recent_search_service.dart';
 import 'recent_view_service.dart';
@@ -82,6 +83,7 @@ class AuthService {
     }
     await prefs.setBool(_isLoggedInKey, true);
     await prefs.setBool(_autoLoginKey, autoLogin);
+    PointService.invalidate(user.id);
     _bumpSessionTick();
 
     // 부가 동기화는 로그인 화면 전환을 막지 않는다.
@@ -163,6 +165,7 @@ class AuthService {
     try {
       if (userId.isNotEmpty) {
         await PrescriptionPurchaseHistoryService.clearCacheForUser(userId);
+        PointService.invalidate(userId);
       }
     } catch (_) {}
 
