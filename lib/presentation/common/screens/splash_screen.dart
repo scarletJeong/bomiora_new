@@ -28,7 +28,7 @@ class SplashScreen extends StatefulWidget {
     this.prefetchHome = true,
     this.homeTabIndex = 0,
   });
-
+ 
   /// true면 로그인/세션 유효성 검사 (앱 콜드스타트용)
   final bool checkSession;
 
