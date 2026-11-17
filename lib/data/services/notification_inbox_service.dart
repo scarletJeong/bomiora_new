@@ -163,7 +163,7 @@ class NotificationInboxService {
       serverFailed = false;
     } else if (_serverListMissing) {
       server = null;
-      serverFailed = true;
+      serverFailed = false;
     } else {
       server = await _fetchFromServer(mbId, limit);
       serverFailed = server == null;
@@ -297,12 +297,7 @@ class NotificationInboxService {
       );
       if (response.statusCode == 404) {
         _serverListMissing = true;
-        await FailureLog.record(
-          code: 'notification.list',
-          mbId: mbId,
-          reason: 'HTTP 404',
-        );
-        return null;
+        return [];
       }
       if (response.statusCode != 200 || response.body.trim().isEmpty) {
         await FailureLog.record(

@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
@@ -37,6 +36,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
   bool _hasMore = false;
   bool _isLoggedIn = false;
   bool _loadFailed = false;
+  bool _moreLoadFailed = false;
   List<AppNotificationItem> _items = [];
 
   @override
@@ -79,6 +79,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
       setState(() {
         _isLoggedIn = false;
         _loadFailed = false;
+        _moreLoadFailed = false;
         _items = [];
         _fetchLimit = _pageSize;
         _hasMore = false;
@@ -105,6 +106,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
       _items = next;
       _hasMore = page.hasMore;
       _loadFailed = next.isEmpty && page.serverFailed;
+      _moreLoadFailed = next.isNotEmpty && page.serverFailed;
       _isLoading = false;
     });
   }
@@ -119,6 +121,8 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
       _fetchLimit = nextLimit;
       _items = _withNewItems(_items, page.items);
       _hasMore = page.hasMore;
+      _loadFailed = _items.isEmpty && page.serverFailed;
+      _moreLoadFailed = _items.isNotEmpty && page.serverFailed;
       _loadingMore = false;
     });
   }
@@ -322,6 +326,12 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                                       ),
                                     ),
                                     if (showLoadMore) _buildLoadMoreButton(context),
+                                    if (_moreLoadFailed)
+                                      LoadFailureNotice(
+                                        message: '알림을 더 불러오지 못했습니다.',
+                                        onRetry: () =>
+                                            _loadNotifications(refresh: true),
+                                      ),
                                   ],
                                 ),
                         ),
@@ -330,7 +340,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                       ),
                       if (items.isEmpty)
                         PageCenteredEmptyOverlay(
-                          child: _loadFailed && !kIsWeb
+                          child: _loadFailed
                               ? LoadFailureNotice(
                                   message: '알림을 불러오지 못했습니다',
                                   onRetry: () =>
