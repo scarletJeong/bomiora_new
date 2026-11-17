@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_assets.dart';
@@ -145,7 +147,7 @@ class _ReviewSectionState extends State<ReviewSection> {
                 Expanded(
                   child: SizedBox(
                     height: healthDp(context, 1),
-                    child: const ColoredBox(color: Color(0xFFE0E0E0)),
+                    child: const ColoredBox(color: Color(0xFFD2D2D2)),
                   ),
                 ),
                 Padding(
@@ -180,7 +182,7 @@ class _ReviewSectionState extends State<ReviewSection> {
                 Expanded(
                   child: SizedBox(
                     height: healthDp(context, 1),
-                    child: const ColoredBox(color: Color(0xFFE0E0E0)),
+                    child: const ColoredBox(color: Color(0xFFD2D2D2)),
                   ),
                 ),
               ],
@@ -245,6 +247,7 @@ class _ReviewSectionState extends State<ReviewSection> {
       itemCount: _reviews.length,
       itemBuilder: (context, index) {
         final r = _reviews[index];
+        final hasReviewImage = r.images.isNotEmpty;
         final thumb = _mainHomeReviewCardImageUrl(r);
         final fallbackThumb = r.productImage != null &&
                 r.productImage!.trim().isNotEmpty
@@ -261,6 +264,7 @@ class _ReviewSectionState extends State<ReviewSection> {
             bodyLine: r.cardTitleText,
             imageUrl: thumb,
             fallbackImageUrl: fallbackThumb,
+            primaryIsProduct: !hasReviewImage,
           ),
         );
       },
@@ -274,6 +278,7 @@ class _ReviewCard extends StatelessWidget {
   final String bodyLine;
   final String? imageUrl;
   final String? fallbackImageUrl;
+  final bool primaryIsProduct;
 
   const _ReviewCard({
     required this.layout,
@@ -281,6 +286,7 @@ class _ReviewCard extends StatelessWidget {
     required this.bodyLine,
     this.imageUrl,
     this.fallbackImageUrl,
+    this.primaryIsProduct = false,
   });
 
   @override
@@ -296,6 +302,7 @@ class _ReviewCard extends StatelessWidget {
                 ? _ReviewCardImage(
                     primaryUrl: imageUrl!,
                     fallbackUrl: fallbackImageUrl,
+                    primaryIsProduct: primaryIsProduct,
                     fit: BoxFit.cover,
                     decodeHeightLogical: m.cardHeight,
                   )
@@ -367,19 +374,40 @@ class _ReviewCard extends StatelessWidget {
 }
 
 class _ReviewCardImage extends StatelessWidget {
+  static final Set<String> _loggedUrls = {};
+
   final String primaryUrl;
   final String? fallbackUrl;
+  final bool primaryIsProduct;
   final BoxFit fit;
   final double decodeHeightLogical;
 
   const _ReviewCardImage({
     required this.primaryUrl,
     this.fallbackUrl,
+    this.primaryIsProduct = false,
     this.fit = BoxFit.cover,
     required this.decodeHeightLogical,
   });
 
-  Widget _image(String url) {
+  void _logFailure(String url, Object error, {required bool product}) {
+    if (!_loggedUrls.add(url)) return;
+    unawaited(
+      FailureLog.record(
+        code: 'home.review.image',
+        mbId: AuthService.currentUser?.id ?? '',
+        reason: product
+            ? '상품 사진을 불러오지 못했습니다.'
+            : '리뷰 사진을 불러오지 못했습니다.',
+        detail: {
+          'url': url,
+          'error': error.toString(),
+        },
+      ),
+    );
+  }
+
+  Widget _image(String url, {required bool product}) {
     return AppNetworkImage(
       url: url,
       fit: fit,
@@ -388,10 +416,14 @@ class _ReviewCardImage extends StatelessWidget {
       height: decodeHeightLogical,
       decodeHeightLogical: decodeHeightLogical,
       preferHtmlElementOnWeb: false,
-      errorBuilder: (_, __, ___) {
+      errorBuilder: (_, error, __) {
+        _logFailure(url, error, product: product);
         final fallback = fallbackUrl;
-        if (fallback != null && fallback.isNotEmpty && fallback != url) {
-          return _image(fallback);
+        if (!product &&
+            fallback != null &&
+            fallback.isNotEmpty &&
+            fallback != url) {
+          return _image(fallback, product: true);
         }
         return const ColoredBox(color: Color(0xFFE0E0E0));
       },
@@ -415,5 +447,6 @@ class _ReviewCardImage extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) => _image(primaryUrl);
+  Widget build(BuildContext context) =>
+      _image(primaryUrl, product: primaryIsProduct);
 }
