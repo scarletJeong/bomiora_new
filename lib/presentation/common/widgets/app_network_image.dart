@@ -112,6 +112,85 @@ class AppNetworkImage extends StatefulWidget {
   State<AppNetworkImage> createState() => _AppNetworkImageState();
 }
 
+/// 작은 미리보기를 즉시 보여주고 원본 이미지가 준비되면 같은 칸에서 교체한다.
+class ProgressiveNetworkImage extends StatelessWidget {
+  const ProgressiveNetworkImage({
+    super.key,
+    required this.previewUrl,
+    required this.fullUrl,
+    this.width,
+    this.height,
+    this.fit = BoxFit.cover,
+    this.alignment = Alignment.center,
+    this.decodeWidthLogical,
+    this.decodeHeightLogical,
+    this.onSettled,
+    this.errorBuilder,
+    this.loadingBuilder,
+  });
+
+  final String previewUrl;
+  final String fullUrl;
+  final double? width;
+  final double? height;
+  final BoxFit fit;
+  final Alignment alignment;
+  final double? decodeWidthLogical;
+  final double? decodeHeightLogical;
+  final VoidCallback? onSettled;
+  final Widget Function(BuildContext, Object, StackTrace?)? errorBuilder;
+  final Widget Function(BuildContext, Widget, ImageChunkEvent?)? loadingBuilder;
+
+  @override
+  Widget build(BuildContext context) {
+    if (previewUrl.isEmpty || previewUrl == fullUrl) {
+      return AppNetworkImage(
+        url: fullUrl,
+        width: width,
+        height: height,
+        fit: fit,
+        alignment: alignment,
+        decodeWidthLogical: decodeWidthLogical,
+        decodeHeightLogical: decodeHeightLogical,
+        preferHtmlElementOnWeb: false,
+        onSettled: onSettled,
+        errorBuilder: errorBuilder,
+        loadingBuilder: loadingBuilder,
+      );
+    }
+
+    return SizedBox(
+      width: width,
+      height: height,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          AppNetworkImage(
+            url: previewUrl,
+            fit: fit,
+            alignment: alignment,
+            preferHtmlElementOnWeb: false,
+            onSettled: onSettled,
+            errorBuilder: errorBuilder,
+            loadingBuilder: loadingBuilder,
+          ),
+          AppNetworkImage(
+            url: fullUrl,
+            fit: fit,
+            alignment: alignment,
+            decodeWidthLogical: decodeWidthLogical,
+            decodeHeightLogical: decodeHeightLogical,
+            preferHtmlElementOnWeb: false,
+            errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+            loadingBuilder: (_, child, progress) =>
+                progress == null ? child : const SizedBox.shrink(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _AppNetworkImageState extends State<AppNetworkImage> {
   bool _settled = false;
 

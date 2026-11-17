@@ -438,6 +438,12 @@ class ImageUrlHelper {
     return toWebSafeImageUrl(url);
   }
 
+  /// 원본 WebP가 준비되는 동안 먼저 보여줄 상품 이미지.
+  static String productPreviewThumbUrl(String url) {
+    if (!kIsWeb) return url;
+    return contentListThumbUrl(url, width: 480);
+  }
+
   /// 목록 썸네일. 원본이 수 MB여도 가로 [width]px jpeg로 받는다.
   static String contentListThumbUrl(String url, {int width = 160}) {
     final direct = browserImageSrc(url);

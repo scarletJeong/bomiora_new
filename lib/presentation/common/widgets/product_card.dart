@@ -61,14 +61,14 @@ class ProductCoverRatioImage extends StatelessWidget {
       builder: (context, constraints) {
         final w = constraints.maxWidth;
         final h = constraints.maxHeight;
-        return AppNetworkImage(
-          url: url,
+        return ProgressiveNetworkImage(
+          previewUrl: ImageUrlHelper.productPreviewThumbUrl(url),
+          fullUrl: url,
           width: w,
           height: h,
           decodeWidthLogical: w.isFinite ? w : null,
           decodeHeightLogical: h.isFinite ? h : null,
           fit: BoxFit.contain,
-          preferHtmlElementOnWeb: false,
           alignment: Alignment.center,
           onSettled: onSettled,
           errorBuilder: errorBuilder,

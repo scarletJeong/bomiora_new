@@ -545,8 +545,9 @@ class _WishListScreenState extends State<WishListScreen> {
           height: height,
           child: imageUrl.isEmpty
               ? const ColoredBox(color: Color(0xFFF5F5F5))
-              : Image.network(
-            imageUrl,
+              : ProgressiveNetworkImage(
+            previewUrl: ImageUrlHelper.productPreviewThumbUrl(imageUrl),
+            fullUrl: imageUrl,
             fit: fit,
             width: width,
             height: height,

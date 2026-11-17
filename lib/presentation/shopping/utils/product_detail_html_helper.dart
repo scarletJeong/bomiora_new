@@ -481,8 +481,9 @@ Widget buildProductCarouselImage({
     height: height,
     child: ColoredBox(
       color: const Color(0xFFF8F8F8),
-      child: AppNetworkImage(
-        url: ImageUrlHelper.toWebSafeImageUrl(imageUrl),
+      child: ProgressiveNetworkImage(
+        previewUrl: ImageUrlHelper.productPreviewThumbUrl(imageUrl),
+        fullUrl: ImageUrlHelper.toWebSafeImageUrl(imageUrl),
         width: width,
         height: height,
         fit: fit,
