@@ -358,14 +358,13 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
       children: [
         if (_productImageFailed)
           LoadFailureNotice(
-            message: '문의를 불러오지 못했습니다',
+            message: '상품 이미지를 불러오지 못했습니다.',
             onRetry: _resolveProductCardExtras,
-          )
-        else
-          QaDetailProductCard(
-            inquiry: root,
-            fallbackImageUrl: _resolvedImageUrl,
           ),
+        QaDetailProductCard(
+          inquiry: root,
+          fallbackImageUrl: _resolvedImageUrl,
+        ),
         SizedBox(height: healthDp(context, 24)),
         _buildTextSection(
           context,
