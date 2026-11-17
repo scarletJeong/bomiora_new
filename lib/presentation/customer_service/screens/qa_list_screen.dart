@@ -221,12 +221,24 @@ class QaListScreenState extends State<QaListScreen> {
         });
         AppToastOverlay.show(context, '문의가 삭제되었습니다.');
       } else {
-        AppToastOverlay.show(
-          context,
-          result['message']?.toString() ?? '문의 삭제에 실패했습니다.',
+        final message =
+            result['message']?.toString() ?? '문의 삭제에 실패했습니다.';
+        await FailureLog.record(
+          code: 'qa.delete',
+          mbId: AuthService.currentUser?.id ?? '',
+          reason: message,
+          detail: {'wrId': item.wrId},
         );
+        if (!mounted) return;
+        AppToastOverlay.show(context, message);
       }
-    } catch (_) {
+    } catch (e) {
+      await FailureLog.record(
+        code: 'qa.delete',
+        mbId: AuthService.currentUser?.id ?? '',
+        reason: e.toString(),
+        detail: {'wrId': item.wrId},
+      );
       if (!mounted) return;
       AppToastOverlay.show(context, '문의 삭제 중 오류가 발생했습니다.');
     }

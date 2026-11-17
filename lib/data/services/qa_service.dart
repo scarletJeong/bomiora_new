@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:image_picker/image_picker.dart';
 
+import '../../core/logging/failure_log.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_endpoints.dart';
 import '../../core/utils/node_value_parser.dart';
@@ -379,14 +380,40 @@ class QaService {
         ApiEndpoints.qaUploadImage,
         image,
       );
-      if (response.statusCode != 200) return null;
+      if (response.statusCode != 200) {
+        await FailureLog.record(
+          code: 'qa.image',
+          mbId: AuthService.currentUser?.id ?? '',
+          reason: '사진 첨부에 실패했습니다. (${response.statusCode})',
+        );
+        return null;
+      }
       final data = json.decode(response.body) as Map<String, dynamic>;
-      if (data['success'] != true || data['url'] == null) return null;
+      if (data['success'] != true || data['url'] == null) {
+        await FailureLog.record(
+          code: 'qa.image',
+          mbId: AuthService.currentUser?.id ?? '',
+          reason: data['message']?.toString() ?? '사진 첨부에 실패했습니다.',
+        );
+        return null;
+      }
       final relativeUrl = data['url'].toString().trim();
-      if (relativeUrl.isEmpty) return null;
+      if (relativeUrl.isEmpty) {
+        await FailureLog.record(
+          code: 'qa.image',
+          mbId: AuthService.currentUser?.id ?? '',
+          reason: '사진 첨부 주소가 없습니다.',
+        );
+        return null;
+      }
       if (relativeUrl.startsWith('http')) return relativeUrl;
       return relativeUrl.startsWith('/') ? relativeUrl : '/$relativeUrl';
-    } catch (_) {
+    } catch (e) {
+      await FailureLog.record(
+        code: 'qa.image',
+        mbId: AuthService.currentUser?.id ?? '',
+        reason: e.toString(),
+      );
       return null;
     }
   }

@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../core/logging/failure_log.dart';
 import '../../../core/utils/image_picker_utils.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/cart_service.dart';
@@ -235,12 +236,22 @@ class _QaWriteScreenState extends State<QaWriteScreen> {
           (createdId != null && createdId > 0) ? createdId : true,
         );
       } else {
-        AppToastOverlay.show(
-          context,
-          result['message']?.toString() ?? '문의 전송에 실패했습니다.',
+        final message =
+            result['message']?.toString() ?? '문의 전송에 실패했습니다.';
+        await FailureLog.record(
+          code: 'qa.create',
+          mbId: AuthService.currentUser?.id ?? '',
+          reason: message,
         );
+        if (!mounted) return;
+        AppToastOverlay.show(context, message);
       }
-    } catch (_) {
+    } catch (e) {
+      await FailureLog.record(
+        code: 'qa.create',
+        mbId: AuthService.currentUser?.id ?? '',
+        reason: e.toString(),
+      );
       if (!mounted) return;
       AppToastOverlay.show(context, '문의 전송 중 오류가 발생했습니다.');
     } finally {
@@ -270,7 +281,12 @@ class _QaWriteScreenState extends State<QaWriteScreen> {
         return;
       }
       setState(() => _images.add(image));
-    } catch (_) {
+    } catch (e) {
+      await FailureLog.record(
+        code: 'qa.image',
+        mbId: AuthService.currentUser?.id ?? '',
+        reason: e.toString(),
+      );
       if (!mounted) return;
       AppToastOverlay.show(context, '이미지를 불러오지 못했습니다.');
     }
