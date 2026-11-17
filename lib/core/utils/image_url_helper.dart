@@ -177,6 +177,13 @@ class ImageUrlHelper {
     return contentListThumbUrl(full, width: 1200, maxWidth: 1200);
   }
 
+  /// 공지 상세용. 화면 해상도는 유지하면서 대용량 원본 전송을 막는다.
+  static String announcementDetailImageUrl(String? path) {
+    final full = getImageUrl(path);
+    if (!kIsWeb || full.isEmpty) return full;
+    return contentListThumbUrl(full, width: 1200, maxWidth: 1200);
+  }
+
   static const _cafe24BannerImageBase =
       'https://bomiora0.mycafe24.com/data/banner/';
 
@@ -445,10 +452,10 @@ class ImageUrlHelper {
     return toWebSafeImageUrl(url);
   }
 
-  /// 원본 WebP가 준비되는 동안 먼저 보여줄 상품 이미지.
+  /// 상품 이미지는 원본 해상도 WebP 하나만 요청한다.
+  /// 별도 480px 요청은 원본보다 늦게 끝나는 경우가 있어 오히려 표시를 지연시킨다.
   static String productPreviewThumbUrl(String url) {
-    if (!kIsWeb) return url;
-    return contentListThumbUrl(url, width: 480);
+    return kIsWeb ? toWebSafeImageUrl(url) : url;
   }
 
   /// 목록 썸네일. 원본이 수 MB여도 가로 [width]px jpeg로 받는다.
