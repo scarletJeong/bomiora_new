@@ -1,9 +1,12 @@
+import 'dart:async';
 import 'dart:math' show max;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../../core/constants/app_assets.dart';
+import '../../../../core/logging/failure_log.dart';
+import '../../../../data/services/auth_service.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 
 const _emphasisColor = Color(0xFFFF5A8D);
@@ -28,10 +31,11 @@ Widget _productMainIntroPhoto({
     fit: fit,
     alignment: alignment,
     filterQuality: filterQuality,
-    errorBuilder: (_, __, ___) => Icon(
-      Icons.person_outline,
-      size: healthDp(context, 72),
-      color: Colors.grey[400],
+    errorBuilder: (_, error, __) => _MissingAssetNotice(
+      asset: AppAssets.productIntro,
+      error: error,
+      icon: Icons.person_outline,
+      iconSizeBase: 72,
     ),
   );
 }
@@ -462,8 +466,14 @@ class _ProductMainQuoteStackState extends State<_ProductMainQuoteStack> {
                   fit: BoxFit.fitWidth,
                   alignment: Alignment.topCenter,
                   filterQuality: FilterQuality.high,
-                  errorBuilder: (_, __, ___) =>
-                      const ColoredBox(color: _photoFallbackColor),
+                  errorBuilder: (_, error, __) => SizedBox(
+                    width: w,
+                    height: fallbackHeroH,
+                    child: _MissingAssetNotice(
+                      asset: AppAssets.productMain,
+                      error: error,
+                    ),
+                  ),
                 ),
                 Positioned.fill(
                   child: DecoratedBox(
@@ -669,17 +679,12 @@ class ProductMainCheckpointSection extends StatelessWidget {
     required String title,
     required List<String> bodies,
   }) {
-    final iconBox = healthDp(context, 40);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Text(pointLabel, style: pointLabelStyle, textAlign: TextAlign.center),
         SizedBox(height: healthDp(context, 10)),
-        SizedBox(
-          width: iconBox,
-          height: iconBox,
-          child: SvgPicture.asset(iconAsset, fit: BoxFit.contain),
-        ),
+        _CheckpointIcon(asset: iconAsset),
         SizedBox(height: healthDp(context, 10)),
         Text(title, style: titleStyle, textAlign: TextAlign.center),
         SizedBox(height: healthDp(context, 10)),
@@ -889,8 +894,10 @@ class _StaggeredBottomGrid extends StatelessWidget {
                 asset,
                 fit: BoxFit.cover,
                 filterQuality: FilterQuality.high,
-                errorBuilder: (_, __, ___) =>
-                    const ColoredBox(color: _photoFallbackColor),
+                errorBuilder: (_, error, __) => _MissingAssetNotice(
+                  asset: asset,
+                  error: error,
+                ),
               ),
             ),
           );
@@ -924,6 +931,121 @@ class _StaggeredBottomGrid extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+}
+
+class _CheckpointIcon extends StatefulWidget {
+  const _CheckpointIcon({required this.asset});
+
+  final String asset;
+
+  @override
+  State<_CheckpointIcon> createState() => _CheckpointIconState();
+}
+
+class _CheckpointIconState extends State<_CheckpointIcon> {
+  Object? _error;
+  bool _reported = false;
+
+  @override
+  Widget build(BuildContext context) {
+    if (_error != null) {
+      return _MissingAssetNotice(asset: widget.asset, error: _error!);
+    }
+    final iconBox = healthDp(context, 40);
+    return SizedBox(
+      width: iconBox,
+      height: iconBox,
+      child: SvgPicture.asset(
+        widget.asset,
+        fit: BoxFit.contain,
+        errorBuilder: (_, error, __) {
+          if (!_reported) {
+            _reported = true;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) setState(() => _error = error);
+            });
+          }
+          return Icon(
+            Icons.image_outlined,
+            size: iconBox,
+            color: _secondaryTextColor,
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _MissingAssetNotice extends StatefulWidget {
+  const _MissingAssetNotice({
+    required this.asset,
+    required this.error,
+    this.icon = Icons.image_outlined,
+    this.iconSizeBase = 28,
+  });
+
+  final String asset;
+  final Object error;
+  final IconData icon;
+  final double iconSizeBase;
+
+  @override
+  State<_MissingAssetNotice> createState() => _MissingAssetNoticeState();
+}
+
+class _MissingAssetNoticeState extends State<_MissingAssetNotice> {
+  static final Set<String> _logged = {};
+
+  @override
+  void initState() {
+    super.initState();
+    if (!_logged.add(widget.asset)) return;
+    unawaited(
+      FailureLog.record(
+        code: 'introduce.image',
+        mbId: AuthService.currentUser?.id ?? '',
+        reason: '이미지를 불러오지 못했습니다.',
+        detail: {
+          'asset': widget.asset,
+          'error': widget.error.toString(),
+        },
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: _photoFallbackColor,
+      child: Center(
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: healthDp(context, 8)),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                widget.icon,
+                size: healthDp(context, widget.iconSizeBase),
+                color: _secondaryTextColor,
+              ),
+              SizedBox(height: healthDp(context, 6)),
+              Text(
+                '이미지를 불러오지 못했습니다.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: _secondaryTextColor,
+                  fontSize: healthSp(context, 11),
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w500,
+                  height: 1.3,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
