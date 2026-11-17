@@ -40,6 +40,7 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
   final Map<int, List<QaInquiry>> _repliesByWrId = {};
   bool _isLoading = true;
   bool _loadFailed = false;
+  bool _notFound = false;
   String? _resolvedImageUrl;
   bool _productImageFailed = false;
   bool _repliesFailed = false;
@@ -54,6 +55,7 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
     setState(() {
       _isLoading = true;
       _loadFailed = false;
+      _notFound = false;
     });
     try {
       final payload = await QaService.getDetail(
@@ -72,6 +74,7 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
           _rootWrId = payload.rootWrId;
           _resolvedImageUrl = null;
           _loadFailed = false;
+          _notFound = false;
           _productImageFailed = false;
           _repliesFailed = false;
           _repliesByWrId
@@ -88,6 +91,7 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
           _inquiry = null;
           _thread = [];
           _loadFailed = false;
+          _notFound = true;
           _isLoading = false;
         });
       }
@@ -102,6 +106,7 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
       if (!mounted) return;
       setState(() {
         _loadFailed = true;
+        _notFound = false;
         _isLoading = false;
       });
     }
@@ -331,13 +336,13 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
         ),
       );
     }
-    if (_rootQuestion == null) {
+    if (_notFound || _rootQuestion == null) {
       return CenteredEmptyState(
         iconWidget: CenteredEmptyState.assetIcon(
           context,
           AppAssets.emptyQAIcon,
         ),
-        message: '문의 내용이 없습니다.',
+        message: '문의를 찾을 수 없습니다.',
       );
     }
 
