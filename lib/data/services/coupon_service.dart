@@ -1,4 +1,5 @@
 import 'dart:convert';
+import '../../../core/logging/failure_log.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_endpoints.dart';
 import '../models/coupon/coupon_model.dart';
@@ -94,8 +95,12 @@ class CouponService {
     String userId, {
     bool surfaceFailure = false,
   }) async {
+    Object? error;
+    var status = 0;
+    String? serverMessage;
     try {
       final response = await ApiClient.get(ApiEndpoints.couponTabs(userId));
+      status = response.statusCode;
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data is Map && data['success'] == true) {
@@ -112,8 +117,21 @@ class CouponService {
             'expired': parse(data['expired']),
           };
         }
+        if (data is Map) {
+          serverMessage = data['message']?.toString();
+        }
       }
-    } catch (_) {}
+    } catch (e) {
+      error = e;
+    }
+    await FailureLog.record(
+      code: 'coupon.list',
+      mbId: userId,
+      reason: error?.toString() ??
+          ((serverMessage != null && serverMessage.trim().isNotEmpty)
+              ? serverMessage.trim()
+              : '쿠폰 조회에 실패했습니다. ($status)'),
+    );
     if (surfaceFailure) return null;
     return {
       'available': <Coupon>[],
@@ -295,17 +313,37 @@ class CouponService {
       
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+        final success = data['success'] == true;
+        final message = data['message']?.toString() ??
+            (success ? '쿠폰이 등록되었습니다.' : '쿠폰 등록에 실패했습니다.');
+        if (!success) {
+          await FailureLog.record(
+            code: 'coupon.register',
+            mbId: userId,
+            reason: message,
+          );
+        }
         return {
-          'success': data['success'] ?? false,
-          'message': data['message'] ?? (data['success'] == true ? '쿠폰이 등록되었습니다.' : '쿠폰 등록에 실패했습니다.'),
+          'success': success,
+          'message': message,
         };
       }
-      
+
+      await FailureLog.record(
+        code: 'coupon.register',
+        mbId: userId,
+        reason: '쿠폰 등록에 실패했습니다. (${response.statusCode})',
+      );
       return {
         'success': false,
         'message': '쿠폰 등록에 실패했습니다.',
       };
-    } catch (_) {
+    } catch (e) {
+      await FailureLog.record(
+        code: 'coupon.register',
+        mbId: userId,
+        reason: e.toString(),
+      );
       return {
         'success': false,
         'message': '쿠폰 등록에 실패했습니다.',
