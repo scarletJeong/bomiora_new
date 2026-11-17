@@ -382,18 +382,37 @@ class CouponService {
             'cpId': data['cpId'],
           };
         } else {
+          final message = data['message'] ?? '쿠폰 다운로드에 실패했습니다.';
+          await FailureLog.record(
+            code: 'review.helpCoupon',
+            mbId: mbId,
+            reason: message.toString(),
+            detail: {'itId': itId, 'isId': isId},
+          );
           return {
             'success': false,
-            'message': data['message'] ?? '쿠폰 다운로드에 실패했습니다.',
+            'message': message,
           };
         }
       }
-      
+
+      await FailureLog.record(
+        code: 'review.helpCoupon',
+        mbId: mbId,
+        reason: '쿠폰 다운로드에 실패했습니다. (${response.statusCode})',
+        detail: {'itId': itId, 'isId': isId},
+      );
       return {
         'success': false,
         'message': '쿠폰 다운로드에 실패했습니다.',
       };
     } catch (e) {
+      await FailureLog.record(
+        code: 'review.helpCoupon',
+        mbId: mbId,
+        reason: e.toString(),
+        detail: {'itId': itId, 'isId': isId},
+      );
       return {
         'success': false,
         'message': '쿠폰 다운로드 중 오류가 발생했습니다.',

@@ -1218,6 +1218,13 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
       final user = await AuthService.getUser();
       if (!mounted) return;
       if (user == null) {
+        await FailureLog.record(
+          code: 'review.delete',
+          mbId: '',
+          reason: '리뷰를 삭제하지 못했습니다.',
+          detail: {'isId': review.isId},
+        );
+        if (!mounted) return;
         AppToastOverlay.showAlert(context, '리뷰를 삭제하지 못했습니다.');
         return;
       }
@@ -1235,7 +1242,13 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
         return;
       }
       AppToastOverlay.showAlert(context, '리뷰를 삭제하지 못했습니다.');
-    } catch (_) {
+    } catch (e) {
+      await FailureLog.record(
+        code: 'review.delete',
+        mbId: AuthService.currentUser?.id ?? '',
+        reason: e.toString(),
+        detail: {'isId': review.isId},
+      );
       if (!mounted) return;
       AppToastOverlay.showAlert(context, '리뷰를 삭제하지 못했습니다.');
     }

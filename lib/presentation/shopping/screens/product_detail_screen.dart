@@ -471,9 +471,19 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
           _visibleNormalReviewCount = cap;
         }
       });
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       AppToastOverlay.showAlert(context, '리뷰를 더 불러오지 못했습니다.');
+      await FailureLog.record(
+        code: 'product.review.more',
+        mbId: AuthService.currentUser?.id ?? '',
+        reason: e.toString(),
+        detail: {
+          'productId': widget.productId,
+          'page': page + 1,
+          'supporter': supporter,
+        },
+      );
     } finally {
       _reviewPaging = false;
     }

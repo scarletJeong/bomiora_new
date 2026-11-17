@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/constants/app_assets.dart';
+import '../../../core/logging/failure_log.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../common/widgets/app_alert_dialog.dart';
 import '../../common/widgets/app_network_image.dart';
@@ -864,7 +865,13 @@ class _CouponHelpSectionState extends State<_CouponHelpSection> {
           AppToastOverlay.show(context, message);
         }
       }
-    } catch (_) {
+    } catch (e) {
+      await FailureLog.record(
+        code: 'review.helpCoupon',
+        mbId: user.id,
+        reason: e.toString(),
+        detail: {'itId': widget.review.itId, 'isId': widget.review.isId},
+      );
       if (mounted) {
         AppToastOverlay.show(context, '쿠폰 발급 중 오류가 발생했습니다.');
       }

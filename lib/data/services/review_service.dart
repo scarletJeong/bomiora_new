@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import '../models/review/review_model.dart';
 import '../models/review/main_home_review_model.dart';
+import '../../core/logging/failure_log.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_endpoints.dart';
 import 'auth_service.dart';
@@ -51,23 +52,53 @@ class ReviewService {
 
   static const int maxReviewImages = 3;
 
+  static Future<void> _logReviewFailure({
+    required String code,
+    required String mbId,
+    required String reason,
+    Map<String, Object?>? detail,
+  }) {
+    return FailureLog.record(
+      code: code,
+      mbId: mbId,
+      reason: reason,
+      detail: detail,
+    );
+  }
+
   /// 리뷰 첨부 사진 업로드 (웹·모바일 공통)
   static Future<String?> uploadReviewImage(dynamic imageFile) async {
+    final mbId = AuthService.currentUser?.id ?? '';
+    Future<String?> fail(String reason) async {
+      await _logReviewFailure(
+        code: 'review.image',
+        mbId: mbId,
+        reason: reason,
+      );
+      return null;
+    }
+
     try {
       final response = await ApiClient.uploadFile(
         ApiEndpoints.reviewUploadImage,
         imageFile,
       );
-      if (response.statusCode == 413) return null;
-      if (response.statusCode != 200) return null;
+      if (response.statusCode == 413) {
+        return fail('사진 업로드에 실패했습니다. (413)');
+      }
+      if (response.statusCode != 200) {
+        return fail('사진 업로드에 실패했습니다. (${response.statusCode})');
+      }
       final data = json.decode(response.body) as Map<String, dynamic>;
-      if (data['success'] != true || data['url'] == null) return null;
+      if (data['success'] != true || data['url'] == null) {
+        return fail(data['message']?.toString() ?? '사진 업로드에 실패했습니다.');
+      }
       final relativeUrl = data['url'].toString().trim();
-      if (relativeUrl.isEmpty) return null;
+      if (relativeUrl.isEmpty) return fail('사진 업로드에 실패했습니다.');
       if (relativeUrl.startsWith('http')) return relativeUrl;
       return relativeUrl.startsWith('/') ? relativeUrl : '/$relativeUrl';
     } catch (e) {
-      return null;
+      return fail(e.toString());
     }
   }
 
@@ -97,22 +128,43 @@ class ReviewService {
 
         _invalidateMemberListCache(reviewData.mbId);
         final success = data['success'] ?? true;
+        final message = data['message'] ?? '리뷰가 성공적으로 작성되었습니다.';
         if (success == true) {
           PointService.invalidate(reviewData.mbId);
+        } else {
+          await _logReviewFailure(
+            code: 'review.create',
+            mbId: reviewData.mbId,
+            reason: message.toString(),
+            detail: {'itId': reviewData.itId},
+          );
         }
         return {
           'success': success,
-          'message': data['message'] ?? '리뷰가 성공적으로 작성되었습니다.',
+          'message': message,
           'review': review,
         };
       } else {
         final errorData = json.decode(response.body);
+        final message = errorData['message'] ?? '리뷰 작성에 실패했습니다.';
+        await _logReviewFailure(
+          code: 'review.create',
+          mbId: reviewData.mbId,
+          reason: message.toString(),
+          detail: {'itId': reviewData.itId, 'status': response.statusCode},
+        );
         return {
           'success': false,
-          'message': errorData['message'] ?? '리뷰 작성에 실패했습니다.',
+          'message': message,
         };
       }
     } catch (e) {
+      await _logReviewFailure(
+        code: 'review.create',
+        mbId: reviewData.mbId,
+        reason: e.toString(),
+        detail: {'itId': reviewData.itId},
+      );
       return {
         'success': false,
         'message': '리뷰 작성 중 오류가 발생했습니다: $e',
@@ -611,20 +663,42 @@ class ReviewService {
           saved = ReviewModel.fromJson(data['review']);
         }
         _invalidateMemberListCache(reviewData.mbId);
-
+        final success = data['success'] ?? true;
+        final message = data['message'] ?? '리뷰가 성공적으로 수정되었습니다.';
+        if (success != true) {
+          await _logReviewFailure(
+            code: 'review.update',
+            mbId: reviewData.mbId,
+            reason: message.toString(),
+            detail: {'isId': isId, 'itId': reviewData.itId},
+          );
+        }
         return {
-          'success': data['success'] ?? true,
-          'message': data['message'] ?? '리뷰가 성공적으로 수정되었습니다.',
+          'success': success,
+          'message': message,
           'review': saved,
         };
       } else {
         final errorData = json.decode(response.body);
+        final message = errorData['message'] ?? '리뷰 수정에 실패했습니다.';
+        await _logReviewFailure(
+          code: 'review.update',
+          mbId: reviewData.mbId,
+          reason: message.toString(),
+          detail: {'isId': isId, 'status': response.statusCode},
+        );
         return {
           'success': false,
-          'message': errorData['message'] ?? '리뷰 수정에 실패했습니다.',
+          'message': message,
         };
       }
     } catch (e) {
+      await _logReviewFailure(
+        code: 'review.update',
+        mbId: reviewData.mbId,
+        reason: e.toString(),
+        detail: {'isId': isId},
+      );
       return {
         'success': false,
         'message': '리뷰 수정 중 오류가 발생했습니다: $e',
@@ -652,19 +726,41 @@ class ReviewService {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         _invalidateMemberListCache(mbId);
-
+        final success = data['success'] ?? true;
+        final message = data['message'] ?? '리뷰가 성공적으로 삭제되었습니다.';
+        if (success != true) {
+          await _logReviewFailure(
+            code: 'review.delete',
+            mbId: mbId,
+            reason: message.toString(),
+            detail: {'isId': isId, 'itId': itId},
+          );
+        }
         return {
-          'success': data['success'] ?? true,
-          'message': data['message'] ?? '리뷰가 성공적으로 삭제되었습니다.',
+          'success': success,
+          'message': message,
         };
       } else {
         final errorData = json.decode(response.body);
+        final message = errorData['message'] ?? '리뷰 삭제에 실패했습니다.';
+        await _logReviewFailure(
+          code: 'review.delete',
+          mbId: mbId,
+          reason: message.toString(),
+          detail: {'isId': isId, 'status': response.statusCode},
+        );
         return {
           'success': false,
-          'message': errorData['message'] ?? '리뷰 삭제에 실패했습니다.',
+          'message': message,
         };
       }
     } catch (e) {
+      await _logReviewFailure(
+        code: 'review.delete',
+        mbId: mbId,
+        reason: e.toString(),
+        detail: {'isId': isId},
+      );
       return {
         'success': false,
         'message': '리뷰 삭제 중 오류가 발생했습니다: $e',

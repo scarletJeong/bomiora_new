@@ -4,6 +4,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../core/logging/failure_log.dart';
 import '../../../core/navigation/app_action_gate.dart';
 import '../../../core/utils/image_picker_utils.dart';
 import '../../../core/utils/web_horizontal_nav_lock.dart';
@@ -1903,7 +1904,12 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
       if (!mounted) return;
       AppToastOverlay.show(context, '리뷰가 작성되었습니다.');
       openMyReviewsAfterWrite(context, focusIsId: createdId);
-    } catch (_) {
+    } catch (e) {
+      await FailureLog.record(
+        code: _isEditMode ? 'review.update' : 'review.create',
+        mbId: AuthService.currentUser?.id ?? '',
+        reason: e.toString(),
+      );
       if (mounted) {
         AppToastOverlay.show(
           context,

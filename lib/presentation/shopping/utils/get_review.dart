@@ -1,4 +1,6 @@
+import '../../../core/logging/failure_log.dart';
 import '../../../data/models/review/review_model.dart';
+import '../../../data/services/auth_service.dart';
 import '../../../data/services/review_service.dart';
 
 class ProductReviewLoadResult {
@@ -225,7 +227,22 @@ class ProductReviewLoader {
       page: page,
       size: size,
     );
-    if (result['success'] != true) return null;
+    if (result['success'] != true) {
+      if (page > 0) {
+        final message = result['message']?.toString().trim() ?? '';
+        await FailureLog.record(
+          code: 'product.review.more',
+          mbId: AuthService.currentUser?.id ?? '',
+          reason: message.isEmpty ? '리뷰를 더 불러오지 못했습니다.' : message,
+          detail: {
+            'productId': productId,
+            'page': page,
+            if (rvkind != null && rvkind.isNotEmpty) 'rvkind': rvkind,
+          },
+        );
+      }
+      return null;
+    }
     return ProductReviewPage(
       reviews: List<ReviewModel>.from(
         result['reviews'] as List<ReviewModel>? ?? const [],
