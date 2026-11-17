@@ -27,7 +27,7 @@ class EventDetailScreen extends StatefulWidget {
 
 class _EventDetailScreenState extends State<EventDetailScreen> {
   static const String _font = 'Gmarket Sans TTF';
-  static const Color _kBorder = Color(0x7FD2D2D2);
+  static const Color _kBorder = Color(0xFFD2D2D2);
   static const Color _kPink = Color(0xFFFF5A8D);
 
   EventModel? _event;

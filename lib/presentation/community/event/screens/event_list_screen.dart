@@ -294,7 +294,7 @@ class _EventListScreenState extends State<EventListScreen> {
           shape: RoundedRectangleBorder(
             side: BorderSide(
               width: healthDp(context, 1),
-              color: const Color(0x7FD2D2D2),
+              color: const Color(0xFFD2D2D2),
             ),
             borderRadius: BorderRadius.circular(radius),
           ),
@@ -333,7 +333,7 @@ class _EventListScreenState extends State<EventListScreen> {
                           shape: RoundedRectangleBorder(
                             side: const BorderSide(
                               width: 1,
-                              color: Color(0x7FD2D2D2),
+                              color: Color(0xFFD2D2D2),
                             ),
                             borderRadius: imageRadius,
                           ),
@@ -362,7 +362,7 @@ class _EventListScreenState extends State<EventListScreen> {
                     Text(
                       event.wrSubject,
                       style: TextStyle(
-                        color: const Color(0xFF1A1A1E),
+                        color: const Color(0xFF1A1A1A),
                         fontSize: healthSp(context, 14),
                         fontFamily: _font,
                         fontWeight: FontWeight.w500,

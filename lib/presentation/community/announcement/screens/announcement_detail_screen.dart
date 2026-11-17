@@ -32,9 +32,9 @@ class AnnouncementDetailScreen extends StatefulWidget {
 }
 
 class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
-  static const Color _kText = Color(0xFF1A1A1E);
+  static const Color _kText = Color(0xFF1A1A1A);
   static const Color _kMuted = Color(0xFF898686);
-  static const Color _kBorder = Color(0x7FD2D2D2);
+  static const Color _kBorder = Color(0xFFD2D2D2);
   static const Color _kPink = Color(0xFFFF5A8D);
 
   bool _loading = true;
