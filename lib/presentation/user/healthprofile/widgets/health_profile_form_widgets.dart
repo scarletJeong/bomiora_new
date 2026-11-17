@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/logging/failure_log.dart';
 import '../../../../data/services/health_profile_service.dart';
 import '../../../common/widgets/app_toast_overlay.dart';
 import '../../../common/widgets/load_failure_notice.dart';
@@ -103,6 +104,11 @@ abstract final class HealthProfileFormUi {
         );
       }
     } catch (e) {
+      await FailureLog.record(
+        code: 'health_profile.save',
+        mbId: session.currentUser?.id ?? '',
+        reason: e.toString(),
+      );
       if (!context.mounted) return;
       final message = e is HealthProfileSaveException
           ? e.message
