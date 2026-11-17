@@ -10,6 +10,7 @@ import '../../settings/settings_screen.dart';
 import '../../home/home_refresh.dart';
 import '../../home/search/search_popup.dart';
 import '../navigation/app_bar_nav_guard.dart';
+import 'app_toast_overlay.dart';
 import 'cart_dropdown_menu.dart';
 import 'navi_bar.dart';
 
@@ -102,12 +103,16 @@ class _AppBarMenuState extends State<AppBarMenu> {
   Future<void> _onCartIconPressed() async {
     if (_cartNavigating) return;
     _cartNavigating = true;
-    AppBarNavGuard.instance.markOpening();
     try {
-      final useIntegrated =
-          await PrescriptionPurchaseHistoryService.shouldUseIntegratedCart();
+      final check =
+          await PrescriptionPurchaseHistoryService.checkIntegratedCart();
       if (!mounted) return;
-      if (useIntegrated) {
+      if (!check.ok) {
+        AppToastOverlay.showAlert(context, '구매 이력을 확인하지 못했습니다.');
+        return;
+      }
+      AppBarNavGuard.instance.markOpening();
+      if (check.useIntegrated) {
         await Navigator.pushNamed(context, '/interCart');
         return;
       }

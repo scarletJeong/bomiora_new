@@ -3,6 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/constants/app_assets.dart';
+import '../../../core/logging/failure_log.dart';
 import '../../../data/models/recent/recent_view_item.dart';
 import '../../../data/models/user/user_model.dart';
 import '../../../data/services/auth_service.dart';
@@ -201,16 +202,32 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
     final result = await AuthService.issueAdminLoginToken();
     final loginUrl = result['loginUrl']?.toString() ?? '';
     if (result['success'] == true && loginUrl.isNotEmpty) {
-      await launchUrl(
-        Uri.parse(loginUrl),
-        mode: LaunchMode.externalApplication,
-      );
+      try {
+        final opened = await launchUrl(
+          Uri.parse(loginUrl),
+          mode: LaunchMode.externalApplication,
+        );
+        if (opened) return;
+        await _logAdminOpenFailure('관리자 페이지를 열 수 없습니다.');
+      } catch (e) {
+        await _logAdminOpenFailure(e.toString());
+      }
+      if (!mounted) return;
+      AppToastOverlay.show(context, '관리자 페이지를 열 수 없습니다.');
       return;
     }
+    final message =
+        result['message']?.toString() ?? '관리자 페이지를 열 수 없습니다.';
+    await _logAdminOpenFailure(message);
     if (!mounted) return;
-    AppToastOverlay.show(
-      context,
-      result['message']?.toString() ?? '관리자 페이지를 열 수 없습니다.',
+    AppToastOverlay.show(context, message);
+  }
+
+  Future<void> _logAdminOpenFailure(String reason) {
+    return FailureLog.record(
+      code: 'menu.admin',
+      mbId: AuthService.currentUser?.id ?? '',
+      reason: reason,
     );
   }
 
@@ -874,11 +891,11 @@ class _DrawerShortcutState extends State<_DrawerShortcut> {
   }
 
   Future<void> _loadIntegratedCartFlag() async {
-    final useIntegrated =
-        await PrescriptionPurchaseHistoryService.shouldUseIntegratedCart();
-    if (!mounted) return;
+    final check =
+        await PrescriptionPurchaseHistoryService.checkIntegratedCart();
+    if (!mounted || !check.ok) return;
     setState(() {
-      _useIntegratedCart = useIntegrated;
+      _useIntegratedCart = check.useIntegrated;
     });
   }
 
@@ -899,15 +916,19 @@ class _DrawerShortcutState extends State<_DrawerShortcut> {
   }
 
   Future<void> _onCartShortcutPressed() async {
+    final check =
+        await PrescriptionPurchaseHistoryService.checkIntegratedCart();
+    if (!mounted) return;
+    if (!check.ok) {
+      AppToastOverlay.showAlert(context, '구매 이력을 확인하지 못했습니다.');
+      return;
+    }
     AppBarNavGuard.instance.markOpening();
     final navigator = Navigator.of(context);
-    final useIntegrated =
-        await PrescriptionPurchaseHistoryService.shouldUseIntegratedCart();
-    if (!mounted) return;
-    if (useIntegrated != _useIntegratedCart) {
-      setState(() => _useIntegratedCart = useIntegrated);
+    if (check.useIntegrated != _useIntegratedCart) {
+      setState(() => _useIntegratedCart = check.useIntegrated);
     }
-    if (useIntegrated) {
+    if (check.useIntegrated) {
       final scaffold = Scaffold.maybeOf(context);
       if (scaffold != null && scaffold.isDrawerOpen) {
         scaffold.closeDrawer();
