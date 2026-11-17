@@ -44,12 +44,17 @@ class PointService {
 
   /// 사용자의 현재 보유 포인트 조회
   /// bomiora_point 테이블에서 mb_id에 해당하는 가장 최근의 po_mb_point 값을 반환
-  static Future<int?> getUserPoint(String userId) async {
+  static Future<int?> getUserPoint(
+    String userId, {
+    bool forceRefresh = false,
+  }) async {
     final id = userId.trim();
-    final cachedAt = _pointCacheAt[id];
-    if (cachedAt != null &&
-        DateTime.now().difference(cachedAt) < _cacheTtl) {
-      return _pointCache[id];
+    if (!forceRefresh) {
+      final cachedAt = _pointCacheAt[id];
+      if (cachedAt != null &&
+          DateTime.now().difference(cachedAt) < _cacheTtl) {
+        return _pointCache[id];
+      }
     }
     final pending = _pointInFlight[id];
     if (pending != null) return pending;
@@ -101,20 +106,23 @@ class PointService {
     String userId, {
     int size = 50,
     int offset = 0,
+    bool forceRefresh = false,
   }) async {
     final id = userId.trim();
     final safeSize = size.clamp(1, 100).toInt();
     final safeOffset = offset < 0 ? 0 : offset;
     final key = _historyKey(id, safeSize, safeOffset);
-    final cachedAt = _historyCacheAt[key];
-    if (cachedAt != null &&
-        DateTime.now().difference(cachedAt) < _cacheTtl) {
-      final cached = _historyCache[key];
-      if (cached != null) {
-        return PointHistoryPage(
-          items: List<PointHistory>.from(cached.items),
-          hasMore: cached.hasMore,
-        );
+    if (!forceRefresh) {
+      final cachedAt = _historyCacheAt[key];
+      if (cachedAt != null &&
+          DateTime.now().difference(cachedAt) < _cacheTtl) {
+        final cached = _historyCache[key];
+        if (cached != null) {
+          return PointHistoryPage(
+            items: List<PointHistory>.from(cached.items),
+            hasMore: cached.hasMore,
+          );
+        }
       }
     }
     final pending = _historyInFlight[key];

@@ -22,7 +22,7 @@ class _PointScreenState extends State<PointScreen> {
   UserModel? _currentUser;
   int? _currentPoint;
   List<PointHistory> _pointHistory = [];
-  static const int _pageSize = 50;
+  static const int _pageSize = 10;
   int _selectedHistoryTab = 0;
   bool _isLoading = true;
   bool _pointFailed = false;
@@ -78,7 +78,10 @@ class _PointScreenState extends State<PointScreen> {
     }
 
     try {
-      final point = await PointService.getUserPoint(_currentUser!.id);
+      final point = await PointService.getUserPoint(
+        _currentUser!.id,
+        forceRefresh: true,
+      );
       if (!mounted) return;
       setState(() {
         _currentPoint = point;
@@ -108,6 +111,7 @@ class _PointScreenState extends State<PointScreen> {
         _currentUser!.id,
         size: _pageSize,
         offset: 0,
+        forceRefresh: true,
       );
       if (!mounted) return;
       setState(() {
@@ -154,6 +158,7 @@ class _PointScreenState extends State<PointScreen> {
         _currentUser!.id,
         size: _pageSize,
         offset: _pointHistory.length,
+        forceRefresh: true,
       );
       if (!mounted) return;
       final seen = _pointHistory.map((item) => item.id).toSet();
