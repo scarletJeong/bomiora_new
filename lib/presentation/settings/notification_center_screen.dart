@@ -48,10 +48,25 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
   }
 
   void _onInboxChanged() {
-    _loadNotifications();
+    _loadNotifications(fromInboxChange: true);
   }
 
-  Future<void> _loadNotifications({bool refresh = false}) async {
+  List<AppNotificationItem> _withNewItems(
+    List<AppNotificationItem> current,
+    List<AppNotificationItem> incoming,
+  ) {
+    final known = current.map((item) => item.id).toSet();
+    final added = incoming.where((item) => !known.contains(item.id)).toList();
+    if (added.isEmpty) return current;
+    final next = [...added, ...current];
+    next.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return next;
+  }
+
+  Future<void> _loadNotifications({
+    bool refresh = false,
+    bool fromInboxChange = false,
+  }) async {
     final loggedIn = await AuthService.isLoggedIn();
     if (!mounted) return;
 
@@ -65,16 +80,21 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
       return;
     }
 
-    setState(() => _isLoading = true);
+    if (!fromInboxChange) {
+      setState(() => _isLoading = true);
+    }
     final page = await NotificationInboxService.fetchList(
       limit: 50,
       refresh: refresh,
     );
     if (!mounted) return;
+    final next = fromInboxChange
+        ? _withNewItems(_items, page.items)
+        : page.items;
     setState(() {
       _isLoggedIn = true;
-      _items = page.items;
-      _loadFailed = page.serverFailed && page.items.isEmpty;
+      _items = next;
+      _loadFailed = next.isEmpty && page.serverFailed;
       _isLoading = false;
     });
   }
