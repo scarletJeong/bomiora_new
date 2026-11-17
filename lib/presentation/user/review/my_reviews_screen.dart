@@ -234,8 +234,8 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
       return;
     }
     if (_hasMore && !_isLoading) {
-      await _loadReviews();
-      if (!mounted) return;
+      final loaded = await _loadReviews();
+      if (!mounted || !loaded) return;
       setState(() {
         final next = _collapsedOrdered();
         _historyVisibleCount =
@@ -303,9 +303,9 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
     });
   }
 
-  Future<void> _loadReviews({bool refresh = false}) async {
-    if (_isLoading && !refresh) return;
-    if (!refresh && !_hasMore) return;
+  Future<bool> _loadReviews({bool refresh = false}) async {
+    if (_isLoading && !refresh) return false;
+    if (!refresh && !_hasMore) return false;
 
     final serial = ++_loadSerial;
     final itName = _productNameQuery.trim();
@@ -314,13 +314,13 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
     var mbId = '';
     try {
       final user = await AuthService.getUser();
-      if (!mounted || serial != _loadSerial) return;
+      if (!mounted || serial != _loadSerial) return false;
       if (user == null) {
         setState(() {
           _requiresLogin = true;
           _loadFailed = false;
         });
-        return;
+        return false;
       }
       mbId = user.id;
 
@@ -331,7 +331,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
         itName: itName,
         forceRefresh: refresh,
       );
-      if (!mounted || serial != _loadSerial) return;
+      if (!mounted || serial != _loadSerial) return false;
 
       if (result['success'] == true) {
         final newReviews = result['reviews'] as List<ReviewModel>;
@@ -364,19 +364,27 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
             }
           }
         });
-      } else {
-        final message = (result['message'] as String?)?.trim();
-        await _recordReviewLoadFailure(
-          serial,
-          mbId,
-          (message != null && message.isNotEmpty)
-              ? message
-              : '리뷰 목록 조회에 실패했습니다',
-        );
+        return true;
       }
+      final message = (result['message'] as String?)?.trim();
+      await _recordReviewLoadFailure(
+        serial,
+        mbId,
+        (message != null && message.isNotEmpty)
+            ? message
+            : '리뷰 목록 조회에 실패했습니다',
+        more: !refresh,
+      );
+      return false;
     } catch (e) {
-      if (!mounted || serial != _loadSerial) return;
-      await _recordReviewLoadFailure(serial, mbId, e.toString());
+      if (!mounted || serial != _loadSerial) return false;
+      await _recordReviewLoadFailure(
+        serial,
+        mbId,
+        e.toString(),
+        more: !refresh,
+      );
+      return false;
     } finally {
       if (mounted && serial == _loadSerial) {
         setState(() => _isLoading = false);
@@ -387,15 +395,21 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
   Future<void> _recordReviewLoadFailure(
     int serial,
     String mbId,
-    String reason,
-  ) async {
+    String reason, {
+    bool more = false,
+  }) async {
     await FailureLog.record(
       code: 'review.my.list',
       mbId: mbId,
       reason: reason,
     );
-    if (!mounted || serial != _loadSerial || _reviews.isNotEmpty) return;
-    setState(() => _loadFailed = true);
+    if (!mounted || serial != _loadSerial) return;
+    if (_reviews.isEmpty) {
+      setState(() => _loadFailed = true);
+      return;
+    }
+    if (!more) return;
+    AppToastOverlay.showAlert(context, '리뷰를 더 불러오지 못했습니다.');
   }
 
   String _writtenLine(ReviewModel r) {
