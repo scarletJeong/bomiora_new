@@ -33,8 +33,8 @@ class RecentViewService {
   }
 
   /// 드로어에서 최근 본 상품 목록 조회.
-  /// 로그인한 회원은 서버 목록만 쓴다. 조회가 실패하면 로컬로 넘기지 않고 빈 목록을 돌려준다.
-  static Future<List<RecentViewItem>> getRecentList({
+  /// 로그인한 회원은 서버 목록만 쓴다. 조회가 실패하면 로컬로 넘기지 않는다.
+  static Future<({List<RecentViewItem> items, bool failed})> getRecentList({
     int limit = 4,
     bool forceRefresh = false,
   }) async {
@@ -47,7 +47,7 @@ class RecentViewService {
         _memAt != null &&
         _memLimit >= safeLimit &&
         now.difference(_memAt!) < _memTtl) {
-      return _memList!.take(safeLimit).toList();
+      return (items: _memList!.take(safeLimit).toList(), failed: false);
     }
 
     final serial = ++_requestSerial;
@@ -57,11 +57,15 @@ class RecentViewService {
       mbId = user?.id.trim() ?? '';
       if (mbId.isNotEmpty) {
         final server = await _fetchFromServer(mbId, _maxLocalItems);
-        if (serial != _requestSerial) return _current(safeLimit);
-        return _remember(server, safeLimit, now);
+        if (serial != _requestSerial) {
+          return (items: _current(safeLimit), failed: false);
+        }
+        return (items: _remember(server, safeLimit, now), failed: false);
       }
     } catch (e) {
-      if (serial != _requestSerial) return _current(safeLimit);
+      if (serial != _requestSerial) {
+        return (items: _current(safeLimit), failed: false);
+      }
       _memList = null;
       _memHasListPriceKey = false;
       _memAt = null;
@@ -71,12 +75,14 @@ class RecentViewService {
         mbId: mbId,
         reason: e.toString(),
       );
-      return const [];
+      return (items: const <RecentViewItem>[], failed: true);
     }
 
     final local = await _getLocalList();
-    if (serial != _requestSerial) return _current(safeLimit);
-    return _remember(local, safeLimit, now);
+    if (serial != _requestSerial) {
+      return (items: _current(safeLimit), failed: false);
+    }
+    return (items: _remember(local, safeLimit, now), failed: false);
   }
 
   static List<RecentViewItem> _current(int safeLimit) {

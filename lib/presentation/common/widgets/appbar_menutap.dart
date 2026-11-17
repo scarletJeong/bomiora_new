@@ -45,6 +45,7 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
   bool _isHealthcareStoreExpanded = false;
   List<RecentViewItem> _recentProducts = [];
   bool _isLoadingRecent = false;
+  bool _recentLoadFailed = false;
   int _recentRequestId = 0;
   bool _sawDrawerOpen = false;
   List<ProductCategoryItem> _generalCategories = const [];
@@ -109,13 +110,15 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
     if (!mounted) return;
     final requestId = ++_recentRequestId;
     setState(() => _isLoadingRecent = true);
-    final items = await RecentViewService.getRecentList(
+    final result = await RecentViewService.getRecentList(
       limit: 4,
       forceRefresh: forceRefresh,
     );
     if (!mounted || requestId != _recentRequestId) return;
     setState(() {
-      _recentProducts = items.where((item) => item.isDisplayable).toList();
+      _recentProducts =
+          result.items.where((item) => item.isDisplayable).toList();
+      _recentLoadFailed = result.failed;
       _isLoadingRecent = false;
     });
   }
@@ -558,6 +561,7 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
               _RecentProductsGrid(
                 items: _recentProducts,
                 isLoading: _isLoadingRecent,
+                loadFailed: _recentLoadFailed,
                 onTapProduct: (item) => _openRecentProduct(context, item),
               ),
             ],
@@ -1291,11 +1295,13 @@ class _SubLink extends StatelessWidget {
 class _RecentProductsGrid extends StatelessWidget {
   final List<RecentViewItem> items;
   final bool isLoading;
+  final bool loadFailed;
   final void Function(RecentViewItem item) onTapProduct;
 
   const _RecentProductsGrid({
     required this.items,
     required this.isLoading,
+    required this.loadFailed,
     required this.onTapProduct,
   });
 
@@ -1315,6 +1321,10 @@ class _RecentProductsGrid extends StatelessWidget {
           ),
         ),
       );
+    }
+
+    if (loadFailed) {
+      return _buildEmptyMessage(context, '최근 본 상품을 불러오지 못했습니다.');
     }
 
     final display = items
