@@ -24,7 +24,7 @@ class NotificationCenterScreen extends StatefulWidget {
 
 class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
   static const String _font = 'Gmarket Sans TTF';
-  static const Color _kText = Color(0xFF1A1A1E);
+  static const Color _kText = Color(0xFF1A1A1A);
   static const Color _kMuted = Color(0xFF898686);
   static const Color _kPink = Color(0xFFFF5A8D);
 
@@ -355,7 +355,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                 shape: RoundedRectangleBorder(
                   side: BorderSide(
                     width: healthDp(context, 0.5),
-                    color: const Color(0x7F898686),
+                    color: const Color(0xFFD2D2D2),
                   ),
                   borderRadius: BorderRadius.circular(healthDp(context, 20)),
                 ),
@@ -443,7 +443,7 @@ class _SwipeDeleteNotificationCardState
     extends State<_SwipeDeleteNotificationCard> {
   static const String _font = 'Gmarket Sans TTF';
   static const Color _kBorder = Color(0xFFD2D2D2);
-  static const Color _kText = Color(0xFF1A1A1E);
+  static const Color _kText = Color(0xFF1A1A1A);
   static const Color _kMuted = Color(0xFF898686);
   static const Color _kPink = Color(0xFFFF5A8D);
 

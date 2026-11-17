@@ -25,7 +25,7 @@ class _NotificationSettingsScreenState
     extends State<NotificationSettingsScreen> {
   static const String _font = 'Gmarket Sans TTF';
   static const Color _kBorder = Color(0xFFD2D2D2);
-  static const Color _kText = Color(0xFF1A1A1E);
+  static const Color _kText = Color(0xFF1A1A1A);
   static const Color _kPink = Color(0xFFFF5A8D);
 
   bool _loading = true;
@@ -270,7 +270,7 @@ class _NotificationSettingsScreenState
             padding: EdgeInsets.symmetric(vertical: healthDp(context, 10)),
             decoration: const BoxDecoration(
               border: Border(
-                bottom: BorderSide(width: 0.5, color: Color(0x7FD2D2D2)),
+                bottom: BorderSide(width: 0.5, color: Color(0xFFD2D2D2)),
               ),
             ),
             child: Row(
