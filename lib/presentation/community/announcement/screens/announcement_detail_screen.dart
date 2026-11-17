@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
 
@@ -55,10 +57,21 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
     if (!mounted) return;
 
     if (result['success'] == true) {
+      final item = result['item'] as AnnouncementModel?;
       var prev = result['prev'] as Map<String, dynamic>?;
       var next = result['next'] as Map<String, dynamic>?;
+      final imageUrl = ImageUrlHelper.announcementDetailImageUrl(item?.imagePath);
+      if (imageUrl.isNotEmpty) {
+        unawaited(
+          AppNetworkImage.precacheUrl(
+            context,
+            imageUrl,
+            decodeWidthLogical: MediaQuery.sizeOf(context).width,
+          ),
+        );
+      }
       setState(() {
-        _item = result['item'] as AnnouncementModel?;
+        _item = item;
         _prev = prev;
         _next = next;
         _loading = false;
@@ -155,8 +168,11 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
                       ClipRRect(
                         borderRadius: BorderRadius.circular(healthDp(context, 12)),
                         child: AppNetworkImage(
-                          url: ImageUrlHelper.getImageUrl(item.imagePath),
+                          url: ImageUrlHelper.announcementDetailImageUrl(
+                            item.imagePath,
+                          ),
                           fit: BoxFit.cover,
+                          preferHtmlElementOnWeb: false,
                           errorBuilder: (_, __, ___) => Container(
                             height: healthDp(context, 180),
                             alignment: Alignment.center,
