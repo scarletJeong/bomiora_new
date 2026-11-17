@@ -352,6 +352,16 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = false);
   }
 
+  static const _wrongPasswordMessage = '가입된 회원이 아니거나 비밀번호가 틀립니다.';
+
+  String _emailLoginErrorText(dynamic error) {
+    final message = error?.toString().trim() ?? '';
+    if (message.isEmpty || message == _wrongPasswordMessage) {
+      return '* 아이디 혹은 비밀번호가 일치하지 않습니다.';
+    }
+    return message;
+  }
+
   String? _emptyCredentialMessage() {
     final emailEmpty = _emailController.text.trim().isEmpty;
     final passwordEmpty = _passwordController.text.isEmpty;
@@ -391,7 +401,7 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       } else if (mounted) {
         setState(() {
-          _loginErrorText = '* 아이디 혹은 비밀번호가 일치하지 않습니다.';
+          _loginErrorText = _emailLoginErrorText(result['error']);
         });
       }
     } catch (e, stack) {
