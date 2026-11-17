@@ -66,8 +66,10 @@ class EventService {
   }
 
   /// 홈 등에서 진행중 이벤트 첫 10건만 쓴다.
-  static Future<List<EventModel>> getActiveEvents() async {
-    final page = await getActiveEventsPage();
+  static Future<List<EventModel>> getActiveEvents({
+    bool forceRefresh = false,
+  }) async {
+    final page = await getActiveEventsPage(forceRefresh: forceRefresh);
     return page.items;
   }
 

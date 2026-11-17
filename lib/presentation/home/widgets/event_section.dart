@@ -12,14 +12,16 @@ import '../../health/health_common/health_responsive_scale.dart';
 import 'home_section_widgets.dart';
 
 class EventSection extends StatefulWidget {
-  const EventSection({super.key});
+  const EventSection({super.key, this.forceRefresh = false});
+
+  final bool forceRefresh;
 
   @override
   State<EventSection> createState() => _EventSectionState();
 }
 
 class _EventSectionState extends State<EventSection> {
-  late final Future<List<EventModel>> _future = _load();
+  late final Future<({List<EventModel> items, bool failed})> _future = _load();
 
   String _eventDateText(EventModel item) {
     final created = DateDisplayFormatter.tryParseYmdFlexible(item.wrDatetime);
@@ -30,9 +32,12 @@ class _EventSectionState extends State<EventSection> {
         .replaceAll('.', '-');
   }
 
-  Future<List<EventModel>> _load() async {
+  Future<({List<EventModel> items, bool failed})> _load() async {
     try {
-      return await EventService.getActiveEvents();
+      final items = await EventService.getActiveEvents(
+        forceRefresh: widget.forceRefresh,
+      );
+      return (items: items, failed: false);
     } catch (e) {
       final user = await AuthService.getUser();
       await FailureLog.record(
@@ -41,16 +46,17 @@ class _EventSectionState extends State<EventSection> {
         reason: e.toString(),
         detail: {'api': ApiEndpoints.getActiveEvents},
       );
-      return const [];
+      return (items: const <EventModel>[], failed: true);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<List<EventModel>>(
+    return FutureBuilder<({List<EventModel> items, bool failed})>(
       future: _future,
       builder: (context, snapshot) {
-        final items = snapshot.data ?? const <EventModel>[];
+        final items = snapshot.data?.items ?? const <EventModel>[];
+        final failed = snapshot.data?.failed == true;
         final topItems = items.take(3).toList();
 
         return Container(
@@ -79,7 +85,7 @@ class _EventSectionState extends State<EventSection> {
                       ),
                     ),
                   )
-                else if (topItems.isEmpty)
+                else if (failed || topItems.isEmpty)
                   Padding(
                     padding: EdgeInsets.symmetric(vertical: healthDp(context, 12)),
                     child: Center(
@@ -93,7 +99,7 @@ class _EventSectionState extends State<EventSection> {
                         ),
                         SizedBox(width: healthDp(context, 8)),
                         Text(
-                          '등록된 이벤트가 없습니다.',
+                          failed ? '불러오지 못했습니다' : '등록된 이벤트가 없습니다.',
                           style: TextStyle(
                             color: const Color(0xFF898686),
                             fontSize: healthSp(context, 12),

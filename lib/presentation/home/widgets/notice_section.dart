@@ -11,7 +11,9 @@ import '../../health/health_common/health_responsive_scale.dart';
 import 'home_section_widgets.dart';
 
 class NoticeSection extends StatefulWidget {
-  const NoticeSection({super.key});
+  const NoticeSection({super.key, this.forceRefresh = false});
+
+  final bool forceRefresh;
 
   @override
   State<NoticeSection> createState() => _NoticeSectionState();
@@ -21,7 +23,11 @@ class _NoticeSectionState extends State<NoticeSection> {
   late final Future<Map<String, dynamic>> _future = _load();
 
   Future<Map<String, dynamic>> _load() async {
-    final result = await AnnouncementService.getAnnouncements(page: 1, size: 3);
+    final result = await AnnouncementService.getAnnouncements(
+      page: 1,
+      size: 3,
+      forceRefresh: widget.forceRefresh,
+    );
     if (result['success'] != true) {
       final user = await AuthService.getUser();
       await FailureLog.record(

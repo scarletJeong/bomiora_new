@@ -734,9 +734,15 @@ class _HomeScreenState extends State<HomeScreen> {
             GuidebookSection(key: ValueKey('home-guide-$_refreshSerial')),
             SizedBox(height: sectionGap),
             ReviewSection(key: ValueKey('home-review-$_refreshSerial')),
-            NoticeSection(key: ValueKey('home-notice-$_refreshSerial')),
+            NoticeSection(
+              key: ValueKey('home-notice-$_refreshSerial'),
+              forceRefresh: _refreshSerial > 0,
+            ),
             SizedBox(height: sectionGap),
-            EventSection(key: ValueKey('home-event-$_refreshSerial')),
+            EventSection(
+              key: ValueKey('home-event-$_refreshSerial'),
+              forceRefresh: _refreshSerial > 0,
+            ),
             SizedBox(height: sectionGap),
             const AppFooter(),
           ] else
