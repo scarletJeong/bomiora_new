@@ -35,11 +35,11 @@ class QaListScreenState extends State<QaListScreen> {
   int _visibleCount = _pageSize;
   final ScrollController _scrollController = ScrollController();
 
-  static const Color _border = Color(0x7FD2D2D2);
+  static const Color _border = Color(0xFFD2D2D2);
   static const Color _muted = Color(0xFF898686);
   static const Color _pink = Color(0xFFFF5A8D);
   static const Color _textMain = Color(0xFF1A1A1A);
-  static const Color _textInk = Color(0xFF1A1A1E);
+  static const Color _textInk = Color(0xFF1A1A1A);
   static const Color _loadMoreBorder = Color(0xFFD2D2D2);
 
   double _pagePadH(BuildContext context) => healthDp(context, 20);

@@ -32,7 +32,7 @@ class QaWriteScreen extends StatefulWidget {
 class _QaWriteScreenState extends State<QaWriteScreen> {
   static const Color _pink = Color(0xFFFF5A8D);
   static const Color _ink = Color(0xFF1A1A1A);
-  static const Color _border = Color(0xFFF0F0F0);
+  static const Color _border = Color(0xFFD2D2D2);
   static const String _font = 'Gmarket Sans TTF';
   static const int _maxContentLength = 500;
   static const int _maxImages = 3;
@@ -565,7 +565,7 @@ class _QaWriteScreenState extends State<QaWriteScreen> {
             shape: RoundedRectangleBorder(
               side: BorderSide(
                 width: healthDp(context, 1),
-                color: const Color(0x7FD2D2D2),
+                color: const Color(0xFFD2D2D2),
               ),
               borderRadius: BorderRadius.circular(healthDp(context, 7)),
             ),
@@ -677,7 +677,7 @@ class _QaWriteScreenState extends State<QaWriteScreen> {
           Text(
             '제품사진, 운송장사진, 택배상자 사진을 첨부해주세요.',
             style: TextStyle(
-              color: const Color(0xFFEF4444),
+              color: const Color(0xFFFF5A8D),
               fontSize: healthSp(context, 10),
               fontFamily: _font,
               fontWeight: FontWeight.w300,
@@ -725,7 +725,7 @@ class _SectionTitle extends StatelessWidget {
         Text(
           label,
           style: TextStyle(
-            color: Colors.black,
+            color: const Color(0xFF1A1A1A),
             fontSize: healthSp(context, fontSize),
             fontFamily: _font,
             fontWeight: FontWeight.w500,

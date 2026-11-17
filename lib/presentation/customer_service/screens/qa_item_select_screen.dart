@@ -900,7 +900,7 @@ class _QaItemSelectScreenState extends State<QaItemSelectScreen> {
     return Container(
       width: double.infinity,
       height: healthDp(context, 1),
-      color: const Color(0x7FD2D2D2),
+      color: const Color(0xFFD2D2D2),
     );
   }
 

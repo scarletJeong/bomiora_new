@@ -180,7 +180,7 @@ class _QaDetailProductCardState extends State<QaDetailProductCard> {
         shape: RoundedRectangleBorder(
           side: BorderSide(
             width: healthDp(context, 1),
-            color: const Color(0x7FD2D2D2),
+            color: const Color(0xFFD2D2D2),
           ),
           borderRadius: BorderRadius.circular(healthDp(context, 16)),
         ),
@@ -199,7 +199,7 @@ class _QaDetailProductCardState extends State<QaDetailProductCard> {
                     child: Text(
                       '주문번호 $orderId',
                       style: TextStyle(
-                        color: const Color(0xFF898986),
+                        color: const Color(0xFF898686),
                         fontSize: healthSp(context, 10),
                         fontFamily: _font,
                         fontWeight: FontWeight.w500,
@@ -215,7 +215,7 @@ class _QaDetailProductCardState extends State<QaDetailProductCard> {
                   Text(
                     '총 $count개 상품',
                     style: TextStyle(
-                      color: const Color(0xFF898986),
+                      color: const Color(0xFF898686),
                       fontSize: healthSp(context, 10),
                       fontFamily: _font,
                       fontWeight: FontWeight.w500,
@@ -265,7 +265,7 @@ class _QaDetailProductCardState extends State<QaDetailProductCard> {
               shape: RoundedRectangleBorder(
                 side: BorderSide(
                   width: healthDp(context, 1),
-                  color: const Color(0x7FD2D2D2),
+                  color: const Color(0xFFD2D2D2),
                 ),
               ),
             ),
@@ -275,7 +275,7 @@ class _QaDetailProductCardState extends State<QaDetailProductCard> {
                   child: Text(
                     group.vendor,
                     style: TextStyle(
-                      color: const Color(0xFF898986),
+                      color: const Color(0xFF898686),
                       fontSize: healthSp(context, 12),
                       fontFamily: _font,
                       fontWeight: FontWeight.w500,
@@ -349,7 +349,7 @@ class _QaDetailProductCardState extends State<QaDetailProductCard> {
                     Text(
                       item.name,
                       style: TextStyle(
-                        color: const Color(0xFF1A1A1E),
+                        color: const Color(0xFF1A1A1A),
                         fontSize: healthSp(context, 14),
                         fontFamily: _font,
                         fontWeight: FontWeight.w500,
@@ -368,7 +368,7 @@ class _QaDetailProductCardState extends State<QaDetailProductCard> {
                         child: Text(
                           '${PriceFormatter.format(item.price)}원',
                           style: TextStyle(
-                            color: const Color(0xFF1A1A1E),
+                            color: const Color(0xFF1A1A1A),
                             fontSize: healthSp(context, 14),
                             fontFamily: _font,
                             fontWeight: FontWeight.w500,
@@ -456,7 +456,7 @@ class _QaDetailProductCardState extends State<QaDetailProductCard> {
         shape: RoundedRectangleBorder(
           side: BorderSide(
             width: healthDp(context, 1),
-            color: const Color(0x7FD2D2D2),
+            color: const Color(0xFFD2D2D2),
           ),
         ),
       ),
@@ -465,7 +465,7 @@ class _QaDetailProductCardState extends State<QaDetailProductCard> {
           Text(
             label,
             style: TextStyle(
-              color: const Color(0xFF898986),
+              color: const Color(0xFF898686),
               fontSize: healthSp(context, 12),
               fontFamily: _font,
               fontWeight: FontWeight.w500,
@@ -497,7 +497,7 @@ class _OptionLine extends StatelessWidget {
             style: TextStyle(
               color: i == parts.length - 1 && parts.length > 1
                   ? const Color(0xFF898686)
-                  : const Color(0xFF898383),
+                  : const Color(0xFF898686),
               fontSize: healthSp(context, 10),
               fontFamily: 'Gmarket Sans TTF',
               fontWeight: FontWeight.w500,

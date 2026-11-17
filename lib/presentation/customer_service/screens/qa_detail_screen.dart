@@ -410,7 +410,7 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
         Text(
           title,
           style: TextStyle(
-            color: Colors.black,
+            color: const Color(0xFF1A1A1A),
             fontSize: healthSp(context, 14),
             fontFamily: _font,
             fontWeight: FontWeight.w500,
@@ -438,7 +438,7 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
       shape: RoundedRectangleBorder(
         side: BorderSide(
           width: healthDp(context, 1),
-          color: const Color(0x7FD2D2D2),
+          color: const Color(0xFFD2D2D2),
         ),
         borderRadius: BorderRadius.circular(healthDp(context, 7)),
       ),
@@ -447,7 +447,7 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
 
   TextStyle _bodyStyle(BuildContext context) {
     return TextStyle(
-      color: const Color(0xFF1A1A1E),
+      color: const Color(0xFF1A1A1A),
       fontSize: healthSp(context, 12),
       fontFamily: _font,
       fontWeight: FontWeight.w500,
@@ -487,7 +487,7 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: const Color(0xFF1A1A1E),
+                  color: const Color(0xFF1A1A1A),
                   fontSize: healthSp(context, 12),
                   fontFamily: _font,
                   fontWeight: FontWeight.w500,
@@ -567,7 +567,7 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
                 '답변 준비 중입니다.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: const Color(0xFF898986),
+                  color: const Color(0xFF898686),
                   fontSize: healthSp(context, 12),
                   fontFamily: _font,
                   fontWeight: FontWeight.w500,
