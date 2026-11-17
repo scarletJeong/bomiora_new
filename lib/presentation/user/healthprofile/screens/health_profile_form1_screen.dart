@@ -323,97 +323,118 @@ class _HealthProfileForm1State extends State<HealthProfileForm1Screen> {
             Expanded(
               child: _figmaStackField(
                 label: '생년월일',
-                child: Container(
-                  height: _figmaLabeledControlHeight(context),
-                  alignment: Alignment.centerLeft,
-                  padding: EdgeInsets.symmetric(
-                    horizontal: healthDp(context, 10),
-                  ),
-                  decoration: ShapeDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    shape: RoundedRectangleBorder(
-                      side: BorderSide(
-                        width: healthDp(context, 1),
-                        color: HealthProfileFormCommon.border,
-                      ),
-                      borderRadius:
-                          BorderRadius.circular(healthDp(context, 15)),
-                    ),
-                  ),
-                  child: KeyboardLiftOnFocus(
-                    child: TextFormField(
-                    key: ValueKey<int>(session.wizardBirthFieldKeySeed),
-                    initialValue: session.birthYyyymmddDisplay(),
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [
-                      FilteringTextInputFormatter.digitsOnly,
-                      LengthLimitingTextInputFormatter(8),
-                    ],
-                    style: _figmaFieldTextStyle(context),
-                    decoration: InputDecoration(
-                      isCollapsed: true,
-                      border: InputBorder.none,
-                      enabledBorder: InputBorder.none,
-                      focusedBorder: InputBorder.none,
-                      errorBorder: InputBorder.none,
-                      disabledBorder: InputBorder.none,
-                      hintText: 'YYYYMMDD',
-                      hintStyle: TextStyle(
-                        color: const Color(0xFF898686),
-                        fontSize: healthSp(context, 14),
-                        fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w300,
-                        height: 1.2,
-                      ),
-                      errorStyle: const TextStyle(height: 0, fontSize: 0),
-                    ),
-                    onChanged: (v) {
-                      final s = v.trim();
-                      if (!mounted) return;
-                      setState(() {
-                        session.formData['answer_1'] = s;
-                        if (s.length == 8) {
-                          session.formData['birth_year'] = s.substring(0, 4);
-                          session.formData['birth_month'] = s.substring(4, 6);
-                          session.formData['birth_day'] = s.substring(6, 8);
-                        } else {
-                          session.formData['birth_year'] = '';
-                          session.formData['birth_month'] = '';
-                          session.formData['birth_day'] = '';
-                        }
-                      });
-                    },
-                    validator: (v) {
-                      if (v == null || v.length != 8) {
-                        return '생년월일 8자리를 입력해주세요';
-                      }
-                      final y = int.tryParse(v.substring(0, 4));
-                      final m = int.tryParse(v.substring(4, 6));
-                      final d = int.tryParse(v.substring(6, 8));
-                      if (y == null || m == null || d == null) {
-                        return '올바른 날짜를 입력해주세요';
-                      }
-                      try {
-                        final dt = DateTime(y, m, d);
-                        if (dt.isAfter(DateTime.now())) {
-                          return '미래 날짜는 입력할 수 없습니다';
-                        }
-                      } catch (_) {
-                        return '올바른 날짜를 입력해주세요';
-                      }
-                      return null;
-                    },
-                    onSaved: (v) {
-                      final s = (v ?? '').trim();
-                      if (s.length == 8) {
-                        session.formData['answer_1'] = s;
-                        session.formData['birth_year'] = s.substring(0, 4);
-                        session.formData['birth_month'] = s.substring(4, 6);
-                        session.formData['birth_day'] = s.substring(6, 8);
-                      }
-                    },
-                  ),
-                  ),
+                child: Builder(
+                  builder: (context) {
+                    final birthError = session.birthInputError();
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          height: _figmaLabeledControlHeight(context),
+                          alignment: Alignment.centerLeft,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: healthDp(context, 10),
+                          ),
+                          decoration: ShapeDecoration(
+                            color: const Color(0xFFF8FAFC),
+                            shape: RoundedRectangleBorder(
+                              side: BorderSide(
+                                width: healthDp(context, 1),
+                                color: birthError == null
+                                    ? HealthProfileFormCommon.border
+                                    : HealthProfileFormCommon.pink,
+                              ),
+                              borderRadius:
+                                  BorderRadius.circular(healthDp(context, 15)),
+                            ),
+                          ),
+                          child: KeyboardLiftOnFocus(
+                            child: TextFormField(
+                              key: ValueKey<int>(session.wizardBirthFieldKeySeed),
+                              initialValue: session.birthYyyymmddDisplay(),
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                                LengthLimitingTextInputFormatter(8),
+                              ],
+                              style: _figmaFieldTextStyle(context),
+                              decoration: InputDecoration(
+                                isCollapsed: true,
+                                border: InputBorder.none,
+                                enabledBorder: InputBorder.none,
+                                focusedBorder: InputBorder.none,
+                                errorBorder: InputBorder.none,
+                                disabledBorder: InputBorder.none,
+                                hintText: 'YYYYMMDD',
+                                hintStyle: TextStyle(
+                                  color: const Color(0xFF898686),
+                                  fontSize: healthSp(context, 14),
+                                  fontFamily: 'Gmarket Sans TTF',
+                                  fontWeight: FontWeight.w300,
+                                  height: 1.2,
+                                ),
+                                errorStyle: const TextStyle(
+                                  height: 0,
+                                  fontSize: 0,
+                                ),
+                              ),
+                              onChanged: (v) {
+                                final s = v.trim();
+                                if (!mounted) return;
+                                setState(() {
+                                  session.formData['answer_1'] = s;
+                                  if (s.length == 8) {
+                                    session.formData['birth_year'] =
+                                        s.substring(0, 4);
+                                    session.formData['birth_month'] =
+                                        s.substring(4, 6);
+                                    session.formData['birth_day'] =
+                                        s.substring(6, 8);
+                                  } else {
+                                    session.formData['birth_year'] = '';
+                                    session.formData['birth_month'] = '';
+                                    session.formData['birth_day'] = '';
+                                  }
+                                });
+                              },
+                              validator: (v) {
+                                final s = (v ?? '').trim();
+                                if (s.isEmpty) return '생년월일 8자리를 입력해주세요';
+                                return session.birthInputError(s);
+                              },
+                              onSaved: (v) {
+                                final s = (v ?? '').trim();
+                                if (s.length == 8 &&
+                                    session.birthInputError(s) == null) {
+                                  session.formData['answer_1'] = s;
+                                  session.formData['birth_year'] =
+                                      s.substring(0, 4);
+                                  session.formData['birth_month'] =
+                                      s.substring(4, 6);
+                                  session.formData['birth_day'] =
+                                      s.substring(6, 8);
+                                }
+                              },
+                            ),
+                          ),
+                        ),
+                        if (birthError != null) ...[
+                          SizedBox(height: healthDp(context, 4)),
+                          Text(
+                            birthError,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: HealthProfileFormCommon.pink,
+                              fontSize: healthSp(context, 10),
+                              fontFamily: 'Gmarket Sans TTF',
+                              height: 1.2,
+                            ),
+                          ),
+                        ],
+                      ],
+                    );
+                  },
                 ),
               ),
             ),

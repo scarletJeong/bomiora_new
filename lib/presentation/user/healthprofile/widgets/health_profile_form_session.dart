@@ -857,34 +857,33 @@ class HealthProfileFormSession extends ChangeNotifier {
 
   bool _nonEmptyString(dynamic v) => (v?.toString().trim().isNotEmpty ?? false);
 
-  bool _isYmdValid(int y, int m, int d) {
-    try {
-      final dt = DateTime(y, m, d);
-      return !dt.isAfter(DateTime.now());
-    } catch (_) {
-      return false;
+  /// 비어 있으면 null. 8자리가 아니거나 달력에 없는 날, 미래 날짜면 이유를 돌려준다.
+  String? birthInputError([String? raw]) {
+    final text = (raw ?? formData['answer_1']?.toString() ?? '').trim();
+    if (text.isEmpty) return null;
+    if (text.length != 8) return '생년월일 8자리를 입력해주세요';
+    final y = int.tryParse(text.substring(0, 4));
+    final m = int.tryParse(text.substring(4, 6));
+    final d = int.tryParse(text.substring(6, 8));
+    if (y == null || m == null || d == null || y < 1 || m < 1 || m > 12 || d < 1) {
+      return '없는 날짜입니다';
     }
+    final dt = DateTime(y, m, d);
+    if (dt.year != y || dt.month != m || dt.day != d) return '없는 날짜입니다';
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    if (dt.isAfter(today)) return '미래 날짜는 입력할 수 없습니다';
+    return null;
   }
 
   bool isBirthValid() {
     final a1 = (formData['answer_1']?.toString().trim() ?? '');
-    if (a1.length == 8) {
-      final y = int.tryParse(a1.substring(0, 4));
-      final m = int.tryParse(a1.substring(4, 6));
-      final d = int.tryParse(a1.substring(6, 8));
-      if (y == null || m == null || d == null) return false;
-      return _isYmdValid(y, m, d);
-    }
-
+    if (a1.isNotEmpty) return birthInputError(a1) == null;
     final ys = formData['birth_year']?.toString().trim() ?? '';
     final ms = formData['birth_month']?.toString().trim() ?? '';
     final ds = formData['birth_day']?.toString().trim() ?? '';
     if (ys.length != 4 || ms.length != 2 || ds.length != 2) return false;
-    final y = int.tryParse(ys);
-    final m = int.tryParse(ms);
-    final d = int.tryParse(ds);
-    if (y == null || m == null || d == null) return false;
-    return _isYmdValid(y, m, d);
+    return birthInputError('$ys$ms$ds') == null;
   }
 
   /// 하루 식사 횟수를 골랐으면 그 횟수만큼 식사시간이 있어야 한다.
