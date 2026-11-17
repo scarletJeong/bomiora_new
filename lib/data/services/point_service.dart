@@ -1,4 +1,5 @@
 import 'dart:convert';
+import '../../../core/logging/failure_log.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_endpoints.dart';
 import '../models/point/point_history_model.dart';
@@ -95,8 +96,18 @@ class PointService {
         }
       }
 
+      await FailureLog.record(
+        code: 'point.balance',
+        mbId: userId,
+        reason: '포인트 잔액 조회에 실패했습니다. (${response.statusCode})',
+      );
       return null;
     } catch (e) {
+      await FailureLog.record(
+        code: 'point.balance',
+        mbId: userId,
+        reason: e.toString(),
+      );
       return null;
     }
   }
@@ -148,21 +159,38 @@ class PointService {
     required int size,
     required int offset,
   }) async {
-    final response = await ApiClient.get(
-      ApiEndpoints.pointHistory(userId, size: size, offset: offset),
-    );
+    try {
+      final response = await ApiClient.get(
+        ApiEndpoints.pointHistory(userId, size: size, offset: offset),
+      );
 
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      if (data is Map && data['success'] == true && data['data'] is List) {
-        final history = (data['data'] as List)
-            .whereType<Map>()
-            .map((json) => PointHistory.fromJson(Map<String, dynamic>.from(json)))
-            .toList();
-        history.sort((a, b) => b.dateTime.compareTo(a.dateTime));
-        final hasMore = data['hasMore'] == true;
-        return PointHistoryPage(items: history, hasMore: hasMore);
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data is Map && data['success'] == true && data['data'] is List) {
+          final history = (data['data'] as List)
+              .whereType<Map>()
+              .map((json) =>
+                  PointHistory.fromJson(Map<String, dynamic>.from(json)))
+              .toList();
+          history.sort((a, b) => b.dateTime.compareTo(a.dateTime));
+          final hasMore = data['hasMore'] == true;
+          return PointHistoryPage(items: history, hasMore: hasMore);
+        }
       }
+
+      await FailureLog.record(
+        code: 'point.history',
+        mbId: userId,
+        reason: '포인트 내역 조회에 실패했습니다. (${response.statusCode})',
+        detail: {'offset': offset, 'size': size},
+      );
+    } catch (e) {
+      await FailureLog.record(
+        code: 'point.history',
+        mbId: userId,
+        reason: e.toString(),
+        detail: {'offset': offset, 'size': size},
+      );
     }
 
     throw Exception('point history failed');
