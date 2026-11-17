@@ -277,7 +277,7 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
           shape: RoundedRectangleBorder(
             side: BorderSide(
               width: healthDp(context, 1),
-              color: const Color(0x7FD2D2D2),
+              color: const Color(0xFFD2D2D2),
             ),
             borderRadius: BorderRadius.circular(healthDp(context, 8)),
           ),
@@ -467,7 +467,7 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: const Color(0xFF1A1A1E),
+                    color: const Color(0xFF1A1A1A),
                     fontSize: healthSp(context, 14),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w500,
@@ -515,7 +515,7 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
           Container(
             width: double.infinity,
             height: healthDp(context, 1),
-            color: const Color(0x7FD2D2D2),
+            color: const Color(0xFFD2D2D2),
           ),
           SizedBox(height: healthDp(context, 10)),
           Row(

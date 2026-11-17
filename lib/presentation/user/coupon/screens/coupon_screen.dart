@@ -50,11 +50,11 @@ class _CouponScreenState extends State<CouponScreen> {
 
   static const Color _pink = Color(0xFFFF5A8D);
   static const Color _registerDisabled = Color(0xFFD2D2D2);
-  static const Color _border = Color(0x7FD2D2D2);
+  static const Color _border = Color(0xFFD2D2D2);
   static const Color _textMain = Color(0xFF1A1A1A);
   static const Color _textMuted = Color(0xFF898686);
   static const Color _textSub = Color(0xFF898686);
-  static const Color _usedRed = Color(0xFFEF4444);
+  static const Color _usedRed = Color(0xFFFF5A8D);
 
   static const List<String> _emptyMessages = [
     '사용할 수 있는 쿠폰이 없습니다.',
@@ -589,7 +589,7 @@ class _CouponScreenState extends State<CouponScreen> {
               style: _couponText(context, size: 12, color: _textMain),
             ),
           SizedBox(height: healthDp(context, 10)),
-          _solidDivider(context, color: const Color(0x7FD2D2D2)),
+          _solidDivider(context, color: const Color(0xFFD2D2D2)),
           SizedBox(height: healthDp(context, 10)),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -674,9 +674,9 @@ class _CouponRegistrationCard extends StatefulWidget {
 class _CouponRegistrationCardState extends State<_CouponRegistrationCard> {
   static const Color _pink = Color(0xFFFF5A8D);
   static const Color _registerDisabled = Color(0xFFD2D2D2);
-  static const Color _border = Color(0x7FD2D2D2);
+  static const Color _border = Color(0xFFD2D2D2);
   static const Color _textMain = Color(0xFF1A1A1A);
-  static const Color _usedRed = Color(0xFFEF4444);
+  static const Color _usedRed = Color(0xFFFF5A8D);
 
   final ValueNotifier<String?> _registerError = ValueNotifier(null);
   final ValueNotifier<bool> _registering = ValueNotifier(false);
@@ -766,7 +766,7 @@ class _CouponRegistrationCardState extends State<_CouponRegistrationCard> {
           SizedBox(height: healthDp(context, 10)),
           Container(
             height: healthDp(context, 1),
-            color: const Color(0x7FD2D2D2),
+            color: const Color(0xFFD2D2D2),
           ),
           SizedBox(height: healthDp(context, 10)),
           Column(

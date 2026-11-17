@@ -637,7 +637,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
             leading: 0,
           ),
           style: TextStyle(
-            color: Colors.black,
+            color: const Color(0xFF1A1A1A),
             fontSize: fontSize,
             fontWeight: FontWeight.w500,
             height: 1,
@@ -796,7 +796,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         Text(
           '닉네임',
           style: TextStyle(
-            color: Colors.black,
+            color: const Color(0xFF1A1A1A),
             fontSize: healthSp(context, 16),
             fontWeight: FontWeight.w500,
           ),
@@ -825,7 +825,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                 style: TextStyle(
                   color: !_canChangeNicknameNow()
                       ? const Color(0xFF898686)
-                      : Colors.black,
+                      : const Color(0xFF1A1A1A),
                   fontSize: healthSp(context, 16),
                   fontWeight: FontWeight.w500,
                   height: 1,
@@ -845,7 +845,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         Text(
           '연락처',
           style: TextStyle(
-            color: Colors.black,
+            color: const Color(0xFF1A1A1A),
             fontSize: healthSp(context, 16),
             fontWeight: FontWeight.w500,
           ),
@@ -892,7 +892,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
             Expanded(
               child: _InputBox(
                 borderColor: _contactOtpErrorText != null
-                    ? const Color(0xFFEF4444)
+                    ? const Color(0xFFFF5A8D)
                     : const Color(0xFFD2D2D2),
                 alignment: Alignment.centerLeft,
                 padding:
@@ -916,7 +916,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                     hintStyle: _inputHintStyle(context),
                   ),
                   style: TextStyle(
-                    color: Colors.black,
+                    color: const Color(0xFF1A1A1A),
                     fontSize: healthSp(context, 16),
                     fontWeight: FontWeight.w500,
                     height: 1,
@@ -973,7 +973,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           SizedBox(height: healthDp(context, 6)),
           Text(
             _contactOtpErrorText!,
-            style: _hintWarningStyle(context, color: const Color(0xFFEF4444)),
+            style: _hintWarningStyle(context, color: const Color(0xFFFF5A8D)),
           ),
         ] else if (_contactOtpVerifiedSuccess) ...[
           SizedBox(height: healthDp(context, 6)),
@@ -992,7 +992,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         Text(
           '비밀번호 설정',
           style: TextStyle(
-            color: Colors.black,
+            color: const Color(0xFF1A1A1A),
             fontSize: healthSp(context, 16),
             fontWeight: FontWeight.w500,
             height: 1,
@@ -1020,7 +1020,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                     hintStyle: _inputHintStyle(context),
                   ),
                   style: TextStyle(
-                    color: Colors.black,
+                    color: const Color(0xFF1A1A1A),
                     fontSize: healthSp(context, 12),
                     fontWeight: FontWeight.w500,
                     height: 1,
@@ -1043,14 +1043,14 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
             context,
             color: _newPasswordController.text.isNotEmpty &&
                     !isValidAppPassword(_newPasswordController.text)
-                ? const Color(0xFFEF4444)
+                ? const Color(0xFFFF5A8D)
                 : const Color(0xFF898686),
           ),
         ),
         SizedBox(height: healthDp(context, 8)),
         _InputBox(
           borderColor: _passwordMismatch
-              ? const Color(0xFFEF4444)
+              ? const Color(0xFFFF5A8D)
               : const Color(0xFFD2D2D2),
           padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
           child: Row(
@@ -1072,7 +1072,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                     hintStyle: _inputHintStyle(context),
                   ),
                   style: TextStyle(
-                    color: Colors.black,
+                    color: const Color(0xFF1A1A1A),
                     fontSize: healthSp(context, 12),
                     fontWeight: FontWeight.w500,
                     height: 1,
@@ -1092,7 +1092,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           SizedBox(height: healthDp(context, 4)),
           Text(
             '비밀번호가 일치하지 않습니다',
-            style: _hintWarningStyle(context, color: const Color(0xFFEF4444)),
+            style: _hintWarningStyle(context, color: const Color(0xFFFF5A8D)),
           ),
         ],
       ],
@@ -1133,7 +1133,7 @@ class _ProfileHeader extends StatelessWidget {
             name,
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: Colors.black,
+              color: const Color(0xFF1A1A1A),
               fontSize: healthSp(context, 16),
               fontWeight: FontWeight.w500,
               height: 1,
@@ -1189,7 +1189,7 @@ class _InputBox extends StatefulWidget {
 class _InputBoxState extends State<_InputBox> {
   bool _focused = false;
 
-  static const _error = Color(0xFFEF4444);
+  static const _error = Color(0xFFFF5A8D);
   static const _pink = Color(0xFFFF5A8D);
 
   @override

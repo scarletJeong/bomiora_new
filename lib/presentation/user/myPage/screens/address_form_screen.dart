@@ -621,7 +621,7 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
                       Text(
                         '기본 배송지로 설정',
                         style: TextStyle(
-                          color: const Color(0xFF1A1A1E),
+                          color: const Color(0xFF1A1A1A),
                           fontSize: healthSp(context, 12),
                           fontFamily: 'Gmarket Sans TTF',
                           fontWeight: FontWeight.w300,
@@ -720,7 +720,7 @@ class _SubjectChip extends StatelessWidget {
               label,
               style: TextStyle(
                 color: selected
-                    ? const Color(0xFF1A1A1E)
+                    ? const Color(0xFF1A1A1A)
                     : const Color(0xFF898686),
                 fontSize: healthSp(context, 12),
                 fontFamily: 'Gmarket Sans TTF',
