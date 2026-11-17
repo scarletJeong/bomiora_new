@@ -122,8 +122,11 @@ class EventService {
     final key = _pageKey(kind, safePage, safeSize);
     final cachedAt = _pageCacheAt[key];
     final cached = _pageCache[key];
-    if (!forceRefresh &&
-        cached != null &&
+    if (forceRefresh) {
+      final prefix = '$kind:';
+      _pageCache.removeWhere((cacheKey, _) => cacheKey.startsWith(prefix));
+      _pageCacheAt.removeWhere((cacheKey, _) => cacheKey.startsWith(prefix));
+    } else if (cached != null &&
         cachedAt != null &&
         DateTime.now().difference(cachedAt) < _listCacheTtl) {
       return Future.value(cached);
@@ -137,6 +140,7 @@ class EventService {
       page: safePage,
       size: safeSize,
       failureLabel: failureLabel,
+      forceRefresh: forceRefresh,
     );
     _pageInFlight[key] = request;
     return request.whenComplete(() {
@@ -150,6 +154,7 @@ class EventService {
     required int page,
     required int size,
     required String failureLabel,
+    bool forceRefresh = false,
   }) async {
     final path = endpoint.contains('?')
         ? '$endpoint&page=$page&size=$size'
@@ -157,7 +162,7 @@ class EventService {
     try {
       final response = await ApiClient.get(path);
       if (response.statusCode == 304 || response.body.trim().isEmpty) {
-        final cached = _pageCache[key];
+        final cached = forceRefresh ? null : _pageCache[key];
         if (cached != null) return cached;
         throw Exception('$failureLabel 응답이 비어 있습니다.');
       }
@@ -176,7 +181,7 @@ class EventService {
       _pageCacheAt[key] = DateTime.now();
       return result;
     } catch (e) {
-      final cached = _pageCache[key];
+      final cached = forceRefresh ? null : _pageCache[key];
       if (cached != null) return cached;
       throw Exception('$failureLabel 조회 실패: $e');
     }

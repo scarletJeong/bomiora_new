@@ -14,10 +14,18 @@ class AnnouncementService {
     int page = 1,
     int size = 6,
     String query = '',
+    bool forceRefresh = false,
   }) async {
-    final cacheKey = '$page:$size:${query.trim()}';
+    final trimmedQuery = query.trim();
+    final cacheKey = '$page:$size:$trimmedQuery';
+    if (forceRefresh) {
+      final suffix = ':$size:$trimmedQuery';
+      _listCache.removeWhere((key, _) => key.endsWith(suffix));
+      _listCacheAt.removeWhere((key, _) => key.endsWith(suffix));
+    }
     final cachedAt = _listCacheAt[cacheKey];
-    if (cachedAt != null &&
+    if (!forceRefresh &&
+        cachedAt != null &&
         DateTime.now().difference(cachedAt) < _listCacheTtl) {
       return Map<String, dynamic>.from(_listCache[cacheKey]!);
     }

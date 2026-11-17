@@ -56,7 +56,12 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
     super.dispose();
   }
 
-  Future<void> _load({int? page, String? query, bool append = false}) async {
+  Future<void> _load({
+    int? page,
+    String? query,
+    bool append = false,
+    bool forceRefresh = false,
+  }) async {
     if (append) {
       if (_loading || _loadingMore || !_hasMore) return;
       setState(() => _loadingMore = true);
@@ -73,6 +78,7 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
       page: targetPage,
       size: _size,
       query: targetQuery,
+      forceRefresh: forceRefresh,
     );
 
     if (!mounted) return;
@@ -152,7 +158,7 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
               ),
               Expanded(
                 child: RefreshIndicator(
-                  onRefresh: () => _load(page: 1),
+                  onRefresh: () => _load(page: 1, forceRefresh: true),
                   child: CustomScrollView(
                     keyboardDismissBehavior:
                         ScrollViewKeyboardDismissBehavior.manual,
