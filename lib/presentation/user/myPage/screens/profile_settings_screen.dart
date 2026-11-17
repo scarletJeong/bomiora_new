@@ -442,8 +442,12 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     setState(() => _contactOtpVerifying = false);
 
     if (verify['success'] != true) {
+      final serverError = verify['error']?.toString().trim() ?? '';
       setState(() {
-        _contactOtpErrorText = verify['error']?.toString() ?? '인증에 실패했습니다.';
+        _contactOtpErrorText = verify['transportFailure'] == true ||
+                serverError.isEmpty
+            ? '인증에 실패했습니다.'
+            : serverError;
       });
       return;
     }
