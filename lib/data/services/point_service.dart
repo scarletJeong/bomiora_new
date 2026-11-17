@@ -3,15 +3,28 @@ import '../../../core/network/api_client.dart';
 import '../../../core/network/api_endpoints.dart';
 import '../models/point/point_history_model.dart';
 
+class PointHistoryPage {
+  final List<PointHistory> items;
+  final bool hasMore;
+
+  const PointHistoryPage({
+    required this.items,
+    required this.hasMore,
+  });
+}
+
 /// 포인트 관련 공통 서비스
 class PointService {
   static const Duration _cacheTtl = Duration(minutes: 3);
   static final Map<String, int?> _pointCache = {};
-  static final Map<String, List<PointHistory>> _historyCache = {};
+  static final Map<String, PointHistoryPage> _historyCache = {};
   static final Map<String, DateTime> _pointCacheAt = {};
   static final Map<String, DateTime> _historyCacheAt = {};
   static final Map<String, Future<int?>> _pointInFlight = {};
-  static final Map<String, Future<List<PointHistory>>> _historyInFlight = {};
+  static final Map<String, Future<PointHistoryPage>> _historyInFlight = {};
+
+  static String _historyKey(String id, int size, int offset) =>
+      '$id:$size:$offset';
 
   static void invalidate([String? userId]) {
     if (userId == null || userId.trim().isEmpty) {
@@ -22,10 +35,11 @@ class PointService {
       return;
     }
     final id = userId.trim();
+    final prefix = '$id:';
     _pointCache.remove(id);
-    _historyCache.remove(id);
     _pointCacheAt.remove(id);
-    _historyCacheAt.remove(id);
+    _historyCache.removeWhere((key, _) => key.startsWith(prefix));
+    _historyCacheAt.removeWhere((key, _) => key.startsWith(prefix));
   }
 
   /// 사용자의 현재 보유 포인트 조회
@@ -82,40 +96,64 @@ class PointService {
     }
   }
 
-  /// 포인트 내역 조회
-  static Future<List<PointHistory>> getPointHistory(String userId) async {
+  /// 포인트 내역 조회. [offset]부터 [size]건을 서버에 요청한다.
+  static Future<PointHistoryPage> getPointHistory(
+    String userId, {
+    int size = 50,
+    int offset = 0,
+  }) async {
     final id = userId.trim();
-    final cachedAt = _historyCacheAt[id];
+    final safeSize = size.clamp(1, 100).toInt();
+    final safeOffset = offset < 0 ? 0 : offset;
+    final key = _historyKey(id, safeSize, safeOffset);
+    final cachedAt = _historyCacheAt[key];
     if (cachedAt != null &&
         DateTime.now().difference(cachedAt) < _cacheTtl) {
-      return List<PointHistory>.from(_historyCache[id] ?? const []);
+      final cached = _historyCache[key];
+      if (cached != null) {
+        return PointHistoryPage(
+          items: List<PointHistory>.from(cached.items),
+          hasMore: cached.hasMore,
+        );
+      }
     }
-    final pending = _historyInFlight[id];
+    final pending = _historyInFlight[key];
     if (pending != null) return pending;
 
-    final request = _fetchPointHistory(id);
-    _historyInFlight[id] = request;
+    final request = _fetchPointHistory(id, size: safeSize, offset: safeOffset);
+    _historyInFlight[key] = request;
     try {
       final result = await request;
-      _historyCache[id] = result;
-      _historyCacheAt[id] = DateTime.now();
-      return List<PointHistory>.from(result);
+      _historyCache[key] = result;
+      _historyCacheAt[key] = DateTime.now();
+      return PointHistoryPage(
+        items: List<PointHistory>.from(result.items),
+        hasMore: result.hasMore,
+      );
     } finally {
-      _historyInFlight.remove(id);
+      _historyInFlight.remove(key);
     }
   }
 
-  static Future<List<PointHistory>> _fetchPointHistory(String userId) async {
-    final response = await ApiClient.get(ApiEndpoints.pointHistory(userId));
+  static Future<PointHistoryPage> _fetchPointHistory(
+    String userId, {
+    required int size,
+    required int offset,
+  }) async {
+    final response = await ApiClient.get(
+      ApiEndpoints.pointHistory(userId, size: size, offset: offset),
+    );
 
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
       if (data is Map && data['success'] == true && data['data'] is List) {
         final history = (data['data'] as List)
-            .map((json) => PointHistory.fromJson(json))
+            .whereType<Map>()
+            .map((json) => PointHistory.fromJson(Map<String, dynamic>.from(json)))
             .toList();
         history.sort((a, b) => b.dateTime.compareTo(a.dateTime));
-        return history;
+        final hasMore = data['hasMore'] == true;
+        return PointHistoryPage(items: history, hasMore: hasMore);
       }
     }
 

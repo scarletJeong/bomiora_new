@@ -170,8 +170,12 @@ class ApiEndpoints {
 
   // 포인트 관련
   static String userPoint(String userId) => '/api/user/point?mb_id=$userId';
-  static String pointHistory(String userId) =>
-      '/api/user/point/history?mb_id=$userId';
+  static String pointHistory(
+    String userId, {
+    int size = 50,
+    int offset = 0,
+  }) =>
+      '/api/user/point/history?mb_id=$userId&size=$size&offset=$offset';
   static const String config = '/api/config';
 
   // 쿠폰 관련

@@ -22,16 +22,15 @@ class _PointScreenState extends State<PointScreen> {
   UserModel? _currentUser;
   int? _currentPoint;
   List<PointHistory> _pointHistory = [];
-  List<PointHistory> _displayedHistory = [];
-  static const int _initialDisplayCount = 7;
-  static const int _loadMoreStep = 5;
-  int _displayCount = _initialDisplayCount;
+  static const int _pageSize = 50;
   int _selectedHistoryTab = 0;
   bool _isLoading = true;
   bool _pointFailed = false;
   bool _pointReloading = false;
   bool _historyFailed = false;
   bool _historyReloading = false;
+  bool _hasMoreHistory = false;
+  bool _historyLoadingMore = false;
 
   static const Color _pink = Color(0xFFFF5A8D);
   static const Color _border = Color(0x7FD2D2D2);
@@ -105,19 +104,22 @@ class _PointScreenState extends State<PointScreen> {
     }
 
     try {
-      final history = await PointService.getPointHistory(_currentUser!.id);
+      final page = await PointService.getPointHistory(
+        _currentUser!.id,
+        size: _pageSize,
+        offset: 0,
+      );
       if (!mounted) return;
       setState(() {
-        _pointHistory = history;
+        _pointHistory = page.items;
+        _hasMoreHistory = page.hasMore;
         _historyFailed = false;
-        _displayCount = _initialDisplayCount;
-        _displayedHistory = _filteredHistory.take(_displayCount).toList();
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _pointHistory = [];
-        _displayedHistory = [];
+        _hasMoreHistory = false;
         _historyFailed = true;
       });
     } finally {
@@ -137,26 +139,36 @@ class _PointScreenState extends State<PointScreen> {
     return _pointHistory;
   }
 
-  void _updateDisplayedHistory() {
-    setState(() {
-      _displayedHistory = _filteredHistory.take(_displayCount).toList();
-    });
-  }
-
   void _onHistoryTabSelected(int index) {
     if (_selectedHistoryTab == index) return;
-    setState(() {
-      _selectedHistoryTab = index;
-      _displayCount = _initialDisplayCount;
-      _displayedHistory = _filteredHistory.take(_displayCount).toList();
-    });
+    setState(() => _selectedHistoryTab = index);
   }
 
-  void _loadMore() {
-    setState(() {
-      _displayCount += _loadMoreStep;
-      _updateDisplayedHistory();
-    });
+  Future<void> _loadMore() async {
+    if (_currentUser == null || _historyLoadingMore || !_hasMoreHistory) {
+      return;
+    }
+    setState(() => _historyLoadingMore = true);
+    try {
+      final page = await PointService.getPointHistory(
+        _currentUser!.id,
+        size: _pageSize,
+        offset: _pointHistory.length,
+      );
+      if (!mounted) return;
+      final seen = _pointHistory.map((item) => item.id).toSet();
+      final added = page.items.where((item) => seen.add(item.id)).toList();
+      final merged = [..._pointHistory, ...added]
+        ..sort((a, b) => b.dateTime.compareTo(a.dateTime));
+      setState(() {
+        _pointHistory = merged;
+        _hasMoreHistory = page.hasMore && added.isNotEmpty;
+      });
+    } catch (_) {
+      // 이미 받은 내역은 유지하고, 더보기를 다시 누를 수 있게 둔다.
+    } finally {
+      if (mounted) setState(() => _historyLoadingMore = false);
+    }
   }
 
   Future<void> _reloadFailed() async {
@@ -224,7 +236,8 @@ class _PointScreenState extends State<PointScreen> {
       );
     }
     final showLoadFailure = _pointFailed || _historyFailed;
-    final showEmpty = !showLoadFailure && _displayedHistory.isEmpty;
+    final showEmpty =
+        !showLoadFailure && _filteredHistory.isEmpty && !_hasMoreHistory;
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -269,8 +282,8 @@ class _PointScreenState extends State<PointScreen> {
               child: ListView(
                 padding: EdgeInsets.only(top: healthDp(context, 24)),
                 children: [
-                  ..._displayedHistory.map(_buildHistoryCard),
-                  if (_displayedHistory.length < _filteredHistory.length) ...[
+                  ..._filteredHistory.map(_buildHistoryCard),
+                  if (_hasMoreHistory) ...[
                     SizedBox(height: healthDp(context, 20)),
                     _buildLoadMoreButton(),
                   ],
@@ -510,7 +523,7 @@ class _PointScreenState extends State<PointScreen> {
       width: double.infinity,
       height: healthDp(context, 40),
       child: OutlinedButton(
-        onPressed: _loadMore,
+        onPressed: _historyLoadingMore ? null : _loadMore,
         style: OutlinedButton.styleFrom(
           side: BorderSide(
             width: healthDp(context, 0.5),
@@ -521,15 +534,24 @@ class _PointScreenState extends State<PointScreen> {
           ),
           backgroundColor: Colors.white,
         ),
-        child: Text(
-          '더보기',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: _textSub,
-            fontSize: healthSp(context, 14),
-            fontWeight: FontWeight.w500,
-          ),
-        ),
+        child: _historyLoadingMore
+            ? SizedBox(
+                width: healthDp(context, 18),
+                height: healthDp(context, 18),
+                child: const CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: _textSub,
+                ),
+              )
+            : Text(
+                '더보기',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: _textSub,
+                  fontSize: healthSp(context, 14),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
       ),
     );
   }
