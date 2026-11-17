@@ -28,8 +28,13 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
   static const Color _kMuted = Color(0xFF898686);
   static const Color _kPink = Color(0xFFFF5A8D);
 
+  static const int _pageSize = 10;
+
   int _selectedTab = 0;
+  int _fetchLimit = _pageSize;
   bool _isLoading = true;
+  bool _loadingMore = false;
+  bool _hasMore = false;
   bool _isLoggedIn = false;
   bool _loadFailed = false;
   List<AppNotificationItem> _items = [];
@@ -75,16 +80,19 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
         _isLoggedIn = false;
         _loadFailed = false;
         _items = [];
+        _fetchLimit = _pageSize;
+        _hasMore = false;
         _isLoading = false;
       });
       return;
     }
 
+    final limit = fromInboxChange ? _fetchLimit : _pageSize;
     if (!fromInboxChange) {
       setState(() => _isLoading = true);
     }
     final page = await NotificationInboxService.fetchList(
-      limit: 50,
+      limit: limit,
       refresh: refresh,
     );
     if (!mounted) return;
@@ -93,9 +101,25 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
         : page.items;
     setState(() {
       _isLoggedIn = true;
+      if (!fromInboxChange) _fetchLimit = _pageSize;
       _items = next;
+      _hasMore = page.hasMore;
       _loadFailed = next.isEmpty && page.serverFailed;
       _isLoading = false;
+    });
+  }
+
+  Future<void> _loadMoreNotifications() async {
+    if (_loadingMore || !_hasMore || _isLoading) return;
+    final nextLimit = _fetchLimit + _pageSize;
+    setState(() => _loadingMore = true);
+    final page = await NotificationInboxService.fetchList(limit: nextLimit);
+    if (!mounted) return;
+    setState(() {
+      _fetchLimit = nextLimit;
+      _items = _withNewItems(_items, page.items);
+      _hasMore = page.hasMore;
+      _loadingMore = false;
     });
   }
 
@@ -188,6 +212,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
   @override
   Widget build(BuildContext context) {
     final items = _filteredItems;
+    final showLoadMore = _hasMore && items.length >= _pageSize;
 
     return DefaultTextStyle.merge(
       style: const TextStyle(fontFamily: _font),
@@ -289,14 +314,15 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                                     healthDp(context, 20),
                                     healthDp(context, 48),
                                   ),
-                                  children: items
-                                      .map(
-                                        (item) => _buildNotificationCard(
-                                          context,
-                                          item,
-                                        ),
-                                      )
-                                      .toList(),
+                                  children: [
+                                    ...items.map(
+                                      (item) => _buildNotificationCard(
+                                        context,
+                                        item,
+                                      ),
+                                    ),
+                                    if (showLoadMore) _buildLoadMoreButton(context),
+                                  ],
                                 ),
                         ),
                       ),
@@ -320,6 +346,47 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                         ),
                     ],
                   ),
+      ),
+    );
+  }
+
+  Widget _buildLoadMoreButton(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(top: healthDp(context, 8)),
+      child: SizedBox(
+        width: double.infinity,
+        height: healthDp(context, 40),
+        child: OutlinedButton(
+          onPressed: _loadingMore ? null : _loadMoreNotifications,
+          style: OutlinedButton.styleFrom(
+            side: BorderSide(
+              width: healthDp(context, 0.5),
+              color: const Color(0xFFD2D2D2),
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(healthDp(context, 10)),
+            ),
+            backgroundColor: Colors.white,
+          ),
+          child: _loadingMore
+              ? SizedBox(
+                  width: healthDp(context, 20),
+                  height: healthDp(context, 20),
+                  child: const CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: _kPink,
+                  ),
+                )
+              : Text(
+                  '더보기',
+                  style: TextStyle(
+                    color: _kMuted,
+                    fontSize: healthSp(context, 16),
+                    fontFamily: _font,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+        ),
       ),
     );
   }

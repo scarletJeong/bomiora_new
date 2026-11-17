@@ -16,10 +16,12 @@ class NotificationInboxPage {
   const NotificationInboxPage({
     required this.items,
     required this.serverFailed,
+    this.hasMore = false,
   });
 
   final List<AppNotificationItem> items;
   final bool serverFailed;
+  final bool hasMore;
 }
 
 /// 푸시·서버 알림 인박스 (로컬 캐시 + 서버 동기화)
@@ -184,6 +186,7 @@ class NotificationInboxService {
     return NotificationInboxPage(
       items: items.take(limit).toList(),
       serverFailed: serverFailed,
+      hasMore: items.length > limit,
     );
   }
 
