@@ -38,6 +38,7 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
   static const Color _kPink = Color(0xFFFF5A8D);
 
   bool _loading = true;
+  bool _loadFailed = false;
   AnnouncementModel? _item;
   Map<String, dynamic>? _prev;
   Map<String, dynamic>? _next;
@@ -74,6 +75,7 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
         _item = item;
         _prev = prev;
         _next = next;
+        _loadFailed = false;
         _loading = false;
       });
       if (prev == null && next == null) {
@@ -104,6 +106,7 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
       if (!mounted) return;
       setState(() {
         _item = null;
+        _loadFailed = result['notFound'] != true;
         _loading = false;
       });
     }
@@ -121,7 +124,7 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
                     context,
                     AppAssets.emptyNoticeIcon,
                   ),
-                  message: '공지사항이 없습니다.',
+                  message: _loadFailed ? '불러오지 못했습니다' : '공지사항이 없습니다.',
                 )
               : _buildBody(context, _item!),
     );

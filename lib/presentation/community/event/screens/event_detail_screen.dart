@@ -32,6 +32,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
 
   EventModel? _event;
   bool _isLoading = true;
+  bool _loadFailed = false;
   List<EventModel> _allEvents = [];
   final ScrollController _scrollController = ScrollController();
 
@@ -50,45 +51,12 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   Future<void> _loadEventDetail() async {
     setState(() => _isLoading = true);
 
+    EventModel? event;
+    var failed = false;
     try {
-      final result = await Future.wait([
-        EventService.getEventDetail(widget.wrId),
-        EventService.getActiveEvents(),
-      ]);
-      final event = result[0] as EventModel?;
-      final active = (result[1] as List<EventModel>)
-          .where((e) => !e.isEnded)
-          .toList();
-
-      if (!mounted) return;
-
-      if (event != null && event.isEnded) {
-        setState(() {
-          _event = null;
-          _allEvents = active;
-          _isLoading = false;
-        });
-      } else if (event != null) {
-        setState(() {
-          _event = event;
-          _allEvents = active;
-          _isLoading = false;
-        });
-      } else {
-        final user = await AuthService.getUser();
-        await FailureLog.record(
-          code: 'event.detail',
-          mbId: user?.id ?? '',
-          reason: '이벤트를 찾을 수 없습니다.',
-          detail: {'id': widget.wrId},
-        );
-        if (!mounted) return;
-        setState(() {
-          _event = null;
-          _isLoading = false;
-        });
-      }
+      event = await EventService.getEventDetail(widget.wrId);
     } catch (e) {
+      failed = true;
       final user = await AuthService.getUser();
       await FailureLog.record(
         code: 'event.detail',
@@ -96,13 +64,47 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         reason: e.toString(),
         detail: {'id': widget.wrId},
       );
-      if (!mounted) return;
+    }
 
+    var active = const <EventModel>[];
+    if (!failed) {
+      try {
+        active = (await EventService.getActiveEvents())
+            .where((e) => !e.isEnded)
+            .toList();
+      } catch (_) {
+        active = const [];
+      }
+    }
+
+    if (!mounted) return;
+
+    if (failed || event == null) {
+      if (!failed) {
+        final user = await AuthService.getUser();
+        await FailureLog.record(
+          code: 'event.detail',
+          mbId: user?.id ?? '',
+          reason: '이벤트를 찾을 수 없습니다.',
+          detail: {'id': widget.wrId},
+        );
+      }
+      if (!mounted) return;
       setState(() {
         _event = null;
+        _allEvents = active;
+        _loadFailed = failed;
         _isLoading = false;
       });
+      return;
     }
+
+    setState(() {
+      _event = event!.isEnded ? null : event;
+      _allEvents = active;
+      _loadFailed = false;
+      _isLoading = false;
+    });
   }
 
   @override
@@ -127,7 +129,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
           context,
           AppAssets.emptyEventIcon,
         ),
-        message: '이벤트가 없습니다.',
+        message: _loadFailed ? '불러오지 못했습니다' : '이벤트가 없습니다.',
       );
     }
 

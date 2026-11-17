@@ -108,9 +108,18 @@ class AnnouncementService {
     try {
       final endpoint = '${ApiEndpoints.getAnnouncementDetail}/$id';
       final response = await ApiClient.get(endpoint);
+      if (response.statusCode == 404) {
+        return {
+          'success': false,
+          'notFound': true,
+          'message': '공지사항을 찾을 수 없습니다.',
+          'item': null,
+        };
+      }
       if (response.statusCode != 200) {
         return {
           'success': false,
+          'notFound': false,
           'message': '공지사항 상세를 불러오지 못했습니다.',
           'item': null,
         };

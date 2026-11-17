@@ -30,7 +30,8 @@ class _EventListScreenState extends State<EventListScreen> {
   static const int _pageSize = 10;
   bool _isLoading = true;
   bool _loadingMore = false;
-  bool _loadFailed = false;
+  bool _activeFailed = false;
+  bool _endedFailed = false;
   List<EventModel> _activeEvents = [];
   List<EventModel> _endedEvents = [];
   int _activeTotal = 0;
@@ -46,48 +47,66 @@ class _EventListScreenState extends State<EventListScreen> {
     _loadEvents();
   }
 
+  bool get _tabFailed => _selectedTab == 0 ? _activeFailed : _endedFailed;
+
   Future<void> _loadEvents() async {
+    final hadActive = _activeEvents.isNotEmpty;
+    final hadEnded = _endedEvents.isNotEmpty;
+    setState(() => _isLoading = true);
+    final active = await _loadFirstPage(ended: false);
+    final ended = await _loadFirstPage(ended: true);
+    if (!mounted) return;
+    var keepFailureVisible = false;
     setState(() {
-      _isLoading = true;
-      _loadFailed = false;
-    });
-    try {
-      final result = await Future.wait([
-        EventService.getActiveEventsPage(
-          page: 1,
-          size: _pageSize,
-          forceRefresh: true,
-        ),
-        EventService.getEndedEventsPage(
-          page: 1,
-          size: _pageSize,
-          forceRefresh: true,
-        ),
-      ]);
-      if (!mounted) return;
-      setState(() {
-        _activeEvents = result[0].items;
-        _endedEvents = result[1].items;
-        _activeTotal = result[0].total;
-        _endedTotal = result[1].total;
+      if (active != null) {
+        _activeEvents = active.items;
+        _activeTotal = active.total;
         _activePage = 1;
+        _activeHasMore = active.hasMore;
+        _activeFailed = false;
+      } else {
+        _activeFailed = true;
+        if (hadActive) keepFailureVisible = true;
+      }
+      if (ended != null) {
+        _endedEvents = ended.items;
+        _endedTotal = ended.total;
         _endedPage = 1;
-        _activeHasMore = result[0].hasMore;
-        _endedHasMore = result[1].hasMore;
-        _isLoading = false;
-      });
+        _endedHasMore = ended.hasMore;
+        _endedFailed = false;
+      } else {
+        _endedFailed = true;
+        if (hadEnded) keepFailureVisible = true;
+      }
+      _isLoading = false;
+    });
+    if (keepFailureVisible && mounted) {
+      AppToastOverlay.showAlert(context, '불러오지 못했습니다');
+    }
+  }
+
+  Future<EventPageResult?> _loadFirstPage({required bool ended}) async {
+    try {
+      return ended
+          ? await EventService.getEndedEventsPage(
+              page: 1,
+              size: _pageSize,
+              forceRefresh: true,
+            )
+          : await EventService.getActiveEventsPage(
+              page: 1,
+              size: _pageSize,
+              forceRefresh: true,
+            );
     } catch (e) {
       final user = await AuthService.getUser();
       await FailureLog.record(
         code: 'event.list',
         mbId: user?.id ?? '',
         reason: e.toString(),
+        detail: {'tab': ended ? 'ended' : 'active'},
       );
-      if (!mounted) return;
-      setState(() {
-        _loadFailed = true;
-        _isLoading = false;
-      });
+      return null;
     }
   }
 
@@ -187,7 +206,7 @@ class _EventListScreenState extends State<EventListScreen> {
                 ],
               ),
             ),
-            if (!_isLoading && (_loadFailed || events.isEmpty))
+            if (!_isLoading && events.isEmpty)
               PageCenteredEmptyOverlay(child: _buildEmptyMessage(context)),
           ],
         ),
@@ -258,7 +277,7 @@ class _EventListScreenState extends State<EventListScreen> {
         child: CircularProgressIndicator(color: _kPink),
       );
     }
-    if (_loadFailed || events.isEmpty) {
+    if (events.isEmpty) {
       return const SizedBox.shrink();
     }
 
@@ -279,9 +298,11 @@ class _EventListScreenState extends State<EventListScreen> {
   }
 
   Widget _buildEmptyMessage(BuildContext context) {
-    final emptyLabel = _selectedTab == 0
-        ? '진행중인 이벤트가 없습니다'
-        : '종료된 이벤트가 없습니다';
+    final emptyLabel = _tabFailed
+        ? '불러오지 못했습니다'
+        : _selectedTab == 0
+            ? '진행중인 이벤트가 없습니다'
+            : '종료된 이벤트가 없습니다';
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [

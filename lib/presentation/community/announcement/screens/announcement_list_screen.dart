@@ -11,6 +11,7 @@ import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/centered_empty_state.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
 import '../../../common/widgets/app_clickable.dart';
+import '../../../common/widgets/app_toast_overlay.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 
 class AnnouncementListScreen extends StatefulWidget {
@@ -95,7 +96,10 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
         detail: {'page': targetPage, 'query': targetQuery},
       );
       if (!mounted) return;
-      if (!append) {
+      if (append) {
+        setState(() => _loadingMore = false);
+        AppToastOverlay.showAlert(context, '공지를 더 불러오지 못했습니다.');
+      } else {
         setState(() => _loadFailed = true);
       }
     }
@@ -428,7 +432,7 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
         context,
         AppAssets.emptyNoticeIcon,
       ),
-      message: '공지사항이 없습니다.',
+      message: _loadFailed ? '불러오지 못했습니다' : '공지사항이 없습니다.',
     );
   }
 }

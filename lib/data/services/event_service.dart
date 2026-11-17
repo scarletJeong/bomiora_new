@@ -157,8 +157,9 @@ class EventService {
     try {
       final response = await ApiClient.get(path);
       if (response.statusCode == 304 || response.body.trim().isEmpty) {
-        return _pageCache[key] ??
-            const EventPageResult(items: [], total: 0, hasMore: false);
+        final cached = _pageCache[key];
+        if (cached != null) return cached;
+        throw Exception('$failureLabel 응답이 비어 있습니다.');
       }
       if (response.statusCode != 200) {
         throw Exception('$failureLabel HTTP ${response.statusCode}');
@@ -190,8 +191,12 @@ class EventService {
         additionalHeaders: _noCacheHeaders,
       );
 
+      if (response.statusCode == 404) return null;
       if (response.statusCode == 304 || response.body.trim().isEmpty) {
-        return null;
+        throw Exception('이벤트 상세 응답이 비어 있습니다.');
+      }
+      if (response.statusCode != 200) {
+        throw Exception('이벤트 상세 HTTP ${response.statusCode}');
       }
 
       final responseData = json.decode(response.body);
@@ -202,7 +207,15 @@ class EventService {
           Map<String, dynamic>.from(responseData['data'] as Map),
         );
       }
-      return null;
+      final message = responseData is Map
+          ? responseData['message']?.toString().trim() ?? ''
+          : '';
+      if (message.contains('찾을 수 없') || message.contains('종료된 이벤트')) {
+        return null;
+      }
+      throw Exception(
+        message.isEmpty ? '이벤트 상세 조회에 실패했습니다.' : message,
+      );
     } catch (e) {
       throw Exception('이벤트 상세 조회 실패: $e');
     }
