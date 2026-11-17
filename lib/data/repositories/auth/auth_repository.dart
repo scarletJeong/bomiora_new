@@ -99,17 +99,16 @@ class AuthRepository {
         'error': errorMessage,
       };
     } catch (e, stack) {
-      final reason = '이메일 중복 확인 중 오류가 발생했습니다: $e';
       await FailureLog.record(
         code: 'auth.checkEmail',
         mbId: '',
-        reason: reason,
+        reason: e.toString(),
         detail: {'email': email, 'stack': stack.toString()},
       );
       return {
         'success': false,
         'exists': false,
-        'error': reason,
+        'error': '아이디 확인 중 오류가 발생했습니다.',
       };
     }
   }
@@ -332,10 +331,16 @@ class AuthRepository {
       });
 
       return _parseSocialAuthResponse(response);
-    } catch (e) {
+    } catch (e, stack) {
+      await FailureLog.record(
+        code: 'auth.socialRegister',
+        mbId: '',
+        reason: e.toString(),
+        detail: {'provider': provider, 'stack': stack.toString()},
+      );
       return {
         'success': false,
-        'error': '소셜 회원가입 중 오류가 발생했습니다: $e',
+        'error': '회원가입에 실패했습니다.',
       };
     }
   }
@@ -617,17 +622,16 @@ class AuthRepository {
         ),
       };
     } catch (e, stack) {
-      final reason = '인증번호 확인 중 오류가 발생했습니다: $e';
       await FailureLog.record(
         code: 'auth.otpVerify',
         mbId: '',
-        reason: reason,
+        reason: e.toString(),
         detail: {'purpose': purpose, 'stack': stack.toString()},
       );
       return {
         'success': false,
         'transportFailure': true,
-        'error': reason,
+        'error': '인증에 실패했습니다.',
       };
     }
   }

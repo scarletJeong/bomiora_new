@@ -387,7 +387,7 @@ class _KcpCertWebViewScreenState extends State<KcpCertWebViewScreen> {
       }
 
       setState(() {
-        _errorMessage = '본인인증 준비 중 오류가 발생했습니다.\n$e';
+        _errorMessage = '본인인증 준비 중 오류가 발생했습니다.';
       });
       debugPrint('[KCP] _initializeKcpRequest: 에러 메시지 표시');
     }
