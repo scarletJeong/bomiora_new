@@ -8,6 +8,7 @@ import '../../../common/widgets/check_box.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
 import '../../../common/widgets/daum_postcode_search_dialog.dart';
+import '../../../../core/logging/failure_log.dart';
 import '../../../../data/models/address/shipping_address.dart';
 import '../../../../data/services/address_service.dart';
 import '../../../../data/services/auth_service.dart';
@@ -273,7 +274,14 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
     Map<String, dynamic>? selected;
     try {
       selected = await showDaumPostcodeSearchDialog(context);
-    } catch (_) {
+    } catch (e) {
+      if (!mounted) return;
+      final user = await AuthService.getUser();
+      await FailureLog.record(
+        code: 'address.search',
+        mbId: user?.id ?? '',
+        reason: e.toString(),
+      );
       if (!mounted) return;
       AppToastOverlay.showAlert(context, AddressService.saveFailureFallback);
       return;

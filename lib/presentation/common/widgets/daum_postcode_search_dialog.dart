@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import '../../../core/logging/failure_log.dart';
 import '../../../core/network/api_client.dart';
 import '../../../data/services/address_service.dart';
 import '../../health/health_common/health_responsive_scale.dart';
@@ -357,10 +358,15 @@ class _DaumPostcodeDialogState extends State<_DaumPostcodeDialog> {
                               }
                             } catch (_) {}
                           },
-                          onReceivedError: (_, __, ___) {
+                          onReceivedError: (_, __, error) {
                             if (!mounted || _completed || _errorMessage != null) {
                               return;
                             }
+                            FailureLog.record(
+                              code: 'address.search',
+                              mbId: '',
+                              reason: error.toString(),
+                            );
                             setState(() {
                               _errorMessage = '주소 검색 창 로딩 중 오류가 발생했습니다.';
                             });
