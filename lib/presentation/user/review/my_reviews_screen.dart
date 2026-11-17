@@ -58,12 +58,12 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
   static const Color _kPinkSoft = Color(0x19FF5A8D);
   static const Color _kSurface = Color(0xFFFFFFFF);
   static const Color _kPlaceholder = Color(0xFFE8E8E8);
-  static const Color _kBorder = Color(0x7FD2D2D2);
+  static const Color _kBorder = Color(0xFFD2D2D2);
   static const Color _kBorderSoft = Color(0x4CD2D2D2);
   static const Color _kBorderStrong = Color(0xFFD2D2D2);
   static const Color _kMuted = Color(0xFF898686);
-  static const Color _kMuted2 = Color(0xFF898383);
-  static const Color _kInk = Color(0xFF1A1A1E);
+  static const Color _kMuted2 = Color(0xFF898686);
+  static const Color _kInk = Color(0xFF1A1A1A);
 
   @override
   void initState() {

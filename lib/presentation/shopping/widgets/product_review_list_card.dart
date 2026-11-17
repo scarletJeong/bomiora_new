@@ -33,7 +33,7 @@ Widget productDetailReviewLockBadge(BuildContext context) {
 
 const _kGmarket = 'Gmarket Sans TTF';
 const _kPink = Color(0xFFFF5A8D);
-const _kTextDark = Color(0xFF1A1A1E);
+const _kTextDark = Color(0xFF1A1A1A);
 const _kMuted = Color(0xFF898686);
 
 /// 상품 상세·리뷰 목록 공통 1열 리뷰 카드 (기본 접힘, 탭 시 펼침)

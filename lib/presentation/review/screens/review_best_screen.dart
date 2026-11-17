@@ -28,9 +28,9 @@ class ReviewBestScreen extends StatefulWidget {
 
 class _ReviewBestScreenState extends State<ReviewBestScreen> {
   static const Color _pink = Color(0xFFFF5A8D);
-  static const Color _ink = Color(0xFF1A1A1E);
+  static const Color _ink = Color(0xFF1A1A1A);
   static const Color _muted = Color(0xFF898686);
-  static const Color _border = Color(0x7FD2D2D2);
+  static const Color _border = Color(0xFFD2D2D2);
   static const String _font = 'Gmarket Sans TTF';
   static const int _pageSize = 4;
 
@@ -665,7 +665,7 @@ class _BestReviewCard extends StatefulWidget {
 
 class _BestReviewCardState extends State<_BestReviewCard> {
   static const Color _pink = Color(0xFFFF5A8D);
-  static const Color _ink = Color(0xFF1A1A1E);
+  static const Color _ink = Color(0xFF1A1A1A);
   static const String _font = 'Gmarket Sans TTF';
 
   final PageController _pageController = PageController();

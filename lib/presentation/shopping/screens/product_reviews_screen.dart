@@ -124,7 +124,7 @@ class _PrescriptionReviewGuestLock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const dark = Color(0xFF1A1A1E);
+    const dark = Color(0xFF1A1A1A);
     return ColoredBox(
       color: Colors.white,
       child: Padding(
@@ -280,7 +280,7 @@ class PrescriptionReviewStatsCard extends StatelessWidget {
               fontSize: healthSp(context, 12),
               fontFamily: _kGmarket,
               fontWeight: FontWeight.w300,
-              color: const Color(0xFF1A1A1E),
+              color: const Color(0xFF1A1A1A),
             ),
           ),
         ),
@@ -315,7 +315,7 @@ class PrescriptionReviewStatsCard extends StatelessWidget {
             fontSize: healthSp(context, 12),
             fontFamily: _kGmarket,
             fontWeight: FontWeight.w300,
-            color: const Color(0xFF1A1A1E),
+            color: const Color(0xFF1A1A1A),
           ),
         ),
       ],

@@ -98,7 +98,7 @@ class _InvalidPathRedirectScreenState extends State<InvalidPathRedirectScreen>
             '잘못된 경로입니다',
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: const Color(0xFF1A1A1E),
+              color: const Color(0xFF1A1A1A),
               fontSize: healthSp(context, 16),
               fontFamily: 'Gmarket Sans TTF',
               fontWeight: FontWeight.w500,

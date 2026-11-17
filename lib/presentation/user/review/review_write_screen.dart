@@ -82,9 +82,9 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
   final _formKey = GlobalKey<FormState>();
 
   static const Color _kPink = Color(0xFFFF5A8D);
-  static const Color _kInk = Color(0xFF1A1A1E);
+  static const Color _kInk = Color(0xFF1A1A1A);
   static const Color _kMuted = Color(0xFF898686);
-  static const Color _kBorder = Color(0x7FD2D2D2);
+  static const Color _kBorder = Color(0xFFD2D2D2);
   static const String _kFont = 'Gmarket Sans TTF';
 
   double _score1 = 0;
@@ -855,7 +855,7 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
                         '수량: ${item.ctQty}${item.displayOptionText.isNotEmpty ? ' / ${item.displayOptionText}' : ''}',
                         style: TextStyle(
                           fontFamily: _kFont,
-                          color: const Color(0xFF898383),
+                          color: const Color(0xFF898686),
                           fontSize: healthSp(context, 10),
                           fontWeight: FontWeight.w500,
                           height: 1.80,
@@ -928,7 +928,7 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
             Text(
               '얼마나 감량하셨나요?',
               style: TextStyle(
-                color: const Color(0xFF1A1A1E),
+                color: const Color(0xFF1A1A1A),
                 fontFamily: _kFont,
                 fontSize: healthSp(context, 12),
                 fontWeight: FontWeight.w300,
@@ -1218,7 +1218,7 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
         _barSectionTitle(
           '상품 만족도',
           trailing: '(필수)',
-          trailingColor: const Color(0xFFEF4444),
+          trailingColor: const Color(0xFFFF5A8D),
           trailingFontBase: 10,
           gapBase: 6,
           trailingGapBase: 4,
@@ -1396,7 +1396,7 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
         _barSectionTitle(
           barTitle,
           trailing: requiredField ? '(필수)' : '(선택)',
-          trailingColor: requiredField ? const Color(0xFFEF4444) : _kMuted,
+          trailingColor: requiredField ? const Color(0xFFFF5A8D) : _kMuted,
           trailingFontBase: requiredField ? 10 : 12,
           gapBase: requiredField ? 6 : 10,
           trailingGapBase: requiredField ? 4 : 5,

@@ -73,8 +73,8 @@ class _GeneralReviewDraft {
 
 class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
   static const Color _kPink = Color(0xFFFF5A8D);
-  static const Color _kBorder = Color(0x7FD2D2D2);
-  static const Color _kInk = Color(0xFF1A1A1E);
+  static const Color _kBorder = Color(0xFFD2D2D2);
+  static const Color _kInk = Color(0xFF1A1A1A);
   static const Color _kMuted = Color(0xFF898686);
   static const String _kFont = 'Gmarket Sans TTF';
 
@@ -776,7 +776,7 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
                                 context,
                                 '상품 만족도',
                                 trailing: '(필수)',
-                                trailingColor: const Color(0xFFEF4444),
+                                trailingColor: const Color(0xFFFF5A8D),
                                 trailingSize: 10,
                                 barGap: 6,
                               ),
@@ -787,7 +787,7 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
                                 context,
                                 '상품 리뷰',
                                 trailing: '(필수)',
-                                trailingColor: const Color(0xFFEF4444),
+                                trailingColor: const Color(0xFFFF5A8D),
                                 trailingSize: 10,
                                 barGap: 6,
                               ),
@@ -1152,7 +1152,7 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
                       optionLine,
                       style: TextStyle(
                         fontFamily: _kFont,
-                        color: const Color(0xFF898383),
+                        color: const Color(0xFF898686),
                         fontSize: healthSp(context, 10),
                         fontWeight: FontWeight.w500,
                         height: 1.80,
@@ -1380,7 +1380,7 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
             _reviewBodyError!,
             style: TextStyle(
               fontFamily: _kFont,
-              color: const Color(0xFFEF4444),
+              color: const Color(0xFFFF5A8D),
               fontSize: healthSp(context, 10),
               fontWeight: FontWeight.w300,
             ),
