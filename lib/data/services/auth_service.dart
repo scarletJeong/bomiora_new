@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../models/user/user_model.dart';
+import '../../core/logging/failure_log.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_endpoints.dart';
 import '../../core/utils/node_value_parser.dart';
@@ -315,13 +316,28 @@ class AuthService {
         };
       }
 
+      final message = data['message']?.toString() ?? '프로필 수정에 실패했습니다.';
+      await FailureLog.record(
+        code: 'profile.save',
+        mbId: mbId,
+        reason: message,
+        detail: {
+          'status': response.statusCode,
+          if (data['code'] != null) 'code': data['code'].toString(),
+        },
+      );
       return {
         'success': false,
-        'message': data['message']?.toString() ?? '프로필 수정에 실패했습니다.',
+        'message': message,
         'code': data['code']?.toString(),
         'nextChangeDate': data['nextChangeDate']?.toString(),
       };
     } catch (e) {
+      await FailureLog.record(
+        code: 'profile.save',
+        mbId: mbId,
+        reason: e.toString(),
+      );
       return {
         'success': false,
         'message': '네트워크 오류가 발생했습니다.',
@@ -476,14 +492,28 @@ class AuthService {
       } catch (_) {}
 
       final ok = response.statusCode == 200 && (data['success'] == true);
+      final message = data['message']?.toString() ??
+          (ok ? '비밀번호가 변경되었습니다.' : '비밀번호 변경에 실패했습니다.');
+      if (!ok) {
+        await FailureLog.record(
+          code: 'profile.save',
+          mbId: mbId,
+          reason: message,
+          detail: {'status': response.statusCode},
+        );
+      }
       return {
         'success': ok,
-        'message': data['message']?.toString() ??
-            (ok ? '비밀번호가 변경되었습니다.' : '비밀번호 변경에 실패했습니다.'),
+        'message': message,
         'statusCode': response.statusCode,
         'data': data,
       };
     } catch (e) {
+      await FailureLog.record(
+        code: 'profile.save',
+        mbId: mbId,
+        reason: e.toString(),
+      );
       return {
         'success': false,
         'message': '네트워크 오류가 발생했습니다.',

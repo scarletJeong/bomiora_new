@@ -1,4 +1,5 @@
 import 'dart:convert';
+import '../../core/logging/failure_log.dart';
 import '../../core/network/api_client.dart';
 import '../../core/utils/node_value_parser.dart';
 import '../models/address/shipping_address.dart';
@@ -165,7 +166,12 @@ class AddressService {
       _listCache[mbId] = result;
       _listCacheAt[mbId] = DateTime.now();
       return AddressListLoad.ok(List<Map<String, dynamic>>.from(result));
-    } catch (_) {
+    } catch (e) {
+      await FailureLog.record(
+        code: 'address.list',
+        mbId: mbId,
+        reason: e.toString(),
+      );
       return AddressListLoad.failed;
     }
   }
@@ -173,18 +179,18 @@ class AddressService {
   static Future<List<Map<String, dynamic>>> _fetchAddressList(String mbId) async {
     final response = await ApiClient.get('/api/user/address?mbId=$mbId');
     if (response.statusCode != 200) {
-      throw StateError('address list failed');
+      throw StateError('배송지 조회에 실패했습니다. (${response.statusCode})');
     }
 
     final data = json.decode(response.body);
     if (data is! Map || data['success'] != true) {
-      throw StateError('address list failed');
+      throw StateError('배송지 조회에 실패했습니다.');
     }
 
     final raw = data['data'];
     if (raw == null) return [];
     if (raw is! List) {
-      throw StateError('address list failed');
+      throw StateError('배송지 조회 응답 형식이 올바르지 않습니다.');
     }
     return raw
         .map(_normalizeAddressItem)
@@ -223,9 +229,16 @@ class AddressService {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data is Map && data['success'] == false) {
+          final message = _serverReason(data) ?? '';
+          await FailureLog.record(
+            code: 'address.search',
+            mbId: '',
+            reason: message.isEmpty ? '주소 검색에 실패했습니다.' : message,
+            detail: {'query': query.trim()},
+          );
           return {
             'success': false,
-            'message': _serverReason(data) ?? '',
+            'message': message,
             'results': <Map<String, dynamic>>[],
           };
         }
@@ -244,12 +257,27 @@ class AddressService {
         };
       }
 
+      final message = _serverReason(_decodeBody(response.body)) ?? '';
+      await FailureLog.record(
+        code: 'address.search',
+        mbId: '',
+        reason: message.isEmpty
+            ? '주소 검색에 실패했습니다. (${response.statusCode})'
+            : message,
+        detail: {'query': query.trim()},
+      );
       return {
         'success': false,
-        'message': _serverReason(_decodeBody(response.body)) ?? '',
+        'message': message,
         'results': <Map<String, dynamic>>[],
       };
     } catch (e) {
+      await FailureLog.record(
+        code: 'address.search',
+        mbId: '',
+        reason: e.toString(),
+        detail: {'query': query.trim()},
+      );
       return {
         'success': false,
         'message': '',
@@ -304,12 +332,23 @@ class AddressService {
         };
       }
       final reason = _serverReason(data) ?? '';
+      final cause = reason.isEmpty ? 'status ${response.statusCode}' : reason;
+      await FailureLog.record(
+        code: 'address.save',
+        mbId: (addressData['mbId'] ?? addressData['mb_id'] ?? '').toString(),
+        reason: cause,
+      );
       return {
         'success': false,
         'message': reason,
-        'cause': reason.isEmpty ? 'status ${response.statusCode}' : reason,
+        'cause': cause,
       };
     } catch (e) {
+      await FailureLog.record(
+        code: 'address.save',
+        mbId: (addressData['mbId'] ?? addressData['mb_id'] ?? '').toString(),
+        reason: e.toString(),
+      );
       return {
         'success': false,
         'message': '',
@@ -336,11 +375,24 @@ class AddressService {
           'message': data['message'] ?? '배송지가 수정되었습니다.',
         };
       }
+      final message = _serverReason(data) ?? '';
+      await FailureLog.record(
+        code: 'address.save',
+        mbId: (addressData['mbId'] ?? addressData['mb_id'] ?? '').toString(),
+        reason: message.isEmpty
+            ? '배송지 저장에 실패했습니다. (${response.statusCode})'
+            : message,
+      );
       return {
         'success': false,
-        'message': _serverReason(data) ?? '',
+        'message': message,
       };
     } catch (e) {
+      await FailureLog.record(
+        code: 'address.save',
+        mbId: (addressData['mbId'] ?? addressData['mb_id'] ?? '').toString(),
+        reason: e.toString(),
+      );
       return {
         'success': false,
         'message': '',
@@ -363,11 +415,26 @@ class AddressService {
           'message': data['message'] ?? '배송지가 삭제되었습니다.',
         };
       }
+      final message = _serverReason(data) ?? '';
+      await FailureLog.record(
+        code: 'address.delete',
+        mbId: mbId,
+        reason: message.isEmpty
+            ? '배송지 삭제에 실패했습니다. (${response.statusCode})'
+            : message,
+        detail: {'adId': id},
+      );
       return {
         'success': false,
-        'message': _serverReason(data) ?? '',
+        'message': message,
       };
     } catch (e) {
+      await FailureLog.record(
+        code: 'address.delete',
+        mbId: mbId,
+        reason: e.toString(),
+        detail: {'adId': id},
+      );
       return {
         'success': false,
         'message': '',

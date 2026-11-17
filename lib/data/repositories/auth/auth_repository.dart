@@ -601,14 +601,42 @@ class AuthRepository {
       } catch (_) {}
 
       if (response.statusCode == 200) {
+        final ok = data['success'] == true;
+        if (!ok) {
+          await FailureLog.record(
+            code: 'auth.otpVerify',
+            mbId: '',
+            reason: _asErrorMessage(
+              data['message'] ?? data['error'],
+              fallback: '인증에 실패했습니다.',
+            ),
+            detail: {
+              'purpose': purpose,
+              if (data['code'] != null) 'code': data['code'].toString(),
+            },
+          );
+        }
         return {
-          'success': data['success'] == true,
+          'success': ok,
           'data': data,
           'code': data['code'],
           'error': null,
         };
       }
 
+      final errorMessage = _asErrorMessage(
+        data['message'] ?? data['error'],
+        fallback: '인증번호 확인에 실패했습니다. (${response.statusCode})',
+      );
+      await FailureLog.record(
+        code: 'auth.otpVerify',
+        mbId: '',
+        reason: errorMessage,
+        detail: {
+          'purpose': purpose,
+          'status': response.statusCode,
+        },
+      );
       return {
         'success': false,
         'data': data,
@@ -616,10 +644,7 @@ class AuthRepository {
         'expiresAt': data['expiresAt'],
         'tryCount': data['tryCount'],
         'remainingAttempts': data['remainingAttempts'],
-        'error': _asErrorMessage(
-          data['message'] ?? data['error'],
-          fallback: '인증번호 확인에 실패했습니다. (${response.statusCode})',
-        ),
+        'error': errorMessage,
       };
     } catch (e, stack) {
       await FailureLog.record(
