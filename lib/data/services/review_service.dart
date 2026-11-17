@@ -503,9 +503,11 @@ class ReviewService {
     required String mbId,
     int page = 0,
     int size = 20,
+    String? itName,
     bool forceRefresh = false,
   }) async {
-    final cacheKey = '${mbId.trim()}:$page:$size';
+    final name = itName?.trim() ?? '';
+    final cacheKey = '${mbId.trim()}:$page:$size:$name';
     final cachedAt = _memberListCacheAt[cacheKey];
     if (!forceRefresh &&
         cachedAt != null &&
@@ -517,7 +519,8 @@ class ReviewService {
       if (pending != null) return pending;
     }
 
-    final request = _fetchMemberReviews(mbId: mbId, page: page, size: size);
+    final request =
+        _fetchMemberReviews(mbId: mbId, page: page, size: size, itName: name);
     _memberListInFlight[cacheKey] = request;
     try {
       final result = await request;
@@ -537,9 +540,15 @@ class ReviewService {
     required String mbId,
     required int page,
     required int size,
+    String itName = '',
   }) async {
     try {
-      final queryString = 'page=$page&size=$size';
+      final params = <String>['page=$page', 'size=$size'];
+      final name = itName.trim();
+      if (name.isNotEmpty) {
+        params.add('itName=${Uri.encodeQueryComponent(name)}');
+      }
+      final queryString = params.join('&');
 
       final response = await ApiClient.get(
         '/api/user/reviews/member/$mbId?$queryString',
@@ -569,7 +578,7 @@ class ReviewService {
           'reviews': reviews,
           'currentPage': data['currentPage'] ?? 0,
           'totalPages': data['totalPages'] ?? 0,
-          'totalElements': data['totalElements'] ?? 0,
+          'totalElements': _parseInt(data['totalElements']),
           'hasNext': data['hasNext'] ?? false,
         };
       } else {

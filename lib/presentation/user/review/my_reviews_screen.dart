@@ -41,6 +41,8 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
   bool _requiresLogin = false;
   bool _loadFailed = false;
   int _currentPage = 0;
+  int _totalCount = 0;
+  int _loadSerial = 0;
   bool _hasMore = true;
   static const int _historyPageSize = 5;
   int _historyVisibleCount = _historyPageSize;
@@ -83,17 +85,16 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
 
   void _onProductNameFilterChanged() {
     if (!mounted) return;
-    setState(() {});
     _filterDebounce?.cancel();
     _filterDebounce = Timer(const Duration(milliseconds: 200), () {
       if (!mounted) return;
       final v = _productNameFilterController.text;
-      if (v == _productNameQuery) return;
+      if (v.trim() == _productNameQuery.trim()) return;
       setState(() {
         _productNameQuery = v;
         _historyVisibleCount = _historyPageSize;
-        _ensureActiveInVisible(_visibleReviews());
       });
+      _loadReviews(refresh: true);
     });
   }
 
@@ -178,12 +179,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
   }
 
   List<ReviewModel> _visibleReviews() {
-    final sorted = _sorted(_reviews);
-    final q = _productNameQuery.trim().toLowerCase();
-    if (q.isEmpty) return sorted;
-    return sorted
-        .where((r) => _productTitle(r).toLowerCase().contains(q))
-        .toList();
+    return _sorted(_reviews);
   }
 
   void _ensureActiveInVisible(List<ReviewModel> visible) {
@@ -311,18 +307,19 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
     if (_isLoading && !refresh) return;
     if (!refresh && !_hasMore) return;
 
+    final serial = ++_loadSerial;
+    final itName = _productNameQuery.trim();
     setState(() => _isLoading = true);
 
     var mbId = '';
     try {
       final user = await AuthService.getUser();
+      if (!mounted || serial != _loadSerial) return;
       if (user == null) {
-        if (mounted) {
-          setState(() {
-            _requiresLogin = true;
-            _loadFailed = false;
-          });
-        }
+        setState(() {
+          _requiresLogin = true;
+          _loadFailed = false;
+        });
         return;
       }
       mbId = user.id;
@@ -331,11 +328,14 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
         mbId: user.id,
         page: refresh ? 0 : _currentPage,
         size: 20,
+        itName: itName,
         forceRefresh: refresh,
       );
+      if (!mounted || serial != _loadSerial) return;
 
       if (result['success'] == true) {
         final newReviews = result['reviews'] as List<ReviewModel>;
+        final total = result['totalElements'];
 
         setState(() {
           _requiresLogin = false;
@@ -348,6 +348,9 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
             _reviews.addAll(newReviews);
             _currentPage++;
           }
+          _totalCount = total is int
+              ? total
+              : (total is num ? total.toInt() : _reviews.length);
           _hasMore = result['hasNext'] ?? false;
           final vis = _visibleReviews();
           _ensureActiveInVisible(vis);
@@ -364,6 +367,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
       } else {
         final message = (result['message'] as String?)?.trim();
         await _recordReviewLoadFailure(
+          serial,
           mbId,
           (message != null && message.isNotEmpty)
               ? message
@@ -371,21 +375,26 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
         );
       }
     } catch (e) {
-      await _recordReviewLoadFailure(mbId, e.toString());
+      if (!mounted || serial != _loadSerial) return;
+      await _recordReviewLoadFailure(serial, mbId, e.toString());
     } finally {
-      if (mounted) {
+      if (mounted && serial == _loadSerial) {
         setState(() => _isLoading = false);
       }
     }
   }
 
-  Future<void> _recordReviewLoadFailure(String mbId, String reason) async {
+  Future<void> _recordReviewLoadFailure(
+    int serial,
+    String mbId,
+    String reason,
+  ) async {
     await FailureLog.record(
       code: 'review.my.list',
       mbId: mbId,
       reason: reason,
     );
-    if (!mounted || _reviews.isNotEmpty) return;
+    if (!mounted || serial != _loadSerial || _reviews.isNotEmpty) return;
     setState(() => _loadFailed = true);
   }
 
@@ -1192,13 +1201,18 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
       mbId: user.id,
       page: 0,
       size: 20,
+      itName: _productNameQuery.trim(),
       forceRefresh: true,
     );
     if (!mounted || latest['success'] != true) return;
+    final total = latest['totalElements'];
     setState(() {
       _currentPage = 1;
       _reviews = List<ReviewModel>.from(latest['reviews'] as List<ReviewModel>);
       _hasMore = latest['hasNext'] == true;
+      _totalCount = total is int
+          ? total
+          : (total is num ? total.toInt() : _reviews.length);
       _requiresLogin = false;
       final vis = _visibleReviews();
       _ensureActiveInVisible(vis);
@@ -1256,7 +1270,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final visible = _visibleReviews();
+    final searching = _productNameQuery.trim().isNotEmpty;
     final collapsed = _collapsedOrdered();
     final shownHistory = collapsed.take(_historyVisibleCount).toList();
     final canLoadMoreHistory =
@@ -1303,7 +1317,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                               onRetry: () => _loadReviews(refresh: true),
                             ),
                           )
-                        : _reviews.isEmpty
+                        : _reviews.isEmpty && !searching
                             ? _buildEmpty()
                         : RefreshIndicator(
                             color: _kPink,
@@ -1321,7 +1335,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                                   ),
                                   sliver: SliverList(
                                     delegate: SliverChildListDelegate([
-                                      _buildCountAndFilterRow(visible.length),
+                                      _buildCountAndFilterRow(_totalCount),
                                       SizedBox(height: healthDp(context, 20)),
                                       if (_activeReview != null)
                                         _isPrescriptionStyle(_activeReview!)
