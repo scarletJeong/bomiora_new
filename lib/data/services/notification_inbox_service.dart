@@ -203,7 +203,7 @@ class NotificationInboxService {
           'notification_id': id,
         },
       );
-      if (!_isApiSuccess(response)) {
+      if (!_isMissingApi(response) && !_isApiSuccess(response)) {
         await FailureLog.record(
           code: 'notification.read',
           mbId: mbId,
