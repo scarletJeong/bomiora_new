@@ -1111,7 +1111,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       return ClipRRect(
           borderRadius: BorderRadius.circular(healthDp(context, 10)),
           child: Container(
+            width: slotWidth.isFinite && slotWidth > 0
+                ? slotWidth
+                : double.infinity,
             height: imageHeight,
+            alignment: Alignment.center,
             color: Colors.grey[200],
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,

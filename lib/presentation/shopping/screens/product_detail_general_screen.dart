@@ -1021,10 +1021,9 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       final emptyContainer = ClipRRect(
           borderRadius: BorderRadius.circular(healthDp(context, 10)),
           child: Container(
+            width: double.infinity,
             height: imageHeight,
-            margin: kIsWeb
-                ? EdgeInsets.symmetric(horizontal: healthDp(context, 16))
-                : null,
+            alignment: Alignment.center,
             color: Colors.grey[200],
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,

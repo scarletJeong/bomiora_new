@@ -13,6 +13,31 @@ import '../network/api_client.dart';
 /// → [ApiClient.baseUrl] origin
 class ImageUrlHelper {
   static const _cafe24CanonicalHost = 'https://bomiora0.mycafe24.com';
+  static const _imageCdnBaseUrl =
+      String.fromEnvironment('IMAGE_CDN_BASE_URL', defaultValue: '');
+  static const _productImageFormatVersion = 'webp-v1';
+
+  static String get _imageDeliveryBaseUrl {
+    final configured = _imageCdnBaseUrl.trim();
+    final base = configured.isEmpty ? ApiClient.baseUrl : configured;
+    return base.replaceFirst(RegExp(r'/+$'), '');
+  }
+
+  static String _proxyImageUrl(
+    String source, {
+    int? width,
+    bool optimizedOriginal = false,
+  }) {
+    final query = <String, String>{
+      'url': source,
+      if (width != null) 'w': '$width',
+      if (optimizedOriginal) 'format': 'webp',
+      if (optimizedOriginal) 'v': _productImageFormatVersion,
+    };
+    return Uri.parse('$_imageDeliveryBaseUrl/api/proxy/image')
+        .replace(queryParameters: query)
+        .toString();
+  }
 
   /// placehold.co 개발용 플레이스홀더 (기본 응답은 SVG → [Image.network] 디코드 실패).
   static String placeholdCo(int width, int height) {
@@ -399,13 +424,18 @@ class ImageUrlHelper {
     final uri = Uri.tryParse(absolute);
     if (uri == null || uri.host.isEmpty) return absolute;
     if (!_hostNeedsCorsProxy(uri.host)) return absolute;
-    return '${ApiClient.baseUrl}/api/proxy/image?url=${Uri.encodeComponent(absolute)}';
+    final optimizedOriginal =
+        uri.path.toLowerCase().contains('/data/item/');
+    return _proxyImageUrl(
+      absolute,
+      optimizedOriginal: optimizedOriginal,
+    );
   }
 
-  /// 상품 목록 카드. 웹은 원본 대신 가로 480px 썸네일을 받아 목록이 빨리 뜨게 한다.
+  /// 상품 카드. 상세와 같이 원본 해상도 WebP 주소를 쓴다.
   static String productGridThumbUrl(String url) {
     if (!kIsWeb) return url;
-    return contentListThumbUrl(url, width: 480);
+    return toWebSafeImageUrl(url);
   }
 
   /// 목록 썸네일. 원본이 수 MB여도 가로 [width]px jpeg로 받는다.
@@ -418,7 +448,7 @@ class ImageUrlHelper {
       final join = direct.contains('?') ? '&' : '?';
       return '$direct${join}w=$w';
     }
-    return '${ApiClient.baseUrl}/api/proxy/image?url=${Uri.encodeComponent(direct)}&w=$w';
+    return _proxyImageUrl(direct, width: w);
   }
 
   /// 프록시 쿼리를 벗긴 원본 주소.
