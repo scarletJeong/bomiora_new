@@ -490,6 +490,7 @@ Widget buildProductCarouselImage({
         alignment: Alignment.center,
         decodeWidthLogical: width,
         decodeHeightLogical: height,
+        logFetchTiming: true,
         errorBuilder: errorBuilder,
         loadingBuilder: loadingBuilder,
       ),

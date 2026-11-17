@@ -29,6 +29,7 @@ class AppNetworkImage extends StatefulWidget {
   /// 위젯이 화면에서 제거될 때 웹 이미지 캐시도 해제한다.
   /// 긴 상품 상세의 지연 목록에서 모바일 브라우저 메모리 누적을 막는 용도다.
   final bool evictOnDispose;
+  final bool logFetchTiming;
 
   const AppNetworkImage({
     super.key,
@@ -44,6 +45,7 @@ class AppNetworkImage extends StatefulWidget {
     this.onSettled,
     this.preferHtmlElementOnWeb = true,
     this.evictOnDispose = false,
+    this.logFetchTiming = false,
   });
 
   static bool _isFinitePositive(double? v) => v != null && v.isFinite && v > 0;
@@ -127,6 +129,7 @@ class ProgressiveNetworkImage extends StatelessWidget {
     this.onSettled,
     this.errorBuilder,
     this.loadingBuilder,
+    this.logFetchTiming = false,
   });
 
   final String previewUrl;
@@ -140,6 +143,7 @@ class ProgressiveNetworkImage extends StatelessWidget {
   final VoidCallback? onSettled;
   final Widget Function(BuildContext, Object, StackTrace?)? errorBuilder;
   final Widget Function(BuildContext, Widget, ImageChunkEvent?)? loadingBuilder;
+  final bool logFetchTiming;
 
   @override
   Widget build(BuildContext context) {
@@ -156,6 +160,7 @@ class ProgressiveNetworkImage extends StatelessWidget {
         onSettled: onSettled,
         errorBuilder: errorBuilder,
         loadingBuilder: loadingBuilder,
+        logFetchTiming: logFetchTiming,
       );
     }
 
@@ -173,6 +178,7 @@ class ProgressiveNetworkImage extends StatelessWidget {
             onSettled: onSettled,
             errorBuilder: errorBuilder,
             loadingBuilder: loadingBuilder,
+            logFetchTiming: logFetchTiming,
           ),
           AppNetworkImage(
             url: fullUrl,
@@ -184,6 +190,7 @@ class ProgressiveNetworkImage extends StatelessWidget {
             errorBuilder: (_, __, ___) => const SizedBox.shrink(),
             loadingBuilder: (_, child, progress) =>
                 progress == null ? child : const SizedBox.shrink(),
+            logFetchTiming: logFetchTiming,
           ),
         ],
       ),
@@ -193,18 +200,43 @@ class ProgressiveNetworkImage extends StatelessWidget {
 
 class _AppNetworkImageState extends State<AppNetworkImage> {
   bool _settled = false;
+  final Stopwatch _fetchWatch = Stopwatch();
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.logFetchTiming) _fetchWatch.start();
+  }
 
   @override
   void didUpdateWidget(covariant AppNetworkImage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.url != widget.url) {
       _settled = false;
+      if (widget.logFetchTiming) {
+        _fetchWatch
+          ..reset()
+          ..start();
+      }
     }
   }
 
-  void _markSettled() {
+  void _markSettled({bool failed = false}) {
     if (_settled) return;
     _settled = true;
+    if (widget.logFetchTiming) {
+      _fetchWatch.stop();
+      final uri = Uri.tryParse(widget.url);
+      final kind = uri?.queryParameters['w'] != null ? '미리보기' : '원본';
+      final pathSegments = uri?.pathSegments ?? const <String>[];
+      final name = uri?.queryParameters['url']?.split('/').last ??
+          (pathSegments.isNotEmpty ? pathSegments.last : null) ??
+          'image';
+      debugPrint(
+        '[상품이미지] $kind ${failed ? '실패 ' : ''}'
+        '${_fetchWatch.elapsedMilliseconds}ms $name',
+      );
+    }
     widget.onSettled?.call();
   }
 
@@ -250,7 +282,7 @@ class _AppNetworkImageState extends State<AppNetworkImage> {
         if (!kIsWeb) {
           unawaited(NetworkImage(widget.url).evict());
         }
-        _markSettled();
+        _markSettled(failed: true);
         return widget.errorBuilder?.call(context, error, stackTrace) ??
             const SizedBox.shrink();
       },

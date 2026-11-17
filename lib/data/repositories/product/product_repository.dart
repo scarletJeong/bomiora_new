@@ -51,6 +51,13 @@ class ProductRepository {
   static Product? getProductPreview(String productId) =>
       _detailCache[productId.trim()] ?? _previewCache[productId.trim()];
 
+  static void rememberProductPreviewJson(Map<String, dynamic> json) {
+    final product = Product.fromJson(json);
+    if (product.id.isNotEmpty) {
+      _previewCache[product.id] = product;
+    }
+  }
+
   // 카테고리별 상품 목록 가져오기
   static Future<List<Product>> getProductsByCategory({
     required String categoryId,

@@ -46,6 +46,7 @@ class _SplashScreenState extends State<SplashScreen> {
   static const Duration _safetyTimeout = Duration(seconds: 15);
 
   bool _showSplash = true;
+  bool _leftForLogin = false;
   Widget? _homeChild;
   final Completer<void> _aboveFoldReady = Completer<void>();
 
@@ -65,7 +66,7 @@ class _SplashScreenState extends State<SplashScreen> {
       }
     }
 
-    if (!mounted) return;
+    if (!mounted || _leftForLogin) return;
 
     // 타임아웃 등으로 홈이 아직 없으면 폴백 진입
     if (_homeChild == null) {
@@ -84,6 +85,16 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _prepareAndRevealHome() async {
+    if (widget.checkSession && await _dropSessionWithoutAutoLogin()) {
+      if (!mounted) return;
+      _leftForLogin = true;
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        '/login',
+        (route) => false,
+      );
+      return;
+    }
+
     Future<void>? sessionFuture;
     if (widget.checkSession) {
       sessionFuture = _ensureSession();
@@ -123,6 +134,15 @@ class _SplashScreenState extends State<SplashScreen> {
 
     // 홈이 마운트되어 실제 위젯 로드 콜백이 올 때까지 대기
     await _aboveFoldReady.future;
+  }
+
+  /// 자동로그인이 꺼진 저장 세션은 콜드스타트에서 지운다.
+  Future<bool> _dropSessionWithoutAutoLogin() async {
+    final loggedIn = await AuthService.isLoggedIn();
+    if (!loggedIn) return false;
+    if (await AuthService.isAutoLoginEnabled()) return false;
+    await AuthService.logout();
+    return true;
   }
 
   Future<void> _ensureSession() async {

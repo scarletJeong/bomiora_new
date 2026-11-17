@@ -8,6 +8,7 @@ import '../../../../data/models/content/content_post.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/services/wish_service.dart';
 import '../../../../data/services/content_service.dart';
+import '../../../../data/repositories/product/product_repository.dart';
 import '../../../common/widgets/app_network_image.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/app_toast_overlay.dart';
@@ -92,6 +93,13 @@ class _WishListScreenState extends State<WishListScreen> {
       .toList();
 
   void _openProductDetail(String productId, Map<String, dynamic> item) {
+    ProductRepository.rememberProductPreviewJson({
+      ...item,
+      'id': productId,
+      'name': item['product_name'] ?? item['it_name'] ?? '',
+      'price': item['product_price'] ?? item['it_price'] ?? 0,
+      'it_kind': item['product_kind'] ?? item['it_kind'],
+    });
     final route = _itKindLower(item) == 'prescription'
         ? '/product/$productId'
         : '/product-general/$productId';
@@ -551,6 +559,7 @@ class _WishListScreenState extends State<WishListScreen> {
             fit: fit,
             width: width,
             height: height,
+            logFetchTiming: true,
             loadingBuilder: (context, child, loadingProgress) {
               if (loadingProgress == null) return child;
               return ColoredBox(
