@@ -42,6 +42,7 @@ class QaService {
   static final Map<int, QaDetailPayload> _detailCache = {};
   static final Map<int, DateTime> _detailCacheAt = {};
   static final Map<int, Future<QaDetailPayload?>> _detailInFlight = {};
+  static int _detailEpoch = 0;
 
   static void invalidateListCache([String? mbId]) {
     if (mbId == null || mbId.trim().isEmpty) {
@@ -208,6 +209,10 @@ class QaService {
         return b.wrId.compareTo(a.wrId);
       });
 
+      _dropInquiryDetails([
+        ...?_listCache[mbId]?.map((item) => item.wrId),
+        ...list.map((item) => item.wrId),
+      ]);
       _listCache[mbId] = list;
       _listCacheAt[mbId] = DateTime.now();
       unawaited(_prefetchVisibleDetails(list));
@@ -237,18 +242,33 @@ class QaService {
     await Future.wait(ids.map((id) => getDetail(id).catchError((_) => null)));
   }
 
+  static void _dropInquiryDetails(Iterable<int> wrIds) {
+    _detailEpoch++;
+    for (final id in wrIds) {
+      if (id <= 0) continue;
+      _detailCache.remove(id);
+      _detailCacheAt.remove(id);
+    }
+  }
+
   /// 문의 상세 조회 (`data`에 답변 배열이 같이 올 수 있음)
-  static Future<QaDetailPayload?> getDetail(int wrId) async {
+  /// [forceRefresh]면 저장해 둔 답변을 쓰지 않고 다시 조회한다.
+  static Future<QaDetailPayload?> getDetail(
+    int wrId, {
+    bool forceRefresh = false,
+  }) async {
     try {
       if (wrId <= 0) return null;
-      final cachedAt = _detailCacheAt[wrId];
-      if (cachedAt != null &&
-          DateTime.now().difference(cachedAt) < _detailCacheTtl &&
-          _detailCache.containsKey(wrId)) {
-        return _detailCache[wrId];
+      if (!forceRefresh) {
+        final cachedAt = _detailCacheAt[wrId];
+        if (cachedAt != null &&
+            DateTime.now().difference(cachedAt) < _detailCacheTtl &&
+            _detailCache.containsKey(wrId)) {
+          return _detailCache[wrId];
+        }
+        final pending = _detailInFlight[wrId];
+        if (pending != null) return pending;
       }
-      final pending = _detailInFlight[wrId];
-      if (pending != null) return pending;
 
       final request = _fetchDetail(wrId);
       _detailInFlight[wrId] = request;
@@ -266,6 +286,7 @@ class QaService {
   }
 
   static Future<QaDetailPayload?> _fetchDetail(int wrId) async {
+    final epoch = _detailEpoch;
     final response = await ApiClient.get(
       '${ApiEndpoints.qaDetail}/$wrId',
     );
@@ -299,8 +320,10 @@ class QaService {
         fallbackReplyDatetime: _extractReplyDatetime(map),
         repliesIncluded: extracted.included,
       );
-      _detailCache[wrId] = payload;
-      _detailCacheAt[wrId] = DateTime.now();
+      if (epoch == _detailEpoch) {
+        _detailCache[wrId] = payload;
+        _detailCacheAt[wrId] = DateTime.now();
+      }
       return payload;
     }
 

@@ -56,7 +56,10 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
       _loadFailed = false;
     });
     try {
-      final payload = await QaService.getDetail(widget.wrId);
+      final payload = await QaService.getDetail(
+        widget.wrId,
+        forceRefresh: true,
+      );
       if (!mounted) return;
       if (payload != null) {
         final replyMap = <int, List<QaInquiry>>{};
