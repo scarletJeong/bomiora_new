@@ -4,14 +4,24 @@ import '../models/event/event_model.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_endpoints.dart';
 
+class EventPageResult {
+  const EventPageResult({
+    required this.items,
+    required this.total,
+    required this.hasMore,
+  });
+
+  final List<EventModel> items;
+  final int total;
+  final bool hasMore;
+}
+
 class EventService {
   static const Duration _listCacheTtl = Duration(minutes: 3);
-  static List<EventModel>? _activeCache;
-  static DateTime? _activeCacheAt;
-  static Future<List<EventModel>>? _activeInFlight;
-  static List<EventModel>? _endedCache;
-  static DateTime? _endedCacheAt;
-  static Future<List<EventModel>>? _endedInFlight;
+  static const int _pageSize = 10;
+  static final Map<String, EventPageResult> _pageCache = {};
+  static final Map<String, DateTime> _pageCacheAt = {};
+  static final Map<String, Future<EventPageResult>> _pageInFlight = {};
 
   static String _withNoCacheParam(String endpoint) {
     final ts = DateTime.now().millisecondsSinceEpoch;
@@ -23,106 +33,151 @@ class EventService {
     'Pragma': 'no-cache',
   };
 
-  static List<EventModel> _parseEventList(dynamic responseData) {
-    if (responseData is! Map) return [];
+  static EventPageResult _parseEventPage(
+    dynamic responseData, {
+    required int page,
+    required int size,
+  }) {
+    if (responseData is! Map) {
+      return const EventPageResult(items: [], total: 0, hasMore: false);
+    }
     final map = Map<String, dynamic>.from(responseData);
-    if (map['success'] != true) return [];
+    if (map['success'] != true) {
+      return const EventPageResult(items: [], total: 0, hasMore: false);
+    }
 
     final dataList = map['data'];
-    if (dataList is! List) return [];
-
     final out = <EventModel>[];
-    for (final row in dataList) {
-      if (row is! Map) continue;
-      try {
-        out.add(EventModel.fromJson(Map<String, dynamic>.from(row)));
-      } catch (_) {
-        continue;
+    if (dataList is List) {
+      for (final row in dataList) {
+        if (row is! Map) continue;
+        try {
+          out.add(EventModel.fromJson(Map<String, dynamic>.from(row)));
+        } catch (_) {
+          continue;
+        }
       }
     }
-    return out;
+    final total = int.tryParse('${map['total']}') ?? out.length;
+    final hasMore = map.containsKey('hasMore')
+        ? map['hasMore'] == true
+        : page * size < total;
+    return EventPageResult(items: out, total: total, hasMore: hasMore);
   }
 
-  /// 진행중인 이벤트 목록 조회
+  /// 홈 등에서 진행중 이벤트 첫 10건만 쓴다.
   static Future<List<EventModel>> getActiveEvents() async {
-    final cachedAt = _activeCacheAt;
-    if (_activeCache != null &&
+    final page = await getActiveEventsPage();
+    return page.items;
+  }
+
+  static Future<EventPageResult> getActiveEventsPage({
+    int page = 1,
+    int size = _pageSize,
+    bool forceRefresh = false,
+  }) {
+    return _getPage(
+      kind: 'active',
+      endpoint: ApiEndpoints.getActiveEvents,
+      page: page,
+      size: size,
+      forceRefresh: forceRefresh,
+      failureLabel: '진행중인 이벤트 목록',
+    );
+  }
+
+  /// 홈 외 호출 호환. 종료 이벤트 첫 10건.
+  static Future<List<EventModel>> getEndedEvents() async {
+    final page = await getEndedEventsPage();
+    return page.items;
+  }
+
+  static Future<EventPageResult> getEndedEventsPage({
+    int page = 1,
+    int size = _pageSize,
+    bool forceRefresh = false,
+  }) {
+    return _getPage(
+      kind: 'ended',
+      endpoint: ApiEndpoints.getEndedEvents,
+      page: page,
+      size: size,
+      forceRefresh: forceRefresh,
+      failureLabel: '종료된 이벤트 목록',
+    );
+  }
+
+  static String _pageKey(String kind, int page, int size) => '$kind:$page:$size';
+
+  static Future<EventPageResult> _getPage({
+    required String kind,
+    required String endpoint,
+    required int page,
+    required int size,
+    required bool forceRefresh,
+    required String failureLabel,
+  }) {
+    final safePage = page < 1 ? 1 : page;
+    final safeSize = size < 1 ? _pageSize : size;
+    final key = _pageKey(kind, safePage, safeSize);
+    final cachedAt = _pageCacheAt[key];
+    final cached = _pageCache[key];
+    if (!forceRefresh &&
+        cached != null &&
         cachedAt != null &&
         DateTime.now().difference(cachedAt) < _listCacheTtl) {
-      return List<EventModel>.from(_activeCache!);
+      return Future.value(cached);
     }
-    if (_activeInFlight != null) return _activeInFlight!;
+    final pending = _pageInFlight[key];
+    if (pending != null) return pending;
 
-    final request = _fetchActiveEvents();
-    _activeInFlight = request;
-    try {
-      return await request;
-    } finally {
-      if (identical(_activeInFlight, request)) _activeInFlight = null;
-    }
+    final request = _fetchPage(
+      key: key,
+      endpoint: endpoint,
+      page: safePage,
+      size: safeSize,
+      failureLabel: failureLabel,
+    );
+    _pageInFlight[key] = request;
+    return request.whenComplete(() {
+      if (identical(_pageInFlight[key], request)) _pageInFlight.remove(key);
+    });
   }
 
-  static Future<List<EventModel>> _fetchActiveEvents() async {
+  static Future<EventPageResult> _fetchPage({
+    required String key,
+    required String endpoint,
+    required int page,
+    required int size,
+    required String failureLabel,
+  }) async {
+    final path = endpoint.contains('?')
+        ? '$endpoint&page=$page&size=$size'
+        : '$endpoint?page=$page&size=$size';
     try {
-      final response = await ApiClient.get(ApiEndpoints.getActiveEvents);
+      final response = await ApiClient.get(path);
       if (response.statusCode == 304 || response.body.trim().isEmpty) {
-        return _activeCache ?? const [];
+        return _pageCache[key] ??
+            const EventPageResult(items: [], total: 0, hasMore: false);
       }
       if (response.statusCode != 200) {
-        throw Exception('진행중인 이벤트 목록 HTTP ${response.statusCode}');
+        throw Exception('$failureLabel HTTP ${response.statusCode}');
       }
       final responseData = json.decode(response.body);
       if (responseData is Map && responseData['success'] != true) {
         final message = responseData['message']?.toString().trim() ?? '';
         throw Exception(
-          message.isEmpty
-              ? '진행중인 이벤트 목록 조회에 실패했습니다.'
-              : '진행중인 이벤트 목록: $message',
+          message.isEmpty ? '$failureLabel 조회에 실패했습니다.' : '$failureLabel: $message',
         );
       }
-      final list = _parseEventList(responseData);
-      _activeCache = list;
-      _activeCacheAt = DateTime.now();
-      return List<EventModel>.from(list);
+      final result = _parseEventPage(responseData, page: page, size: size);
+      _pageCache[key] = result;
+      _pageCacheAt[key] = DateTime.now();
+      return result;
     } catch (e) {
-      if (_activeCache != null) return List<EventModel>.from(_activeCache!);
-      throw Exception('진행중인 이벤트 목록 조회 실패: $e');
-    }
-  }
-
-  /// 종료된 이벤트 목록 조회
-  static Future<List<EventModel>> getEndedEvents() async {
-    final cachedAt = _endedCacheAt;
-    if (_endedCache != null &&
-        cachedAt != null &&
-        DateTime.now().difference(cachedAt) < _listCacheTtl) {
-      return List<EventModel>.from(_endedCache!);
-    }
-    if (_endedInFlight != null) return _endedInFlight!;
-
-    final request = _fetchEndedEvents();
-    _endedInFlight = request;
-    try {
-      return await request;
-    } finally {
-      if (identical(_endedInFlight, request)) _endedInFlight = null;
-    }
-  }
-
-  static Future<List<EventModel>> _fetchEndedEvents() async {
-    try {
-      final response = await ApiClient.get(ApiEndpoints.getEndedEvents);
-      if (response.statusCode == 304 || response.body.trim().isEmpty) {
-        return _endedCache ?? const [];
-      }
-      final responseData = json.decode(response.body);
-      final list = _parseEventList(responseData);
-      _endedCache = list;
-      _endedCacheAt = DateTime.now();
-      return List<EventModel>.from(list);
-    } catch (e) {
-      if (_endedCache != null) return List<EventModel>.from(_endedCache!);
-      throw Exception('종료된 이벤트 목록 조회 실패: $e');
+      final cached = _pageCache[key];
+      if (cached != null) return cached;
+      throw Exception('$failureLabel 조회 실패: $e');
     }
   }
 

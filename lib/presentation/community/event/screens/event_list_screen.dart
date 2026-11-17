@@ -7,6 +7,7 @@ import '../../../../data/services/auth_service.dart';
 import '../../../../data/services/event_service.dart';
 import '../../../common/widgets/app_clickable.dart';
 import '../../../common/widgets/app_network_image.dart';
+import '../../../common/widgets/app_toast_overlay.dart';
 import '../../../common/widgets/centered_empty_state.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
@@ -26,12 +27,18 @@ class _EventListScreenState extends State<EventListScreen> {
   static const Color _kPink = Color(0xFFFF5A8D);
 
   int _selectedTab = 0; // 0: 진행중, 1: 종료
-  static const int _pageSize = 5;
-  int _visibleCount = _pageSize;
+  static const int _pageSize = 10;
   bool _isLoading = true;
+  bool _loadingMore = false;
   bool _loadFailed = false;
   List<EventModel> _activeEvents = [];
   List<EventModel> _endedEvents = [];
+  int _activeTotal = 0;
+  int _endedTotal = 0;
+  int _activePage = 0;
+  int _endedPage = 0;
+  bool _activeHasMore = false;
+  bool _endedHasMore = false;
 
   @override
   void initState() {
@@ -46,13 +53,27 @@ class _EventListScreenState extends State<EventListScreen> {
     });
     try {
       final result = await Future.wait([
-        EventService.getActiveEvents(),
-        EventService.getEndedEvents(),
+        EventService.getActiveEventsPage(
+          page: 1,
+          size: _pageSize,
+          forceRefresh: true,
+        ),
+        EventService.getEndedEventsPage(
+          page: 1,
+          size: _pageSize,
+          forceRefresh: true,
+        ),
       ]);
       if (!mounted) return;
       setState(() {
-        _activeEvents = result[0];
-        _endedEvents = result[1];
+        _activeEvents = result[0].items;
+        _endedEvents = result[1].items;
+        _activeTotal = result[0].total;
+        _endedTotal = result[1].total;
+        _activePage = 1;
+        _endedPage = 1;
+        _activeHasMore = result[0].hasMore;
+        _endedHasMore = result[1].hasMore;
         _isLoading = false;
       });
     } catch (e) {
@@ -70,32 +91,71 @@ class _EventListScreenState extends State<EventListScreen> {
     }
   }
 
-  List<EventModel> _mergeUniqueEvents() {
-    final byId = <int, EventModel>{};
-    for (final e in _activeEvents) {
-      byId[e.wrId] = e;
-    }
-    for (final e in _endedEvents) {
-      byId.putIfAbsent(e.wrId, () => e);
-    }
-    final list = byId.values.toList()
-      ..sort((a, b) {
-        final byOrder = a.sortOrder.compareTo(b.sortOrder);
-        if (byOrder != 0) return byOrder;
-        return a.wrId.compareTo(b.wrId);
+  Future<void> _loadMore() async {
+    if (_loadingMore || _isLoading) return;
+    final endedTab = _selectedTab == 1;
+    if (endedTab ? !_endedHasMore : !_activeHasMore) return;
+    setState(() => _loadingMore = true);
+    final nextPage = (endedTab ? _endedPage : _activePage) + 1;
+    try {
+      final page = endedTab
+          ? await EventService.getEndedEventsPage(
+              page: nextPage,
+              size: _pageSize,
+            )
+          : await EventService.getActiveEventsPage(
+              page: nextPage,
+              size: _pageSize,
+            );
+      if (!mounted) return;
+      setState(() {
+        if (endedTab) {
+          _endedEvents = _appendEvents(_endedEvents, page.items);
+          _endedTotal = page.total;
+          _endedPage = nextPage;
+          _endedHasMore = page.hasMore;
+        } else {
+          _activeEvents = _appendEvents(_activeEvents, page.items);
+          _activeTotal = page.total;
+          _activePage = nextPage;
+          _activeHasMore = page.hasMore;
+        }
+        _loadingMore = false;
       });
-    return list;
+    } catch (e) {
+      final user = await AuthService.getUser();
+      await FailureLog.record(
+        code: 'event.list.more',
+        mbId: user?.id ?? '',
+        reason: e.toString(),
+        detail: {'tab': endedTab ? 'ended' : 'active', 'page': nextPage},
+      );
+      if (!mounted) return;
+      setState(() => _loadingMore = false);
+      AppToastOverlay.showAlert(context, '이벤트를 더 불러오지 못했습니다.');
+    }
+  }
+
+  List<EventModel> _appendEvents(
+    List<EventModel> current,
+    List<EventModel> incoming,
+  ) {
+    final seen = current.map((event) => event.wrId).toSet();
+    final next = List<EventModel>.from(current);
+    for (final event in incoming) {
+      if (seen.add(event.wrId)) next.add(event);
+    }
+    return next;
   }
 
   bool _isEventEnded(EventModel e) => e.isEnded;
 
   List<EventModel> get _filteredEvents {
-    final base = _mergeUniqueEvents();
-    if (_selectedTab == 0) {
-      return base.where((e) => !_isEventEnded(e)).toList();
-    }
-    return base.where((e) => _isEventEnded(e)).toList();
+    if (_selectedTab == 0) return _activeEvents;
+    return _endedEvents;
   }
+
+  bool get _hasMore => _selectedTab == 0 ? _activeHasMore : _endedHasMore;
 
   @override
   Widget build(BuildContext context) {
@@ -141,10 +201,7 @@ class _EventListScreenState extends State<EventListScreen> {
       final color = selected ? _kPink : _kMuted;
       return Expanded(
         child: AppClickable(
-          onTap: () => setState(() {
-            _selectedTab = index;
-            _visibleCount = _pageSize;
-          }),
+          onTap: () => setState(() => _selectedTab = index),
           child: Container(
             padding: EdgeInsets.only(bottom: healthDp(context, 10)),
             decoration: BoxDecoration(
@@ -186,15 +243,11 @@ class _EventListScreenState extends State<EventListScreen> {
       );
     }
 
-    final base = _mergeUniqueEvents();
-    final activeCount = base.where((e) => !_isEventEnded(e)).length;
-    final endedCount = base.where((e) => _isEventEnded(e)).length;
-
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        tab('진행중인 이벤트', activeCount, 0),
-        tab('종료된 이벤트', endedCount, 1),
+        tab('진행중인 이벤트', _activeTotal, 0),
+        tab('종료된 이벤트', _endedTotal, 1),
       ],
     );
   }
@@ -209,18 +262,17 @@ class _EventListScreenState extends State<EventListScreen> {
       return const SizedBox.shrink();
     }
 
-    final visible = events.take(_visibleCount).toList();
-    final hasMore = events.length > visible.length;
+    final hasMore = _hasMore;
 
     return RefreshIndicator(
       onRefresh: _loadEvents,
       child: ListView.separated(
-        itemCount: visible.length + (hasMore ? 1 : 0),
+        itemCount: events.length + (hasMore ? 1 : 0),
         padding: EdgeInsets.only(bottom: healthDp(context, 20)),
         separatorBuilder: (_, __) => SizedBox(height: healthDp(context, 20)),
         itemBuilder: (context, index) {
-          if (index >= visible.length) return _buildMoreButton(context);
-          return _buildEventCard(context, visible[index]);
+          if (index >= events.length) return _buildMoreButton(context);
+          return _buildEventCard(context, events[index]);
         },
       ),
     );
@@ -246,7 +298,7 @@ class _EventListScreenState extends State<EventListScreen> {
 
   Widget _buildMoreButton(BuildContext context) {
     return AppClickable(
-      onTap: () => setState(() => _visibleCount += _pageSize),
+      onTap: _loadingMore ? null : _loadMore,
       child: Container(
         width: double.infinity,
         height: healthDp(context, 40),
