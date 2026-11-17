@@ -99,6 +99,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _settledImages = 0;
   final Stopwatch _productThumbWatch = Stopwatch();
   bool _firstProductImageLogged = false;
+  bool _detailThumbsPrefetched = false;
 
   List<Product> _mdPickProducts = const [];
   bool _mdPickLoading = true;
@@ -273,7 +274,29 @@ class _HomeScreenState extends State<HomeScreen> {
   void _notifyImagesSettled() {
     if (_imagesSettledNotified) return;
     _imagesSettledNotified = true;
+    if (!_detailThumbsPrefetched) {
+      _detailThumbsPrefetched = true;
+      unawaited(_precacheNewProductDetailThumbs());
+    }
     _markProductsReady();
+  }
+
+  Future<void> _precacheNewProductDetailThumbs() async {
+    final jobs = <Future<void>>[];
+    for (final product in _newProducts.take(4)) {
+      final raw = product.additionalInfo?['it_img10']?.toString().trim() ?? '';
+      if (raw.isEmpty) continue;
+      final normalized = ImageUrlHelper.normalizeThumbnailUrl(raw, product.id);
+      if (normalized == null || normalized.isEmpty || !mounted) continue;
+      jobs.add(
+        AppNetworkImage.precacheUrl(
+          context,
+          ImageUrlHelper.toWebSafeImageUrl(normalized),
+          decodeWidthLogical: MediaQuery.sizeOf(context).width,
+        ),
+      );
+    }
+    if (jobs.isNotEmpty) await Future.wait(jobs);
   }
 
   void _onOneImageSettled() {
@@ -619,6 +642,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ..reset()
       ..start();
     _firstProductImageLogged = false;
+    _detailThumbsPrefetched = false;
     setState(() {
       _refreshSerial++;
       _homeLoadStarted = true;

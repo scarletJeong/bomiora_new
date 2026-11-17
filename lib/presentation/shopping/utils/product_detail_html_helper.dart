@@ -5,6 +5,25 @@ import '../../../core/utils/image_url_helper.dart';
 import '../../common/widgets/app_network_image.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 
+String _productDetailImageUrl(String rawUrl) {
+  var source = ImageUrlHelper.browserImageSrc(
+    rawUrl.trim().replaceAll('&amp;', '&'),
+  );
+  final uri = Uri.tryParse(source);
+  if (uri != null &&
+      (uri.host == 'bomiora.kr' || uri.host == 'www.bomiora.kr') &&
+      uri.path.toLowerCase().startsWith('/data/editor/')) {
+    source = uri
+        .replace(scheme: 'https', host: 'bomiora0.mycafe24.com', port: null)
+        .toString();
+  }
+  return ImageUrlHelper.contentListThumbUrl(
+    source,
+    width: 1200,
+    maxWidth: 1200,
+  );
+}
+
 /// 상품 상세 HTML의 고정 width/height 제거 — 화면 너비에 맞게 표시
 String sanitizeProductDetailHtmlImages(String html) {
   var result = html;
@@ -56,7 +75,7 @@ String _rewriteHtmlImageSrc(String html) {
     (match) {
       final quote = match.group(1) ?? '"';
       final originalUrl = 'https:${match.group(2) ?? ''}';
-      return 'src=$quote${ImageUrlHelper.toWebSafeImageUrl(originalUrl)}$quote';
+      return 'src=$quote${_productDetailImageUrl(originalUrl)}$quote';
     },
   );
 
@@ -68,7 +87,7 @@ String _rewriteHtmlImageSrc(String html) {
     (match) {
       final quote = match.group(1) ?? '"';
       final originalUrl = (match.group(2) ?? '').replaceAll('&amp;', '&');
-      return 'src=$quote${ImageUrlHelper.toWebSafeImageUrl(originalUrl)}$quote';
+      return 'src=$quote${_productDetailImageUrl(originalUrl)}$quote';
     },
   );
 
@@ -80,7 +99,7 @@ String _rewriteHtmlImageSrc(String html) {
     (match) {
       final quote = match.group(1) ?? '"';
       final path = match.group(2) ?? '';
-      return 'src=$quote${ImageUrlHelper.toWebSafeImageUrl('https://bomiora0.mycafe24.com$path')}$quote';
+      return 'src=$quote${_productDetailImageUrl('https://bomiora0.mycafe24.com$path')}$quote';
     },
   );
 
@@ -166,7 +185,7 @@ Widget buildProductDetailHtml({
                     .trim()
                     .replaceAll('&amp;', '&');
                 if (rawSrc.isEmpty) return const SizedBox.shrink();
-                final url = ImageUrlHelper.toWebSafeImageUrl(rawSrc);
+                final url = _productDetailImageUrl(rawSrc);
                 return Padding(
                   padding: EdgeInsets.only(bottom: verticalGap),
                   child: AppNetworkImage(
@@ -277,7 +296,7 @@ String? _detailImageSrc(String tag) {
   ).firstMatch(tag);
   final raw = match?.group(2)?.trim().replaceAll('&amp;', '&');
   if (raw == null || raw.isEmpty) return null;
-  return ImageUrlHelper.toWebSafeImageUrl(raw);
+  return _productDetailImageUrl(raw);
 }
 
 Widget buildProductDetailBlock({
@@ -474,6 +493,7 @@ Widget buildProductCarouselImage({
   required Widget Function(BuildContext, Object, StackTrace?) errorBuilder,
   required Widget Function(BuildContext, Widget, ImageChunkEvent?)
       loadingBuilder,
+  VoidCallback? onSettled,
   BoxFit fit = BoxFit.cover,
 }) {
   return SizedBox(
@@ -490,7 +510,7 @@ Widget buildProductCarouselImage({
         alignment: Alignment.center,
         decodeWidthLogical: width,
         decodeHeightLogical: height,
-        logFetchTiming: true,
+        onSettled: onSettled,
         errorBuilder: errorBuilder,
         loadingBuilder: loadingBuilder,
       ),

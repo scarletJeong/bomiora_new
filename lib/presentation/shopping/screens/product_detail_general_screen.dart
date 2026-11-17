@@ -72,6 +72,8 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
   final ScrollController _detailScrollController = ScrollController();
   final ValueNotifier<bool> _detailExpanded = ValueNotifier(false);
   PageController? _pageController;
+  final Stopwatch _detailImageWatch = Stopwatch()..start();
+  bool _detailImageLogged = false;
 
   // 리뷰 관련 상태
   List<ReviewModel> _supporterReviews = [];
@@ -234,6 +236,15 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       );
       return;
     }
+  }
+
+  void _onDetailImageSettled() {
+    if (_detailImageLogged) return;
+    _detailImageLogged = true;
+    _detailImageWatch.stop();
+    debugPrint(
+      '[상품이미지] 상세 첫 표시 ${_detailImageWatch.elapsedMilliseconds}ms',
+    );
   }
 
   Future<void> _failProductDetail(int serial, String reason) async {
@@ -1102,6 +1113,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
                   width: slotWidth,
                   height: imageHeight,
                   fit: BoxFit.cover,
+                  onSettled: _onDetailImageSettled,
                   errorBuilder: (context, error, stackTrace) {
                     return Container(
                       color: Colors.grey[200],

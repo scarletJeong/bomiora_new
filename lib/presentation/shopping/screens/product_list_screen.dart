@@ -1,11 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_assets.dart';
 import '../../../core/logging/failure_log.dart';
+import '../../../core/utils/image_url_helper.dart';
 import '../../../data/repositories/product/product_category_catalog.dart';
 import '../../../data/repositories/product/product_repository.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/models/product/product_model.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
+import '../../common/widgets/app_network_image.dart';
 import '../../common/widgets/appbar_menutap.dart';
 import '../../health/health_common/widgets/health_app_bar.dart';
 import '../../common/widgets/app_footer.dart';
@@ -560,6 +564,19 @@ class _ProductListScreenState extends State<ProductListScreen> {
       key: ValueKey(product.id),
       product: product,
       onTap: () {
+        final raw =
+            product.additionalInfo?['it_img10']?.toString().trim() ?? '';
+        final detailImage =
+            ImageUrlHelper.normalizeThumbnailUrl(raw, product.id);
+        if (detailImage != null && detailImage.isNotEmpty) {
+          unawaited(
+            AppNetworkImage.precacheUrl(
+              context,
+              ImageUrlHelper.toWebSafeImageUrl(detailImage),
+              decodeWidthLogical: MediaQuery.sizeOf(context).width,
+            ),
+          );
+        }
         final kind = (product.productKind ?? widget.productKind ?? '')
             .trim()
             .toLowerCase();
