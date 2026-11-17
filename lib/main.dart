@@ -141,32 +141,13 @@ Route<dynamic>? _socialSignupRoute(RouteSettings settings) {
   );
 }
 
-/// `/` 와 `/home` 은 스플래시가 준비하는 같은 홈이다.
-/// 그 외 주소는 그 홈 위에 기존과 같이 쌓는다.
+/// 직접 주소로 들어온 화면만 만든다.
+/// 홈을 아래에 미리 쌓으면 공지·이벤트·콘텐츠 화면에서도 홈 API가 동시에 실행된다.
 List<Route<dynamic>> _appInitialRoutes(String initialRouteName) {
   if (_isAppHomePath(initialRouteName)) return [_livingHomeRoute()];
 
-  final uri = Uri.tryParse(initialRouteName);
-  final path = (uri?.path ?? initialRouteName).isEmpty
-      ? '/'
-      : (uri?.path ?? initialRouteName);
-  final fullName = initialRouteName.contains('?') ? initialRouteName : path;
-  final full = _routeForName(fullName);
-  if (full == null) return [_livingHomeRoute()];
-
-  final routes = <Route<dynamic>>[_livingHomeRoute()];
-  final parts = path.split('/').where((part) => part.isNotEmpty).toList();
-  var acc = '';
-  for (var i = 0; i < parts.length; i++) {
-    acc = '$acc/${parts[i]}';
-    if (i == parts.length - 1) {
-      routes.add(full);
-      break;
-    }
-    final route = _routeForName(acc);
-    if (route != null) routes.add(route);
-  }
-  return routes;
+  final route = _routeForName(initialRouteName);
+  return route == null ? [_livingHomeRoute()] : [route];
 }
 
 /// Flutter web hot restart / WebView 종료 시 엔진이 이미 dispose된

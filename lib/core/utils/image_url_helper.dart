@@ -170,6 +170,13 @@ class ImageUrlHelper {
     return convertToLocalUrl('$_cafe24EventImageBase$raw');
   }
 
+  /// 이벤트 목록 카드용. 650px 패널의 고해상도 화면까지 선명한 1200px 이미지.
+  static String eventListThumbUrl(String? path) {
+    final full = resolveEventImageUrl(path);
+    if (!kIsWeb || full.isEmpty) return full;
+    return contentListThumbUrl(full, width: 1200, maxWidth: 1200);
+  }
+
   static const _cafe24BannerImageBase =
       'https://bomiora0.mycafe24.com/data/banner/';
 
@@ -445,10 +452,14 @@ class ImageUrlHelper {
   }
 
   /// 목록 썸네일. 원본이 수 MB여도 가로 [width]px jpeg로 받는다.
-  static String contentListThumbUrl(String url, {int width = 160}) {
+  static String contentListThumbUrl(
+    String url, {
+    int width = 160,
+    int maxWidth = 480,
+  }) {
     final direct = browserImageSrc(url);
     if (direct.isEmpty) return '';
-    final w = width.clamp(32, 480);
+    final w = width.clamp(32, maxWidth);
     if (direct.contains('/api/proxy/image')) {
       if (direct.contains('w=')) return direct;
       final join = direct.contains('?') ? '&' : '?';

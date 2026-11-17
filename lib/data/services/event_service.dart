@@ -9,6 +9,9 @@ class EventService {
   static List<EventModel>? _activeCache;
   static DateTime? _activeCacheAt;
   static Future<List<EventModel>>? _activeInFlight;
+  static List<EventModel>? _endedCache;
+  static DateTime? _endedCacheAt;
+  static Future<List<EventModel>>? _endedInFlight;
 
   static String _withNoCacheParam(String endpoint) {
     final ts = DateTime.now().millisecondsSinceEpoch;
@@ -89,20 +92,36 @@ class EventService {
 
   /// 종료된 이벤트 목록 조회
   static Future<List<EventModel>> getEndedEvents() async {
-    final path = _withNoCacheParam(ApiEndpoints.getEndedEvents);
+    final cachedAt = _endedCacheAt;
+    if (_endedCache != null &&
+        cachedAt != null &&
+        DateTime.now().difference(cachedAt) < _listCacheTtl) {
+      return List<EventModel>.from(_endedCache!);
+    }
+    if (_endedInFlight != null) return _endedInFlight!;
+
+    final request = _fetchEndedEvents();
+    _endedInFlight = request;
     try {
-      final response = await ApiClient.get(
-        path,
-        additionalHeaders: _noCacheHeaders,
-      );
+      return await request;
+    } finally {
+      if (identical(_endedInFlight, request)) _endedInFlight = null;
+    }
+  }
 
+  static Future<List<EventModel>> _fetchEndedEvents() async {
+    try {
+      final response = await ApiClient.get(ApiEndpoints.getEndedEvents);
       if (response.statusCode == 304 || response.body.trim().isEmpty) {
-        return [];
+        return _endedCache ?? const [];
       }
-
       final responseData = json.decode(response.body);
-      return _parseEventList(responseData);
+      final list = _parseEventList(responseData);
+      _endedCache = list;
+      _endedCacheAt = DateTime.now();
+      return List<EventModel>.from(list);
     } catch (e) {
+      if (_endedCache != null) return List<EventModel>.from(_endedCache!);
       throw Exception('종료된 이벤트 목록 조회 실패: $e');
     }
   }

@@ -82,17 +82,14 @@ class EventModel {
   String? getImageUrl() {
     final direct = (wrLink1 ?? '').trim();
     if (direct.isNotEmpty) {
-      if (direct.startsWith('http://') || direct.startsWith('https://')) {
-        return ImageUrlHelper.convertToLocalUrl(direct);
-      }
-      return ImageUrlHelper.resolveEventImageUrl(direct);
+      return ImageUrlHelper.eventListThumbUrl(direct);
     }
 
     final regex = RegExp(r'<img[^>]+src="([^"]+)"');
     final match = regex.firstMatch(wrContent);
     if (match != null) {
       final originalUrl = match.group(1)!;
-      return ImageUrlHelper.convertToLocalUrl(originalUrl);
+      return ImageUrlHelper.eventListThumbUrl(originalUrl);
     }
     return null;
   }

@@ -50,20 +50,22 @@ class _ContentListScreenState extends State<ContentListScreen> {
   bool _isLoadingMore = false;
   bool _loadFailed = false;
   bool _loadMoreFailed = false;
-  int _imageWaitId = 0;
-  int _pendingImages = 0;
-  int _settledImages = 0;
+  int _loadId = 0;
 
   @override
   void initState() {
     super.initState();
+    _loadPosts();
     _categoriesFuture.then((categories) {
       if (!mounted) return;
+      final requestedCategory = _requestedCategoryName;
       setState(() {
         _categories = categories;
       });
       _applyRequestedCategory();
-      _loadPosts();
+      if (requestedCategory != null && _tabIndex > 0) {
+        _loadPosts();
+      }
     });
   }
 
@@ -98,15 +100,13 @@ class _ContentListScreenState extends State<ContentListScreen> {
   }
 
   Future<void> _loadPosts({bool reset = true}) async {
-    final waitId = reset ? ++_imageWaitId : _imageWaitId;
+    final loadId = reset ? ++_loadId : _loadId;
     if (reset) {
       setState(() {
         _isLoading = true;
         _isLoadingMore = false;
         _loadFailed = false;
         _loadMoreFailed = false;
-        _pendingImages = 0;
-        _settledImages = 0;
       });
     } else {
       if (_isLoadingMore || _loadFailed || _posts.length >= _totalCount) return;
@@ -127,16 +127,13 @@ class _ContentListScreenState extends State<ContentListScreen> {
       category: selectedCategory,
       query: _searchController.text,
     );
-    if (!mounted || waitId != _imageWaitId) return;
+    if (!mounted || loadId != _loadId) return;
     final applied = AppliedListLoad.merge(
       incoming: result,
       currentItems: _posts,
       currentTotal: _totalCount,
       replace: reset,
     );
-    final imageCount = reset && !result.failed
-        ? applied.items.where((item) => _imageUrlOf(item).isNotEmpty).length
-        : 0;
     setState(() {
       _posts = applied.items;
       _loadFailed = applied.showFailure && !applied.failureBelow;
@@ -146,24 +143,7 @@ class _ContentListScreenState extends State<ContentListScreen> {
         _totalCount = applied.total;
         _page = reset ? 1 : nextPage;
       }
-      if (reset && !result.failed) {
-        _pendingImages = imageCount;
-        _settledImages = 0;
-        _isLoading = imageCount > 0;
-      } else {
-        _isLoading = false;
-      }
-    });
-  }
-
-  void _onListImageSettled(int waitId) {
-    if (waitId != _imageWaitId) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || waitId != _imageWaitId || !_isLoading) return;
-      _settledImages += 1;
-      if (_settledImages >= _pendingImages) {
-        setState(() => _isLoading = false);
-      }
+      _isLoading = false;
     });
   }
 
@@ -353,7 +333,6 @@ class _ContentListScreenState extends State<ContentListScreen> {
                   child: _buildListCard(
                     context,
                     _posts[index],
-                    waitForImage: _isLoading,
                   ),
                 ),
                 childCount: _posts.length,
@@ -685,15 +664,10 @@ class _ContentListScreenState extends State<ContentListScreen> {
     );
   }
 
-  Widget _buildListCard(
-    BuildContext context,
-    ContentPost item, {
-    bool waitForImage = false,
-  }) {
+  Widget _buildListCard(BuildContext context, ContentPost item) {
     final contentId = item.id;
     final title = item.title;
     final imageUrl = _imageUrlOf(item);
-    final waitId = _imageWaitId;
     return GestureDetector(
       onTap: () {
         if (contentId == null) return;
@@ -734,9 +708,6 @@ class _ContentListScreenState extends State<ContentListScreen> {
                         width: imageW,
                         height: imageH,
                         decodeWidthLogical: imageW,
-                        onSettled: waitForImage && imageUrl.isNotEmpty
-                            ? () => _onListImageSettled(waitId)
-                            : null,
                         errorBuilder: (_, __, ___) => Container(
                           color: const Color(0xFFF2F2F2),
                           alignment: Alignment.center,
