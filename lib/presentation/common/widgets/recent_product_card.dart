@@ -1,13 +1,19 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
+import '../../../core/logging/failure_log.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../core/utils/price_formatter.dart';
 import '../../../data/models/recent/recent_view_item.dart';
+import '../../../data/services/auth_service.dart';
 import '../../health/health_common/health_responsive_scale.dart';
+import 'app_network_image.dart';
 
 /// 사이드 메뉴 등에서 쓰는 최근 본 상품 카드
 class RecentProductCard extends StatelessWidget {
   static const String _fontFamily = 'Gmarket Sans TTF';
+  static final Set<String> _loggedImageUrls = {};
 
   final RecentViewItem item;
   final VoidCallback onTap;
@@ -38,6 +44,32 @@ class RecentProductCard extends StatelessWidget {
 
   String get _imageUrl => item.imageUrl.trim();
 
+  void _logImageFailure(String url, Object error) {
+    if (!_loggedImageUrls.add(url)) return;
+    unawaited(
+      FailureLog.record(
+        code: 'menu.recent.image',
+        mbId: AuthService.currentUser?.id ?? '',
+        reason: '최근 본 상품 사진을 불러오지 못했습니다.',
+        detail: {
+          'url': url,
+          'itId': item.itId,
+          'error': error.toString(),
+        },
+      ),
+    );
+  }
+
+  Widget _imagePlaceholder(BuildContext context) {
+    return Center(
+      child: Icon(
+        Icons.image_outlined,
+        color: Colors.grey.shade500,
+        size: healthDp(context, 32),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!item.isDisplayable) return const SizedBox.shrink();
@@ -61,22 +93,26 @@ class RecentProductCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(radius),
                 child: ColoredBox(
                   color: const Color(0xFFE8E8E8),
-                  child: imageUrl.isNotEmpty
-                      ? Image.network(
-                          ImageUrlHelper.getImageUrl(imageUrl),
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                          height: double.infinity,
-                          errorBuilder: (_, __, ___) => Icon(
-                            Icons.image_outlined,
-                            color: Colors.grey.shade500,
-                            size: healthDp(context, 32),
-                          ),
-                        )
-                      : Icon(
-                          Icons.image_outlined,
-                          color: Colors.grey.shade500,
-                          size: healthDp(context, 32),
+                  child: imageUrl.isEmpty
+                      ? _imagePlaceholder(context)
+                      : LayoutBuilder(
+                          builder: (context, constraints) {
+                            final side = constraints.maxWidth;
+                            final url = ImageUrlHelper.getImageUrl(imageUrl);
+                            return AppNetworkImage(
+                              url: url,
+                              fit: BoxFit.cover,
+                              width: side,
+                              height: side,
+                              decodeWidthLogical: side,
+                              decodeHeightLogical: side,
+                              preferHtmlElementOnWeb: false,
+                              errorBuilder: (_, error, __) {
+                                _logImageFailure(url, error);
+                                return _imagePlaceholder(context);
+                              },
+                            );
+                          },
                         ),
                 ),
               ),
