@@ -16,6 +16,7 @@ class QuantityStepper extends StatelessWidget {
     this.gapBase = 10,
     this.numberWidthBase,
     this.iconBase = 10,
+    this.numberColor = _ink,
   });
 
   final int quantity;
@@ -36,6 +37,8 @@ class QuantityStepper extends StatelessWidget {
 
   /// 375 기준 +/- 아이콘 크기.
   final double iconBase;
+
+  final Color numberColor;
 
   static const Color _ink = Color(0xFF1A1A1E);
   static const Color _border = Color(0x7FD2D2D2);
@@ -68,7 +71,7 @@ class QuantityStepper extends StatelessWidget {
       '$quantity',
       textAlign: TextAlign.center,
       style: TextStyle(
-        color: _ink,
+        color: numberColor,
         fontSize: healthSp(context, 14),
         fontFamily: 'Gmarket Sans TTF',
         fontWeight: FontWeight.w500,

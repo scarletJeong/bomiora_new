@@ -70,7 +70,7 @@ class _MainLineItem {
 }
 
 TextStyle _optionLabelTextStyle(BuildContext context) => TextStyle(
-      color: const Color(0xFF1A1A1E),
+      color: const Color(0xFF1A1A1A),
       fontSize: healthSp(context, 16),
       fontFamily: _kGmarketSans,
       fontWeight: FontWeight.w500,
@@ -78,7 +78,7 @@ TextStyle _optionLabelTextStyle(BuildContext context) => TextStyle(
 
 
 TextStyle _selectedCardLabelTextStyle(BuildContext context) => TextStyle(
-      color: const Color(0xFF1A1A1E),
+      color: const Color(0xFF1A1A1A),
       fontSize: healthSp(context, 16),
       fontFamily: _kGmarketSans,
       fontWeight: FontWeight.w500,
@@ -95,7 +95,7 @@ TextStyle _selectedCardOptionTextStyle(BuildContext context) => TextStyle(
     );
 
 TextStyle _selectedCardPriceTextStyle(BuildContext context) => TextStyle(
-      color: const Color(0xFF1A1A1E),
+      color: const Color(0xFF1A1A1A),
       fontSize: healthSp(context, 16),
       fontFamily: _kGmarketSans,
       fontWeight: FontWeight.w700,
@@ -947,7 +947,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
                   Text(
                     '총 금액',
                     style: TextStyle(
-                      color: const Color(0xFF1A1A1E),
+                      color: const Color(0xFF1A1A1A),
                       fontSize: healthSp(context, 16),
                       fontFamily: _kGmarketSans,
                       fontWeight: FontWeight.w500,
@@ -976,7 +976,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
                 style: TextStyle(
                   fontSize: healthSp(context, 12),
                   fontFamily: _kGmarketSans,
-                  color: Colors.black,
+                  color: const Color(0xFF898686),
                   fontWeight: FontWeight.w300,
                   letterSpacing: healthSp(context, -1.08),
                 ),
@@ -1576,7 +1576,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
         ),
         border: Border.all(
           width: 1,
-          color: const Color(0x7FD2D2D2),
+          color: const Color(0xFFD2D2D2),
         ),
       ),
       child: Stack(
@@ -1601,6 +1601,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
                   children: [
                     QuantityStepper(
                       quantity: quantity,
+                      numberColor: const Color(0xFF1A1A1A),
                       onDecrease: quantity > 1
                           ? () => _updateMainLineQuantity(line, quantity - 1)
                           : null,
@@ -1657,7 +1658,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
         borderRadius: BorderRadius.circular(healthDp(context, 10)),
         border: Border.all(
           width: 1,
-          color: const Color(0x7FD2D2D2),
+          color: const Color(0xFFD2D2D2),
         ),
       ),
       child: Stack(
@@ -1682,6 +1683,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
                   children: [
                     QuantityStepper(
                       quantity: quantity,
+                      numberColor: const Color(0xFF1A1A1A),
                       onDecrease: quantity > 1
                           ? () => _updateOptionQuantity(option, quantity - 1)
                           : null,
@@ -1790,7 +1792,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
         ),
         border: Border.all(
           width: 1,
-          color: const Color(0x7FD2D2D2),
+          color: const Color(0xFFD2D2D2),
         ),
       ),
       child: Stack(
@@ -1814,6 +1816,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
                   children: [
                     QuantityStepper(
                       quantity: line.quantity,
+                      numberColor: const Color(0xFF1A1A1A),
                       onDecrease: line.quantity > 1
                           ? () => _updateSupplyQty(index, line.quantity - 1)
                           : null,
@@ -1865,7 +1868,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
         icon: Icon(
           _isFavorite ? Icons.favorite : Icons.favorite_border,
           size: healthDp(context, 22),
-          color: _isFavorite ? const Color(0xFFFF5A8D) : Colors.grey[600],
+          color: _isFavorite ? const Color(0xFFFF5A8D) : const Color(0xFF898686),
         ),
         onPressed: () {
           setState(() => _isFavorite = !_isFavorite);
@@ -2096,7 +2099,7 @@ class _GeneralQuantityBottomSheetState extends State<GeneralQuantityBottomSheet>
                         widget.productName,
                         softWrap: true,
                         style: TextStyle(
-                          color: const Color(0xFF1A1A1E),
+                          color: const Color(0xFF1A1A1A),
                           fontSize: healthSp(context, 16),
                           fontFamily: _kGmarketSans,
                           fontWeight: FontWeight.w500,
@@ -2107,6 +2110,7 @@ class _GeneralQuantityBottomSheetState extends State<GeneralQuantityBottomSheet>
                     SizedBox(width: healthDp(context, 14)),
                     QuantityStepper(
                       quantity: _quantity,
+                      numberColor: const Color(0xFF1A1A1A),
                       onDecrease: _quantity > 1
                           ? () => setState(() => _quantity--)
                           : null,
@@ -2143,7 +2147,7 @@ class _GeneralQuantityBottomSheetState extends State<GeneralQuantityBottomSheet>
                           Text(
                             '총 금액',
                             style: TextStyle(
-                              color: const Color(0xFF1A1A1E),
+                              color: const Color(0xFF1A1A1A),
                               fontSize: healthSp(context, 16),
                               fontFamily: _kGmarketSans,
                               fontWeight: FontWeight.w500,
@@ -2185,7 +2189,7 @@ class _GeneralQuantityBottomSheetState extends State<GeneralQuantityBottomSheet>
                             size: healthDp(context, 22),
                             color: _isFavorite
                                 ? const Color(0xFFFF5A8D)
-                                : Colors.grey[600],
+                                : const Color(0xFF898686),
                           ),
                           onPressed: () {
                             setState(() => _isFavorite = !_isFavorite);
