@@ -50,6 +50,8 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
   bool _sawDrawerOpen = false;
   List<ProductCategoryItem> _generalCategories = const [];
   List<ProductCategoryItem> _prescriptionCategories = const [];
+  bool _generalCategoriesFailed = false;
+  bool _prescriptionCategoriesFailed = false;
 
   @override
   void initState() {
@@ -91,13 +93,15 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
 
   Future<void> _loadShopCategories({bool forceRefresh = false}) async {
     final results = await Future.wait([
-      ProductCategoryCatalog.generalCategories(forceRefresh: forceRefresh),
-      ProductCategoryCatalog.prescriptionCategories(forceRefresh: forceRefresh),
+      ProductCategoryCatalog.loadGeneral(forceRefresh: forceRefresh),
+      ProductCategoryCatalog.loadPrescription(forceRefresh: forceRefresh),
     ]);
     if (!mounted) return;
     setState(() {
-      _generalCategories = results[0];
-      _prescriptionCategories = results[1];
+      _generalCategories = results[0].items;
+      _generalCategoriesFailed = results[0].failed;
+      _prescriptionCategories = results[1].items;
+      _prescriptionCategoriesFailed = results[1].failed;
     });
   }
 
@@ -158,10 +162,23 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
   }
 
   Future<void> _openPrescriptionTopCategory(BuildContext context) async {
-    final cats = await ProductCategoryCatalog.prescriptionCategories();
+    final result = await ProductCategoryCatalog.loadPrescription();
     if (!mounted) return;
-    if (cats.isEmpty) return;
-    final top = cats.first;
+    if (result.failed) {
+      setState(() {
+        _prescriptionCategories = const [];
+        _prescriptionCategoriesFailed = true;
+        _isTelemedicineExpanded = true;
+      });
+      AppToastOverlay.showAlert(context, '분류를 불러오지 못했습니다.');
+      return;
+    }
+    setState(() {
+      _prescriptionCategories = result.items;
+      _prescriptionCategoriesFailed = false;
+    });
+    if (result.items.isEmpty) return;
+    final top = result.items.first;
     _popAndPushNamed(
       context,
       '/product/',
@@ -185,11 +202,43 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
   EdgeInsets _mainMenuTitlePadding(BuildContext context) =>
       EdgeInsets.symmetric(vertical: healthDp(context, 10));
 
+  Widget _categoryLoadFailure(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        vertical: healthDp(context, 8),
+        horizontal: healthDp(context, 4),
+      ),
+      child: Text(
+        '분류를 불러오지 못했습니다.',
+        style: TextStyle(
+          color: _inkMuted,
+          fontSize: healthSp(context, 14),
+          fontFamily: _fontFamily,
+          fontWeight: FontWeight.w500,
+          letterSpacing: healthSp(context, -1.26),
+        ),
+      ),
+    );
+  }
+
   Future<void> _openHealthcareStoreTopCategory(BuildContext context) async {
-    final cats = await ProductCategoryCatalog.generalCategories();
+    final result = await ProductCategoryCatalog.loadGeneral();
     if (!mounted) return;
-    if (cats.isEmpty) return;
-    final top = cats.first;
+    if (result.failed) {
+      setState(() {
+        _generalCategories = const [];
+        _generalCategoriesFailed = true;
+        _isHealthcareStoreExpanded = true;
+      });
+      AppToastOverlay.showAlert(context, '분류를 불러오지 못했습니다.');
+      return;
+    }
+    setState(() {
+      _generalCategories = result.items;
+      _generalCategoriesFailed = false;
+    });
+    if (result.items.isEmpty) return;
+    final top = result.items.first;
     _popAndPushNamed(
       context,
       '/product-general/',
@@ -428,25 +477,27 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                             child: _ExpansionSubmenuWithRail(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  ..._prescriptionCategories.map(
-                                    (item) => _SubLink(
-                                      label:
-                                          productPrescriptionCategoryMenuLabel(
-                                        item.label,
-                                      ),
-                                      onTap: () => _popAndPushNamed(
-                                        context,
-                                        '/product/',
-                                        arguments: {
-                                          'categoryId': item.categoryId,
-                                          'categoryName': item.label,
-                                          'productKind': 'prescription',
-                                        },
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                                children: _prescriptionCategoriesFailed
+                                    ? [_categoryLoadFailure(context)]
+                                    : [
+                                        ..._prescriptionCategories.map(
+                                          (item) => _SubLink(
+                                            label:
+                                                productPrescriptionCategoryMenuLabel(
+                                              item.label,
+                                            ),
+                                            onTap: () => _popAndPushNamed(
+                                              context,
+                                              '/product/',
+                                              arguments: {
+                                                'categoryId': item.categoryId,
+                                                'categoryName': item.label,
+                                                'productKind': 'prescription',
+                                              },
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                               ),
                             ),
                           ),
@@ -498,22 +549,24 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                             child: _ExpansionSubmenuWithRail(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: _generalCategories
-                                    .map(
-                                      (item) => _SubLink(
-                                        label: item.label,
-                                        onTap: () => _popAndPushNamed(
-                                          context,
-                                          '/product-general/',
-                                          arguments: {
-                                            'categoryId': item.categoryId,
-                                            'categoryName': item.label,
-                                            'productKind': 'general',
-                                          },
-                                        ),
-                                      ),
-                                    )
-                                    .toList(),
+                                children: _generalCategoriesFailed
+                                    ? [_categoryLoadFailure(context)]
+                                    : _generalCategories
+                                        .map(
+                                          (item) => _SubLink(
+                                            label: item.label,
+                                            onTap: () => _popAndPushNamed(
+                                              context,
+                                              '/product-general/',
+                                              arguments: {
+                                                'categoryId': item.categoryId,
+                                                'categoryName': item.label,
+                                                'productKind': 'general',
+                                              },
+                                            ),
+                                          ),
+                                        )
+                                        .toList(),
                               ),
                             ),
                           ),

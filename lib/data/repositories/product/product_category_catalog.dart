@@ -9,10 +9,19 @@ class ProductCategoryCatalog {
 
   static List<ProductCategoryItem>? _generalCache;
   static List<ProductCategoryItem>? _prescriptionCache;
-  static Future<List<ProductCategoryItem>>? _generalInFlight;
-  static Future<List<ProductCategoryItem>>? _prescriptionInFlight;
+  static Future<({List<ProductCategoryItem> items, bool failed})>?
+      _generalInFlight;
+  static Future<({List<ProductCategoryItem> items, bool failed})>?
+      _prescriptionInFlight;
 
   static Future<List<ProductCategoryItem>> generalCategories({
+    bool forceRefresh = false,
+  }) async {
+    final result = await loadGeneral(forceRefresh: forceRefresh);
+    return result.items;
+  }
+
+  static Future<({List<ProductCategoryItem> items, bool failed})> loadGeneral({
     bool forceRefresh = false,
   }) {
     return _load(
@@ -27,6 +36,14 @@ class ProductCategoryCatalog {
 
   static Future<List<ProductCategoryItem>> prescriptionCategories({
     bool forceRefresh = false,
+  }) async {
+    final result = await loadPrescription(forceRefresh: forceRefresh);
+    return result.items;
+  }
+
+  static Future<({List<ProductCategoryItem> items, bool failed})>
+      loadPrescription({
+    bool forceRefresh = false,
   }) {
     return _load(
       productKind: 'prescription',
@@ -38,18 +55,22 @@ class ProductCategoryCatalog {
     );
   }
 
-  static Future<List<ProductCategoryItem>> _load({
+  static Future<({List<ProductCategoryItem> items, bool failed})> _load({
     required String productKind,
     required bool forceRefresh,
     required List<ProductCategoryItem>? Function() readCache,
     required void Function(List<ProductCategoryItem>?) writeCache,
-    required Future<List<ProductCategoryItem>>? Function() readInFlight,
-    required void Function(Future<List<ProductCategoryItem>>?) writeInFlight,
+    required Future<({List<ProductCategoryItem> items, bool failed})>?
+        Function() readInFlight,
+    required void Function(
+      Future<({List<ProductCategoryItem> items, bool failed})>?,
+    ) writeInFlight,
   }) async {
     final pending = readInFlight();
     if (pending != null) return pending;
-    if (!forceRefresh && readCache() != null) {
-      return readCache()!;
+    final cached = readCache();
+    if (!forceRefresh && cached != null) {
+      return (items: cached, failed: false);
     }
 
     final request = () async {
@@ -58,7 +79,7 @@ class ProductCategoryCatalog {
           productKind: productKind,
         );
         writeCache(fromApi);
-        return fromApi;
+        return (items: fromApi, failed: false);
       } catch (e) {
         writeCache(null);
         final user = await AuthService.getUser();
@@ -68,7 +89,10 @@ class ProductCategoryCatalog {
           reason: e.toString(),
           detail: {'productKind': productKind},
         );
-        return const <ProductCategoryItem>[];
+        return (
+          items: const <ProductCategoryItem>[],
+          failed: true,
+        );
       }
     }();
     writeInFlight(request);
