@@ -36,7 +36,7 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
 
   static const Color _inkTitle = Color(0xFF1A1A1A);
   static const Color _inkMuted = Color(0xFF898686);
-  static const Color _divider = Color(0x7FD2D2D2);
+  static const Color _divider = Color(0xFFD2D2D2);
   static const Color _brandPink = Color(0xFFFF5A8D);
 
   UserModel? _user;
@@ -170,7 +170,7 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
   }
 
   TextStyle _mainMenuTitleStyle(BuildContext context) => TextStyle(
-        color: const Color(0xFF1A1A1E),
+        color: const Color(0xFF1A1A1A),
         fontSize: healthSp(context, 14),
         fontFamily: _fontFamily,
         fontWeight: FontWeight.w500,
@@ -564,7 +564,7 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                   style: TextStyle(
                     fontSize: healthSp(context, 16),
                     fontFamily: 'Gmarket Sans TTF',
-                    color: Colors.black,
+                    color: const Color(0xFF1A1A1A),
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -669,7 +669,7 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                   style: TextStyle(
                     fontSize: healthSp(context, 16),
                     fontFamily: _fontFamily,
-                    color: Colors.black,
+                    color: const Color(0xFF1A1A1A),
                   ),
                   children: [
                     TextSpan(
@@ -1168,7 +1168,7 @@ class _MenuChevron extends StatelessWidget {
           ? Icons.keyboard_arrow_up
           : Icons.keyboard_arrow_down,
       size: size,
-      color: const Color(0xFF1A1A1E),
+      color: const Color(0xFF1A1A1A),
     );
     if (direction == _MenuChevronDirection.right) {
       icon = Transform.rotate(angle: -1.5708, child: icon);

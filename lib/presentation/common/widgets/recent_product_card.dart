@@ -112,7 +112,7 @@ class RecentProductCard extends StatelessWidget {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color: const Color(0xFF1A1A1E),
+                          color: const Color(0xFF1A1A1A),
                           fontSize: healthSp(context, 14),
                           fontFamily: _fontFamily,
                           fontWeight: FontWeight.w500,
@@ -144,7 +144,7 @@ class RecentProductCard extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color: const Color(0xFF1A1A1E),
+                          color: const Color(0xFF1A1A1A),
                           fontSize: healthSp(context, 14),
                           fontFamily: _fontFamily,
                           fontWeight: FontWeight.w700,
