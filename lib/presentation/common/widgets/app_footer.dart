@@ -10,7 +10,7 @@ class AppFooter extends StatelessWidget {
   const AppFooter({super.key});
 
   static const _bg = Color(0xFFF7F7F7);
-  static const _text = Color(0xFF676767);
+  static const _text = Color(0xFF898686);
   static const _font = 'Gmarket Sans TTF';
 
   TextStyle _rowStyle(BuildContext context, {double fontBase = 10, double height = 1.73, double letterBase = -0.50}) {
