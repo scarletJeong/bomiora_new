@@ -352,8 +352,24 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = false);
   }
 
+  String? _emptyCredentialMessage() {
+    final emailEmpty = _emailController.text.trim().isEmpty;
+    final passwordEmpty = _passwordController.text.isEmpty;
+    if (emailEmpty && passwordEmpty) {
+      return '이메일을 입력해 주세요.\n비밀번호를 입력해 주세요.';
+    }
+    if (emailEmpty) return '이메일을 입력해 주세요.';
+    if (passwordEmpty) return '비밀번호를 입력해 주세요.';
+    return null;
+  }
+
   Future<void> _handleLogin() async {
     if (_isLoading) return;
+    final emptyMessage = _emptyCredentialMessage();
+    if (emptyMessage != null) {
+      setState(() => _loginErrorText = emptyMessage);
+      return;
+    }
     if (!_formKey.currentState!.validate()) {
       return;
     }
