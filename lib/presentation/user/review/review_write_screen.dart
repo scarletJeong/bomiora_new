@@ -109,6 +109,8 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
 
   int _productIndex = 0;
   final Map<int, _PrescriptionReviewDraft> _drafts = {};
+  final Set<String> _submittedIds = {};
+  final Map<String, ReviewModel> _submittedReviews = {};
 
   List<OrderItem> get _targetProducts {
     final selected = widget.selectedProducts;
@@ -127,10 +129,10 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
 
   bool get _isMulti => !_isEditMode && _targetProducts.length > 1;
 
-  Set<String> get _reviewedIds => widget.reviewedItIds
-      .map((e) => e.trim())
-      .where((e) => e.isNotEmpty)
-      .toSet();
+  Set<String> get _reviewedIds => {
+        ...widget.reviewedItIds.map((e) => e.trim()).where((e) => e.isNotEmpty),
+        ..._submittedIds,
+      };
 
   bool _isReviewedIndex(int index) {
     if (index < 0 || index >= _targetProducts.length) return false;
@@ -156,10 +158,30 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
   ReviewModel? _existingAt(int index) {
     if (!_isReviewedIndex(index)) return null;
     final id = _targetProducts[index].itId.trim();
+    final submitted = _submittedReviews[id];
+    if (submitted != null) return submitted;
     for (final review in widget.existingReviews) {
       if (review.itId.trim() == id) return review;
     }
     return null;
+  }
+
+  void _rememberSubmitted(String itId, ReviewModel? review) {
+    final id = itId.trim();
+    if (id.isEmpty) return;
+    _submittedIds.add(id);
+    if (review != null) _submittedReviews[id] = review;
+  }
+
+  bool _isAlreadyWrittenMessage(String? message) {
+    return (message ?? '').contains('이미 해당 상품에 대한 리뷰를 작성');
+  }
+
+  void _focusFailedProduct(int index) {
+    setState(() {
+      _productIndex = index;
+      _loadDraft(index);
+    });
   }
 
   OrderItem? get _currentProduct {
@@ -1858,6 +1880,7 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
         if (paths.length !=
             imgs.where((d) => d.isServer || d.file != null).length) {
           if (mounted) {
+            _focusFailedProduct(i);
             AppToastOverlay.show(context, '${i + 1}번 상품 이미지 업로드에 실패했습니다.');
           }
           return;
@@ -1884,21 +1907,23 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
         );
         final result = await ReviewService.createReview(review);
         final created = result['review'];
-        if (created is ReviewModel && created.isId != null) {
-          createdId = created.isId;
+        final createdReview = created is ReviewModel ? created : null;
+        final message = (result['message'] as String?)?.trim();
+        if (result['success'] == true || _isAlreadyWrittenMessage(message)) {
+          _rememberSubmitted(item.itId, createdReview);
+          if (createdReview?.isId != null) createdId = createdReview!.isId;
+          continue;
         }
-        if (result['success'] != true) {
-          if (mounted) {
-            final message = (result['message'] as String?)?.trim();
-            AppToastOverlay.show(
-              context,
-              (message != null && message.isNotEmpty)
-                  ? message
-                  : '${i + 1}번 상품 리뷰 작성에 실패했습니다.',
-            );
-          }
-          return;
+        if (mounted) {
+          _focusFailedProduct(i);
+          AppToastOverlay.show(
+            context,
+            (message != null && message.isNotEmpty)
+                ? message
+                : '${i + 1}번 상품 리뷰 작성에 실패했습니다.',
+          );
         }
+        return;
       }
 
       if (!mounted) return;
