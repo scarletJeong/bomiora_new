@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
+import '../../../core/logging/failure_log.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../data/models/product/product_model.dart';
+import '../../../data/services/auth_service.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import 'app_network_image.dart';
 import 'mobile_layout_wrapper.dart';
@@ -82,6 +86,7 @@ class ProductCoverRatioImage extends StatelessWidget {
 /// 비대면 처방·일반 상품 목록 공통 카드 (2열 그리드 Figma)
 class ProductCatalogCard extends StatelessWidget {
   static const Color _brandPink = Color(0xFFFF5A8D);
+  static final Set<String> _loggedImageUrls = {};
   static const Color _textDark = Color(0xFF1A1A1E);
   static const Color _categoryMuted = Color(0xFF898686);
   static const String _gmarket = 'Gmarket Sans TTF';
@@ -229,8 +234,10 @@ class ProductCatalogCard extends StatelessWidget {
                             key: ValueKey(imageUrl),
                             url: imageUrl,
                             onSettled: onImageSettled,
-                            errorBuilder: (_, __, ___) =>
-                                _placeholder(context),
+                            errorBuilder: (_, error, __) {
+                              _logImageFailure(imageUrl, error);
+                              return _placeholder(context);
+                            },
                             loadingBuilder: (context, child, progress) {
                               if (progress == null) return child;
                               return Center(
@@ -301,6 +308,22 @@ class ProductCatalogCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _logImageFailure(String url, Object error) {
+    if (!_loggedImageUrls.add(url)) return;
+    unawaited(
+      FailureLog.record(
+        code: 'product.list.image',
+        mbId: AuthService.currentUser?.id ?? '',
+        reason: '상품 사진을 불러오지 못했습니다.',
+        detail: {
+          'url': url,
+          'itId': product.id,
+          'error': error.toString(),
+        },
       ),
     );
   }

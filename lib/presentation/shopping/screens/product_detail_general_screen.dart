@@ -238,6 +238,24 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
     }
   }
 
+  static final Set<String> _loggedDetailImageUrls = {};
+
+  void _logDetailImageFailure(String url, Object error) {
+    if (!_loggedDetailImageUrls.add(url)) return;
+    unawaited(
+      FailureLog.record(
+        code: 'product.detail.image',
+        mbId: AuthService.currentUser?.id ?? '',
+        reason: '상품 사진을 불러오지 못했습니다.',
+        detail: {
+          'url': url,
+          'itId': widget.productId,
+          'error': error.toString(),
+        },
+      ),
+    );
+  }
+
   void _onDetailImageSettled() {
     if (_detailImageLogged) return;
     _detailImageLogged = true;
@@ -1125,6 +1143,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
                   fit: BoxFit.cover,
                   onSettled: _onDetailImageSettled,
                   errorBuilder: (context, error, stackTrace) {
+                    _logDetailImageFailure(imageUrl, error);
                     return Container(
                       color: Colors.grey[200],
                       child: Column(
@@ -1139,7 +1158,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
                           Text(
                             '이미지 로드 실패',
                             style: TextStyle(
-                              color: Colors.grey[600],
+                              color: const Color(0xFF898686),
                               fontSize: healthSp(context, 14),
                             ),
                           ),
