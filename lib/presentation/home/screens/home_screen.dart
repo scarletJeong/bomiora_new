@@ -97,6 +97,8 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _imagesSettledNotified = false;
   int _pendingImages = 0;
   int _settledImages = 0;
+  final Stopwatch _productThumbWatch = Stopwatch();
+  bool _firstProductImageLogged = false;
 
   List<Product> _mdPickProducts = const [];
   bool _mdPickLoading = true;
@@ -125,6 +127,10 @@ class _HomeScreenState extends State<HomeScreen> {
   void _ensureHomeLoads() {
     if (_homeLoadStarted) return;
     _homeLoadStarted = true;
+    _productThumbWatch
+      ..reset()
+      ..start();
+    _firstProductImageLogged = false;
     _bannersFuture = widget.bannersFuture ?? BannerService.fetchMobileBanners();
     _newProductsFuture = widget.newProductsFuture ??
         ProductRepository.getNewProducts(limit: _kNewLimit);
@@ -207,6 +213,9 @@ class _HomeScreenState extends State<HomeScreen> {
       if (!mounted) return;
       final withImage =
           products.where((p) => p.displayImageUrl.trim().isNotEmpty).toList();
+      debugPrint(
+        '[상품썸네일] 상품 데이터 ${_productThumbWatch.elapsedMilliseconds}ms',
+      );
       setState(() {
         _newProducts = products;
         _newLoading = false;
@@ -268,6 +277,12 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _onOneImageSettled() {
+    if (!_firstProductImageLogged) {
+      _firstProductImageLogged = true;
+      debugPrint(
+        '[상품썸네일] 첫 이미지 표시 ${_productThumbWatch.elapsedMilliseconds}ms',
+      );
+    }
     _settledImages += 1;
     if (_settledImages >= _pendingImages) {
       _notifyImagesSettled();
@@ -600,6 +615,10 @@ class _HomeScreenState extends State<HomeScreen> {
   /// 스플래시가 넘겨 준 Future는 처음 한 번만 쓰고, 홈 버튼은 새로 받는다.
   void _reloadHome() {
     _tabsRequestToken++;
+    _productThumbWatch
+      ..reset()
+      ..start();
+    _firstProductImageLogged = false;
     setState(() {
       _refreshSerial++;
       _homeLoadStarted = true;

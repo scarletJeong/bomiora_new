@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../../core/constants/app_assets.dart';
 import '../../../core/logging/failure_log.dart';
 import '../../common/widgets/app_alert_dialog.dart';
+import '../../common/widgets/app_network_image.dart';
 import '../../common/widgets/load_failure_notice.dart';
 import '../../common/widgets/web_dragscroll.dart';
 import '../../../data/models/cart/cart_item_model.dart';
@@ -171,6 +174,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
         await _failProductDetail(serial, '상품을 찾지 못했습니다.');
         return;
       }
+      _precacheFirstDetailImage(product);
       _safeSetState(() {
         _product = product;
         _isLoading = false;
@@ -199,6 +203,21 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     } catch (e) {
       if (!mounted || serial != _detailLoadSerial) return;
       await _failProductDetail(serial, e.toString());
+    }
+  }
+
+  void _precacheFirstDetailImage(Product product) {
+    for (final key in const ['it_img10', 'it_img9']) {
+      final url = _itemThumbUrl(product.additionalInfo?[key]?.toString());
+      if (url == null) continue;
+      unawaited(
+        AppNetworkImage.precacheUrl(
+          context,
+          ImageUrlHelper.toWebSafeImageUrl(url),
+          decodeWidthLogical: MediaQuery.sizeOf(context).width,
+        ),
+      );
+      return;
     }
   }
 
