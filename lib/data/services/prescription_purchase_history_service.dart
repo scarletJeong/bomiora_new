@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../core/logging/failure_log.dart';
 import '../../core/network/api_client.dart';
 import '../models/delivery/delivery_model.dart';
 import 'auth_service.dart';
@@ -59,21 +60,28 @@ class PrescriptionPurchaseHistoryService {
 
   /// 통합 장바구니를 쓸지 여부.
   /// 비로그인이면 항상 false (드롭다운).
+  /// 확인에 실패하면 false. 실패는 [checkIntegratedCart]에서 로그를 남긴다.
   static Future<bool> shouldUseIntegratedCart() async {
+    final check = await checkIntegratedCart();
+    return check.ok && check.useIntegrated;
+  }
+
+  /// 비대면 구매 이력 확인. 실패하면 [ok]가 false이며 통합 장바구니로 보낸 것으로 보지 않는다.
+  static Future<({bool ok, bool useIntegrated})> checkIntegratedCart() async {
     final user = await AuthService.getUser();
     if (user == null || user.id.trim().isEmpty) {
-      return false;
+      return (ok: true, useIntegrated: false);
     }
 
     final mbId = user.id.trim();
     final prefs = await SharedPreferences.getInstance();
     if (prefs.getBool(_cacheKey(mbId)) == true) {
-      return true;
+      return (ok: true, useIntegrated: true);
     }
     final negativeAt = _negativeCacheAt[mbId];
     if (negativeAt != null &&
         DateTime.now().difference(negativeAt) < _negativeCacheTtl) {
-      return false;
+      return (ok: true, useIntegrated: false);
     }
 
     try {
@@ -88,7 +96,7 @@ class PrescriptionPurchaseHistoryService {
         } else {
           _negativeCacheAt[mbId] = DateTime.now();
         }
-        return hasHistory;
+        return (ok: true, useIntegrated: hasHistory);
       }
 
       // 구버전 서버 배포 중에는 기존 목록 방식으로 호환합니다.
@@ -101,12 +109,19 @@ class PrescriptionPurchaseHistoryService {
       );
 
       if (result['success'] != true) {
-        return false;
+        await _logHistoryFailure(
+          mbId,
+          result['message']?.toString().trim().isNotEmpty == true
+              ? result['message'].toString()
+              : '비대면 구매 이력을 확인하지 못했습니다.',
+        );
+        return (ok: false, useIntegrated: false);
       }
 
       final ordersList = result['orders'];
       if (ordersList is! List) {
-        return false;
+        await _logHistoryFailure(mbId, '비대면 구매 이력 응답이 올바르지 않습니다.');
+        return (ok: false, useIntegrated: false);
       }
 
       for (final raw in ordersList) {
@@ -119,14 +134,23 @@ class PrescriptionPurchaseHistoryService {
         if (order == null) continue;
         if (order.isPrescriptionOrder && isShippedOrCompleted(order)) {
           await markHasHistory(mbId);
-          return true;
+          return (ok: true, useIntegrated: true);
         }
       }
-    } catch (_) {
-      return false;
+    } catch (e) {
+      await _logHistoryFailure(mbId, e.toString());
+      return (ok: false, useIntegrated: false);
     }
 
     _negativeCacheAt[mbId] = DateTime.now();
-    return false;
+    return (ok: true, useIntegrated: false);
+  }
+
+  static Future<void> _logHistoryFailure(String mbId, String reason) {
+    return FailureLog.record(
+      code: 'menu.cart.history',
+      mbId: mbId,
+      reason: reason,
+    );
   }
 }
