@@ -26,10 +26,10 @@ abstract final class HealthProfileFormCommon {
     if (bmi < 30) return ('비만', bmiObese);
     return ('고도비만', bmiSevere);
   }
-  static const Color border = Color(0x7FD2D2D2);
-  static const Color ink = Color(0xFF1A1A1E);
+  static const Color border = Color(0xFFD2D2D2);
+  static const Color ink = Color(0xFF1A1A1A);
   static const Color muted = Color(0xFF898686);
-  static const Color hint = Color(0xFF898383);
+  static const Color hint = Color(0xFF898686);
   static const Color fieldFill = Color(0xFFF8FAFC);
   static const String font = 'Gmarket Sans TTF';
 

@@ -309,7 +309,7 @@ class HealthProfileWizardHero extends StatelessWidget {
                 TextSpan(
                   text: '$step',
                   style: TextStyle(
-                    color: const Color(0xFF0F172A),
+                    color: const Color(0xFF1A1A1A),
                     fontSize: healthSp(context, 14),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w500,
@@ -337,7 +337,7 @@ class HealthProfileWizardHero extends StatelessWidget {
               TextSpan(
                 text: name,
                 style: TextStyle(
-                  color: const Color(0xFF0F172A),
+                  color: const Color(0xFF1A1A1A),
                   fontSize: healthSp(context, 22),
                   fontFamily: 'Gmarket Sans TTF',
                   fontWeight: FontWeight.w500,
@@ -347,7 +347,7 @@ class HealthProfileWizardHero extends StatelessWidget {
               TextSpan(
                 text: prefix,
                 style: TextStyle(
-                  color: const Color(0xFF0F172A),
+                  color: const Color(0xFF1A1A1A),
                   fontSize: healthSp(context, 22),
                   fontFamily: 'Gmarket Sans TTF',
                   fontWeight: FontWeight.w300,
@@ -357,7 +357,7 @@ class HealthProfileWizardHero extends StatelessWidget {
               TextSpan(
                 text: emphasis,
                 style: TextStyle(
-                  color: const Color(0xFF0F172A),
+                  color: const Color(0xFF1A1A1A),
                   fontSize: healthSp(context, 22),
                   fontFamily: 'Gmarket Sans TTF',
                   fontWeight: FontWeight.w500,
@@ -367,7 +367,7 @@ class HealthProfileWizardHero extends StatelessWidget {
               TextSpan(
                 text: suffix,
                 style: TextStyle(
-                  color: const Color(0xFF0F172A),
+                  color: const Color(0xFF1A1A1A),
                   fontSize: healthSp(context, 22),
                   fontFamily: 'Gmarket Sans TTF',
                   fontWeight: FontWeight.w300,
@@ -415,7 +415,7 @@ class HealthProfileWizardBottomBar extends StatelessWidget {
                 padding: EdgeInsets.zero,
                 side: BorderSide(
                     width: healthDp(context, 1),
-                    color: const Color(0x7FD2D2D2)),
+                    color: const Color(0xFFD2D2D2)),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(healthDp(context, 8)),
                 ),
@@ -575,7 +575,7 @@ class HealthProfileOptionChip extends StatelessWidget {
       maxLines: 1,
       softWrap: false,
       style: TextStyle(
-        color: selected ? const Color(0xFF1A1A1E) : const Color(0xFF898383),
+        color: selected ? const Color(0xFF1A1A1A) : const Color(0xFF898686),
         fontSize: healthSp(context, 14),
         fontFamily: 'Gmarket Sans TTF',
         fontWeight: FontWeight.w500,
@@ -831,7 +831,7 @@ class HealthProfileQuestionBlock extends StatelessWidget {
                 Text(
                   question.question,
                   style: TextStyle(
-                    color: const Color(0xFF1A1A1E),
+                    color: const Color(0xFF1A1A1A),
                     fontSize: healthSp(context, 14),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w500,
@@ -856,7 +856,7 @@ class HealthProfileQuestionBlock extends StatelessWidget {
                 Text(
                   '식사시간',
                   style: TextStyle(
-                    color: const Color(0xFF1A1A1E),
+                    color: const Color(0xFF1A1A1A),
                     fontSize: healthSp(context, 14),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w500,
@@ -1003,7 +1003,7 @@ class HealthProfileOtherExerciseCard extends StatelessWidget {
                 child: Text(
                   '기타 운동',
                   style: TextStyle(
-                    color: const Color(0xFF1A1A1E),
+                    color: const Color(0xFF1A1A1A),
                     fontSize: healthSp(context, 14),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w500,
@@ -1101,7 +1101,7 @@ class HealthProfileOtherExerciseCard extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              color: const Color(0xFF1A1A1E),
+              color: const Color(0xFF1A1A1A),
               fontSize: healthSp(context, 14),
               fontFamily: 'Gmarket Sans TTF',
               fontWeight: FontWeight.w500,
@@ -1135,7 +1135,7 @@ class HealthProfileOtherExerciseCard extends StatelessWidget {
         onSubmitted: (_) => session.commitExerciseOtherDraft(),
         onChanged: (_) => session.touch(),
         style: TextStyle(
-          color: const Color(0xFF1A1A1E),
+          color: const Color(0xFF1A1A1A),
           fontSize: healthSp(context, 14),
           fontFamily: 'Gmarket Sans TTF',
           fontWeight: FontWeight.w500,
@@ -1205,7 +1205,7 @@ class HealthProfileOtherMedicationCard extends StatelessWidget {
                 child: Text(
                   '기타 약 정보',
                   style: TextStyle(
-                    color: const Color(0xFF1A1A1E),
+                    color: const Color(0xFF1A1A1A),
                     fontSize: healthSp(context, 14),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w500,
@@ -1303,7 +1303,7 @@ class HealthProfileOtherMedicationCard extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              color: const Color(0xFF1A1A1E),
+              color: const Color(0xFF1A1A1A),
               fontSize: healthSp(context, 14),
               fontFamily: 'Gmarket Sans TTF',
               fontWeight: FontWeight.w500,
@@ -1340,7 +1340,7 @@ class HealthProfileOtherMedicationCard extends StatelessWidget {
           session.touch();
         },
         style: TextStyle(
-          color: const Color(0xFF1A1A1E),
+          color: const Color(0xFF1A1A1A),
           fontSize: healthSp(context, 14),
           fontFamily: 'Gmarket Sans TTF',
           fontWeight: FontWeight.w500,

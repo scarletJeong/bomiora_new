@@ -45,9 +45,9 @@ class HealthProfileListScreen extends StatefulWidget {
 
 class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
   static const Color _kPink = Color(0xFFFF5A8D);
-  static const Color _kInk = Color(0xFF1A1A1E);
+  static const Color _kInk = Color(0xFF1A1A1A);
   static const Color _kMuted = Color(0xFF898686);
-  static const Color _kBorderSoft = Color(0x7FD2D2D2);
+  static const Color _kBorderSoft = Color(0xFFD2D2D2);
   static const Color _kCardBorder = Color(0xFFF1F5F9);
   static const Color _kChipBg = Color(0xFFFAFAFA);
   static const String _kFont = 'Gmarket Sans TTF';
@@ -601,7 +601,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
                       child: _weightStatCell(
                         label: '현재 체중',
                         value: weight != null ? _trimNum(weight) : '-',
-                        valueColor: Colors.black,
+                        valueColor: _kInk,
                       ),
                     ),
                     Container(
@@ -630,7 +630,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
                       child: _weightStatCell(
                         label: '목표 체중',
                         value: goalWeight != null ? _trimNum(goalWeight) : '-',
-                        valueColor: Colors.black,
+                        valueColor: _kInk,
                       ),
                     ),
                   ],
@@ -886,7 +886,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
                     shape: RoundedRectangleBorder(
                       side: BorderSide(
                         width: healthDp(context, 1),
-                        color: const Color(0x7FD2D2D2),
+                        color: const Color(0xFFD2D2D2),
                       ),
                       borderRadius: BorderRadius.circular(healthDp(context, 8)),
                     ),

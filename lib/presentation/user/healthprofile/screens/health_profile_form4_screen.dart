@@ -261,7 +261,7 @@ class _HealthProfileForm4State extends State<HealthProfileForm4Screen> {
                       fontWeight: FontWeight.w500,
                       color: isNo
                           ? const Color(0xFF1A1A1A)
-                          : const Color(0xFF898383),
+                          : const Color(0xFF898686),
                     ),
                   ),
                 ),
@@ -305,7 +305,7 @@ class _HealthProfileForm4State extends State<HealthProfileForm4Screen> {
                 child: Text(
                   '다이어트약 상세 정보',
                   style: TextStyle(
-                    color: const Color(0xFF1A1A1E),
+                    color: const Color(0xFF1A1A1A),
                     fontSize: healthSp(context, 14),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w500,
@@ -396,7 +396,7 @@ class _HealthProfileForm4State extends State<HealthProfileForm4Screen> {
             controller: _dietCtrls[id],
             textAlignVertical: TextAlignVertical.center,
             style: TextStyle(
-              color: const Color(0xFF1A1A1E),
+              color: const Color(0xFF1A1A1A),
               fontSize: healthSp(context, 14),
               fontFamily: 'Gmarket Sans TTF',
               fontWeight: FontWeight.w500,

@@ -260,7 +260,7 @@ class _HealthProfileForm2State extends State<HealthProfileForm2Screen> {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color:
-                      empty ? const Color(0xFF898686) : const Color(0xFF1A1A1E),
+                      empty ? const Color(0xFF898686) : const Color(0xFF1A1A1A),
                   fontSize: healthSp(context, 14),
                   fontFamily: 'Gmarket Sans TTF',
                   fontWeight: FontWeight.w500,

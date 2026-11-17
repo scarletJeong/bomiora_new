@@ -275,7 +275,7 @@ class _HealthProfileForm1State extends State<HealthProfileForm1Screen> {
           Text(
             'BMI 상태 안내',
             style: TextStyle(
-              color: const Color(0xFF1A1A1E),
+              color: const Color(0xFF1A1A1A),
               fontSize: healthSp(context, 14),
               fontFamily: 'Gmarket Sans TTF',
               fontWeight: FontWeight.w500,
@@ -508,7 +508,7 @@ class _HealthProfileForm1State extends State<HealthProfileForm1Screen> {
                         TextSpan(
                           text: ' ',
                           style: TextStyle(
-                            color: Colors.black,
+                            color: const Color(0xFF1A1A1A),
                             fontSize: healthSp(context, 12),
                             fontFamily: 'Gmarket Sans TTF',
                             fontWeight: FontWeight.w500,
@@ -517,7 +517,7 @@ class _HealthProfileForm1State extends State<HealthProfileForm1Screen> {
                         TextSpan(
                           text: bmi.toStringAsFixed(1),
                           style: TextStyle(
-                            color: const Color(0xFF1A1A1E),
+                            color: const Color(0xFF1A1A1A),
                             fontSize: healthSp(context, 12),
                             fontFamily: 'Gmarket Sans TTF',
                             fontWeight: FontWeight.w700,
@@ -530,7 +530,7 @@ class _HealthProfileForm1State extends State<HealthProfileForm1Screen> {
                   Container(
                     width: healthDp(context, 1),
                     height: healthDp(context, 14),
-                    color: const Color(0x7FD2D2D2),
+                    color: const Color(0xFFD2D2D2),
                   ),
                   SizedBox(width: healthDp(context, 4)),
                   Container(
@@ -747,7 +747,7 @@ class _HealthProfileForm1State extends State<HealthProfileForm1Screen> {
         child: Text(
           label,
           style: TextStyle(
-            color: selected ? const Color(0xFF1A1A1E) : const Color(0xFF898383),
+            color: selected ? const Color(0xFF1A1A1A) : const Color(0xFF898686),
             fontSize: healthSp(context, 14),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w500,
@@ -916,9 +916,7 @@ class _HealthProfileForm1State extends State<HealthProfileForm1Screen> {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: forcePinkBorder || showTransient
-                          ? HealthProfileFormCommon.pink
-                          : Theme.of(context).colorScheme.error,
+                      color: HealthProfileFormCommon.pink,
                       fontSize: healthSp(context, 10),
                       fontFamily: 'Gmarket Sans TTF',
                       height: 1.0,
@@ -994,7 +992,7 @@ class _HealthProfileForm1State extends State<HealthProfileForm1Screen> {
                         style: TextStyle(
                           color: selected == null
                               ? const Color(0xFF898686)
-                              : const Color(0xFF1A1A1E),
+                              : const Color(0xFF1A1A1A),
                           fontSize: healthSp(context, 14),
                           fontFamily: 'Gmarket Sans TTF',
                           fontWeight: selected == null
@@ -1009,7 +1007,7 @@ class _HealthProfileForm1State extends State<HealthProfileForm1Screen> {
                       child: Icon(
                         Icons.chevron_right,
                         size: healthDp(context, 18),
-                        color: Colors.black87,
+                        color: const Color(0xFF1A1A1A),
                       ),
                     ),
                   ],
@@ -1025,7 +1023,7 @@ class _HealthProfileForm1State extends State<HealthProfileForm1Screen> {
                 child: Text(
                   state.errorText ?? '',
                   style: TextStyle(
-                    color: Theme.of(context).colorScheme.error,
+                    color: HealthProfileFormCommon.pink,
                     fontSize: healthSp(context, 12),
                     fontFamily: 'Gmarket Sans TTF',
                   ),
@@ -1093,7 +1091,7 @@ class _HealthProfileForm1State extends State<HealthProfileForm1Screen> {
                   itemCount: options.length,
                   separatorBuilder: (_, __) => Divider(
                     height: healthDp(ctx, 1),
-                    color: const Color(0x7FD2D2D2),
+                    color: const Color(0xFFD2D2D2),
                   ),
                   itemBuilder: (_, i) {
                     final opt = options[i];
@@ -1162,7 +1160,7 @@ class _Answer6OptionTileState extends State<_Answer6OptionTile> {
                   shape: RoundedRectangleBorder(
                     side: BorderSide(
                       width: 0.30,
-                      color: Color(0x7FD2D2D2),
+                      color: Color(0xFFD2D2D2),
                     ),
                   ),
                 )
@@ -1171,7 +1169,7 @@ class _Answer6OptionTileState extends State<_Answer6OptionTile> {
             widget.label,
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: const Color(0xFF1A1A1E),
+              color: const Color(0xFF1A1A1A),
               fontSize: widget.fontSize,
               fontFamily: 'Gmarket Sans TTF',
               fontWeight: widget.selected ? FontWeight.w500 : FontWeight.w300,
