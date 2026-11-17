@@ -796,6 +796,12 @@ class _HealthProfileForm1State extends State<HealthProfileForm1Screen> {
       validator: (v) {
         final s = (v ?? '').trim();
         if (s.isEmpty) return requiredMsg;
+        if (questionId == 'answer_3' ||
+            questionId == 'answer_4' ||
+            questionId == 'answer_5') {
+          final range = HealthProfileFormSession.measureRangeError(s);
+          if (range != null) return range;
+        }
         if (questionId == 'answer_3' && session.isGoalWeightTooHigh()) {
           return '현재 체중보다 낮게만 입력해주세요';
         }
@@ -803,9 +809,16 @@ class _HealthProfileForm1State extends State<HealthProfileForm1Screen> {
       },
       onSaved: (v) => session.formData[questionId] = (v ?? '').trim(),
       builder: (state) {
-        final showTransient =
-            transientErrorText != null && transientErrorText.isNotEmpty;
-        final showFormError = state.hasError && !showTransient;
+        final rangeError = (questionId == 'answer_3' ||
+                questionId == 'answer_4' ||
+                questionId == 'answer_5')
+            ? HealthProfileFormSession.measureRangeError(state.value)
+            : null;
+        final showTransient = rangeError == null &&
+            transientErrorText != null &&
+            transientErrorText.isNotEmpty;
+        final showFormError =
+            rangeError == null && state.hasError && !showTransient;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -816,9 +829,10 @@ class _HealthProfileForm1State extends State<HealthProfileForm1Screen> {
                   child: Builder(
                     builder: (context) {
                       final focused = Focus.of(context).hasFocus;
-                      final borderColor = forcePinkBorder || focused
-                          ? HealthProfileFormCommon.pink
-                          : HealthProfileFormCommon.border;
+                      final borderColor =
+                          forcePinkBorder || focused || rangeError != null
+                              ? HealthProfileFormCommon.pink
+                              : HealthProfileFormCommon.border;
                       return Container(
                         height: _figmaLabeledControlHeight(context),
                         alignment: Alignment.centerLeft,
@@ -903,16 +917,17 @@ class _HealthProfileForm1State extends State<HealthProfileForm1Screen> {
                 );
               },
             ),
-            if (showTransient || showFormError) ...[
+            if (rangeError != null || showTransient || showFormError) ...[
               SizedBox(height: healthDp(context, 4)),
               SizedBox(
                 height: healthDp(context, 14),
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    showTransient
-                        ? transientErrorText
-                        : (state.errorText ?? ''),
+                    rangeError ??
+                        (showTransient
+                            ? transientErrorText
+                            : (state.errorText ?? '')),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(

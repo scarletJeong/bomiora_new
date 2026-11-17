@@ -618,6 +618,18 @@ class HealthProfileFormSession extends ChangeNotifier {
     });
   }
 
+  static const double bodyMeasureMax = 350;
+
+  /// 키·현재 체중·목표 체중. 비어 있으면 null. 0 이하와 350 초과는 저장하지 않는다.
+  static String? measureRangeError(String? raw) {
+    final text = (raw ?? '').replaceAll(',', '').trim();
+    if (text.isEmpty) return null;
+    final value = double.tryParse(text);
+    if (value == null || value <= 0) return '0보다 큰 값을 입력해주세요';
+    if (value > bodyMeasureMax) return '350 이하로 입력해주세요';
+    return null;
+  }
+
   bool isGoalWeightTooHigh() {
     final current = double.tryParse(
       (formData['answer_5']?.toString() ?? '').replaceAll(',', ''),
@@ -906,6 +918,24 @@ class HealthProfileFormSession extends ChangeNotifier {
       if (!_nonEmptyString(formData['answer_4'])) return false;
       if (!_nonEmptyString(formData['answer_5'])) return false;
       if (!_nonEmptyString(formData['answer_3'])) return false;
+      if (HealthProfileFormSession.measureRangeError(
+            formData['answer_4']?.toString(),
+          ) !=
+          null) {
+        return false;
+      }
+      if (HealthProfileFormSession.measureRangeError(
+            formData['answer_5']?.toString(),
+          ) !=
+          null) {
+        return false;
+      }
+      if (HealthProfileFormSession.measureRangeError(
+            formData['answer_3']?.toString(),
+          ) !=
+          null) {
+        return false;
+      }
       if (isGoalWeightTooHigh()) return false;
       if (!_nonEmptyString(formData['answer_6'])) return false;
       return true;
