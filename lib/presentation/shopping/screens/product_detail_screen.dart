@@ -22,6 +22,7 @@ import '../../../data/models/user/user_model.dart';
 import '../../../data/models/product/product_option_model.dart';
 import '../../../data/repositories/product/product_option_repository.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
+import '../../common/widgets/product_card.dart';
 import '../../common/widgets/navi_bar.dart';
 import '../../home/home_refresh.dart';
 import '../../common/widgets/app_toast_overlay.dart';
@@ -579,32 +580,23 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     }
   }
 
+  String? _itemThumbUrl(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return null;
+    final normalized = ImageUrlHelper.normalizeThumbnailUrl(raw, _product!.id);
+    if (!ImageUrlHelper.isShopItemImage(raw, normalized)) return null;
+    return normalized;
+  }
+
   List<String> _getProductImages() {
     if (_product == null) return [];
     final images = <String>[];
-
-    // 1. 메인 썸네일 이미지
-    if (_product!.imageUrl != null && _product!.imageUrl!.isNotEmpty) {
-      images.add(_product!.imageUrl!);
-    }
-
-    // 2. additionalInfo에서 썸네일 이미지(it_img1~it_img9)만 가져오기
-    //    - 썸네일은 /data/item/ 경로만 허용
-    //    - /data/editor/ (상세 본문 이미지)는 여기서 제외
-    if (_product!.additionalInfo != null) {
-      for (int i = 1; i <= 9; i++) {
-        final raw = _product!.additionalInfo!['it_img$i']?.toString();
-        if (raw == null || raw.isEmpty) continue;
-        final normalized =
-            ImageUrlHelper.normalizeThumbnailUrl(raw, _product!.id);
-        if (normalized != null &&
-            normalized.contains('/data/item/') &&
-            !images.contains(normalized)) {
-          images.add(normalized);
-        }
+    // 상세 썸네일은 it_img10, it_img9만 본다.
+    for (final key in const ['it_img10', 'it_img9']) {
+      final normalized = _itemThumbUrl(_product!.additionalInfo?[key]?.toString());
+      if (normalized != null && !images.contains(normalized)) {
+        images.add(normalized);
       }
     }
-
     return images;
   }
 
@@ -1103,7 +1095,17 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   }
 
   Widget _buildImageCarousel(List<String> images) {
-    final imageHeight = healthDp(context, 230);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return _buildImageCarouselFrame(images, constraints.maxWidth);
+      },
+    );
+  }
+
+  Widget _buildImageCarouselFrame(List<String> images, double slotWidth) {
+    final imageHeight = slotWidth.isFinite && slotWidth > 0
+        ? slotWidth * kProductDetailThumbHeight / kProductDetailThumbWidth
+        : healthDp(context, kProductDetailThumbHeight);
 
     if (images.isEmpty) {
       return ClipRRect(
@@ -1160,7 +1162,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                   color: const Color(0xFFF8F8F8),
                   child: buildProductCarouselImage(
                   imageUrl: imageUrl,
-                  width: double.infinity,
+                  width: slotWidth,
                   height: imageHeight,
                   fit: BoxFit.cover,
                   errorBuilder: (context, error, stackTrace) {

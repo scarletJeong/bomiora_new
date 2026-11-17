@@ -466,7 +466,7 @@ class ProductDetailCollapsedPreview extends StatelessWidget {
   }
 }
 
-/// 상단 캐러셀 — 화면 가로에 맞춰 전체 이미지 노출
+/// 상단 캐러셀. 칸은 375 기준 335×230 비율을 유지한다.
 Widget buildProductCarouselImage({
   required String imageUrl,
   required double width,

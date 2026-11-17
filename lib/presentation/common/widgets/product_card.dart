@@ -40,7 +40,7 @@ bool shouldShowProductCardSubject(String strippedSubject) {
 const double kProductDetailThumbWidth = 335;
 const double kProductDetailThumbHeight = 230;
 
-/// 사진 칸 크기는 그대로 두고, 335×230 비율을 유지한 채 확대해 칸을 채운다.
+/// 카드 칸 안에 사진을 비율 그대로 넣는다. 확대해서 자르지 않는다.
 class ProductCoverRatioImage extends StatelessWidget {
   final String url;
   final VoidCallback? onSettled;
@@ -57,27 +57,24 @@ class ProductCoverRatioImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FittedBox(
-      fit: BoxFit.cover,
-      alignment: Alignment.center,
-      clipBehavior: Clip.hardEdge,
-      child: SizedBox(
-        width: kProductDetailThumbWidth,
-        height: kProductDetailThumbHeight,
-        child: AppNetworkImage(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final w = constraints.maxWidth;
+        final h = constraints.maxHeight;
+        return AppNetworkImage(
           url: url,
-          width: kProductDetailThumbWidth,
-          height: kProductDetailThumbHeight,
-          decodeWidthLogical: kProductDetailThumbWidth,
-          decodeHeightLogical: kProductDetailThumbHeight,
-          fit: BoxFit.cover,
+          width: w,
+          height: h,
+          decodeWidthLogical: w.isFinite ? w : null,
+          decodeHeightLogical: h.isFinite ? h : null,
+          fit: BoxFit.contain,
           preferHtmlElementOnWeb: false,
           alignment: Alignment.center,
           onSettled: onSettled,
           errorBuilder: errorBuilder,
           loadingBuilder: loadingBuilder,
-        ),
-      ),
+        );
+      },
     );
   }
 }
@@ -114,11 +111,7 @@ class ProductCatalogCard extends StatelessWidget {
         _textLineH(context, 14);
   }
 
-  /// 2열 칸 가로. 목록 좌우 여백 20, 칸 간격 15와 같다.
-  ///
-  /// 그리드 높이는 목록 화면의 context(창 전체 폭)에서 계산되고,
-  /// 카드는 650 패널 안에서 그려진다. 창 폭을 그대로 쓰면 칸만 길어져
-  /// 가격 아래에 빈 공간이 생긴다.
+  /// 2열 칸 가로. 375에서는 160, 650에서는 화면 배율만큼 커진다.
   static double imageSlotWidth(BuildContext context) {
     final contentW = MobileAppLayoutWrapper.contentWidthOf(context);
     final pad = healthDp(context, 20);
@@ -126,9 +119,9 @@ class ProductCatalogCard extends StatelessWidget {
     return (contentW - pad * 2 - gap) / 2;
   }
 
-  /// 375에서 160×180. 화면이 커지면 같은 비율로 커진다.
+  /// 칸 가로는 열 너비, 세로는 375 기준 150×170 비율.
   static double imageSlotHeight(BuildContext context) =>
-      imageSlotWidth(context) * 180 / 160;
+      imageSlotWidth(context) * 170 / 150;
 
   /// 그리드 [mainAxisExtent] — 이미지 칸 + 간격 10 + 텍스트 영역
   static double preferredMainAxisExtent(BuildContext context) {
@@ -170,7 +163,6 @@ class ProductCatalogCard extends StatelessWidget {
     final title = stripProductCatalogHtml(product.name);
     final category = _categoryLabel();
 
-    final slotH = imageSlotHeight(context);
     final imageUrl = ImageUrlHelper.productGridThumbUrl(product.displayImageUrl);
     final imageRadius = healthDp(context, 10);
     final imageGap = healthDp(context, 10);
@@ -221,35 +213,43 @@ class ProductCatalogCard extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(imageRadius),
-            child: SizedBox(
-              width: double.infinity,
-              height: slotH,
-              child: ColoredBox(
-                color: const Color(0xFFF3F3F3),
-                child: imageUrl.isNotEmpty
-                    ? ProductCoverRatioImage(
-                        key: ValueKey(imageUrl),
-                        url: imageUrl,
-                        onSettled: onImageSettled,
-                        errorBuilder: (_, __, ___) => _placeholder(context),
-                        loadingBuilder: (context, child, progress) {
-                          if (progress == null) return child;
-                          return Center(
-                            child: SizedBox(
-                              width: healthDp(context, 28),
-                              height: healthDp(context, 28),
-                              child: const CircularProgressIndicator(color: const Color(0xFFFF5A8D), 
-                                strokeWidth: 2,
-                              ),
-                            ),
-                          );
-                        },
-                      )
-                    : _placeholder(context),
-              ),
-            ),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final w = constraints.maxWidth;
+              final h = w * 170 / 150;
+              return ClipRRect(
+                borderRadius: BorderRadius.circular(imageRadius),
+                child: SizedBox(
+                  width: w,
+                  height: h,
+                  child: ColoredBox(
+                    color: const Color(0xFFF3F3F3),
+                    child: imageUrl.isNotEmpty
+                        ? ProductCoverRatioImage(
+                            key: ValueKey(imageUrl),
+                            url: imageUrl,
+                            onSettled: onImageSettled,
+                            errorBuilder: (_, __, ___) =>
+                                _placeholder(context),
+                            loadingBuilder: (context, child, progress) {
+                              if (progress == null) return child;
+                              return Center(
+                                child: SizedBox(
+                                  width: healthDp(context, 28),
+                                  height: healthDp(context, 28),
+                                  child: const CircularProgressIndicator(
+                                    color: Color(0xFFFF5A8D),
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                              );
+                            },
+                          )
+                        : _placeholder(context),
+                  ),
+                ),
+              );
+            },
           ),
           SizedBox(height: imageGap),
           SizedBox(

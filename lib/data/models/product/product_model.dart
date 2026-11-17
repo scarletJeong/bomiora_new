@@ -106,7 +106,7 @@ class Product {
         ]),
       ),
       imageUrl: () {
-        // 대표 썸네일은 it_img1~it_img9 중 실제 값이 있는 첫 슬롯을 선택
+        // 목록 카드 썸네일은 it_img1. 상세 첫 장은 it_img10, 없으면 it_img1.
         final selectedValue = _pickFirstThumbnailValue(rawFields) ??
             _pickFirstThumbnailValue(normalized) ??
             _pickFallbackImageValue(rawFields) ??
@@ -303,13 +303,7 @@ class Product {
   }
 
   static String? _pickFirstThumbnailValue(Map<String, dynamic> source) {
-    for (int i = 1; i <= 9; i++) {
-      final value = _pickImageValue(source, i);
-      if (value != null) {
-        return value;
-      }
-    }
-    return null;
+    return _pickImageValue(source, 1);
   }
 
   static String? _pickFallbackImageValue(Map<String, dynamic> source) {

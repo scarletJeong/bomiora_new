@@ -103,8 +103,8 @@ class AppNetworkImage extends StatefulWidget {
 
     try {
       await precacheImage(provider, context);
-    } catch (e) {
-      debugPrint('[AppNetworkImage] precache fail: $trimmed → $e');
+    } catch (_) {
+      // 실패는 화면의 errorBuilder가 처리한다.
     }
   }
 
@@ -168,7 +168,6 @@ class _AppNetworkImageState extends State<AppNetworkImage> {
           : WebHtmlElementStrategy.never,
       filterQuality: FilterQuality.low,
       errorBuilder: (context, error, stackTrace) {
-        debugPrint('[AppNetworkImage] decode fail: ${widget.url} → $error');
         if (!kIsWeb) {
           unawaited(NetworkImage(widget.url).evict());
         }

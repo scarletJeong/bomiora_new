@@ -317,6 +317,28 @@ class ImageUrlHelper {
     return convertToLocalUrl(result);
   }
 
+  /// 웹 프록시는 `/data/item/`을 `%2Fdata%2Fitem%2F`로 감춘다.
+  /// 인코딩된 주소만 보면 상품 썸네일이 빠지고 it_img1로 떨어진다.
+  static bool isShopItemImage(String? raw, String? normalized) {
+    final source = (raw ?? '').trim().toLowerCase();
+    var decoded = '';
+    if (normalized != null && normalized.isNotEmpty) {
+      try {
+        decoded = Uri.decodeFull(normalized).toLowerCase();
+      } catch (_) {
+        decoded = normalized.toLowerCase();
+      }
+    }
+    if (source.isEmpty && decoded.isEmpty) return false;
+    if (source.contains('/data/editor/') || decoded.contains('/data/editor/')) {
+      return false;
+    }
+    if (source.contains('data/item/') || decoded.contains('/data/item/')) {
+      return true;
+    }
+    return RegExp(r'^/?\d+/').hasMatch(source);
+  }
+
   /// 공지 이미지는 `/data/notice/` 에 있다.
   /// `notice/...` 를 상품처럼 `/data/item/notice/` 로 붙이면 파일이 없어 HTML이 오고 프록시가 415를 낸다.
   static String _rewriteNoticeImagePath(String path) {
