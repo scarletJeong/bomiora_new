@@ -176,13 +176,6 @@ class _PointScreenState extends State<PointScreen> {
     }
   }
 
-  Future<void> _reloadFailed() async {
-    await Future.wait([
-      if (_pointFailed) _loadCurrentPoint(),
-      if (_historyFailed) _loadPointHistory(),
-    ]);
-  }
-
   @override
   Widget build(BuildContext context) {
     final baseTheme = Theme.of(context);
@@ -240,9 +233,8 @@ class _PointScreenState extends State<PointScreen> {
         ),
       );
     }
-    final showLoadFailure = _pointFailed || _historyFailed;
     final showEmpty =
-        !showLoadFailure && _filteredHistory.isEmpty && !_hasMoreHistory;
+        !_historyFailed && _filteredHistory.isEmpty && !_hasMoreHistory;
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -255,9 +247,9 @@ class _PointScreenState extends State<PointScreen> {
           _buildAvailablePointSection(),
           SizedBox(height: healthDp(context, 20)),
           _buildHistoryTabs(),
-          if (showLoadFailure)
+          if (_historyFailed)
             Expanded(
-              child: _pointReloading || _historyReloading
+              child: _historyReloading
                   ? const Center(
                       child: CircularProgressIndicator(color: _pink),
                     )
@@ -357,8 +349,30 @@ class _PointScreenState extends State<PointScreen> {
               ),
             ],
           ),
-          if (!_pointFailed) ...[
-            SizedBox(height: healthDp(context, 8)),
+          SizedBox(height: healthDp(context, 8)),
+          if (_pointReloading)
+            SizedBox(
+              width: healthDp(context, 18),
+              height: healthDp(context, 18),
+              child: const CircularProgressIndicator(
+                strokeWidth: 2,
+                color: _pink,
+              ),
+            )
+          else if (_pointFailed)
+            GestureDetector(
+              onTap: _loadCurrentPoint,
+              behavior: HitTestBehavior.opaque,
+              child: Text(
+                '다시 시도',
+                style: TextStyle(
+                  color: _pink,
+                  fontSize: healthSp(context, 19),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            )
+          else
             Text(
               pointText,
               style: TextStyle(
@@ -367,19 +381,17 @@ class _PointScreenState extends State<PointScreen> {
                 fontWeight: FontWeight.w700,
               ),
             ),
-          ],
         ],
       ),
     );
   }
 
   Widget _buildReloadButton() {
-    final reloading = _pointReloading || _historyReloading;
     return SizedBox(
       width: double.infinity,
       height: healthDp(context, 44),
       child: ElevatedButton(
-        onPressed: reloading ? null : _reloadFailed,
+        onPressed: _historyReloading ? null : _loadPointHistory,
         style: ElevatedButton.styleFrom(
           backgroundColor: _pink,
           foregroundColor: Colors.white,
@@ -389,7 +401,7 @@ class _PointScreenState extends State<PointScreen> {
             borderRadius: BorderRadius.circular(healthDp(context, 10)),
           ),
         ),
-        child: reloading
+        child: _historyReloading
             ? SizedBox(
                 width: healthDp(context, 18),
                 height: healthDp(context, 18),
