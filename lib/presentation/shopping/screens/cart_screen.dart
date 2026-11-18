@@ -156,10 +156,7 @@ class _CartScreenState extends State<CartScreen> {
       ctKind: _selectionCtKind,
     );
     if (!mounted || result['success'] == true) return;
-    AppToastOverlay.show(
-      context,
-      result['message']?.toString() ?? '선택 저장에 실패했습니다.',
-    );
+    AppToastOverlay.show(context, '선택을 저장하지 못했습니다.');
   }
 
   /// API 재조회 후에도 기존 장바구니 표시 순서 유지
@@ -388,10 +385,7 @@ class _CartScreenState extends State<CartScreen> {
       final current = cartItems.indexWhere((item) => item.ctId == ctId);
       if (current >= 0) cartItems[current] = previous;
     });
-    AppToastOverlay.show(
-      context,
-      result['message']?.toString() ?? '수량 변경에 실패했습니다.',
-    );
+    AppToastOverlay.show(context, '수량 변경에 실패했습니다.');
   }
 
   /// 본품을 지우면 같은 상품의 추가상품 줄도 같이 뺀다.
@@ -463,10 +457,7 @@ class _CartScreenState extends State<CartScreen> {
       });
       _scheduleShippingRefresh();
       if (!undoAsked) {
-        AppToastOverlay.show(
-          context,
-          result['message']?.toString() ?? '장바구니 삭제에 실패했습니다.',
-        );
+        AppToastOverlay.show(context, '삭제하지 못했습니다.');
       }
       return;
     }

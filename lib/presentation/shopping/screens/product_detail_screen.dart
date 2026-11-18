@@ -1987,7 +1987,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       selectedOptions: options,
       supplyLines: supply,
     );
-    if (result['success'] != true) return const [];
+    if (result['success'] != true) {
+      if (mounted) {
+        AppToastOverlay.show(
+          context,
+          result['message']?.toString() ?? '장바구니에 담지 못했습니다.',
+        );
+      }
+      return const [];
+    }
 
     final added = CartService.addedItemsFromAddOptionsResult(result);
     if (added.isNotEmpty) return added;
@@ -2154,7 +2162,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       });
       return;
     }
-    final message = (result['message'] ?? '장바구니 담기에 실패했습니다.').toString();
+    final message = (result['message'] ?? '장바구니에 담지 못했습니다.').toString();
     AppToastOverlay.show(context, message);
   }
 
@@ -2196,6 +2204,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
         );
       }
       return cartIds;
+    }
+    if (mounted) {
+      AppToastOverlay.show(
+        context,
+        result['message']?.toString() ?? '장바구니에 담지 못했습니다.',
+      );
     }
     return null;
   }

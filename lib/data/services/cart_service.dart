@@ -317,22 +317,28 @@ class CartService {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
+        if (data is! Map || data['success'] == false) {
+          return {
+            'success': false,
+            'message': '장바구니에 담지 못했습니다.',
+          };
+        }
         invalidateCartCache();
         return {
-          'success': data['success'] ?? true,
+          'success': true,
           'message': data['message'] ?? '장바구니에 추가되었습니다.',
           'data': data['data'],
         };
       } else {
         return {
           'success': false,
-          'message': '장바구니 추가에 실패했습니다.',
+          'message': '장바구니에 담지 못했습니다.',
         };
       }
     } catch (e) {
       return {
         'success': false,
-        'message': '장바구니 추가 중 오류가 발생했습니다: $e',
+        'message': '장바구니에 담지 못했습니다.',
       };
     }
   }
@@ -358,7 +364,7 @@ class CartService {
 
       int successCount = 0;
       int failCount = 0;
-      List<String> errorMessages = [];
+      final failedLabels = <String>[];
       final addedCtIds = <int>[];
       final addedItems = <CartItem>[];
       String? sharedOdId = odId;
@@ -382,7 +388,8 @@ class CartService {
           }
         } else {
           failCount++;
-          errorMessages.add('$errorLabel: ${result['message']}');
+          final label = errorLabel.trim();
+          if (label.isNotEmpty) failedLabels.add(label);
         }
       }
 
@@ -443,26 +450,26 @@ class CartService {
           'added_items': addedItems,
           'od_id': sharedOdId,
         };
-      } else if (successCount > 0) {
-        return {
-          'success': true,
-          'message': '일부 상품이 장바구니에 추가되었습니다.',
-          'errors': errorMessages,
-          'cart_ids': addedCtIds,
-          'added_items': addedItems,
-          'od_id': sharedOdId,
-        };
-      } else {
-        return {
-          'success': false,
-          'message': '장바구니 추가에 실패했습니다.',
-          'errors': errorMessages,
-        };
       }
+      final failedNames = failedLabels.toSet().join(', ');
+      final partial = successCount > 0;
+      return {
+        'success': false,
+        'partial': partial,
+        'message': partial
+            ? (failedNames.isEmpty
+                ? '일부 옵션을 담지 못했습니다.'
+                : '일부 옵션을 담지 못했습니다. $failedNames')
+            : '장바구니에 담지 못했습니다.',
+        'errors': failedLabels,
+        'cart_ids': addedCtIds,
+        'added_items': addedItems,
+        'od_id': sharedOdId,
+      };
     } catch (e) {
       return {
         'success': false,
-        'message': '장바구니 추가 중 오류가 발생했습니다: $e',
+        'message': '장바구니에 담지 못했습니다.',
       };
     }
   }
@@ -885,23 +892,27 @@ class CartService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+        if (data is! Map || data['success'] == false) {
+          return {
+            'success': false,
+            'message': '수량 변경에 실패했습니다.',
+          };
+        }
         invalidateCartCache();
         return {
-          'success': data['success'] ?? true,
+          'success': true,
           'message': data['message'] ?? '수량이 변경되었습니다.',
           'data': data['data'],
         };
-      } else {
-        final data = json.decode(response.body);
-        return {
-          'success': false,
-          'message': data['message'] ?? '수량 변경에 실패했습니다.',
-        };
       }
+      return {
+        'success': false,
+        'message': '수량 변경에 실패했습니다.',
+      };
     } catch (e) {
       return {
         'success': false,
-        'message': '수량 변경 중 오류가 발생했습니다: $e',
+        'message': '수량 변경에 실패했습니다.',
       };
     }
   }
@@ -933,27 +944,28 @@ class CartService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+        if (data is! Map || data['success'] == false) {
+          return {
+            'success': false,
+            'message': '선택을 저장하지 못했습니다.',
+          };
+        }
         invalidateCartCache();
         return {
-          'success': data['success'] ?? true,
+          'success': true,
           'message': data['message'] ?? '선택이 저장되었습니다.',
           'data': data['data'],
         };
       }
 
-      Map<String, dynamic>? err;
-      try {
-        final decoded = json.decode(response.body);
-        if (decoded is Map<String, dynamic>) err = decoded;
-      } catch (_) {}
       return {
         'success': false,
-        'message': err?['message'] ?? '선택 저장에 실패했습니다.',
+        'message': '선택을 저장하지 못했습니다.',
       };
     } catch (e) {
       return {
         'success': false,
-        'message': '선택 저장 중 오류가 발생했습니다: $e',
+        'message': '선택을 저장하지 못했습니다.',
       };
     }
   }
@@ -992,18 +1004,20 @@ class CartService {
           if (decoded is Map<String, dynamic>) data = decoded;
         } catch (_) {}
         return {
-          'success': data?['success'] ?? true,
-          'message': data?['message'] ?? '장바구니에서 삭제되었습니다.',
+          'success': data?['success'] == false ? false : (data?['success'] ?? true),
+          'message': data?['success'] == false
+              ? '삭제하지 못했습니다.'
+              : (data?['message'] ?? '장바구니에서 삭제되었습니다.'),
         };
       }
       return {
         'success': false,
-        'message': '장바구니 삭제에 실패했습니다.',
+        'message': '삭제하지 못했습니다.',
       };
     } catch (e) {
       return {
         'success': false,
-        'message': '장바구니 삭제 중 오류가 발생했습니다: $e',
+        'message': '삭제하지 못했습니다.',
       };
     }
   }
@@ -1068,19 +1082,21 @@ class CartService {
           if (decoded is Map<String, dynamic>) data = decoded;
         } catch (_) {}
         return {
-          'success': data?['success'] ?? true,
-          'message': data?['message'] ?? '장바구니에서 삭제되었습니다.',
+          'success': data?['success'] == false ? false : (data?['success'] ?? true),
+          'message': data?['success'] == false
+              ? '삭제하지 못했습니다.'
+              : (data?['message'] ?? '장바구니에서 삭제되었습니다.'),
         };
       } else {
         return {
           'success': false,
-          'message': '장바구니 삭제에 실패했습니다.',
+          'message': '삭제하지 못했습니다.',
         };
       }
     } catch (e) {
       return {
         'success': false,
-        'message': '장바구니 삭제 중 오류가 발생했습니다: $e',
+        'message': '삭제하지 못했습니다.',
       };
     }
   }

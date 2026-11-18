@@ -1950,7 +1950,12 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
     }
 
     if (!mounted || result['success'] != true) {
-      _showBuyNowFailedSnackBar();
+      if (mounted) {
+        AppToastOverlay.show(
+          context,
+          result['message']?.toString() ?? '장바구니에 담지 못했습니다.',
+        );
+      }
       return;
     }
 
@@ -2065,7 +2070,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       });
       return;
     }
-    final message = (result['message'] ?? '장바구니 담기에 실패했습니다.').toString();
+    final message = (result['message'] ?? '장바구니에 담지 못했습니다.').toString();
     AppToastOverlay.show(context, message);
   }
 
