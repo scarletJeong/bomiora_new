@@ -56,26 +56,22 @@ Future<void> showProductOptionBottomup({
   }
 
   final optionSubject =
-      product.additionalInfo?['it_option_subject']?.toString() ?? '';
+      product.additionalInfo?['it_option_subject']?.toString() ??
+      product.additionalInfo?['itOptionSubject']?.toString() ??
+      '';
   final subjectLabels = optionSubject
       .split(',')
       .map((s) => s.trim())
       .where((s) => s.isNotEmpty)
       .toList();
-  String stepLabel = '다이어트환 단계';
-  String monthsLabel = '처방 개월수';
+  var stepLabel = '옵션';
+  var monthsLabel = '옵션';
   if (subjectLabels.length >= 2) {
     stepLabel = subjectLabels[0];
     monthsLabel = subjectLabels[1];
   } else if (subjectLabels.length == 1) {
-    final only = subjectLabels.first;
-    if (only.contains('개월')) {
-      monthsLabel = only;
-    } else if (only.contains('단계')) {
-      stepLabel = only;
-    } else {
-      stepLabel = only;
-    }
+    stepLabel = subjectLabels.first;
+    monthsLabel = subjectLabels.first;
   }
 
   final resolvedKind = productKindOverride ??
