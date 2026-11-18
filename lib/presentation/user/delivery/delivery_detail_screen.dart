@@ -948,7 +948,7 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
 
   Future<void> _changeDeliveryAddress() async {
     if (_orderDetail == null) return;
-    final result = await showGeneralDialog<bool>(
+    final result = await showGeneralDialog<Object?>(
       context: context,
       barrierDismissible: true,
       barrierLabel: '배송지 변경',
@@ -974,7 +974,8 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
         );
       },
     );
-    if (result != null && result != false && mounted) _loadOrderDetail();
+    if (!mounted || result == null || result == false) return;
+    await _loadOrderDetail();
   }
 
   Future<void> _writeReviewFromDetail() async {

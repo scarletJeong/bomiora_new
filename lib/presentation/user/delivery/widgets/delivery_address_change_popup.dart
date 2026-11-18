@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../../core/logging/failure_log.dart';
 import '../../../common/widgets/app_toast_overlay.dart';
 import '../../../common/widgets/daum_postcode_search_dialog.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
@@ -55,6 +56,8 @@ class DeliveryAddressChangePopup extends StatefulWidget {
 class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
     with SingleTickerProviderStateMixin {
   bool _isLoading = true;
+  bool _listFailed = false;
+  bool _needsLogin = false;
   bool _isSubmitting = false;
   List<Map<String, dynamic>> _addresses = [];
   int? _selectedAddressId;
@@ -217,14 +220,33 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
     final user = await AuthService.getUser();
     if (user == null) {
       if (!mounted) return;
-      setState(() => _isLoading = false);
+      setState(() {
+        _isLoading = false;
+        _needsLogin = true;
+        _listFailed = false;
+      });
+      AppToastOverlay.showAlert(context, '로그인이 필요합니다.');
       return;
     }
 
-    final addresses = await AddressService.getAddressList(user.id);
+    final loaded = await AddressService.loadAddresses(user.id);
     if (!mounted) return;
+    if (!loaded.ok) {
+      final keepList = _addresses.isNotEmpty;
+      setState(() {
+        _isLoading = false;
+        _needsLogin = false;
+        _listFailed = !keepList;
+      });
+      if (keepList) {
+        AppToastOverlay.showAlert(context, '배송지를 불러오지 못했습니다.');
+      }
+      return;
+    }
 
-    _addresses = addresses;
+    _addresses = loaded.items;
+    _listFailed = false;
+    _needsLogin = false;
 
     // 현재 주문과 매칭되는 배송지를 맨 위로 올림
     final initialMatchedId = _matchAddressIdFromSnapshot(
@@ -455,7 +477,11 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
 
   Future<void> _changeOrderAddress(int addressId) async {
     final user = await AuthService.getUser();
-    if (user == null) return;
+    if (user == null) {
+      if (!mounted) return;
+      AppToastOverlay.showAlert(context, '로그인이 필요합니다.');
+      return;
+    }
 
     final result = await order_service.OrderService.changeDeliveryAddress(
       odId: widget.orderId,
@@ -481,7 +507,18 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
           (selected?['adAddr3'] ?? '').toString().trim(),
         ].where((e) => e.isNotEmpty).join(' '),
       });
+      return;
     }
+
+    final reason = result['message']?.toString().trim() ?? '';
+    await FailureLog.record(
+      code: 'order.address',
+      mbId: user.id,
+      reason: reason.isEmpty ? '배송지를 바꾸지 못했습니다.' : reason,
+      detail: {'odId': widget.orderId, 'addressId': addressId},
+    );
+    if (!mounted) return;
+    AppToastOverlay.showAlert(context, '배송지를 바꾸지 못했습니다.');
   }
 
   Future<void> _submitList() async {
@@ -526,11 +563,25 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
       return;
     }
 
+    final phoneDigits =
+        _phoneController.text.replaceAll(RegExp(r'[^0-9]'), '');
+    if (phoneDigits.length != 11) {
+      await _triggerPulse({'phone'});
+      if (!mounted) return;
+      AppToastOverlay.showAlert(context, '연락처 11자리를 확인해 주세요.');
+      return;
+    }
+
     final wasEdit = _isEditForm;
     setState(() => _isSubmitting = true);
     try {
       final user = await AuthService.getUser();
-      if (user == null) return;
+      if (user == null) {
+        if (mounted) {
+          AppToastOverlay.showAlert(context, '로그인이 필요합니다.');
+        }
+        return;
+      }
 
       final subject = _subjectPreset == _SubjectPreset.none
           ? ''
@@ -559,7 +610,10 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
           : await AddressService.addAddress(payload);
 
       if (!mounted) return;
-      if (result['success'] != true) return;
+      if (result['success'] != true) {
+        AppToastOverlay.showAlert(context, '배송지를 저장하지 못했습니다.');
+        return;
+      }
 
       int? addressId;
       if (wasEdit) {
@@ -859,7 +913,11 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
               : _addresses.isEmpty
                   ? Center(
                       child: Text(
-                        '등록된 배송지가 없습니다.',
+                        _needsLogin
+                            ? '로그인이 필요합니다.'
+                            : _listFailed
+                                ? '배송지를 불러오지 못했습니다.'
+                                : '등록된 배송지가 없습니다.',
                         style: TextStyle(
                           color: _kMuted,
                           fontSize: healthSp(context, 12),
