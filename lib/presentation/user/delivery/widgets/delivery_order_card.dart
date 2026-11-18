@@ -1,10 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
+import '../../../../core/logging/failure_log.dart';
 import '../../../../core/navigation/app_action_gate.dart';
 import '../../../../core/utils/date_formatter.dart';
 import '../../../../core/utils/image_url_helper.dart';
 import '../../../../core/utils/price_formatter.dart';
 import '../../../../data/models/delivery/delivery_model.dart';
+import '../../../../data/services/auth_service.dart';
 import '../../../../data/models/product/product_option_model.dart';
 import '../../../common/widgets/app_network_image.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
@@ -17,6 +21,28 @@ const Color _kPink = Color(0xFFFF5A8D);
 const Color _kBorder = Color(0xFFD2D2D2);
 const Color _kMuted = Color(0xFF898686);
 const Color _kInk = Color(0xFF1A1A1A);
+
+final Set<String> _loggedOrderListImageUrls = {};
+
+void _logOrderListImageFailure({
+  required String url,
+  required String itId,
+  required Object error,
+}) {
+  if (!_loggedOrderListImageUrls.add(url)) return;
+  unawaited(
+    FailureLog.record(
+      code: 'order.list.image',
+      mbId: AuthService.currentUser?.id ?? '',
+      reason: '주문내역 상품 사진을 불러오지 못했습니다.',
+      detail: {
+        'url': url,
+        'itId': itId,
+        'error': error.toString(),
+      },
+    ),
+  );
+}
 
 class DeliveryOrderCard extends StatefulWidget {
   const DeliveryOrderCard({
@@ -526,11 +552,12 @@ class _DeliveryOrderCardState extends State<DeliveryOrderCard> {
                 decodeHeightLogical: thumb,
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) {
-                  return Icon(
-                    Icons.image,
-                    size: healthDp(context, 40),
-                    color: Colors.grey[400],
+                  _logOrderListImageFailure(
+                    url: normalizedUrl,
+                    itId: item.itId,
+                    error: error,
                   );
+                  return _imageFallbackIcon();
                 },
                 loadingBuilder: (context, child, loadingProgress) {
                   if (loadingProgress == null) return child;
@@ -547,11 +574,7 @@ class _DeliveryOrderCardState extends State<DeliveryOrderCard> {
                 },
               ),
             )
-          : Icon(
-              Icons.image,
-              size: healthDp(context, 40),
-              color: Colors.grey[400],
-            ),
+          : _imageFallbackIcon(),
     );
   }
 
@@ -893,11 +916,12 @@ class _DeliveryOrderCardState extends State<DeliveryOrderCard> {
                 decodeHeightLogical: thumb,
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) {
-                  return Icon(
-                    Icons.image,
-                    size: healthDp(context, 40),
-                    color: Colors.grey[400],
+                  _logOrderListImageFailure(
+                    url: normalizedUrl,
+                    itId: order.items.isNotEmpty ? order.items[0].itId : '',
+                    error: error,
                   );
+                  return _imageFallbackIcon();
                 },
                 loadingBuilder: (context, child, loadingProgress) {
                   if (loadingProgress == null) return child;
@@ -914,11 +938,15 @@ class _DeliveryOrderCardState extends State<DeliveryOrderCard> {
                 },
               ),
             )
-          : Icon(
-              Icons.image,
-              size: healthDp(context, 40),
-              color: Colors.grey[400],
-            ),
+          : _imageFallbackIcon(),
+    );
+  }
+
+  Widget _imageFallbackIcon() {
+    return Icon(
+      Icons.image,
+      size: healthDp(context, 40),
+      color: _kMuted,
     );
   }
 
