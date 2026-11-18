@@ -45,6 +45,7 @@ class OrderFlowDialogs {
     required String mbId,
     OrderDetailModel? orderDetail,
     bool reportCancelFailure = false,
+    String cancelFailureCode = 'payment.complete.cancel',
   }) async {
     final detail = await _loadOrderDetail(
       odId: odId,
@@ -112,7 +113,7 @@ class OrderFlowDialogs {
     final message = result['message']?.toString().trim() ?? '';
     if (reportCancelFailure) {
       await FailureLog.record(
-        code: 'payment.complete.cancel',
+        code: cancelFailureCode,
         mbId: mbId,
         reason: message.isEmpty ? '주문을 취소하지 못했습니다.' : message,
         detail: {'orderId': odId},

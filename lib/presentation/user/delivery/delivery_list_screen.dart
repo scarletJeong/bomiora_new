@@ -846,6 +846,8 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
       context,
       odId: order.odId,
       mbId: user.id,
+      reportCancelFailure: true,
+      cancelFailureCode: 'order.cancel',
     );
     if (ok && mounted) {
       await OrderFlowDialogs.openCancelledOrderPage(
