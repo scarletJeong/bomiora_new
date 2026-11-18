@@ -459,6 +459,7 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
       return DeliveryDetailGeneralProductsSection(
         order: order,
         onCancelTap: () => _cancelOrder(order),
+        reportImageFailure: true,
       );
     }
 
@@ -466,6 +467,7 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
       order: order,
       showChangeButton: !_isAwaitingDeposit(order),
       onChangeTap: () => _changeReservationTime(order),
+      reportImageFailure: true,
       actions: [
         (
           label: '주문취소',

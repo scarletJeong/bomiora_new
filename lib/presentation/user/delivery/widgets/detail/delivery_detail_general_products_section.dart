@@ -17,6 +17,7 @@ class DeliveryDetailGeneralProductsSection extends StatelessWidget {
     required this.order,
     this.onCancelTap,
     this.actions = const [],
+    this.reportImageFailure = false,
   });
 
   final OrderDetailModel order;
@@ -28,6 +29,9 @@ class DeliveryDetailGeneralProductsSection extends StatelessWidget {
         Future<void> Function()? onTap,
         DeliveryDetailProductActionStyle style,
       })> actions;
+
+  /// 결제완료 상품 사진 실패를 로그에 남긴다.
+  final bool reportImageFailure;
 
   @override
   Widget build(BuildContext context) {
@@ -178,11 +182,20 @@ class DeliveryDetailGeneralProductsSection extends StatelessWidget {
                   decodeHeightLogical: thumb,
                   fit: BoxFit.cover,
                   preferHtmlElementOnWeb: false,
-                  errorBuilder: (_, __, ___) => Icon(
-                    Icons.image,
-                    color: DeliveryDetailSectionStyle.muted,
-                    size: healthDp(context, 28),
-                  ),
+                  errorBuilder: (_, error, __) {
+                    if (reportImageFailure) {
+                      logPaymentCompleteProductImageFailure(
+                        url: normalizedUrl,
+                        itId: product.itId,
+                        error: error,
+                      );
+                    }
+                    return Icon(
+                      Icons.image,
+                      color: DeliveryDetailSectionStyle.muted,
+                      size: healthDp(context, 28),
+                    );
+                  },
                 ),
         ),
         SizedBox(width: healthDp(context, 10)),

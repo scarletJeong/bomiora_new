@@ -18,14 +18,20 @@ class CartItemThumbnail extends StatefulWidget {
     this.size = 87,
     this.borderRadius = const BorderRadius.all(Radius.circular(4)),
     this.reportImageFailure = false,
+    this.imageFailureCode,
+    this.imageFailureReason,
+    this.imageFallbackReason,
   });
 
   final CartItem item;
   final double size;
   final BorderRadius? borderRadius;
 
-  /// 결제 상품 사진. 실패를 로그에 남기고 아이콘은 `#898686`이다.
+  /// 결제·결제완료 상품 사진. 실패를 로그에 남기고 아이콘은 `#898686`이다.
   final bool reportImageFailure;
+  final String? imageFailureCode;
+  final String? imageFailureReason;
+  final String? imageFallbackReason;
 
   @override
   State<CartItemThumbnail> createState() => _CartItemThumbnailState();
@@ -92,9 +98,9 @@ class _CartItemThumbnailState extends State<CartItemThumbnail> {
     if (!widget.reportImageFailure || !_loggedImageUrls.add(url)) return;
     unawaited(
       FailureLog.record(
-        code: 'payment.product.image',
+        code: widget.imageFailureCode ?? 'payment.product.image',
         mbId: AuthService.currentUser?.id ?? '',
-        reason: '결제 상품 사진을 불러오지 못했습니다.',
+        reason: widget.imageFailureReason ?? '결제 상품 사진을 불러오지 못했습니다.',
         detail: {
           'url': url,
           'itId': widget.item.itId,
@@ -110,9 +116,9 @@ class _CartItemThumbnailState extends State<CartItemThumbnail> {
     if (!_loggedFallbackIds.add(id.isEmpty ? '_' : id)) return;
     unawaited(
       FailureLog.record(
-        code: 'payment.product.image',
+        code: widget.imageFailureCode ?? 'payment.product.image',
         mbId: AuthService.currentUser?.id ?? '',
-        reason: '결제 상품 사진을 다시 불러오지 못했습니다.',
+        reason: widget.imageFallbackReason ?? '결제 상품 사진을 다시 불러오지 못했습니다.',
         detail: {
           'itId': widget.item.itId,
           'error': error.toString(),

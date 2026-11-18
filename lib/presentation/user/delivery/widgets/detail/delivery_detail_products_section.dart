@@ -1,11 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
+import '../../../../../core/logging/failure_log.dart';
 import '../../../../../core/navigation/app_action_gate.dart';
 import '../../../../../core/utils/image_url_helper.dart';
 import '../../../../../core/utils/price_formatter.dart';
 import '../../../../../data/models/cart/cart_item_model.dart';
 import '../../../../../data/models/cart/cart_line_group.dart';
 import '../../../../../data/models/delivery/delivery_model.dart';
+import '../../../../../data/services/auth_service.dart';
 import '../../../../common/widgets/app_network_image.dart';
 import '../../../../health/health_common/health_responsive_scale.dart';
 import '../../../../shopping/widgets/cart_add_group_card.dart';
@@ -22,6 +26,7 @@ class DeliveryDetailProductsSection extends StatelessWidget {
     required this.order,
     this.actions = const [],
     this.asCard = true,
+    this.reportImageFailure = false,
   });
 
   final OrderDetailModel order;
@@ -34,6 +39,9 @@ class DeliveryDetailProductsSection extends StatelessWidget {
 
   /// false면 바깥 카드 없이 내용만 렌더 (합쳐진 카드용)
   final bool asCard;
+
+  /// 결제완료 상품 사진 실패를 로그에 남긴다.
+  final bool reportImageFailure;
 
   @override
   Widget build(BuildContext context) {
@@ -79,6 +87,16 @@ class DeliveryDetailProductsSection extends StatelessWidget {
             supplyInitiallyExpanded: true,
             supplyInteractive: false,
             showBundleTotal: false,
+            reportImageFailure: reportImageFailure,
+            imageFailureCode: reportImageFailure
+                ? paymentCompleteProductImageCode
+                : null,
+            imageFailureReason: reportImageFailure
+                ? paymentCompleteProductImageReason
+                : null,
+            imageFallbackReason: reportImageFailure
+                ? paymentCompleteProductImageFallbackReason
+                : null,
             onToggleSelect: (_, __) {},
             buildParentOrMainCard: (item, {required isChild, footer}) {
               return Column(
@@ -179,11 +197,20 @@ class DeliveryDetailProductsSection extends StatelessWidget {
                   decodeHeightLogical: thumb,
                   fit: BoxFit.cover,
                   preferHtmlElementOnWeb: false,
-                  errorBuilder: (_, __, ___) => Icon(
-                    Icons.image,
-                    color: DeliveryDetailSectionStyle.muted,
-                    size: healthDp(context, 28),
-                  ),
+                  errorBuilder: (_, error, __) {
+                    if (reportImageFailure) {
+                      logPaymentCompleteProductImageFailure(
+                        url: normalizedUrl,
+                        itId: item.itId,
+                        error: error,
+                      );
+                    }
+                    return Icon(
+                      Icons.image,
+                      color: DeliveryDetailSectionStyle.muted,
+                      size: healthDp(context, 28),
+                    );
+                  },
                 ),
         ),
         SizedBox(width: healthDp(context, 10)),
@@ -313,4 +340,31 @@ class DeliveryDetailProductsSection extends StatelessWidget {
       ),
     );
   }
+}
+
+const paymentCompleteProductImageCode = 'payment.complete.image';
+const paymentCompleteProductImageReason = '결제완료 상품 사진을 불러오지 못했습니다.';
+const paymentCompleteProductImageFallbackReason =
+    '결제완료 상품 사진을 다시 불러오지 못했습니다.';
+
+final Set<String> _loggedPaymentCompleteImageUrls = {};
+
+void logPaymentCompleteProductImageFailure({
+  required String url,
+  required String itId,
+  required Object error,
+}) {
+  if (!_loggedPaymentCompleteImageUrls.add(url)) return;
+  unawaited(
+    FailureLog.record(
+      code: paymentCompleteProductImageCode,
+      mbId: AuthService.currentUser?.id ?? '',
+      reason: paymentCompleteProductImageReason,
+      detail: {
+        'url': url,
+        'itId': itId,
+        'error': error.toString(),
+      },
+    ),
+  );
 }
