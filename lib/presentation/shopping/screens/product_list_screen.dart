@@ -10,6 +10,7 @@ import '../../../data/services/auth_service.dart';
 import '../../../data/models/product/product_model.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/app_network_image.dart';
+import '../../common/widgets/app_toast_overlay.dart';
 import '../../common/widgets/appbar_menutap.dart';
 import '../../health/health_common/widgets/health_app_bar.dart';
 import '../../common/widgets/app_footer.dart';
@@ -194,8 +195,13 @@ class _ProductListScreenState extends State<ProductListScreen> {
       if (categoryId != _activeCategoryId) return;
       setState(() {
         _isLoading = false;
-        if (_products.isEmpty) _hasError = true;
+        if (_products.isEmpty) {
+          _hasError = true;
+        }
       });
+      if (_products.isNotEmpty) {
+        AppToastOverlay.showAlert(context, '상품을 다시 불러오지 못했습니다.');
+      }
       _scheduleActiveTabScroll();
     }
   }
