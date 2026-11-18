@@ -1004,17 +1004,38 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
     var time = (order.reservationTime ?? '').trim();
     if (date.isEmpty || time.isEmpty) {
       final user = await AuthService.getUser();
-      if (user == null) return;
+      if (user == null) {
+        if (mounted) {
+          AppToastOverlay.showAlert(context, '예약 시간을 불러오지 못했습니다.');
+        }
+        return;
+      }
       final result = await OrderService.getOrderDetail(
         odId: order.odId,
         mbId: user.id,
       );
-      if (result['success'] != true) return;
+      if (result['success'] != true || result['order'] is! OrderDetailModel) {
+        final reason = result['message']?.toString().trim() ?? '';
+        await FailureLog.record(
+          code: 'order.reservation.detail',
+          mbId: user.id,
+          reason: reason.isEmpty ? '예약 시간을 불러오지 못했습니다.' : reason,
+          detail: {'odId': order.odId},
+        );
+        if (mounted) {
+          AppToastOverlay.showAlert(context, '예약 시간을 불러오지 못했습니다.');
+        }
+        return;
+      }
       final detail = result['order'] as OrderDetailModel;
       date = (detail.reservationDate ?? '').trim();
       time = (detail.reservationTime ?? '').trim();
     }
-    if (date.isEmpty || time.isEmpty || !mounted) return;
+    if (!mounted) return;
+    if (date.isEmpty || time.isEmpty) {
+      AppToastOverlay.showAlert(context, '예약 시간을 바꿀 수 없습니다.');
+      return;
+    }
 
     final changeResult = await showGeneralDialog<ReservationPickResult?>(
       context: context,

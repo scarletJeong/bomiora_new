@@ -73,6 +73,7 @@ class _ReservationTimeChangePopupState
   String? _selectedTime;
   ReservationSettingsModel? _settings;
   bool _isLoading = true;
+  bool _settingsFailed = false;
   bool _isSubmitting = false;
 
   DateTime? get _currentDateParsed =>
@@ -121,10 +122,29 @@ class _ReservationTimeChangePopupState
   }
 
   Future<void> _loadSettings() async {
-    final settings = await ShopDefaultService.getReservationSettings();
+    final loaded = await ShopDefaultService.loadReservationSettings();
     if (!mounted) return;
+    if (loaded.failed) {
+      final user = await AuthService.getUser();
+      await FailureLog.record(
+        code: 'order.reservation.settings',
+        mbId: user?.id ?? '',
+        reason: loaded.reason.isEmpty
+            ? '예약 시간을 불러오지 못했습니다.'
+            : loaded.reason,
+        detail: {'orderId': widget.orderId},
+      );
+      if (!mounted) return;
+      setState(() {
+        _settings = null;
+        _settingsFailed = true;
+        _isLoading = false;
+      });
+      return;
+    }
     setState(() {
-      _settings = settings;
+      _settings = loaded.settings;
+      _settingsFailed = false;
       _isLoading = false;
     });
   }
@@ -197,6 +217,7 @@ class _ReservationTimeChangePopupState
     if (user == null) {
       if (!mounted) return;
       setState(() => _isSubmitting = false);
+      AppToastOverlay.showAlert(context, '로그인이 필요합니다.');
       return;
     }
 
@@ -211,10 +232,12 @@ class _ReservationTimeChangePopupState
       reservationEndTime: picked.endTime,
     );
     final saved = result['success'] == true;
-    if (!saved && widget.reportSaveFailure) {
+    if (!saved) {
       final reason = result['message']?.toString().trim() ?? '';
       await FailureLog.record(
-        code: 'payment.complete.reservation',
+        code: widget.reportSaveFailure
+            ? 'payment.complete.reservation'
+            : 'order.reservation',
         mbId: user.id,
         reason: reason.isEmpty ? '예약 시간을 바꾸지 못했습니다.' : reason,
         detail: {'orderId': widget.orderId},
@@ -227,9 +250,7 @@ class _ReservationTimeChangePopupState
       _close(picked);
       return;
     }
-    if (widget.reportSaveFailure) {
-      AppToastOverlay.show(context, '예약 시간을 바꾸지 못했습니다.');
-    }
+    AppToastOverlay.showAlert(context, '예약 시간을 바꾸지 못했습니다.');
   }
 
   ReservationPickResult _pickedResult() {
@@ -614,6 +635,16 @@ class _ReservationTimeChangePopupState
                                   ),
                                   child: const Center(
                                     child: CircularProgressIndicator(color: const Color(0xFFFF5A8D)),
+                                  ),
+                                )
+                              else if (_settingsFailed)
+                                Text(
+                                  '예약 시간을 불러오지 못했습니다.',
+                                  style: TextStyle(
+                                    color: _kMuted,
+                                    fontSize: healthSp(context, 11),
+                                    fontFamily: _font,
+                                    fontWeight: FontWeight.w400,
                                   ),
                                 )
                               else if (times.isEmpty)

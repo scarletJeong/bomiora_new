@@ -827,8 +827,10 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
 
   Future<void> _showReservationTimeChangeDialog() async {
     if (_orderDetail == null) return;
-    if (_orderDetail!.reservationDate == null ||
-        _orderDetail!.reservationTime == null) {
+    final reservationDate = _orderDetail!.reservationDate?.trim() ?? '';
+    final reservationTime = _orderDetail!.reservationTime?.trim() ?? '';
+    if (reservationDate.isEmpty || reservationTime.isEmpty) {
+      AppToastOverlay.showAlert(context, '예약 시간을 바꿀 수 없습니다.');
       return;
     }
     
@@ -852,8 +854,8 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
             ),
             ReservationTimeChangePopup(
               orderId: orderIdToUse,
-              currentDate: _orderDetail!.reservationDate!,
-              currentTime: _orderDetail!.reservationTime!,
+              currentDate: reservationDate,
+              currentTime: reservationTime,
             ),
           ],
         );
