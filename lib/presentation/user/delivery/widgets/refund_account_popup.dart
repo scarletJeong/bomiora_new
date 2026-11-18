@@ -54,6 +54,7 @@ class _RefundAccountPopupState extends State<RefundAccountPopup> {
 
   String _selectedBank = '';
   bool _loading = true;
+  bool _loadFailed = false;
 
   List<String> get _bankItems => RefundBankNames.withCurrent(_selectedBank);
 
@@ -82,11 +83,20 @@ class _RefundAccountPopupState extends State<RefundAccountPopup> {
                 .trim();
         final holder =
             '${data['refundHolder'] ?? data['mb_refund_holder'] ?? ''}'.trim();
-        setState(() => _selectedBank = bank);
+        setState(() {
+          _selectedBank = bank;
+          _loadFailed = false;
+        });
         _accountController.text = acc;
         _holderController.text = holder;
+      } else {
+        setState(() => _loadFailed = true);
+        AppToastOverlay.showAlert(context, '환불계좌를 불러오지 못했습니다.');
       }
     } catch (_) {
+      if (!mounted) return;
+      setState(() => _loadFailed = true);
+      AppToastOverlay.showAlert(context, '환불계좌를 불러오지 못했습니다.');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -176,6 +186,18 @@ class _RefundAccountPopupState extends State<RefundAccountPopup> {
                               ),
                             ),
                             SizedBox(height: healthDp(context, 20)),
+                            if (_loadFailed) ...[
+                              Text(
+                                '환불계좌를 불러오지 못했습니다.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: _muted,
+                                  fontSize: healthSp(context, 12),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              SizedBox(height: healthDp(context, 20)),
+                            ],
                             _fieldBlock(
                               context,
                               label: '은행 선택',
