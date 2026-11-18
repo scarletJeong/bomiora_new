@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../../core/logging/failure_log.dart';
+import '../../../common/widgets/app_toast_overlay.dart';
 import '../../../common/widgets/daum_postcode_search_dialog.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 import '../../../../core/utils/node_value_parser.dart';
@@ -284,9 +286,26 @@ class _DeliveryAddressChangePopupState
       mbId: user.id,
       addressId: _selectedAddressId!,
     );
+    if (result['success'] == true) {
+      if (!mounted) return;
+      setState(() => _isSubmitting = false);
+      Navigator.pop(context, true);
+      return;
+    }
+
+    final reason = result['message']?.toString().trim() ?? '';
+    await FailureLog.record(
+      code: 'payment.complete.address',
+      mbId: user.id,
+      reason: reason.isEmpty ? '배송지를 바꾸지 못했습니다.' : reason,
+      detail: {
+        'orderId': widget.orderId,
+        'addressId': _selectedAddressId,
+      },
+    );
     if (!mounted) return;
     setState(() => _isSubmitting = false);
-    Navigator.pop(context, result['success'] == true);
+    AppToastOverlay.show(context, '배송지를 바꾸지 못했습니다.');
   }
 
   Future<void> _openAddressForm({Map<String, dynamic>? existing}) async {
