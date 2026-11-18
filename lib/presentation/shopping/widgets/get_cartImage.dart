@@ -1,9 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
+import '../../../core/logging/failure_log.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../data/models/cart/cart_item_model.dart';
 import '../../../data/repositories/product/product_repository.dart';
+import '../../../data/services/auth_service.dart';
+import '../../common/widgets/app_network_image.dart';
 
 /// 장바구니 줄 썸네일 — 카페24 `원본.jpg` URL이 HTML만 줄 때 상품 상세 API로 한 번 보정합니다.
 class CartItemThumbnail extends StatefulWidget {
@@ -12,17 +17,24 @@ class CartItemThumbnail extends StatefulWidget {
     required this.item,
     this.size = 87,
     this.borderRadius = const BorderRadius.all(Radius.circular(4)),
+    this.reportImageFailure = false,
   });
 
   final CartItem item;
   final double size;
   final BorderRadius? borderRadius;
 
+  /// 결제 상품 사진. 실패를 로그에 남기고 아이콘은 `#898686`이다.
+  final bool reportImageFailure;
+
   @override
   State<CartItemThumbnail> createState() => _CartItemThumbnailState();
 }
 
 class _CartItemThumbnailState extends State<CartItemThumbnail> {
+  static final Set<String> _loggedImageUrls = {};
+  static final Set<String> _loggedFallbackIds = {};
+
   String? _displayUrl;
   bool _askedProductApi = false;
 
@@ -57,15 +69,56 @@ class _CartItemThumbnailState extends State<CartItemThumbnail> {
     _askedProductApi = true;
     try {
       final product = await ProductRepository.getProductDetail(id);
-      if (!mounted || product == null) return;
-      final raw = product.imageUrl;
-      if (raw == null || raw.trim().isEmpty) return;
-      final u = ImageUrlHelper.normalizeThumbnailUrl(raw, id);
-      if (!mounted || u == null || u.isEmpty) return;
-      if (u != _displayUrl) {
-        setState(() => _displayUrl = u);
+      if (product == null) {
+        _logFallbackFailure('상품을 찾지 못했습니다.');
+        return;
       }
-    } catch (_) {}
+      final raw = product.imageUrl;
+      final u = raw == null || raw.trim().isEmpty
+          ? null
+          : ImageUrlHelper.normalizeThumbnailUrl(raw, id);
+      if (u == null || u.isEmpty || u == _displayUrl) {
+        _logFallbackFailure('상품 사진이 없습니다.');
+        return;
+      }
+      if (!mounted) return;
+      setState(() => _displayUrl = u);
+    } catch (e) {
+      _logFallbackFailure(e);
+    }
+  }
+
+  void _logImageFailure(String url, Object error) {
+    if (!widget.reportImageFailure || !_loggedImageUrls.add(url)) return;
+    unawaited(
+      FailureLog.record(
+        code: 'payment.product.image',
+        mbId: AuthService.currentUser?.id ?? '',
+        reason: '결제 상품 사진을 불러오지 못했습니다.',
+        detail: {
+          'url': url,
+          'itId': widget.item.itId,
+          'error': error.toString(),
+        },
+      ),
+    );
+  }
+
+  void _logFallbackFailure(Object error) {
+    if (!widget.reportImageFailure) return;
+    final id = widget.item.itId.trim();
+    if (!_loggedFallbackIds.add(id.isEmpty ? '_' : id)) return;
+    unawaited(
+      FailureLog.record(
+        code: 'payment.product.image',
+        mbId: AuthService.currentUser?.id ?? '',
+        reason: '결제 상품 사진을 다시 불러오지 못했습니다.',
+        detail: {
+          'itId': widget.item.itId,
+          'error': error.toString(),
+        },
+      ),
+    );
   }
 
   @override
@@ -80,18 +133,33 @@ class _CartItemThumbnailState extends State<CartItemThumbnail> {
 
     return ClipRRect(
       borderRadius: widget.borderRadius ?? BorderRadius.zero,
-      child: Image.network(
-        url,
-        width: w,
-        height: w,
-        fit: BoxFit.cover,
-        cacheWidth: cacheDim,
-        cacheHeight: cacheDim,
-        errorBuilder: (_, __, ___) {
-          _fallbackFromProductApi();
-          return _placeholder(w);
-        },
-      ),
+      child: widget.reportImageFailure
+          ? AppNetworkImage(
+              url: url,
+              width: w,
+              height: w,
+              fit: BoxFit.cover,
+              decodeWidthLogical: w,
+              decodeHeightLogical: w,
+              preferHtmlElementOnWeb: false,
+              errorBuilder: (_, error, __) {
+                _logImageFailure(url, error);
+                _fallbackFromProductApi();
+                return _placeholder(w);
+              },
+            )
+          : Image.network(
+              url,
+              width: w,
+              height: w,
+              fit: BoxFit.cover,
+              cacheWidth: cacheDim,
+              cacheHeight: cacheDim,
+              errorBuilder: (_, __, ___) {
+                _fallbackFromProductApi();
+                return _placeholder(w);
+              },
+            ),
     );
   }
 
@@ -101,7 +169,12 @@ class _CartItemThumbnailState extends State<CartItemThumbnail> {
       height: w,
       child: ColoredBox(
         color: Colors.grey.shade200,
-        child: const Icon(Icons.image_not_supported, color: Colors.grey),
+        child: Icon(
+          Icons.image_not_supported,
+          color: widget.reportImageFailure
+              ? const Color(0xFF898686)
+              : Colors.grey,
+        ),
       ),
     );
   }

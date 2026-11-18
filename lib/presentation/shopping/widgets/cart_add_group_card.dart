@@ -38,6 +38,9 @@ class CartAddGroupCard extends StatelessWidget {
   /// 비대면 장바구니 카드. 추가상품 헤더 금액과 본품+추가상품 합계를 쓴다.
   final bool prescriptionCartLayout;
 
+  /// 결제 화면 추가상품 사진 실패를 로그에 남긴다.
+  final bool reportImageFailure;
+
   const CartAddGroupCard({
     super.key,
     required this.group,
@@ -52,6 +55,7 @@ class CartAddGroupCard extends StatelessWidget {
     this.supplyInteractive = true,
     this.supplyInitiallyExpanded = false,
     this.prescriptionCartLayout = false,
+    this.reportImageFailure = false,
   });
 
   @override
@@ -84,6 +88,7 @@ class CartAddGroupCard extends StatelessWidget {
               initiallyExpanded: supplyInitiallyExpanded,
               interactive: supplyInteractive,
               prescriptionCartLayout: cartLayout,
+              reportImageFailure: reportImageFailure,
               amountLabel: cartLayout
                   ? '+${PriceFormatter.format(addAmount)}원'
                   : null,
@@ -245,6 +250,7 @@ class _SupplyAddBlock extends StatelessWidget {
     this.expandWhenSelected = false,
     this.initiallyExpanded = false,
     this.prescriptionCartLayout = false,
+    this.reportImageFailure = false,
     this.amountLabel,
   });
 
@@ -256,6 +262,7 @@ class _SupplyAddBlock extends StatelessWidget {
   final bool expandWhenSelected;
   final bool initiallyExpanded;
   final bool prescriptionCartLayout;
+  final bool reportImageFailure;
   final String? amountLabel;
 
   @override
@@ -285,6 +292,7 @@ class _SupplyAddBlock extends StatelessWidget {
             line: merged[i],
             canEdit: canEdit,
             prescriptionCartLayout: prescriptionCartLayout,
+            reportImageFailure: reportImageFailure,
             showBottomBorder:
                 prescriptionCartLayout && i < merged.length - 1,
             onDecrease: !canEdit
@@ -330,6 +338,7 @@ class _SupplyAddRow extends StatelessWidget {
     this.onDelete,
     this.onOpenDetail,
     this.prescriptionCartLayout = false,
+    this.reportImageFailure = false,
     this.showBottomBorder = false,
   });
 
@@ -340,6 +349,7 @@ class _SupplyAddRow extends StatelessWidget {
   final VoidCallback? onDelete;
   final VoidCallback? onOpenDetail;
   final bool prescriptionCartLayout;
+  final bool reportImageFailure;
   final bool showBottomBorder;
 
   @override
@@ -378,6 +388,7 @@ class _SupplyAddRow extends StatelessWidget {
                 item: item,
                 size: thumb,
                 borderRadius: BorderRadius.circular(healthDp(context, 6)),
+                reportImageFailure: reportImageFailure,
               ),
             ),
             SizedBox(width: healthDp(context, 10)),
@@ -491,6 +502,7 @@ class _SupplyAddRow extends StatelessWidget {
               item: item,
               size: thumb,
               borderRadius: BorderRadius.circular(healthDp(context, 4)),
+              reportImageFailure: reportImageFailure,
             ),
           ),
           SizedBox(width: healthDp(context, 8)),

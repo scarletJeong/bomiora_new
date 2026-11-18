@@ -183,6 +183,7 @@ class PaymentProductCard extends StatelessWidget {
             supplyInitiallyExpanded: true,
             supplyInteractive: false,
             showBundleTotal: false,
+            reportImageFailure: true,
             onToggleSelect: (_, __) {},
             buildParentOrMainCard: (item, {required isChild, footer}) =>
                 _PaymentParentBlock(item: item, footer: footer),
@@ -459,6 +460,7 @@ class _PaymentParentBlock extends StatelessWidget {
                 item: item,
                 size: thumb,
                 borderRadius: BorderRadius.circular(healthDp(context, 4)),
+                reportImageFailure: true,
               ),
               SizedBox(width: healthDp(context, 10)),
               Expanded(
