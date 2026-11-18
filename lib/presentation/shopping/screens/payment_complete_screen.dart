@@ -270,6 +270,7 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
       odId: order.odId,
       mbId: user.id,
       orderDetail: order,
+      reportCancelFailure: true,
     );
     if (ok && mounted) {
       await OrderFlowDialogs.openCancelledOrderPage(

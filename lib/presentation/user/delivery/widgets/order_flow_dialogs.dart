@@ -44,6 +44,7 @@ class OrderFlowDialogs {
     required String odId,
     required String mbId,
     OrderDetailModel? orderDetail,
+    bool reportCancelFailure = false,
   }) async {
     final detail = await _loadOrderDetail(
       odId: odId,
@@ -99,8 +100,8 @@ class OrderFlowDialogs {
       refundHolder: refundInput?.holder,
     );
 
-    if (!context.mounted) return false;
     if (result['success'] == true) {
+      if (!context.mounted) return false;
       await showOrderCancelSuccess(
         context,
         cancelRequested: result['cancelRequested'] == true,
@@ -108,12 +109,22 @@ class OrderFlowDialogs {
       return true;
     }
 
-    final message = result['message']?.toString().trim();
+    final message = result['message']?.toString().trim() ?? '';
+    if (reportCancelFailure) {
+      await FailureLog.record(
+        code: 'payment.complete.cancel',
+        mbId: mbId,
+        reason: message.isEmpty ? '주문을 취소하지 못했습니다.' : message,
+        detail: {'orderId': odId},
+      );
+      if (!context.mounted) return false;
+      AppToastOverlay.show(context, '주문을 취소하지 못했습니다.');
+      return false;
+    }
+    if (!context.mounted) return false;
     AppToastOverlay.show(
       context,
-      (message != null && message.isNotEmpty)
-          ? message
-          : '주문 취소에 실패했습니다.',
+      message.isNotEmpty ? message : '주문 취소에 실패했습니다.',
     );
     return false;
   }
