@@ -49,7 +49,8 @@ extension _PaymentDelivery on _PaymentScreenState {
     }
     await Future<void>.delayed(const Duration(milliseconds: 400));
     if (!mounted) return quote;
-    return _fetchShippingQuote();
+    final again = await _fetchShippingQuote();
+    return again ?? quote;
   }
 
   Future<CartShippingQuote?> _fetchShippingQuote() async {
@@ -345,9 +346,21 @@ extension _PaymentDelivery on _PaymentScreenState {
   Widget _buildDeliverySection(BuildContext context) {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: healthDp(context, 27)),
-      child: _hasSavedAddress
-          ? _buildDeliveryFilledCard(context)
-          : _buildDeliveryEmptyForm(context),
+      child: _addressLoadFailed
+          ? _sectionCard(
+              child: Text(
+                '배송지를 불러오지 못했습니다.',
+                style: TextStyle(
+                  color: _muted,
+                  fontSize: healthSp(context, 14),
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            )
+          : _hasSavedAddress
+              ? _buildDeliveryFilledCard(context)
+              : _buildDeliveryEmptyForm(context),
     );
   }
 

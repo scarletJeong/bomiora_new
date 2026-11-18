@@ -188,6 +188,49 @@ class CouponService {
     return (tabs['available'] ?? const <Coupon>[]).length;
   }
 
+  /// 결제 화면. 실패는 null이고 빈 목록으로 캐시하지 않는다.
+  static Future<List<Coupon>?> loadPaymentCoupons(String userId) async {
+    final id = userId.trim();
+    if (id.isEmpty) return null;
+    try {
+      final response = await ApiClient.get(ApiEndpoints.availableCoupons(id));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data is Map && data['success'] == true) {
+          final raw = data['data'];
+          final coupons = raw is List
+              ? raw.map((item) => Coupon.fromJson(item)).toList()
+              : <Coupon>[];
+          _availableCache[id] = coupons;
+          _availableCacheAt[id] = DateTime.now();
+          return List<Coupon>.from(coupons);
+        }
+      }
+      String server = '';
+      try {
+        final body = json.decode(response.body);
+        if (body is Map) {
+          server = (body['message'] ?? body['error'] ?? '').toString().trim();
+        }
+      } catch (_) {}
+      await FailureLog.record(
+        code: 'payment.coupon',
+        mbId: id,
+        reason: server.isEmpty
+            ? '쿠폰 조회에 실패했습니다. (${response.statusCode})'
+            : server,
+      );
+      return null;
+    } catch (e) {
+      await FailureLog.record(
+        code: 'payment.coupon',
+        mbId: id,
+        reason: e.toString(),
+      );
+      return null;
+    }
+  }
+
   /// 사용 가능한 쿠폰 조회
   static Future<List<Coupon>> getAvailableCoupons(String userId) async {
     final id = userId.trim();

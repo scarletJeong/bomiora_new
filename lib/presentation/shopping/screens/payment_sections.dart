@@ -70,14 +70,20 @@ extension _PaymentSections on _PaymentScreenState {
 
   /// 쿠폰/포인트 + 결제금액 내역 + 총 결제비용
   Widget _buildCouponPointTotalSection(BuildContext context) { 
-    final showCoupon = !_couponPointDisabled && _applicableCoupons.isNotEmpty;
-    final showPoint = !_couponPointDisabled && _myPoint > 0;
+    final showCoupon = !_couponPointDisabled &&
+        !_couponLoadFailed &&
+        _applicableCoupons.isNotEmpty;
+    final showCouponFailure = !_couponPointDisabled && _couponLoadFailed;
+    final showPoint =
+        !_couponPointDisabled && !_pointLoadFailed && _myPoint > 0;
+    final showPointFailure = !_couponPointDisabled && _pointLoadFailed;
     final selectedCouponNos = _selectedCoupons.map((coupon) => coupon.no).toSet();
     final remainCouponCount = _applicableCoupons
         .where((coupon) => !selectedCouponNos.contains(coupon.no))
         .length;
     final remainPoint = (_myPoint - _pointDiscount).clamp(0, _myPoint);
-    final showCouponPoint = showCoupon || showPoint;
+    final showCouponPoint =
+        showCoupon || showPoint || showCouponFailure || showPointFailure;
 
     // 쿠폰 카드 안쪽(14)과 맞춰 결제금액·수단은 약 41(≈35~)로 맞춤
     final amountPad = healthDp(context, 41);
@@ -92,6 +98,16 @@ extension _PaymentSections on _PaymentScreenState {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (showCouponFailure)
+                    Text(
+                      '쿠폰을 불러오지 못했습니다.',
+                      style: TextStyle(
+                        color: _muted,
+                        fontSize: healthSp(context, 14),
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   if (showCoupon) ...[
                     Row(
                       children: [
@@ -144,8 +160,19 @@ extension _PaymentSections on _PaymentScreenState {
                           .map((c) => _selectedCouponRow(context, c)),
                     ],
                   ],
-                  if (showCoupon && showPoint)
+                  if ((showCoupon || showCouponFailure) &&
+                      (showPoint || showPointFailure))
                     SizedBox(height: healthDp(context, 20)),
+                  if (showPointFailure)
+                    Text(
+                      '포인트를 불러오지 못했습니다.',
+                      style: TextStyle(
+                        color: _muted,
+                        fontSize: healthSp(context, 14),
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   if (showPoint) ...[
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,

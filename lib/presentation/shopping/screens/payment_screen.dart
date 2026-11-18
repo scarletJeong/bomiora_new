@@ -46,13 +46,19 @@ part 'payment_checkout.dart';
 part 'payment_sections.dart';
 
 class PaymentPrefetchData {
+  final bool addressFailed;
   final List<Map<String, dynamic>> addresses;
+  final bool couponFailed;
   final List<Coupon> coupons;
+  final bool pointFailed;
   final int point;
 
   const PaymentPrefetchData({
+    required this.addressFailed,
     required this.addresses,
+    required this.couponFailed,
     required this.coupons,
+    required this.pointFailed,
     required this.point,
   });
 
@@ -61,14 +67,20 @@ class PaymentPrefetchData {
     if (id.isEmpty) return null;
     try {
       final results = await Future.wait([
-        AddressService.getAddressList(id),
-        CouponService.getAvailableCoupons(id),
+        AddressService.loadAddresses(id),
+        CouponService.loadPaymentCoupons(id),
         PointService.getUserPoint(id),
       ]);
+      final addressLoad = results[0] as AddressListLoad;
+      final coupons = results[1] as List<Coupon>?;
+      final point = results[2] as int?;
       return PaymentPrefetchData(
-        addresses: results[0] as List<Map<String, dynamic>>,
-        coupons: results[1] as List<Coupon>,
-        point: (results[2] as int?) ?? 0,
+        addressFailed: !addressLoad.ok,
+        addresses: addressLoad.items,
+        couponFailed: coupons == null,
+        coupons: coupons ?? const [],
+        pointFailed: point == null,
+        point: point ?? 0,
       );
     } catch (e) {
       await FailureLog.record(
@@ -142,6 +154,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   bool _loading = true;
   bool _checkoutLoadFailed = false;
+  bool _addressLoadFailed = false;
+  bool _couponLoadFailed = false;
+  bool _pointLoadFailed = false;
 
   bool _submitting = false;
 
@@ -263,26 +278,30 @@ class _PaymentScreenState extends State<PaymentScreen> {
       }
 
       final results = await Future.wait([
-        AddressService.getAddressList(user.id),
-        CouponService.getAvailableCoupons(user.id),
+        AddressService.loadAddresses(user.id),
+        CouponService.loadPaymentCoupons(user.id),
         PointService.getUserPoint(user.id),
       ]);
 
-      final addresses = results[0] as List<Map<String, dynamic>>;
-      final coupons = results[1] as List<Coupon>;
-      final point = (results[2] as int?) ?? 0;
-      final defaultAddress = addresses.firstWhere(
+      final addressLoad = results[0] as AddressListLoad;
+      final coupons = results[1] as List<Coupon>?;
+      final point = results[2] as int?;
+      final defaultAddress = addressLoad.items.firstWhere(
         (e) => e['adDefault'] == 1,
-        orElse: () =>
-            addresses.isNotEmpty ? addresses.first : <String, dynamic>{},
+        orElse: () => addressLoad.items.isNotEmpty
+            ? addressLoad.items.first
+            : <String, dynamic>{},
       );
 
       if (!mounted) return;
       await _finishCheckoutLoad(
         user: user,
+        addressFailed: !addressLoad.ok,
         address: defaultAddress.isEmpty ? null : defaultAddress,
-        point: point,
-        coupons: coupons,
+        pointFailed: point == null,
+        point: point ?? 0,
+        couponFailed: coupons == null,
+        coupons: coupons ?? const [],
       );
     } catch (e) {
       await FailureLog.record(
@@ -308,8 +327,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
     );
     await _finishCheckoutLoad(
       user: user,
+      addressFailed: prefetch.addressFailed,
       address: defaultAddress.isEmpty ? null : defaultAddress,
+      pointFailed: prefetch.pointFailed,
       point: prefetch.point,
+      couponFailed: prefetch.couponFailed,
       coupons: prefetch.coupons,
     );
   }
@@ -319,17 +341,23 @@ class _PaymentScreenState extends State<PaymentScreen> {
   /// 견적 전에 화면을 열면 3만원 이하 배송비·배송비 쿠폰이 빠진다.
   Future<void> _finishCheckoutLoad({
     required UserModel user,
+    required bool addressFailed,
     required Map<String, dynamic>? address,
+    required bool pointFailed,
     required int point,
+    required bool couponFailed,
     required List<Coupon> coupons,
   }) async {
     if (!mounted) return;
     setState(() {
-      _defaultAddress = address;
-      _myPoint = point;
+      _addressLoadFailed = addressFailed;
+      _couponLoadFailed = couponFailed;
+      _pointLoadFailed = pointFailed;
+      _defaultAddress = addressFailed ? null : address;
+      _myPoint = pointFailed ? 0 : point;
       _loadedCoupons = coupons;
       _applyAddressMode(refreshShipping: false);
-      if (address == null) {
+      if (!addressFailed && address == null) {
         _saveAsDefault = true;
         if (_receiverController.text.trim().isEmpty) {
           _receiverController.text = user.name;
@@ -342,10 +370,24 @@ class _PaymentScreenState extends State<PaymentScreen> {
         _addressNameController.text = _addressLabelChip;
       }
     });
-    await _loadShippingQuote(retryIfZero: true);
+    final canQuote = widget.cartItems.any((item) => item.ctId > 0);
+    final quote = await _loadShippingQuote(retryIfZero: true);
     if (!mounted) return;
     _logPointUsageRates();
     setState(() => _loading = false);
+    if (canQuote && quote == null) {
+      await _notifyShippingQuoteOnOpen();
+    }
+  }
+
+  Future<void> _notifyShippingQuoteOnOpen() async {
+    if (!mounted) return;
+    await AppAlertDialog.show(
+      context,
+      title: '',
+      message: '배송비를 확인하지 못했습니다',
+      confirmText: '확인',
+    );
   }
 
   @override

@@ -73,6 +73,10 @@ extension _PaymentCheckout on _PaymentScreenState {
       MediaQuery.sizeOf(context).width <= 650;
 
   bool _validateBeforePay() {
+    if (_addressLoadFailed) {
+      AppToastOverlay.showAlert(context, '배송지를 불러오지 못했습니다.');
+      return false;
+    }
     final receiverEmpty = _receiverController.text.trim().isEmpty;
     final phoneDigits =
         _phoneController.text.replaceAll(RegExp(r'[^0-9]'), '');
