@@ -74,7 +74,8 @@ extension _PaymentCheckout on _PaymentScreenState {
 
   bool _validateBeforePay() {
     final receiverEmpty = _receiverController.text.trim().isEmpty;
-    final phoneEmpty = _phoneController.text.trim().isEmpty;
+    final phoneDigits =
+        _phoneController.text.replaceAll(RegExp(r'[^0-9]'), '');
     final zipEmpty = _zipController.text.trim().isEmpty;
     final addressEmpty = _addressController.text.trim().isEmpty;
 
@@ -82,8 +83,8 @@ extension _PaymentCheckout on _PaymentScreenState {
       AppToastOverlay.showAlert(context, '받는 분을 입력해 주세요.');
       return false;
     }
-    if (phoneEmpty) {
-      AppToastOverlay.showAlert(context, '연락처를 입력해 주세요.');
+    if (phoneDigits.length != 11) {
+      AppToastOverlay.showAlert(context, '연락처 11자리를 입력해 주세요.');
       return false;
     }
     if (zipEmpty || addressEmpty) {
