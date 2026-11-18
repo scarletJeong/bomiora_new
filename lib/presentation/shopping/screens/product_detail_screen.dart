@@ -96,6 +96,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
 
   // 옵션 관련 상태
   List<ProductOption> _productOptions = [];
+  bool _optionsLoadFailed = false;
+  Future<void>? _optionsLoad;
   Map<ProductOption, int> _selectedOptions = {}; // 옵션과 수량을 함께 관리
   List<SupplyCartLine> _supplyLines = [];
 
@@ -530,18 +532,25 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   }
 
   /// 제품 옵션 조회
-  Future<void> _loadProductOptions() async {
+  Future<void> _loadProductOptions() {
+    final request = _fetchProductOptions();
+    _optionsLoad = request;
+    return request.whenComplete(() {
+      if (identical(_optionsLoad, request)) _optionsLoad = null;
+    });
+  }
+
+  Future<void> _fetchProductOptions() async {
     if (widget.productId.isEmpty) return;
 
-    try {
-      final options =
-          await ProductOptionRepository.getProductOptions(widget.productId);
-      _safeSetState(() {
-        _productOptions = options;
-      });
+    final result =
+        await ProductOptionRepository.getProductOptions(widget.productId);
+    _safeSetState(() {
+      _productOptions = result.failed ? [] : result.items;
+      _optionsLoadFailed = result.failed;
+    });
+    if (!result.failed) {
       await _resumePendingCheckoutIfNeeded();
-    } catch (e) {
-      // 옵션 로드 실패 시 무시
     }
   }
 
@@ -1809,6 +1818,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   /// 옵션 선택 바텀 시트 표시
   Future<void> _showOptionSelectionDialog() async {
     if (_product == null || !_product!.isPurchasable) return;
+    await _optionsLoad;
+    if (!mounted || _product == null || !_product!.isPurchasable) return;
+    if (_optionsLoadFailed) {
+      AppToastOverlay.showAlert(context, '옵션을 불러오지 못했습니다.');
+      return;
+    }
 
     await showProductOptionBottomup(
       context: context,

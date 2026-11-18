@@ -4,6 +4,7 @@ import '../../../data/models/product/product_model.dart';
 import '../../../data/models/product/product_option_model.dart';
 import '../../../data/repositories/product/product_option_repository.dart';
 import '../../../data/services/cart_service.dart';
+import '../../common/widgets/app_toast_overlay.dart';
 import '../../common/widgets/dropdown_btn.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import 'quantity_stepper.dart';
@@ -404,9 +405,16 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
       _pickedSupplyOptions = [];
       _applySupplyOptionLabels(product);
     });
-    final opts =
+    final result =
         await ProductOptionRepository.getProductOptions(product.id);
     if (!mounted) return;
+    if (result.failed) {
+      setState(() => _resetSupplyOptionSelection(clearProduct: true));
+      AppToastOverlay.showAlert(context, '옵션을 불러오지 못했습니다.');
+      return;
+    }
+
+    final opts = result.items;
 
     final mainOpts = opts.where((o) => o.isMain).toList();
     final resolved = mainOpts.isNotEmpty ? mainOpts : opts;
