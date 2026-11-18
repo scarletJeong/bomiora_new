@@ -280,9 +280,7 @@ class _KcpPayWebViewScreenState extends State<KcpPayWebViewScreen> {
       Navigator.pop(context, {
         'success': false,
         'error_code': code,
-        'message': e is KcpPayStartException && e.message.trim().isNotEmpty
-            ? e.message
-            : '결제 요청 중 오류가 발생했습니다.',
+        'message': _paymentRequestMessage(e),
         if (e is KcpPayStartException && e.baseShipping != null)
           'base_shipping_cost': e.baseShipping,
         if (e is KcpPayStartException && e.extraShipping != null)
@@ -306,6 +304,20 @@ class _KcpPayWebViewScreenState extends State<KcpPayWebViewScreen> {
     _pollingTimer?.cancel();
     _cancelWebListener?.call();
     super.dispose();
+  }
+
+  String _paymentRequestMessage(Object error) {
+    if (error is KcpPayStartException) {
+      final message = error.message.trim();
+      if (error.errorCode == 'SHIPPING_CHANGED' ||
+          error.errorCode == 'AMOUNT_CHANGED' ||
+          message.contains('배송비가 변경') ||
+          message.contains('결제 금액이 변경') ||
+          message.contains('결제 금액 검증')) {
+        return message;
+      }
+    }
+    return '결제 요청에 실패했습니다.';
   }
 
   void _onBridgePayload(Map<String, dynamic> data) {

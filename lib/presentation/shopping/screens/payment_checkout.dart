@@ -364,9 +364,7 @@ extension _PaymentCheckout on _PaymentScreenState {
           await AppAlertDialog.show(
             context,
             title: '결제할 수 없습니다',
-            message: message.isNotEmpty
-                ? message
-                : '재고 또는 금액이 변경되었습니다. 장바구니를 확인해 주세요.',
+            message: '결제 요청에 실패했습니다.',
           );
           await _backToCartAfterPaymentFailure();
           return;
@@ -382,7 +380,9 @@ extension _PaymentCheckout on _PaymentScreenState {
 
         AppToastOverlay.show(
           context,
-          message.isNotEmpty ? message : '결제가 완료되지 않았습니다.',
+          message == '결제 요청에 실패했습니다.'
+              ? '결제 요청에 실패했습니다.'
+              : '결제가 완료되지 않았습니다.',
         );
         await _backToCartAfterPaymentFailure();
       }
@@ -393,9 +393,18 @@ extension _PaymentCheckout on _PaymentScreenState {
         reason: e.toString(),
       );
       if (!mounted) return;
-      final message = e is KcpPayStartException && e.message.trim().isNotEmpty
-          ? e.message
-          : '결제 요청 중 오류가 발생했습니다.';
+      final raw = e is KcpPayStartException ? e.message.trim() : '';
+      final keepNotice = e is KcpPayStartException &&
+          (e.errorCode == 'SHIPPING_CHANGED' ||
+              e.errorCode == 'AMOUNT_CHANGED' ||
+              raw.contains('배송비가 변경') ||
+              raw.contains('결제 금액이 변경') ||
+              raw.contains('결제 금액 검증'));
+      final message = keepNotice
+          ? raw
+          : e is KcpPayStartException
+              ? '결제 요청에 실패했습니다.'
+              : '결제 요청 중 오류가 발생했습니다.';
       AppToastOverlay.showAlert(context, message);
     } finally {
       if (mounted) {
