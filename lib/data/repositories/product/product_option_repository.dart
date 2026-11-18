@@ -65,22 +65,58 @@ class ProductOptionRepository {
     );
   }
 
-  /// 연결상품 요약 목록
-  static Future<List<Product>> getSupplyProducts(String productId) async {
+  /// 연결상품 요약 목록. 실패와 추가 상품이 없는 경우를 구분한다.
+  static Future<({List<Product> items, bool failed})> getSupplyProducts(
+    String productId,
+  ) async {
     try {
       final response =
           await ApiClient.get(ApiEndpoints.productSupplyProducts(productId));
-      if (response.statusCode != 200) return [];
+      if (response.statusCode != 200) {
+        await _logSupplyFailure(
+          productId,
+          '추가 상품 HTTP ${response.statusCode}',
+        );
+        return (items: const <Product>[], failed: true);
+      }
       final data = json.decode(response.body);
-      if (data is! Map || data['success'] != true) return [];
+      if (data is! Map || data['success'] != true) {
+        final message = data is Map
+            ? data['message']?.toString().trim() ?? ''
+            : '';
+        await _logSupplyFailure(
+          productId,
+          message.isEmpty ? '추가 상품 조회에 실패했습니다.' : message,
+        );
+        return (items: const <Product>[], failed: true);
+      }
       final raw = data['data'];
-      if (raw is! List) return [];
-      return raw
-          .whereType<Map>()
-          .map((e) => Product.fromJson(Map<String, dynamic>.from(e)))
-          .toList();
-    } catch (_) {
-      return [];
+      if (raw == null) {
+        return (items: const <Product>[], failed: false);
+      }
+      if (raw is! List) {
+        await _logSupplyFailure(productId, '추가 상품 응답이 올바르지 않습니다.');
+        return (items: const <Product>[], failed: true);
+      }
+      return (
+        items: raw
+            .whereType<Map>()
+            .map((e) => Product.fromJson(Map<String, dynamic>.from(e)))
+            .toList(),
+        failed: false,
+      );
+    } catch (e) {
+      await _logSupplyFailure(productId, e.toString());
+      return (items: const <Product>[], failed: true);
     }
+  }
+
+  static Future<void> _logSupplyFailure(String productId, String reason) {
+    return FailureLog.record(
+      code: 'product.supply',
+      mbId: AuthService.currentUser?.id ?? '',
+      reason: reason,
+      detail: {'productId': productId},
+    );
   }
 }

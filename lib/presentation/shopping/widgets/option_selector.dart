@@ -188,6 +188,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
 
   List<Product> _supplyProducts = [];
   bool _supplyLoading = false;
+  bool _supplyLoadFailed = false;
   Product? _pickedSupplyProduct;
   List<ProductOption> _pickedSupplyOptions = [];
   ProductOption? _pickedSupplyOption;
@@ -297,17 +298,20 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
   Future<void> _loadSupplyProducts() async {
     final product = widget.product;
     if (product == null || product.supplyItemIds.isEmpty) return;
-    setState(() => _supplyLoading = true);
-    final list =
-        await ProductOptionRepository.getSupplyProducts(product.id);
+    setState(() {
+      _supplyLoading = true;
+      _supplyLoadFailed = false;
+    });
+    final result = await ProductOptionRepository.getSupplyProducts(product.id);
     if (!mounted) return;
     setState(() {
-      _supplyProducts = list;
+      _supplyProducts = result.failed ? [] : result.items;
+      _supplyLoadFailed = result.failed;
       _supplyLoading = false;
     });
     // 추가상품이 1개면 상품 선택 드롭다운 생략 → 바로 옵션 로드
-    if (list.length == 1) {
-      await _onSupplyProductPicked(list.first);
+    if (!result.failed && result.items.length == 1) {
+      await _onSupplyProductPicked(result.items.first);
     }
   }
 
@@ -1186,7 +1190,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
             },
           ),
         ],
-        if (_supplyProducts.isNotEmpty || _supplyLoading) ...[
+        if (_supplyProducts.isNotEmpty || _supplyLoading || _supplyLoadFailed) ...[
           SizedBox(height: healthDp(context, 20)),
           Padding(
             padding: EdgeInsets.symmetric(vertical: healthDp(context, 5)),
@@ -1222,6 +1226,16 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
                   height: 20,
                   child: CircularProgressIndicator(color: const Color(0xFFFF5A8D), strokeWidth: 2),
                 ),
+              ),
+            )
+          else if (_supplyLoadFailed)
+            Text(
+              '추가 상품을 불러오지 못했습니다.',
+              style: TextStyle(
+                color: const Color(0xFF898686),
+                fontSize: healthSp(context, 12),
+                fontFamily: _kGmarketSans,
+                fontWeight: FontWeight.w500,
               ),
             )
           else ...[
