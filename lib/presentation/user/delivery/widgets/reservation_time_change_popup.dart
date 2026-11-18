@@ -122,7 +122,9 @@ class _ReservationTimeChangePopupState
   }
 
   Future<void> _loadSettings() async {
-    final loaded = await ShopDefaultService.loadReservationSettings();
+    final loaded = await ShopDefaultService.loadReservationSettings(
+      forceRefresh: widget.reportSaveFailure,
+    );
     if (!mounted) return;
     if (loaded.failed) {
       final user = await AuthService.getUser();

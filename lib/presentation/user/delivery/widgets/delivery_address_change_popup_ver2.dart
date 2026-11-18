@@ -861,7 +861,10 @@ class _AddressFormDialogState extends State<_AddressFormDialog>
           : await AddressService.addAddress(payload);
 
       if (!mounted) return;
-      if (result['success'] != true) return;
+      if (result['success'] != true) {
+        AppToastOverlay.showAlert(context, '배송지를 저장하지 못했습니다.');
+        return;
+      }
 
       int? addressId = editingId;
       if (!_isEdit) {

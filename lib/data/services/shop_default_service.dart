@@ -30,8 +30,9 @@ class ShopDefaultService {
 
   /// 예약 시간 변경 창용. 조회가 실패하면 예전 설정을 성공처럼 돌려주지 않는다.
   static Future<({ReservationSettingsModel? settings, bool failed, String reason})>
-      loadReservationSettings() async {
-    if (_cachedSettings != null &&
+      loadReservationSettings({bool forceRefresh = false}) async {
+    if (!forceRefresh &&
+        _cachedSettings != null &&
         _cachedAt != null &&
         DateTime.now().difference(_cachedAt!) < _cacheTtl) {
       return (settings: _cachedSettings, failed: false, reason: '');
