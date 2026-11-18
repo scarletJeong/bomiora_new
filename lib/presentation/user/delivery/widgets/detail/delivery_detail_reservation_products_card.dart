@@ -16,6 +16,8 @@ class DeliveryDetailReservationProductsCard extends StatelessWidget {
     this.asConsultDone = false,
     this.actions = const [],
     this.reportImageFailure = false,
+    this.imageFailureCode,
+    this.imageFailureReason,
   });
 
   final OrderDetailModel order;
@@ -32,6 +34,8 @@ class DeliveryDetailReservationProductsCard extends StatelessWidget {
 
   /// 결제완료 상품 사진 실패를 로그에 남긴다.
   final bool reportImageFailure;
+  final String? imageFailureCode;
+  final String? imageFailureReason;
 
   @override
   Widget build(BuildContext context) {
@@ -62,6 +66,8 @@ class DeliveryDetailReservationProductsCard extends StatelessWidget {
             actions: actions,
             asCard: false,
             reportImageFailure: reportImageFailure,
+            imageFailureCode: imageFailureCode,
+            imageFailureReason: imageFailureReason,
           ),
         ],
       ),

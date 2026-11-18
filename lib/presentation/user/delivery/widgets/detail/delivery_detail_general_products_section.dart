@@ -18,6 +18,8 @@ class DeliveryDetailGeneralProductsSection extends StatelessWidget {
     this.onCancelTap,
     this.actions = const [],
     this.reportImageFailure = false,
+    this.imageFailureCode,
+    this.imageFailureReason,
   });
 
   final OrderDetailModel order;
@@ -32,6 +34,8 @@ class DeliveryDetailGeneralProductsSection extends StatelessWidget {
 
   /// 결제완료 상품 사진 실패를 로그에 남긴다.
   final bool reportImageFailure;
+  final String? imageFailureCode;
+  final String? imageFailureReason;
 
   @override
   Widget build(BuildContext context) {
@@ -183,13 +187,14 @@ class DeliveryDetailGeneralProductsSection extends StatelessWidget {
                   fit: BoxFit.cover,
                   preferHtmlElementOnWeb: false,
                   errorBuilder: (_, error, __) {
-                    if (reportImageFailure) {
-                      logPaymentCompleteProductImageFailure(
-                        url: normalizedUrl,
-                        itId: product.itId,
-                        error: error,
-                      );
-                    }
+                    _logDetailProductImage(
+                      reportImageFailure: reportImageFailure,
+                      imageFailureCode: imageFailureCode,
+                      imageFailureReason: imageFailureReason,
+                      url: normalizedUrl,
+                      itId: product.itId,
+                      error: error,
+                    );
                     return Icon(
                       Icons.image,
                       color: DeliveryDetailSectionStyle.muted,

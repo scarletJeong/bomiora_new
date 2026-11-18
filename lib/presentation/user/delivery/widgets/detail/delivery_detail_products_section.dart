@@ -27,6 +27,8 @@ class DeliveryDetailProductsSection extends StatelessWidget {
     this.actions = const [],
     this.asCard = true,
     this.reportImageFailure = false,
+    this.imageFailureCode,
+    this.imageFailureReason,
   });
 
   final OrderDetailModel order;
@@ -36,6 +38,10 @@ class DeliveryDetailProductsSection extends StatelessWidget {
         Future<void> Function()? onTap,
         DeliveryDetailProductActionStyle style,
       })> actions;
+
+  /// 상품 사진 실패 로그. 없으면 [reportImageFailure]일 때만 결제완료 문구로 남긴다.
+  final String? imageFailureCode;
+  final String? imageFailureReason;
 
   /// false면 바깥 카드 없이 내용만 렌더 (합쳐진 카드용)
   final bool asCard;
@@ -198,13 +204,14 @@ class DeliveryDetailProductsSection extends StatelessWidget {
                   fit: BoxFit.cover,
                   preferHtmlElementOnWeb: false,
                   errorBuilder: (_, error, __) {
-                    if (reportImageFailure) {
-                      logPaymentCompleteProductImageFailure(
-                        url: normalizedUrl,
-                        itId: item.itId,
-                        error: error,
-                      );
-                    }
+                    _logDetailProductImage(
+                      reportImageFailure: reportImageFailure,
+                      imageFailureCode: imageFailureCode,
+                      imageFailureReason: imageFailureReason,
+                      url: normalizedUrl,
+                      itId: item.itId,
+                      error: error,
+                    );
                     return Icon(
                       Icons.image,
                       color: DeliveryDetailSectionStyle.muted,
@@ -342,29 +349,71 @@ class DeliveryDetailProductsSection extends StatelessWidget {
   }
 }
 
+const orderDetailProductImageCode = 'order.detail.image';
+const orderDetailProductImageReason = '주문상세 상품 사진을 불러오지 못했습니다.';
+
 const paymentCompleteProductImageCode = 'payment.complete.image';
 const paymentCompleteProductImageReason = '결제완료 상품 사진을 불러오지 못했습니다.';
 const paymentCompleteProductImageFallbackReason =
     '결제완료 상품 사진을 다시 불러오지 못했습니다.';
 
-final Set<String> _loggedPaymentCompleteImageUrls = {};
+final Set<String> _loggedProductImageFailures = {};
 
-void logPaymentCompleteProductImageFailure({
+void logProductImageFailure({
+  required String code,
+  required String reason,
   required String url,
   required String itId,
   required Object error,
 }) {
-  if (!_loggedPaymentCompleteImageUrls.add(url)) return;
+  if (!_loggedProductImageFailures.add('$code|$url')) return;
   unawaited(
     FailureLog.record(
-      code: paymentCompleteProductImageCode,
+      code: code,
       mbId: AuthService.currentUser?.id ?? '',
-      reason: paymentCompleteProductImageReason,
+      reason: reason,
       detail: {
         'url': url,
         'itId': itId,
         'error': error.toString(),
       },
     ),
+  );
+}
+
+void logPaymentCompleteProductImageFailure({
+  required String url,
+  required String itId,
+  required Object error,
+}) {
+  logProductImageFailure(
+    code: paymentCompleteProductImageCode,
+    reason: paymentCompleteProductImageReason,
+    url: url,
+    itId: itId,
+    error: error,
+  );
+}
+
+void _logDetailProductImage({
+  required bool reportImageFailure,
+  required String? imageFailureCode,
+  required String? imageFailureReason,
+  required String url,
+  required String itId,
+  required Object error,
+}) {
+  final code = imageFailureCode ??
+      (reportImageFailure ? paymentCompleteProductImageCode : null);
+  if (code == null) return;
+  logProductImageFailure(
+    code: code,
+    reason: imageFailureReason ??
+        (code == orderDetailProductImageCode
+            ? orderDetailProductImageReason
+            : paymentCompleteProductImageReason),
+    url: url,
+    itId: itId,
+    error: error,
   );
 }

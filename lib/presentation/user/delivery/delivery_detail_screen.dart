@@ -478,6 +478,8 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
                   onChangeTap: _showReservationTimeChangeDialog,
                   asConsultDone: consultDone,
                   actions: _productActions(order),
+                  imageFailureCode: orderDetailProductImageCode,
+                  imageFailureReason: orderDetailProductImageReason,
                 ),
                 gap,
                 DeliveryDetailAddressSection(
@@ -665,11 +667,15 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
         order: order,
         onCancelTap: onCancel,
         actions: rest,
+        imageFailureCode: orderDetailProductImageCode,
+        imageFailureReason: orderDetailProductImageReason,
       );
     }
     return DeliveryDetailProductsSection(
       order: order,
       actions: actions,
+      imageFailureCode: orderDetailProductImageCode,
+      imageFailureReason: orderDetailProductImageReason,
     );
   }
 
