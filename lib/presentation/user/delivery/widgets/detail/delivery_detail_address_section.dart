@@ -91,7 +91,7 @@ class DeliveryDetailAddressSection extends StatelessWidget {
                           width: healthDp(context, 1),
                           color: changeButtonPink
                               ? DeliveryDetailSectionStyle.pink
-                              : const Color(0xFFE5E7EB),
+                              : const Color(0xFFD2D2D2),
                         ),
                         borderRadius:
                             BorderRadius.circular(healthDp(context, 9999)),

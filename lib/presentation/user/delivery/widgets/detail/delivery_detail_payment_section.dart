@@ -325,7 +325,7 @@ class _DeliveryDetailPaymentSectionState
               label: '결제일시',
               value: _paymentDateLabel,
               valueStyle: TextStyle(
-                color: const Color(0xFF374151),
+                color: const Color(0xFF1A1A1A),
                 fontSize: healthSp(context, 14),
                 fontFamily: DeliveryDetailSectionStyle.font,
                 fontWeight: FontWeight.w500,

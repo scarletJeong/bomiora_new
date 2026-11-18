@@ -487,7 +487,7 @@ class _ReservationTimeChangePopupState
                           context: context,
                           background: const Color(0xFFF6F6F6),
                           labelColor: _kInk,
-                          valueColor: Colors.black,
+                          valueColor: _kInk,
                           label: '현재 예약 일정 :',
                           value: currentSchedule,
                         ),

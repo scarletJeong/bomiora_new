@@ -151,7 +151,7 @@ class DeliveryDetailDepositCard extends StatelessWidget {
                           shape: RoundedRectangleBorder(
                             side: BorderSide(
                               width: healthDp(context, 1),
-                              color: const Color(0xFFFF5C8D),
+                              color: const Color(0xFFFF5A8D),
                             ),
                             borderRadius:
                                 BorderRadius.circular(healthDp(context, 8)),
@@ -160,7 +160,7 @@ class DeliveryDetailDepositCard extends StatelessWidget {
                         child: Text(
                           '복사',
                           style: TextStyle(
-                            color: const Color(0xFFFF5C8D),
+                            color: const Color(0xFFFF5A8D),
                             fontSize: healthSp(context, 12),
                             fontFamily: DeliveryDetailSectionStyle.font,
                             fontWeight: FontWeight.w500,
@@ -174,7 +174,7 @@ class DeliveryDetailDepositCard extends StatelessWidget {
                 Text(
                   bank.accountNo.isEmpty ? bank.bankLine : bank.accountNo,
                   style: TextStyle(
-                    color: const Color(0xFF1F2937),
+                    color: const Color(0xFF1A1A1A),
                     fontSize: healthSp(context, 16),
                     fontFamily: DeliveryDetailSectionStyle.font,
                     fontWeight: FontWeight.w500,

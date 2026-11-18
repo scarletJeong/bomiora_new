@@ -17,8 +17,8 @@ const Color _kMuted = Color(0xFF898686);
 const Color _kAddrMuted = Color(0xFF898686);
 const Color _kBorder = Color(0xFFD2D2D2);
 const Color _kFieldFill = Color(0xFFF8FAFC);
-const Color _kSelectedBg = Color(0x0CFF5C8F);
-const Color _kSelectedBorder = Color(0xFFFF5C8F);
+const Color _kSelectedBg = Color(0x0CFF5A8D);
+const Color _kSelectedBorder = Color(0xFFFF5A8D);
 const Color _kChipTint = Color(0x0CFF5A8D);
 const Color _kReadonlyFill = Color(0xFFF8F8F8);
 
@@ -772,7 +772,7 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            color: Colors.black,
+                            color: const Color(0xFF1A1A1A),
                             fontSize: healthSp(context, 14),
                             fontFamily: _kFont,
                             fontWeight: FontWeight.w500,
@@ -1155,7 +1155,7 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
               child: Text(
                 label,
                 style: TextStyle(
-                  color: selected ? const Color(0xFF1A1A1E) : _kAddrMuted,
+                  color: selected ? const Color(0xFF1A1A1A) : _kAddrMuted,
                   fontSize: healthSp(context, 12),
                   fontFamily: _kFont,
                   fontWeight: FontWeight.w500,

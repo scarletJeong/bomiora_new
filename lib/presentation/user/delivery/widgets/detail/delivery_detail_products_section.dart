@@ -258,7 +258,7 @@ class DeliveryDetailProductsSection extends StatelessWidget {
             shape: RoundedRectangleBorder(
               side: BorderSide(
                 width: healthDp(context, 1),
-                color: const Color(0xFFE5E7EB),
+                color: const Color(0xFFD2D2D2),
               ),
               borderRadius: BorderRadius.circular(healthDp(context, 9999)),
             ),
@@ -310,7 +310,7 @@ class DeliveryDetailProductsSection extends StatelessWidget {
       case DeliveryDetailProductActionStyle.outlineGray:
         bg = Colors.white;
         fg = DeliveryDetailSectionStyle.muted;
-        border = const Color(0xFFE5E7EB);
+        border = const Color(0xFFD2D2D2);
     }
 
     return InkWell(
