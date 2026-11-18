@@ -2077,6 +2077,9 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
   Future<void> _showGeneralQuantityBottomSheet() async {
     if (_product == null) return;
 
+    final stock = _product!.stock;
+    final maxQuantity = stock != null && stock < 99999 ? stock : null;
+
     await showGeneralQuantityBottomup(
       context: context,
       productName: _product!.name,
@@ -2109,6 +2112,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
         if (!mounted) return;
         await _buySelectedGeneralProductNow(quantity: quantity);
       },
+      maxQuantity: maxQuantity,
     );
   }
 }

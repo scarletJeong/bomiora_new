@@ -182,13 +182,14 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
   ProductOption? _selectedDep1;
   ProductOption? _selectedDep2;
   List<ProductOption> get _dep1Options =>
-      widget.options.where((o) => o.isDep1).toList();
+      widget.options.where((o) => o.isDep1 && o.stock > 0).toList();
   List<ProductOption> get _dep2Options =>
-      widget.options.where((o) => o.isDep2).toList();
+      widget.options.where((o) => o.isDep2 && o.stock > 0).toList();
 
   List<Product> _supplyProducts = [];
   bool _supplyLoading = false;
   bool _supplyLoadFailed = false;
+  bool _supplyAllOptionsSoldOut = false;
   Product? _pickedSupplyProduct;
   List<ProductOption> _pickedSupplyOptions = [];
   ProductOption? _pickedSupplyOption;
@@ -422,9 +423,11 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
 
     final mainOpts = opts.where((o) => o.isMain).toList();
     final resolved = mainOpts.isNotEmpty ? mainOpts : opts;
+    final inStock = resolved.where((o) => o.stock > 0).toList();
 
     setState(() {
-      _pickedSupplyOptions = resolved;
+      _pickedSupplyOptions = inStock;
+      _supplyAllOptionsSoldOut = resolved.isNotEmpty && inStock.isEmpty;
       _initializeSupplyOptionGroups();
     });
   }
@@ -440,8 +443,15 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
     if (product == null) return;
     if (!_hasMainSelection) return;
     final option = _pickedSupplyOption;
+    if (_supplyAllOptionsSoldOut) return;
     // 옵션이 있는데 미선택이면 추가 안 함
     if (_pickedSupplyOptions.isNotEmpty && option == null) return;
+    if (option != null && !_withinStock(option, _supplyUsedQty(product.id, option.id) + 1)) {
+      return;
+    }
+    if (option == null && !_withinProductStock(product, _supplyUsedQty(product.id, null) + 1)) {
+      return;
+    }
 
     final attachId = _latestMainLineId ?? _mainLines.lastOrNull?.lineId;
 
@@ -475,10 +485,16 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
   }
 
   List<ProductOption> get _mainSelectableOptions {
-    final mains = widget.options.where((o) => o.isMain).toList();
+    bool inStock(ProductOption option) => option.stock > 0;
+    final mains = widget.options.where((o) => o.isMain && inStock(o)).toList();
     if (mains.isNotEmpty) return mains;
     // io_type 미구분 데이터: 종속(2/3)만 제외
-    return widget.options.where((o) => !o.isDependent).toList();
+    return widget.options.where((o) => !o.isDependent && inStock(o)).toList();
+  }
+
+  bool _withinStock(ProductOption option, int quantity) {
+    if (option.stock >= 99999) return quantity >= 1;
+    return quantity >= 1 && quantity <= option.stock;
   }
 
   /// io_id에 chr(30) 축 구분자가 있으면 `맛 > 플랜` 2단 UI
@@ -626,6 +642,10 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
   }
 
   void _addOption(ProductOption option) {
+    if (option.stock <= 0) return;
+    final current = _quantityOf(option);
+    if (!_withinStock(option, current + 1)) return;
+
     setState(() {
       if (option.isMain || option.ioType == 0) {
         final existingIndex =
@@ -669,9 +689,22 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
     _emitOptionsChanged();
   }
 
+  int _quantityOf(ProductOption option) {
+    if (option.isMain || option.ioType == 0) {
+      for (final line in _mainLines) {
+        if (line.option.id == option.id) return line.quantity;
+      }
+      return 0;
+    }
+    for (final entry in _selectedOptions.entries) {
+      if (entry.key.id == option.id) return entry.value;
+    }
+    return 0;
+  }
+
   void _attachSelectedDepOptions() {
     void put(ProductOption? dep) {
-      if (dep == null) return;
+      if (dep == null || dep.stock <= 0) return;
       ProductOption? existing;
       for (final selected in _selectedOptions.keys) {
         if (selected.id == dep.id) {
@@ -679,8 +712,10 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
           break;
         }
       }
+      final next = existing == null ? 1 : (_selectedOptions[existing] ?? 0) + 1;
+      if (!_withinStock(dep, next)) return;
       if (existing != null) {
-        _selectedOptions[existing] = (_selectedOptions[existing] ?? 0) + 1;
+        _selectedOptions[existing] = next;
       } else {
         _selectedOptions[dep] = 1;
       }
@@ -706,6 +741,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
       _removeMainLine(line);
       return;
     }
+    if (!_withinStock(line.option, quantity)) return;
     setState(() {
       line.quantity = quantity;
     });
@@ -717,6 +753,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
       _removeOption(option);
       return;
     }
+    if (!_withinStock(option, quantity)) return;
     setState(() {
       _selectedOptions[option] = quantity;
     });
@@ -809,6 +846,41 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
     _notifySupplyChanged();
   }
 
+  int _supplyUsedQty(String productId, String? optionId, {int? exceptIndex}) {
+    var used = 0;
+    for (var i = 0; i < _supplyLines.length; i++) {
+      if (i == exceptIndex) continue;
+      final line = _supplyLines[i];
+      if (line.productId != productId) continue;
+      if ((line.option?.id ?? '') != (optionId ?? '')) continue;
+      used += line.quantity;
+    }
+    return used;
+  }
+
+  bool _withinProductStock(Product product, int quantity) {
+    final stock = product.stock;
+    if (stock == null || stock >= 99999) return quantity >= 1;
+    return quantity >= 1 && quantity <= stock;
+  }
+
+  bool _supplyQtyAllowed(int index, int qty) {
+    if (index < 0 || index >= _supplyLines.length || qty < 1) return false;
+    final line = _supplyLines[index];
+    final nextTotal = _supplyUsedQty(
+          line.productId,
+          line.option?.id,
+          exceptIndex: index,
+        ) +
+        qty;
+    final option = line.option;
+    if (option != null) return _withinStock(option, nextTotal);
+    for (final item in _supplyProducts) {
+      if (item.id == line.productId) return _withinProductStock(item, nextTotal);
+    }
+    return true;
+  }
+
   void _updateSupplyQty(int index, int qty) {
     if (index < 0 || index >= _supplyLines.length) return;
     if (qty <= 0) {
@@ -816,6 +888,20 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
       return;
     }
     final old = _supplyLines[index];
+    final option = old.option;
+    final nextTotal = _supplyUsedQty(old.productId, option?.id, exceptIndex: index) + qty;
+    if (option != null) {
+      if (!_withinStock(option, nextTotal)) return;
+    } else {
+      Product? product;
+      for (final item in _supplyProducts) {
+        if (item.id == old.productId) {
+          product = item;
+          break;
+        }
+      }
+      if (product != null && !_withinProductStock(product, nextTotal)) return;
+    }
     setState(() {
       _supplyLines[index] = SupplyCartLine(
         productId: old.productId,
@@ -1287,6 +1373,19 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
   /// 추가상품 옵션: 상위/하위가 있으면 드롭다운 분리, 없으면 단일 선택
   List<Widget> _buildSupplyOptionFields({required double dropdownHeight}) {
     if (_pickedSupplyOptions.isEmpty) {
+      if (_supplyAllOptionsSoldOut) {
+        return [
+          Text(
+            '재고가 없습니다.',
+            style: TextStyle(
+              color: const Color(0xFF898686),
+              fontSize: healthSp(context, 12),
+              fontFamily: _kGmarketSans,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ];
+      }
       return [
         Align(
           alignment: Alignment.centerRight,
@@ -1627,8 +1726,9 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
                       onDecrease: quantity > 1
                           ? () => _updateMainLineQuantity(line, quantity - 1)
                           : null,
-                      onIncrease: () =>
-                          _updateMainLineQuantity(line, quantity + 1),
+                      onIncrease: _withinStock(line.option, quantity + 1)
+                          ? () => _updateMainLineQuantity(line, quantity + 1)
+                          : null,
                     ),
                     const Spacer(),
                     Text(
@@ -1709,8 +1809,9 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
                       onDecrease: quantity > 1
                           ? () => _updateOptionQuantity(option, quantity - 1)
                           : null,
-                      onIncrease: () =>
-                          _updateOptionQuantity(option, quantity + 1),
+                      onIncrease: _withinStock(option, quantity + 1)
+                          ? () => _updateOptionQuantity(option, quantity + 1)
+                          : null,
                     ),
                     const Spacer(),
                     Text(
@@ -1842,8 +1943,9 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
                       onDecrease: line.quantity > 1
                           ? () => _updateSupplyQty(index, line.quantity - 1)
                           : null,
-                      onIncrease: () =>
-                          _updateSupplyQty(index, line.quantity + 1),
+                      onIncrease: _supplyQtyAllowed(index, line.quantity + 1)
+                          ? () => _updateSupplyQty(index, line.quantity + 1)
+                          : null,
                     ),
                     const Spacer(),
                     Text(
@@ -2041,6 +2143,7 @@ class GeneralQuantityBottomSheet extends StatefulWidget {
   final VoidCallback? onToggleFavorite;
   final Future<void> Function(int quantity) onAddToCart;
   final Future<void> Function(int quantity) onBuyNow;
+  final int? maxQuantity;
 
   const GeneralQuantityBottomSheet({
     super.key,
@@ -2051,6 +2154,7 @@ class GeneralQuantityBottomSheet extends StatefulWidget {
     this.onToggleFavorite,
     required this.onAddToCart,
     required this.onBuyNow,
+    this.maxQuantity,
   });
 
   @override
@@ -2136,7 +2240,10 @@ class _GeneralQuantityBottomSheetState extends State<GeneralQuantityBottomSheet>
                       onDecrease: _quantity > 1
                           ? () => setState(() => _quantity--)
                           : null,
-                      onIncrease: () => setState(() => _quantity++),
+                      onIncrease: widget.maxQuantity == null ||
+                              _quantity < widget.maxQuantity!
+                          ? () => setState(() => _quantity++)
+                          : null,
                     ),
                   ],
                 ),
