@@ -20,21 +20,33 @@ class OrderFlowDialogs {
     return paymentMethod.contains('가상');
   }
 
-  static Future<OrderDetailModel?> _loadOrderDetail({
+  static Future<({OrderDetailModel? detail, bool failed, String reason})>
+      _loadOrderDetail({
     required String odId,
     required String mbId,
     OrderDetailModel? orderDetail,
   }) async {
-    if (orderDetail != null) return orderDetail;
+    if (orderDetail != null) {
+      return (detail: orderDetail, failed: false, reason: '');
+    }
     final detailResult = await OrderService.getOrderDetail(
       odId: odId,
       mbId: mbId,
     );
     if (detailResult['success'] == true &&
         detailResult['order'] is OrderDetailModel) {
-      return detailResult['order'] as OrderDetailModel;
+      return (
+        detail: detailResult['order'] as OrderDetailModel,
+        failed: false,
+        reason: '',
+      );
     }
-    return null;
+    final reason = detailResult['message']?.toString().trim() ?? '';
+    return (
+      detail: null,
+      failed: true,
+      reason: reason.isEmpty ? '주문 정보를 불러오지 못했습니다.' : reason,
+    );
   }
 
   /// 가상계좌 **입금 후**만 환불계좌 입력 → 취소 확인 → API.
@@ -47,11 +59,23 @@ class OrderFlowDialogs {
     bool reportCancelFailure = false,
     String cancelFailureCode = 'payment.complete.cancel',
   }) async {
-    final detail = await _loadOrderDetail(
+    final loaded = await _loadOrderDetail(
       odId: odId,
       mbId: mbId,
       orderDetail: orderDetail,
     );
+    if (loaded.failed) {
+      await FailureLog.record(
+        code: 'order.cancel.detail',
+        mbId: mbId,
+        reason: loaded.reason,
+        detail: {'odId': odId},
+      );
+      if (!context.mounted) return false;
+      AppToastOverlay.showAlert(context, '주문 정보를 불러오지 못했습니다.');
+      return false;
+    }
+    final detail = loaded.detail;
     final paymentMethod = detail?.paymentMethod ?? '';
     final needRefundAccount = _isVirtualAccountPayment(paymentMethod) &&
         detail != null &&
