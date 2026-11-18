@@ -953,10 +953,15 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
       AppToastOverlay.show(context, '배송요청사항이 변경되었습니다.');
     } else {
       setState(() => _deliveryMemo = prev);
-      AppToastOverlay.show(
-        context,
-        result['message']?.toString() ?? '배송요청사항 변경에 실패했습니다.',
+      final reason = result['message']?.toString().trim() ?? '';
+      await FailureLog.record(
+        code: 'order.memo',
+        mbId: user.id,
+        reason: reason.isEmpty ? '배송요청사항을 바꾸지 못했습니다.' : reason,
+        detail: {'odId': _orderDetail!.odId},
       );
+      if (!mounted) return;
+      AppToastOverlay.showAlert(context, '배송요청사항을 바꾸지 못했습니다.');
     }
   }
 
