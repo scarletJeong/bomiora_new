@@ -55,7 +55,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
   final ScrollController _scrollController = ScrollController();
 
   static const Color _kPink = Color(0xFFFF5A8D);
-  static const Color _kBorder = Color(0x7FD2D2D2);
+  static const Color _kBorder = Color(0xFFD2D2D2);
   static const Color _kMuted = Color(0xFF898686);
   static const Color _kInk = Color(0xFF1A1A1A);
 

@@ -14,7 +14,7 @@ import '../delivery_order_stage.dart';
 enum _CardActionStyle { primary, outlinePink, outlineGray }
 
 const Color _kPink = Color(0xFFFF5A8D);
-const Color _kBorder = Color(0x7FD2D2D2);
+const Color _kBorder = Color(0xFFD2D2D2);
 const Color _kMuted = Color(0xFF898686);
 const Color _kInk = Color(0xFF1A1A1A);
 
@@ -385,7 +385,7 @@ class _DeliveryOrderCardState extends State<DeliveryOrderCard> {
           Container(
             width: double.infinity,
             height: 0.5,
-            color: const Color(0x7FD2D2D2),
+            color: const Color(0xFFD2D2D2),
           ),
         );
         widgets.add(SizedBox(height: healthDp(context, 10)));
