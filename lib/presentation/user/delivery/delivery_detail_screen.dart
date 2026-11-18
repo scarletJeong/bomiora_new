@@ -895,7 +895,12 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
     if (confirmed != true) return;
 
     final user = await AuthService.getUser();
-    if (user == null) return;
+    if (user == null) {
+      if (mounted) {
+        AppToastOverlay.showAlert(context, '로그인이 필요합니다.');
+      }
+      return;
+    }
 
     final result = await OrderService.confirmPurchase(
       odId: _orderDetail!.odId,
@@ -910,10 +915,15 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
       // 목록 복귀 시 리로드되도록 결과 전달
       Navigator.pop(context, true);
     } else {
-      AppToastOverlay.show(
-        context,
-        result['message']?.toString() ?? '수령확인에 실패했습니다.',
+      final reason = result['message']?.toString().trim() ?? '';
+      await FailureLog.record(
+        code: 'order.receipt',
+        mbId: user.id,
+        reason: reason.isEmpty ? '수령 확인을 하지 못했습니다.' : reason,
+        detail: {'odId': _orderDetail!.odId},
       );
+      if (!mounted) return;
+      AppToastOverlay.showAlert(context, '수령 확인을 하지 못했습니다.');
     }
   }
 

@@ -863,6 +863,9 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
 
     final user = await AuthService.getUser();
     if (user == null) {
+      if (mounted) {
+        AppToastOverlay.showAlert(context, '로그인이 필요합니다.');
+      }
       return;
     }
 
@@ -880,10 +883,15 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
       );
       await _loadOrders(force: true);
     } else {
-      AppToastOverlay.show(
-        context,
-        result['message']?.toString() ?? '수령확인에 실패했습니다.',
+      final reason = result['message']?.toString().trim() ?? '';
+      await FailureLog.record(
+        code: 'order.receipt',
+        mbId: user.id,
+        reason: reason.isEmpty ? '수령 확인을 하지 못했습니다.' : reason,
+        detail: {'odId': odId},
       );
+      if (!mounted) return;
+      AppToastOverlay.showAlert(context, '수령 확인을 하지 못했습니다.');
     }
   }
 
