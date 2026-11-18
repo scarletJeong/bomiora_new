@@ -483,14 +483,15 @@ class CartService {
       _productRecommendCache = {};
   static const Duration _productRecommendCacheTtl = Duration(minutes: 10);
 
-  static Future<List<Product>> getProductRecommendProducts(String itId) async {
+  static Future<({List<Product> items, bool failed})>
+      getProductRecommendProducts(String itId) async {
     final id = itId.trim();
-    if (id.isEmpty) return [];
+    if (id.isEmpty) return (items: const <Product>[], failed: false);
 
     final cached = _productRecommendCache[id];
     if (cached != null &&
         DateTime.now().difference(cached.at) < _productRecommendCacheTtl) {
-      return cached.value;
+      return (items: cached.value, failed: false);
     }
 
     try {
@@ -506,7 +507,7 @@ class CartService {
       // (ApiClient GET에 no-cache 헤더로 304 자체를 줄임)
       if (response.statusCode != 200) {
         await _logRecommendFailure(id, 'status=${response.statusCode}');
-        return [];
+        return (items: const <Product>[], failed: true);
       }
 
       final data = json.decode(response.body);
@@ -515,13 +516,13 @@ class CartService {
           id,
           data is Map ? (data['message']?.toString() ?? 'success != true') : '응답 형식이 아닙니다.',
         );
-        return [];
+        return (items: const <Product>[], failed: true);
       }
 
       final raw = data['data'];
       if (raw is! List) {
-        await _logRecommendFailure(id, '추천 목록이 없습니다.');
-        return cached?.value ?? [];
+        await _logRecommendFailure(id, '추천 목록 응답이 올바르지 않습니다.');
+        return (items: const <Product>[], failed: true);
       }
 
       final list = raw
@@ -529,10 +530,10 @@ class CartService {
           .map((e) => Product.fromJson(Map<String, dynamic>.from(e)))
           .toList();
       _productRecommendCache[id] = (value: list, at: DateTime.now());
-      return list;
+      return (items: list, failed: false);
     } catch (e) {
       await _logRecommendFailure(id, e.toString());
-      return cached?.value ?? [];
+      return (items: const <Product>[], failed: true);
     }
   }
 

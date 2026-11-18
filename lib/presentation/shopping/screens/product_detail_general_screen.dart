@@ -101,6 +101,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
   Map<ProductOption, int> _selectedOptions = {}; // 옵션과 수량을 함께 관리
   List<SupplyCartLine> _supplyLines = [];
   List<Product> _recommendedProducts = [];
+  bool _recommendFailed = false;
   List<CartItem> _lastGeneralAddItems = [];
 
   void _safeSetState(VoidCallback fn) {
@@ -298,11 +299,12 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
     if (_product == null) return;
 
     try {
-      final products =
+      final result =
           await CartService.getProductRecommendProducts(_product!.id);
       if (!mounted) return;
       setState(() {
-        _recommendedProducts = products;
+        _recommendedProducts = result.items;
+        _recommendFailed = result.failed;
       });
     } catch (e) {
       await FailureLog.record(
@@ -314,6 +316,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       if (!mounted) return;
       setState(() {
         _recommendedProducts = [];
+        _recommendFailed = true;
       });
     }
   }
@@ -333,7 +336,9 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
   }
 
   Widget _buildRecommendedSection() {
-    if (_recommendedProducts.isEmpty) return const SizedBox.shrink();
+    if (!_recommendFailed && _recommendedProducts.isEmpty) {
+      return const SizedBox.shrink();
+    }
 
     final products = _recommendedProducts;
     return Padding(
@@ -362,11 +367,21 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
             ],
           ),
           SizedBox(height: healthDp(context, 12)),
-          // 바텀시트(함께 구매하기 좋은 상품)와 동일 상품·가로 카드
-          RecommendProductSquareRow(
-            products: products,
-            onProductTap: _openRecommendProduct,
-          ),
+          if (_recommendFailed)
+            Text(
+              '추천 상품을 불러오지 못했습니다.',
+              style: TextStyle(
+                color: const Color(0xFF898686),
+                fontSize: healthSp(context, 12),
+                fontFamily: 'Gmarket Sans TTF',
+                fontWeight: FontWeight.w500,
+              ),
+            )
+          else
+            RecommendProductSquareRow(
+              products: products,
+              onProductTap: _openRecommendProduct,
+            ),
         ],
       ),
     );
@@ -1972,11 +1987,16 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
 
     final cached = _recommendedProducts;
     final productsLoader = cached.isEmpty
-        ? CartService.getProductRecommendProducts(_product!.id).then((loaded) {
-            if (mounted && loaded.isNotEmpty) {
-              setState(() => _recommendedProducts = loaded);
+        ? CartService.getProductRecommendProducts(_product!.id).then((result) {
+            if (mounted && result.items.isNotEmpty) {
+              setState(() {
+                _recommendedProducts = result.items;
+                _recommendFailed = false;
+              });
+            } else if (mounted && result.failed) {
+              setState(() => _recommendFailed = true);
             }
-            return loaded;
+            return result;
           })
         : null;
 

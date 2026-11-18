@@ -1,14 +1,21 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/constants/app_assets.dart';
+import '../../../core/logging/failure_log.dart';
 
 import '../../../data/models/product/product_model.dart';
 import '../../../data/models/cart/cart_item_model.dart';
+import '../../../data/services/auth_service.dart';
+import '../../common/widgets/app_network_image.dart';
 import '../../common/widgets/centered_empty_state.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/product_card.dart';
 import '../../health/health_common/health_responsive_scale.dart';
+
+typedef RecommendProductsLoad = ({List<Product> items, bool failed});
 
 /// 한 화면에 모두 보이는 추천 카드 수 (스크롤 없음)
 const int kRecommendBottomSheetVisibleCount = 3;
@@ -142,7 +149,7 @@ Widget _dismissibleBottomSheetShell({
 Future<void> showRecommendProductBottomup({
   required BuildContext context,
   required List<Product> products,
-  Future<List<Product>>? productsLoader,
+  Future<RecommendProductsLoad>? productsLoader,
   required ValueChanged<Product> onProductTap,
   VoidCallback? onGoToCart,
   Future<void> Function()? onPrimaryAction,
@@ -200,7 +207,7 @@ Future<void> showRecommendProductBottomup({
 
 class RecommendProductBottomSheet extends StatefulWidget {
   final List<Product> products;
-  final Future<List<Product>>? productsLoader;
+  final Future<RecommendProductsLoad>? productsLoader;
   final String headline;
   final String title;
   final String primaryButtonLabel;
@@ -433,30 +440,10 @@ class _RecommendProductBottomSheetState extends State<RecommendProductBottomShee
 
     final loader = widget.productsLoader;
     if (loader == null) {
-      return SizedBox(
-        height: healthDp(context, 174),
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CenteredEmptyState.assetIcon(context, AppAssets.emptyCategoryIcon),
-              SizedBox(height: healthDp(context, 8)),
-              Text(
-                '추천 상품이 없습니다.',
-                style: TextStyle(
-                  color: const Color(0x665B3F43),
-                  fontSize: healthSp(context, 12),
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
+      return _recommendStatus(context, failed: false);
     }
 
-    return FutureBuilder<List<Product>>(
+    return FutureBuilder<RecommendProductsLoad>(
       future: loader,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
@@ -471,32 +458,10 @@ class _RecommendProductBottomSheetState extends State<RecommendProductBottomShee
           );
         }
 
-        final loaded = snapshot.data ?? const <Product>[];
-        if (loaded.isEmpty) {
-          return SizedBox(
-            height: healthDp(context, 174),
-            child: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CenteredEmptyState.assetIcon(
-                    context,
-                    AppAssets.emptyCategoryIcon,
-                  ),
-                  SizedBox(height: healthDp(context, 8)),
-                  Text(
-                    '추천 상품이 없습니다.',
-                    style: TextStyle(
-                      color: const Color(0x665B3F43),
-                      fontSize: healthSp(context, 12),
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
+        final loaded = snapshot.data?.items ?? const <Product>[];
+        final failed = snapshot.data?.failed == true;
+        if (failed || loaded.isEmpty) {
+          return _recommendStatus(context, failed: failed);
         }
 
         return _buildFixedRecommendRow(
@@ -509,6 +474,30 @@ class _RecommendProductBottomSheetState extends State<RecommendProductBottomShee
       },
     );
   }
+}
+
+Widget _recommendStatus(BuildContext context, {required bool failed}) {
+  return SizedBox(
+    height: healthDp(context, 174),
+    child: Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CenteredEmptyState.assetIcon(context, AppAssets.emptyCategoryIcon),
+          SizedBox(height: healthDp(context, 8)),
+          Text(
+            failed ? '추천 상품을 불러오지 못했습니다.' : '추천 상품이 없습니다.',
+            style: TextStyle(
+              color: const Color(0xFF898686),
+              fontSize: healthSp(context, 12),
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 /// 인라인 정사각형 추천 행 — 바텀시트와 동일 (3장 고정, 스크롤 없음)
@@ -547,6 +536,7 @@ class RecommendSquareProductCard extends StatelessWidget {
   static const Color _brandPink = Color(0xFFFF5A8D);
   static const Color _textDark = Color(0xFF1A1A1A);
   static const String _gmarket = 'Gmarket Sans TTF';
+  static final Set<String> _loggedImageUrls = {};
 
   final Product product;
   final double imageSize;
@@ -563,6 +553,33 @@ class RecommendSquareProductCard extends StatelessWidget {
     this.detailDesign = false,
     required this.onTap,
   });
+
+  static void _logImageFailure(Product product, Object error) {
+    final url = product.displayImageUrl;
+    if (url.isEmpty || !_loggedImageUrls.add(url)) return;
+    unawaited(
+      FailureLog.record(
+        code: 'product.recommend.image',
+        mbId: AuthService.currentUser?.id ?? '',
+        reason: '추천 상품 사진을 불러오지 못했습니다.',
+        detail: {
+          'url': url,
+          'itId': product.id,
+          'error': error.toString(),
+        },
+      ),
+    );
+  }
+
+  Widget _imagePlaceholder(BuildContext context) {
+    return Center(
+      child: Icon(
+        Icons.image_not_supported,
+        color: Colors.grey[400],
+        size: healthDp(context, 28),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -587,22 +604,20 @@ class RecommendSquareProductCard extends StatelessWidget {
               child: ColoredBox(
                 color: const Color(0xFFF3F3F3),
                 child: product.displayImageUrl.isNotEmpty
-                    ? Image.network(
-                        product.displayImageUrl,
+                    ? AppNetworkImage(
+                        url: product.displayImageUrl,
                         width: imageSize,
                         height: pictureHeight,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Icon(
-                          Icons.image_not_supported,
-                          color: Colors.grey[400],
-                          size: healthDp(context, 28),
-                        ),
+                        decodeWidthLogical: imageSize,
+                        decodeHeightLogical: pictureHeight,
+                        preferHtmlElementOnWeb: false,
+                        errorBuilder: (_, error, __) {
+                          _logImageFailure(product, error);
+                          return _imagePlaceholder(context);
+                        },
                       )
-                    : Icon(
-                        Icons.image_not_supported,
-                        color: Colors.grey[400],
-                        size: healthDp(context, 28),
-                      ),
+                    : _imagePlaceholder(context),
               ),
             ),
           ),
