@@ -189,7 +189,7 @@ extension _PaymentDelivery on _PaymentScreenState {
           alignment: Alignment.center,
           decoration: ShapeDecoration(
             shape: RoundedRectangleBorder(
-              side: const BorderSide(width: 1, color: Color(0xFFE5E7EB)),
+              side: const BorderSide(width: 1, color: Color(0xFFD2D2D2)),
               borderRadius: BorderRadius.circular(healthDp(context, 9999)),
             ),
           ),
@@ -317,7 +317,7 @@ extension _PaymentDelivery on _PaymentScreenState {
           fontFamily: 'Gmarket Sans TTF',
           fontWeight: FontWeight.w500,
           height: 1.2,
-          color: const Color(0xFF1A1A1E),
+          color: const Color(0xFF1A1A1A),
         ),
         decoration: InputDecoration(
           isDense: true,
@@ -368,7 +368,7 @@ extension _PaymentDelivery on _PaymentScreenState {
                 child: Text(
                   title.isEmpty ? '배송지' : title,
                   style: TextStyle(
-                    color: const Color(0xFF333333),
+                    color: const Color(0xFF1A1A1A),
                     fontSize: healthSp(context, 16),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w500,
@@ -384,7 +384,7 @@ extension _PaymentDelivery on _PaymentScreenState {
             Text(
               phone,
               style: TextStyle(
-                color: const Color(0xFF1A1A1E),
+                color: const Color(0xFF1A1A1A),
                 fontSize: healthSp(context, 12),
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: FontWeight.w500,
@@ -395,7 +395,7 @@ extension _PaymentDelivery on _PaymentScreenState {
             Text(
               fullAddress,
               style: TextStyle(
-                color: const Color(0xFF1A1A1E),
+                color: const Color(0xFF1A1A1A),
                 fontSize: healthSp(context, 12),
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: FontWeight.w500,
@@ -433,7 +433,7 @@ extension _PaymentDelivery on _PaymentScreenState {
           Text(
             '배송지',
             style: TextStyle(
-              color: const Color(0xFF1A1A1E),
+              color: const Color(0xFF1A1A1A),
               fontSize: healthSp(context, 16),
               fontFamily: 'Gmarket Sans TTF',
               fontWeight: FontWeight.w500,
@@ -499,7 +499,7 @@ extension _PaymentDelivery on _PaymentScreenState {
                     style: TextStyle(
                       color: addressDisplay.isEmpty
                           ? _muted
-                          : const Color(0xFF1A1A1E),
+                          : const Color(0xFF1A1A1A),
                       fontSize: healthSp(context, 12),
                       fontFamily: 'Gmarket Sans TTF',
                       fontWeight: FontWeight.w300,
@@ -595,7 +595,7 @@ extension _PaymentDelivery on _PaymentScreenState {
                 Text(
                   '기본 배송지로 설정',
                   style: TextStyle(
-                    color: const Color(0xFF1A1A1E),
+                    color: const Color(0xFF1A1A1A),
                     fontSize: healthSp(context, 12),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w300,

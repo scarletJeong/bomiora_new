@@ -67,7 +67,7 @@ class DeliveryDetailAddressSection extends StatelessWidget {
                 child: Text(
                   name.isEmpty ? '배송지' : name,
                   style: TextStyle(
-                    color: const Color(0xFF333333),
+                    color: const Color(0xFF1A1A1A),
                     fontSize: healthSp(context, 16),
                     fontFamily: DeliveryDetailSectionStyle.font,
                     fontWeight: FontWeight.w500,

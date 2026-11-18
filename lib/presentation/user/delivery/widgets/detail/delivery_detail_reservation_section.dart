@@ -137,7 +137,7 @@ class DeliveryDetailReservationSection extends StatelessWidget {
         Container(
           width: double.infinity,
           height: healthDp(context, 1),
-          color: const Color(0xFFE8E8E8),
+          color: const Color(0xFFD2D2D2),
         ),
         SizedBox(height: healthDp(context, 20)),
         Row(
@@ -224,7 +224,7 @@ class DeliveryDetailReservationSection extends StatelessWidget {
             label,
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: const Color(0xFF333333),
+              color: const Color(0xFF1A1A1A),
               fontSize: healthSp(context, 10),
               fontFamily: DeliveryDetailSectionStyle.font,
               fontWeight: FontWeight.w500,

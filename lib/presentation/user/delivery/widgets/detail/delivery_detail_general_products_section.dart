@@ -80,7 +80,7 @@ class DeliveryDetailGeneralProductsSection extends StatelessWidget {
           Container(
             width: double.infinity,
             height: healthDp(context, 0.5),
-            color: const Color(0x7FD2D2D2),
+            color: const Color(0xFFD2D2D2),
           ),
           SizedBox(height: healthDp(context, 10)),
           for (var gi = 0; gi < groups.length; gi++) ...[
@@ -89,7 +89,7 @@ class DeliveryDetailGeneralProductsSection extends StatelessWidget {
               Container(
                 width: double.infinity,
                 height: healthDp(context, 0.5),
-                color: const Color(0x7FD2D2D2),
+                color: const Color(0xFFD2D2D2),
               ),
               SizedBox(height: healthDp(context, 10)),
             ],
@@ -104,7 +104,7 @@ class DeliveryDetailGeneralProductsSection extends StatelessWidget {
             Container(
               width: double.infinity,
               height: healthDp(context, 1),
-              color: const Color(0xFFE8E8E8),
+              color: const Color(0xFFD2D2D2),
             ),
             SizedBox(height: healthDp(context, 10)),
             _actionRow(context),

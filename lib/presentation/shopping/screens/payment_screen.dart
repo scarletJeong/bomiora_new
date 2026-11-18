@@ -114,8 +114,8 @@ class PaymentScreen extends StatefulWidget {
 const _pink = Color(0xFFFF5A8D);
 const _muted = Color(0xFF898686);
 const _border = Color(0xFFD2D2D2);
-const _figmaBrown = Color(0xFF584045);
-const _figmaDark = Color(0xFF1A1B1F);
+const _figmaBrown = Color(0xFF898686);
+const _figmaDark = Color(0xFF1A1A1A);
 const int _minPayableAmount = 3000;
 const double _kDeliveryFieldHeight = 45;
 const Color _kDeliveryFieldFill = Color(0xFFF8FAFC);

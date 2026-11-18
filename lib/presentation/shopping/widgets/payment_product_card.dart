@@ -13,10 +13,10 @@ import 'get_cartImage.dart';
 const _kGmarketSans = 'Gmarket Sans TTF';
 const _kPink = Color(0xFFFF5A8D);
 const _kMuted = Color(0xFF898686);
-const _kInk = Color(0xFF1A1A1E);
+const _kInk = Color(0xFF1A1A1A);
 const _kOption = Color(0xFF898686);
-const _kBorder = Color(0x7FD2D2D2);
-const _kDivider = Color(0xFFEFEFEF);
+const _kBorder = Color(0xFFD2D2D2);
+const _kDivider = Color(0xFFD2D2D2);
 
 /// 주문 상품 → 결제/완료 UI용 CartItem
 List<CartItem> cartItemsFromOrderItems(
@@ -126,7 +126,7 @@ class PaymentProductCard extends StatelessWidget {
               decoration: ShapeDecoration(
                 color: const Color(0x7FF1F1F1),
                 shape: RoundedRectangleBorder(
-                  side: const BorderSide(width: 0.5, color: Color(0x33D2D2D2)),
+                  side: const BorderSide(width: 0.5, color: Color(0xFFD2D2D2)),
                   borderRadius: BorderRadius.circular(healthDp(context, 8)),
                 ),
               ),

@@ -317,7 +317,7 @@ extension _PaymentCoupon on _PaymentScreenState {
       value: '',
       emptyText: '쿠폰 선택 안함',
       emptyTextColor: _muted,
-      valueTextColor: const Color(0xFF1A1A1E),
+      valueTextColor: const Color(0xFF1A1A1A),
       borderColor: _border,
       itemFontSizeBase: 12,
       itemTextAlign: TextAlign.left,

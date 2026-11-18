@@ -49,7 +49,7 @@ class ReservationTimeChangePopup extends StatefulWidget {
 class _ReservationTimeChangePopupState
     extends State<ReservationTimeChangePopup> {
   static const Color _kPink = Color(0xFFFF5A8D);
-  static const Color _kInk = Color(0xFF1A1A1E);
+  static const Color _kInk = Color(0xFF1A1A1A);
   static const Color _kMuted = Color(0xFF898686);
   static const Color _kBorder = Color(0xFFD2D2D2);
   static const String _font = 'Gmarket Sans TTF';

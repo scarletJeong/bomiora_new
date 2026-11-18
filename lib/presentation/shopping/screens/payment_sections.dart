@@ -11,7 +11,7 @@ extension _PaymentSections on _PaymentScreenState {
       decoration: ShapeDecoration(
         color: Colors.white,
         shape: RoundedRectangleBorder(
-          side: const BorderSide(width: 1, color: Color(0x7FD2D2D2)),
+          side: const BorderSide(width: 1, color: Color(0xFFD2D2D2)),
           borderRadius: BorderRadius.circular(healthDp(context, 15)),
         ),
       ),
@@ -98,7 +98,7 @@ extension _PaymentSections on _PaymentScreenState {
                         Text(
                           '쿠폰 선택',
                           style: TextStyle(
-                            color: const Color(0xFF1A1A1E),
+                            color: const Color(0xFF1A1A1A),
                             fontSize: healthSp(context, 16),
                             fontFamily: 'Gmarket Sans TTF',
                             fontWeight: FontWeight.w500,
@@ -153,7 +153,7 @@ extension _PaymentSections on _PaymentScreenState {
                         Text(
                           '포인트',
                           style: TextStyle(
-                            color: const Color(0xFF1A1A1E),
+                            color: const Color(0xFF1A1A1A),
                             fontSize: healthSp(context, 16),
                             fontFamily: 'Gmarket Sans TTF',
                             fontWeight: FontWeight.w500,
@@ -198,7 +198,7 @@ extension _PaymentSections on _PaymentScreenState {
                                 fontSize: healthSp(context, 12),
                                 fontFamily: 'Gmarket Sans TTF',
                                 height: 1,
-                                color: const Color(0xFF1A1A1E),
+                                color: const Color(0xFF1A1A1A),
                               ),
                               decoration: InputDecoration(
                                 isDense: true,
@@ -305,7 +305,7 @@ extension _PaymentSections on _PaymentScreenState {
               Text(
                 '결제 금액',
                 style: TextStyle(
-                  color: const Color(0xFF1A1A1E),
+                  color: const Color(0xFF1A1A1A),
                   fontSize: healthSp(context, 16),
                   fontFamily: 'Gmarket Sans TTF',
                   fontWeight: FontWeight.w500,
@@ -383,7 +383,7 @@ extension _PaymentSections on _PaymentScreenState {
                   Text(
                     '총 결제비용',
                     style: TextStyle(
-                      color: const Color(0xFF1A1A1E),
+                      color: const Color(0xFF1A1A1A),
                       fontSize: healthSp(context, 16),
                       fontFamily: 'Gmarket Sans TTF',
                       fontWeight: FontWeight.w700,
@@ -443,7 +443,7 @@ extension _PaymentSections on _PaymentScreenState {
     BuildContext context,
     String label,
     String value, {
-    Color valueColor = const Color(0xFF1A1A1E),
+    Color valueColor = const Color(0xFF1A1A1A),
   }) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -481,7 +481,7 @@ extension _PaymentSections on _PaymentScreenState {
           Text(
             '결제 수단',
             style: TextStyle(
-              color: const Color(0xFF1A1A1E),
+              color: const Color(0xFF1A1A1A),
               fontSize: healthSp(context, 16),
               fontFamily: 'Gmarket Sans TTF',
               fontWeight: FontWeight.w500,
@@ -563,11 +563,11 @@ extension _PaymentSections on _PaymentScreenState {
           vertical: healthDp(context, 10),
         ),
         decoration: ShapeDecoration(
-          color: selected ? const Color(0x0CFF5C8F) : Colors.white,
+          color: selected ? const Color(0x0CFF5A8D) : Colors.white,
           shape: RoundedRectangleBorder(
             side: BorderSide(
               width: healthDp(context, 1.11),
-              color: selected ? const Color(0xFFFF5C8F) : _border,
+              color: selected ? const Color(0xFFFF5A8D) : _border,
             ),
             borderRadius: BorderRadius.circular(healthDp(context, 12)),
           ),
@@ -581,7 +581,7 @@ extension _PaymentSections on _PaymentScreenState {
               width: iconSz,
               height: iconSz,
               colorFilter: const ColorFilter.mode(
-                Color(0xFF1A1A1E),
+                Color(0xFF1A1A1A),
                 BlendMode.srcIn,
               ),
             ),
@@ -590,7 +590,7 @@ extension _PaymentSections on _PaymentScreenState {
               label,
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: const Color(0xFF1A1A1E),
+                color: const Color(0xFF1A1A1A),
                 fontSize: healthSp(context, 12),
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: FontWeight.w500,
@@ -611,7 +611,7 @@ extension _PaymentSections on _PaymentScreenState {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(radius),
-        border: Border.all(width: 1, color: const Color(0x7FD2D2D2)),
+        border: Border.all(width: 1, color: const Color(0xFFD2D2D2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -640,7 +640,7 @@ extension _PaymentSections on _PaymentScreenState {
                         Text(
                           '구매자 안전결제로 진행합니다',
                           style: TextStyle(
-                            color: const Color(0xFF898989),
+                            color: const Color(0xFF898686),
                             fontSize: healthSp(context, 10),
                             fontFamily: 'Gmarket Sans TTF',
                             fontWeight: FontWeight.w300,
@@ -696,7 +696,7 @@ extension _PaymentSections on _PaymentScreenState {
             Container(
               width: double.infinity,
               height: 1,
-              color: const Color(0xFFE8E8E8),
+              color: const Color(0xFFD2D2D2),
             ),
             ClipRRect(
               borderRadius: BorderRadius.only(
@@ -731,7 +731,7 @@ extension _PaymentSections on _PaymentScreenState {
                               Text(
                                 '구매안전 (에스크로) 서비스',
                                 style: TextStyle(
-                                  color: const Color(0xFF1A1A1E),
+                                  color: const Color(0xFF1A1A1A),
                                   fontSize: healthSp(context, 10),
                                   fontFamily: 'Gmarket Sans TTF',
                                   fontWeight: FontWeight.w500,
@@ -766,7 +766,7 @@ extension _PaymentSections on _PaymentScreenState {
                       '2006.4.1 제정, 2013.11.29 개정 전자상거래 등에서의 소비자 보호에 관한 법률',
                       textAlign: TextAlign.right,
                       style: TextStyle(
-                        color: const Color(0xFFAAAAAA),
+                        color: const Color(0xFF898686),
                         fontSize: healthSp(context, 8),
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w300,
