@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/logging/failure_log.dart';
 import '../../../../core/utils/date_formatter.dart';
 import '../../../../data/models/shop_default/reservation_settings_model.dart';
 import '../../../../data/services/auth_service.dart';
@@ -31,6 +32,9 @@ class ReservationTimeChangePopup extends StatefulWidget {
   final String title;
   final String confirmLabel;
 
+  /// 결제완료. 저장 실패를 안내하고 로그에 남긴다.
+  final bool reportSaveFailure;
+
   const ReservationTimeChangePopup({
     super.key,
     required this.orderId,
@@ -39,6 +43,7 @@ class ReservationTimeChangePopup extends StatefulWidget {
     this.pickOnly = false,
     this.title = '예약 시간 변경',
     this.confirmLabel = '변경',
+    this.reportSaveFailure = false,
   });
 
   @override
@@ -205,11 +210,25 @@ class _ReservationTimeChangePopupState
       reservationTime: picked.time,
       reservationEndTime: picked.endTime,
     );
+    final saved = result['success'] == true;
+    if (!saved && widget.reportSaveFailure) {
+      final reason = result['message']?.toString().trim() ?? '';
+      await FailureLog.record(
+        code: 'payment.complete.reservation',
+        mbId: user.id,
+        reason: reason.isEmpty ? '예약 시간을 바꾸지 못했습니다.' : reason,
+        detail: {'orderId': widget.orderId},
+      );
+    }
     if (!mounted) return;
     setState(() => _isSubmitting = false);
-    if (result['success'] == true) {
+    if (saved) {
       AppToastOverlay.show(context, '예약시간이 변경되었습니다.');
       _close(picked);
+      return;
+    }
+    if (widget.reportSaveFailure) {
+      AppToastOverlay.show(context, '예약 시간을 바꾸지 못했습니다.');
     }
   }
 

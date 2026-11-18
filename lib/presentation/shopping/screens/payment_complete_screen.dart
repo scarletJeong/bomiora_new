@@ -285,6 +285,7 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
     final date = order.reservationDate?.trim();
     final time = order.reservationTime?.trim();
     if (date == null || date.isEmpty || time == null || time.isEmpty) {
+      AppToastOverlay.show(context, '예약 시간을 바꿀 수 없습니다.');
       return;
     }
 
@@ -307,6 +308,7 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
               orderId: order.odId,
               currentDate: date,
               currentTime: time,
+              reportSaveFailure: true,
             ),
           ],
         );
