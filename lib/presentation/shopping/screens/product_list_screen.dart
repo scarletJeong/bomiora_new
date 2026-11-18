@@ -69,6 +69,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
   late String _activeCategoryId;
 
   List<_CategoryTab> _baseTabOrder = [];
+  bool _categoriesFailed = false;
   bool _tabsReady = false;
   int _tabsRequestToken = 0;
   int _productsRequestToken = 0;
@@ -94,20 +95,19 @@ class _ProductListScreenState extends State<ProductListScreen> {
     _activeCategoryId = _activeCategoryId.trim();
 
     final productsFuture = _loadProducts();
-    final List<ProductCategoryItem> source;
-    if (widget.productKind == 'general') {
-      source = await ProductCategoryCatalog.generalCategories();
-    } else {
-      source = await ProductCategoryCatalog.prescriptionCategories();
-    }
+    final result = widget.productKind == 'general'
+        ? await ProductCategoryCatalog.loadGeneral()
+        : await ProductCategoryCatalog.loadPrescription();
 
     if (!mounted || requestToken != _tabsRequestToken) {
       return;
     }
 
-    final fromApi = _tabsFrom(source);
-    if (fromApi.isNotEmpty) {
-      _baseTabOrder = fromApi;
+    if (!result.failed) {
+      _baseTabOrder = _tabsFrom(result.items);
+      _categoriesFailed = false;
+    } else {
+      _categoriesFailed = true;
     }
     _tabKeys = List.generate(_baseTabOrder.length, (_) => GlobalKey());
     _stickyTabKeys = List.generate(_baseTabOrder.length, (_) => GlobalKey());
@@ -454,6 +454,18 @@ class _ProductListScreenState extends State<ProductListScreen> {
   }
 
   Widget _buildCategoryTabs({bool forSticky = false}) {
+    if (_categoriesFailed && _baseTabOrder.isEmpty) {
+      return Text(
+        '분류를 불러오지 못했습니다.',
+        style: TextStyle(
+          color: _tabMuted,
+          fontSize: healthSp(context, 12),
+          fontFamily: _gmarket,
+          fontWeight: FontWeight.w500,
+        ),
+      );
+    }
+
     final tabKeys = forSticky ? _stickyTabKeys : _tabKeys;
     final tabController =
         forSticky ? _stickyTabScrollController : _tabScrollController;
