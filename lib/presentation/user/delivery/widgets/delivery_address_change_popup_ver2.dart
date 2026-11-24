@@ -13,14 +13,14 @@ import '../../../../data/services/delivery_service.dart' as order_service;
 
 const String _kFont = 'Gmarket Sans TTF';
 const Color _kPink = Color(0xFFFF5A8D);
-const Color _kInk = Color(0xFF1A1A1A);
+const Color _kInk = Color(0xFF1A1A1E);
 const Color _kMuted = Color(0xFF898686);
-const Color _kAddrMuted = Color(0xFF898686);
+const Color _kAddrMuted = Color(0xFF898383);
 const Color _kBorder = Color(0xFFD2D2D2);
 const Color _kFieldFill = Color(0xFFF8FAFC);
 const Color _kSelectedBg = Color(0x0CFF5C8F);
 const Color _kSelectedBorder = Color(0xFFFF5C8F);
-const Color _kChipTint = Color(0x0CFF5A8D);
+const int _kMaxAddresses = 10;
 
 /// 배송지 변경 팝업 (목록 선택형).
 ///
@@ -52,10 +52,10 @@ class _DeliveryAddressChangePopupState
   List<Map<String, dynamic>> _addresses = [];
   int? _selectedAddressId;
 
-  /// 목록/추가·수정 팝업 공통 크기 (추가 팝업 기준)
+  /// 목록/추가·수정 팝업 공통 크기 (Figma 321×615)
   static Size _sharedPopupSize(BuildContext context) {
     final maxH = MediaQuery.sizeOf(context).height - healthDp(context, 48);
-    final h = healthDp(context, 580).clamp(0.0, maxH);
+    final h = healthDp(context, 615).clamp(0.0, maxH);
     return Size(healthDp(context, 321), h);
   }
 
@@ -104,6 +104,17 @@ class _DeliveryAddressChangePopupState
   int? _asAddressId(dynamic value) {
     if (value is int) return value;
     return int.tryParse('$value');
+  }
+
+  String _formatPhoneDisplay(String raw) {
+    final digits = raw.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.length == 11) {
+      return '${digits.substring(0, 3)}-${digits.substring(3, 7)}-${digits.substring(7)}';
+    }
+    if (digits.length == 10) {
+      return '${digits.substring(0, 3)}-${digits.substring(3, 6)}-${digits.substring(6)}';
+    }
+    return raw;
   }
 
   String _addrField(Map<String, dynamic> m, String key) =>
@@ -309,6 +320,10 @@ class _DeliveryAddressChangePopupState
   }
 
   Future<void> _openAddressForm({Map<String, dynamic>? existing}) async {
+    if (existing == null && _addresses.length >= _kMaxAddresses) {
+      AppToastOverlay.showAlert(context, '배송지는 최대 10개까지 등록할 수 있습니다.');
+      return;
+    }
     final result = await showDialog<int>(
       context: context,
       barrierDismissible: false,
@@ -335,28 +350,39 @@ class _DeliveryAddressChangePopupState
   }
 
   Widget _buildAddButton(BuildContext context) {
-    return InkWell(
-      onTap: () => _openAddressForm(),
-      borderRadius: BorderRadius.circular(healthDp(context, 8)),
-      child: Container(
-        width: double.infinity,
-        height: healthDp(context, 35),
-        clipBehavior: Clip.antiAlias,
-        decoration: ShapeDecoration(
-          color: Colors.white,
-          shape: RoundedRectangleBorder(
-            side: BorderSide(width: healthDp(context, 1), color: _kBorder),
-            borderRadius: BorderRadius.circular(healthDp(context, 8)),
+    final iconSize = healthDp(context, 16);
+    final enabled = _addresses.length < _kMaxAddresses;
+    final accent = enabled ? _kPink : _kBorder;
+    return Opacity(
+      opacity: enabled ? 1 : 0.55,
+      child: InkWell(
+        onTap: enabled ? () => _openAddressForm() : null,
+        borderRadius: BorderRadius.circular(healthDp(context, 50)),
+        child: Container(
+          width: double.infinity,
+          padding: EdgeInsets.symmetric(vertical: healthDp(context, 12)),
+          decoration: ShapeDecoration(
+            color: Colors.white,
+            shape: RoundedRectangleBorder(
+              side: BorderSide(width: healthDp(context, 1.5), color: accent),
+              borderRadius: BorderRadius.circular(healthDp(context, 50)),
+            ),
           ),
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          '+ 배송지 신규 입력',
-          style: TextStyle(
-            color: _kMuted,
-            fontSize: healthSp(context, 10),
-            fontFamily: _kFont,
-            fontWeight: FontWeight.w300,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.add, size: iconSize, color: accent),
+              SizedBox(width: healthDp(context, 4)),
+              Text(
+                '배송지 신규입력',
+                style: TextStyle(
+                  color: accent,
+                  fontSize: healthSp(context, 12),
+                  fontFamily: _kFont,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -366,27 +392,26 @@ class _DeliveryAddressChangePopupState
   Widget _buildEditButton(BuildContext context, Map<String, dynamic> a) {
     return InkWell(
       onTap: () => _openAddressForm(existing: a),
-      borderRadius: BorderRadius.circular(healthDp(context, 4)),
+      borderRadius: BorderRadius.circular(healthDp(context, 6)),
       child: Container(
-        width: healthDp(context, 44),
-        height: healthDp(context, 24),
-        clipBehavior: Clip.antiAlias,
+        padding: EdgeInsets.symmetric(
+          horizontal: healthDp(context, 10),
+          vertical: healthDp(context, 5),
+        ),
         decoration: ShapeDecoration(
           color: Colors.white,
           shape: RoundedRectangleBorder(
             side: BorderSide(width: healthDp(context, 1), color: _kBorder),
-            borderRadius: BorderRadius.circular(healthDp(context, 4)),
+            borderRadius: BorderRadius.circular(healthDp(context, 6)),
           ),
         ),
-        alignment: Alignment.center,
         child: Text(
           '수정',
           style: TextStyle(
-            color: _kInk,
-            fontSize: healthSp(context, 11),
+            color: _kAddrMuted,
+            fontSize: healthSp(context, 12),
             fontFamily: _kFont,
             fontWeight: FontWeight.w500,
-            height: 1.0,
           ),
         ),
       ),
@@ -399,13 +424,21 @@ class _DeliveryAddressChangePopupState
     final subject = (a['adSubject'] ?? '').toString().trim();
     final name = (a['adName'] ?? '').toString().trim();
     final title = subject.isNotEmpty ? '$name($subject)' : name;
-    final phone = (a['adHp'] ?? '').toString().trim();
+    final phone = _formatPhoneDisplay((a['adHp'] ?? '').toString().trim());
     final fullAddress = [
       (a['adAddr1'] ?? '').toString().trim(),
       (a['adAddr2'] ?? '').toString().trim(),
       (a['adAddr3'] ?? '').toString().trim(),
     ].where((e) => e.isNotEmpty).join(' ');
     final isDefault = a['adDefault'] == 1;
+    final detailStyle = TextStyle(
+      color: _kAddrMuted,
+      fontSize: healthSp(context, 12),
+      fontFamily: _kFont,
+      fontWeight: FontWeight.w500,
+      height: 1.42,
+      letterSpacing: -0.6,
+    );
 
     return InkWell(
       onTap:
@@ -413,7 +446,7 @@ class _DeliveryAddressChangePopupState
       borderRadius: BorderRadius.circular(healthDp(context, 12)),
       child: Container(
         width: double.infinity,
-        padding: EdgeInsets.all(healthDp(context, 12)),
+        padding: EdgeInsets.all(healthDp(context, 16)),
         decoration: ShapeDecoration(
           color: selected ? _kSelectedBg : Colors.white,
           shape: RoundedRectangleBorder(
@@ -424,92 +457,71 @@ class _DeliveryAddressChangePopupState
             borderRadius: BorderRadius.circular(healthDp(context, 12)),
           ),
         ),
-        child: Stack(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Padding(
-              padding: EdgeInsets.only(
-                right: isDefault ? healthDp(context, 60) : 0,
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: Row(
+                    children: [
+                      Flexible(
+                        child: Text(
                           title.isEmpty ? '수령인' : title,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            color: Colors.black,
+                            color: _kInk,
                             fontSize: healthSp(context, 14),
                             fontFamily: _kFont,
                             fontWeight: FontWeight.w500,
-                            height: 1.0,
+                            letterSpacing: -0.28,
                           ),
                         ),
-                        SizedBox(height: healthDp(context, 8)),
-                        if (phone.isNotEmpty) ...[
-                          Text(
-                            phone,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: _kAddrMuted,
-                              fontSize: healthSp(context, 12),
-                              fontFamily: _kFont,
-                              fontWeight: FontWeight.w500,
-                              height: 1.0,
+                      ),
+                      if (isDefault) ...[
+                        SizedBox(width: healthDp(context, 4)),
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: healthDp(context, 6),
+                            vertical: healthDp(context, 4),
+                          ),
+                          decoration: ShapeDecoration(
+                            color: selected ? Colors.white : _kSelectedBg,
+                            shape: RoundedRectangleBorder(
+                              borderRadius:
+                                  BorderRadius.circular(healthDp(context, 50)),
                             ),
                           ),
-                          SizedBox(height: healthDp(context, 4)),
-                        ],
-                        Text(
-                          fullAddress.isEmpty ? '-' : fullAddress,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: _kAddrMuted,
-                            fontSize: healthSp(context, 12),
-                            fontFamily: _kFont,
-                            fontWeight: FontWeight.w500,
-                            height: 1.3,
+                          child: Text(
+                            '기본배송지',
+                            style: TextStyle(
+                              color: const Color(0xFFFF5C8F),
+                              fontSize: healthSp(context, 10),
+                              fontFamily: _kFont,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ),
-                        SizedBox(height: healthDp(context, 8)),
-                        _buildEditButton(context, a),
                       ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (isDefault)
-              Positioned(
-                top: 0,
-                right: 0,
-                child: Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: healthDp(context, 8),
-                    vertical: healthDp(context, 4),
-                  ),
-                  decoration: BoxDecoration(
-                    color: _kPink,
-                    borderRadius: BorderRadius.circular(healthDp(context, 999)),
-                  ),
-                  child: Text(
-                    '기본배송지',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: healthSp(context, 10),
-                      fontFamily: _kFont,
-                      fontWeight: FontWeight.w500,
-                      height: 1.0,
-                    ),
+                    ],
                   ),
                 ),
+                SizedBox(width: healthDp(context, 8)),
+                _buildEditButton(context, a),
+              ],
+            ),
+            SizedBox(height: healthDp(context, 4)),
+            if (phone.isNotEmpty)
+              Text(
+                phone,
+                style: detailStyle,
               ),
+            Text(
+              fullAddress.isEmpty ? '-' : fullAddress,
+              style: detailStyle,
+            ),
           ],
         ),
       ),
@@ -565,16 +577,18 @@ class _DeliveryAddressChangePopupState
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      SizedBox(height: healthDp(context, 16)),
+                      SizedBox(height: healthDp(context, 20)),
                       _buildAddButton(context),
-                      SizedBox(height: healthDp(context, 12)),
+                      SizedBox(height: healthDp(context, 10)),
                       if (_isLoading)
                         Padding(
                           padding: EdgeInsets.symmetric(
                             vertical: healthDp(context, 24),
                           ),
                           child: const Center(
-                            child: CircularProgressIndicator(color: const Color(0xFFFF5A8D)),
+                            child: CircularProgressIndicator(
+                              color: Color(0xFFFF5A8D),
+                            ),
                           ),
                         )
                       else if (_addresses.isEmpty)
@@ -598,7 +612,7 @@ class _DeliveryAddressChangePopupState
                         Column(
                           children: [
                             for (var i = 0; i < _addresses.length; i++) ...[
-                              if (i > 0) SizedBox(height: healthDp(context, 8)),
+                              if (i > 0) SizedBox(height: healthDp(context, 12)),
                               _buildAddressCard(context, _addresses[i]),
                             ],
                           ],
@@ -799,9 +813,12 @@ class _AddressFormDialogState extends State<_AddressFormDialog>
     if (mounted) setState(() => _pulseFields = {});
   }
 
+  String get _phoneDigits =>
+      _phoneController.text.replaceAll(RegExp(r'[^0-9]'), '');
+
   bool get _isFormComplete {
     if (_nameController.text.trim().isEmpty) return false;
-    if (_phoneController.text.trim().isEmpty) return false;
+    if (_phoneDigits.length != 11) return false;
     if (_addr1Controller.text.trim().isEmpty) return false;
     if (_addr2Controller.text.trim().isEmpty) return false;
     if (_subjectPreset == _SubjectPreset.custom &&
@@ -815,14 +832,14 @@ class _AddressFormDialogState extends State<_AddressFormDialog>
     if (_saving) return;
 
     final nameEmpty = _nameController.text.trim().isEmpty;
-    final phoneEmpty = _phoneController.text.trim().isEmpty;
+    final phoneInvalid = _phoneDigits.length != 11;
     final addressEmpty = _addr1Controller.text.trim().isEmpty;
     final addr2Empty = _addr2Controller.text.trim().isEmpty;
 
     if (!_isFormComplete) {
       await _triggerPulse({
         if (nameEmpty) 'name',
-        if (phoneEmpty) 'phone',
+        if (phoneInvalid) 'phone',
         if (addressEmpty) 'address',
         if (addr2Empty) 'addr2',
       });
@@ -833,6 +850,18 @@ class _AddressFormDialogState extends State<_AddressFormDialog>
     try {
       final user = await AuthService.getUser();
       if (user == null) return;
+
+      if (!_isEdit) {
+        final existing = await AddressService.getAddressList(user.id);
+        if (!mounted) return;
+        if (existing.length >= _kMaxAddresses) {
+          AppToastOverlay.showAlert(
+            context,
+            '배송지는 최대 10개까지 등록할 수 있습니다.',
+          );
+          return;
+        }
+      }
 
       final subject = _subjectPreset == _SubjectPreset.none
           ? ''
@@ -906,7 +935,7 @@ class _AddressFormDialogState extends State<_AddressFormDialog>
           ),
         ),
         Text(
-          ' *',
+          '*',
           style: TextStyle(
             color: _kPink,
             fontSize: healthSp(context, 12),
@@ -923,6 +952,7 @@ class _AddressFormDialogState extends State<_AddressFormDialog>
     required TextEditingController controller,
     required String hint,
     required String pulseKey,
+    Color fillColor = Colors.white,
     TextInputType? keyboardType,
     List<TextInputFormatter>? inputFormatters,
     TextInputAction textInputAction = TextInputAction.next,
@@ -930,15 +960,16 @@ class _AddressFormDialogState extends State<_AddressFormDialog>
     final borderColor = _pulseBorderColor(pulseKey);
     final radius = healthDp(context, 10);
     final fieldH = healthDp(context, 45);
+    final fs = healthSp(context, 12);
     return Container(
       width: double.infinity,
       height: fieldH,
       alignment: Alignment.centerLeft,
       padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
       decoration: ShapeDecoration(
-        color: _kFieldFill,
+        color: fillColor,
         shape: RoundedRectangleBorder(
-          side: BorderSide(color: borderColor),
+          side: BorderSide(width: 1, color: borderColor),
           borderRadius: BorderRadius.circular(radius),
         ),
       ),
@@ -949,6 +980,11 @@ class _AddressFormDialogState extends State<_AddressFormDialog>
         inputFormatters: inputFormatters,
         cursorColor: _kPink,
         textAlignVertical: TextAlignVertical.center,
+        strutStyle: StrutStyle(
+          fontSize: fs,
+          height: 1,
+          forceStrutHeight: true,
+        ),
         onChanged: (_) {
           if (_pulseFields.contains(pulseKey)) {
             setState(() => _pulseFields = {..._pulseFields}..remove(pulseKey));
@@ -963,55 +999,46 @@ class _AddressFormDialogState extends State<_AddressFormDialog>
         },
         style: TextStyle(
           color: _kInk,
-          fontSize: healthSp(context, 12),
+          fontSize: fs,
           fontFamily: _kFont,
           fontWeight: FontWeight.w500,
-          height: 1.0,
+          height: 1,
+          leadingDistribution: TextLeadingDistribution.even,
         ),
         decoration: InputDecoration(
           isDense: true,
           isCollapsed: true,
-          contentPadding: EdgeInsets.zero,
           border: InputBorder.none,
           enabledBorder: InputBorder.none,
           focusedBorder: InputBorder.none,
+          // Gmarket Sans 광학 보정 — 글자를 살짝 위로
+          contentPadding: EdgeInsets.only(bottom: healthDp(context, 3)),
           hintText: hint,
           hintStyle: TextStyle(
-            color: _kMuted,
-            fontSize: healthSp(context, 12),
+            color: _kAddrMuted,
+            fontSize: fs,
             fontFamily: _kFont,
             fontWeight: FontWeight.w300,
-            height: 1.0,
+            height: 1,
+            leadingDistribution: TextLeadingDistribution.even,
           ),
         ),
       ),
     );
   }
 
-  double _addressSearchButtonWidth(BuildContext context) {
-    final style = TextStyle(
-      fontSize: healthSp(context, 12),
-      fontFamily: _kFont,
-      fontWeight: FontWeight.w500,
-    );
-    final painter = TextPainter(
-      text: TextSpan(text: '주소 검색', style: style),
-      textDirection: TextDirection.ltr,
-      maxLines: 1,
-    )..layout();
-    return painter.width + healthDp(context, 14) * 2;
-  }
-
   Widget _addressSearchButton(BuildContext context) {
     final radius = healthDp(context, 10);
     final fieldH = healthDp(context, 45);
-    final btnW = _addressSearchButtonWidth(context);
     return InkWell(
       onTap: _openAddressSearch,
       borderRadius: BorderRadius.circular(radius),
       child: Container(
-        width: btnW,
         height: fieldH,
+        padding: EdgeInsets.symmetric(
+          horizontal: healthDp(context, 10),
+          vertical: healthDp(context, 5),
+        ),
         clipBehavior: Clip.antiAlias,
         decoration: ShapeDecoration(
           color: _kPink,
@@ -1043,37 +1070,33 @@ class _AddressFormDialogState extends State<_AddressFormDialog>
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Expanded(
-          child: InkWell(
-            onTap: _openAddressSearch,
-            borderRadius: BorderRadius.circular(radius),
-            child: Container(
-              height: fieldH,
-              padding: EdgeInsets.all(healthDp(context, 10)),
-              clipBehavior: Clip.antiAlias,
-              decoration: ShapeDecoration(
-                color: _kFieldFill,
-                shape: RoundedRectangleBorder(
-                  side: BorderSide(color: borderColor),
-                  borderRadius: BorderRadius.circular(radius),
-                ),
+          child: Container(
+            height: fieldH,
+            padding: EdgeInsets.all(healthDp(context, 10)),
+            clipBehavior: Clip.antiAlias,
+            decoration: ShapeDecoration(
+              color: _kFieldFill,
+              shape: RoundedRectangleBorder(
+                side: BorderSide(color: borderColor),
+                borderRadius: BorderRadius.circular(radius),
               ),
-              alignment: Alignment.centerLeft,
-              child: Text(
-                addressText.isEmpty ? '주소를 검색해 주세요' : addressText,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: addressText.isEmpty ? _kMuted : _kInk,
-                  fontSize: healthSp(context, 12),
-                  fontFamily: _kFont,
-                  fontWeight:
-                      addressText.isEmpty ? FontWeight.w300 : FontWeight.w500,
-                ),
+            ),
+            alignment: Alignment.centerLeft,
+            child: Text(
+              addressText.isEmpty ? '주소를 검색해 주세요' : addressText,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: addressText.isEmpty ? _kMuted : _kInk,
+                fontSize: healthSp(context, 12),
+                fontFamily: _kFont,
+                fontWeight:
+                    addressText.isEmpty ? FontWeight.w300 : FontWeight.w500,
               ),
             ),
           ),
         ),
-        SizedBox(width: healthDp(context, 8)),
+        SizedBox(width: healthDp(context, 10)),
         _addressSearchButton(context),
       ],
     );
@@ -1082,42 +1105,45 @@ class _AddressFormDialogState extends State<_AddressFormDialog>
   Widget _subjectChip(
       BuildContext context, String label, _SubjectPreset preset) {
     final selected = _subjectPreset == preset;
-    return Expanded(
-      child: InkWell(
-        onTap: () {
-          setState(() {
-            if (preset == _SubjectPreset.custom) {
-              _subjectPreset = _SubjectPreset.custom;
-              if (_subjectController.text == '집' ||
-                  _subjectController.text == '회사') {
-                _subjectController.clear();
-              }
-            } else {
-              _subjectPreset = preset;
-              _subjectController.text = label;
+    return InkWell(
+      onTap: () {
+        setState(() {
+          if (preset == _SubjectPreset.custom) {
+            _subjectPreset = _SubjectPreset.custom;
+            if (_subjectController.text == '집' ||
+                _subjectController.text == '회사') {
+              _subjectController.clear();
             }
-          });
-        },
-        borderRadius: BorderRadius.circular(healthDp(context, 10)),
-        child: Container(
-          height: healthDp(context, 45),
-          alignment: Alignment.center,
-          clipBehavior: Clip.antiAlias,
-          decoration: ShapeDecoration(
-            color: selected ? _kChipTint : Colors.white,
-            shape: RoundedRectangleBorder(
-              side: BorderSide(color: selected ? _kPink : _kBorder),
-              borderRadius: BorderRadius.circular(healthDp(context, 10)),
+          } else {
+            _subjectPreset = preset;
+            _subjectController.text = label;
+          }
+        });
+      },
+      borderRadius: BorderRadius.circular(healthDp(context, 15)),
+      child: Container(
+        height: healthDp(context, 45),
+        padding: EdgeInsets.symmetric(horizontal: healthDp(context, 14)),
+        clipBehavior: Clip.antiAlias,
+        alignment: Alignment.center,
+        decoration: ShapeDecoration(
+          color: selected ? const Color(0x0CFF5A8D) : Colors.white,
+          shape: RoundedRectangleBorder(
+            side: BorderSide(
+              width: 1,
+              color: selected ? _kPink : _kBorder,
             ),
+            borderRadius: BorderRadius.circular(healthDp(context, 15)),
           ),
-          child: Text(
-            label,
-            style: TextStyle(
-              color: selected ? _kPink : _kAddrMuted,
-              fontSize: healthSp(context, 12),
-              fontFamily: _kFont,
-              fontWeight: FontWeight.w500,
-            ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: selected ? _kInk : _kMuted,
+            fontSize: healthSp(context, 12),
+            fontFamily: _kFont,
+            fontWeight: FontWeight.w500,
+            height: 1.2,
           ),
         ),
       ),
@@ -1127,42 +1153,43 @@ class _AddressFormDialogState extends State<_AddressFormDialog>
   Widget _defaultCheckbox(BuildContext context) {
     return InkWell(
       onTap: () => setState(() => _isDefault = !_isDefault),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: healthDp(context, 20),
-            height: healthDp(context, 20),
-            decoration: ShapeDecoration(
-              color: Colors.white,
-              shape: RoundedRectangleBorder(
-                side: BorderSide(
-                  width: healthDp(context, 1.5),
-                  color: _kBorder,
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: healthDp(context, 5)),
+        child: Row(
+          children: [
+            Container(
+              width: healthDp(context, 20),
+              height: healthDp(context, 20),
+              decoration: ShapeDecoration(
+                color: Colors.white,
+                shape: RoundedRectangleBorder(
+                  side: const BorderSide(width: 1, color: _kBorder),
+                  borderRadius: BorderRadius.circular(healthDp(context, 4)),
                 ),
-                borderRadius: BorderRadius.circular(healthDp(context, 4)),
+              ),
+              alignment: Alignment.center,
+              child: _isDefault
+                  ? Icon(
+                      Icons.check,
+                      size: healthDp(context, 14),
+                      color: _kPink,
+                    )
+                  : null,
+            ),
+            SizedBox(width: healthDp(context, 5)),
+            Expanded(
+              child: Text(
+                '기본 배송지로 설정',
+                style: TextStyle(
+                  color: _kInk,
+                  fontSize: healthSp(context, 12),
+                  fontFamily: _kFont,
+                  fontWeight: FontWeight.w300,
+                ),
               ),
             ),
-            alignment: Alignment.center,
-            child: _isDefault
-                ? Icon(
-                    Icons.check,
-                    size: healthDp(context, 14),
-                    color: _kPink,
-                  )
-                : null,
-          ),
-          SizedBox(width: healthDp(context, 8)),
-          Text(
-            '기본 배송지로 설정',
-            style: TextStyle(
-              color: _kMuted,
-              fontSize: healthSp(context, 14),
-              fontFamily: _kFont,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -1203,7 +1230,7 @@ class _AddressFormDialogState extends State<_AddressFormDialog>
                     pad20,
                     pad20,
                     pad20,
-                    healthDp(context, 12),
+                    healthDp(context, 0),
                   ),
                   child: AnimatedBuilder(
                     animation: _pulseCtrl,
@@ -1223,16 +1250,6 @@ class _AddressFormDialogState extends State<_AddressFormDialog>
                           ),
                           SizedBox(height: healthDp(context, 20)),
                           Text(
-                            '배송지',
-                            style: TextStyle(
-                              color: _kInk,
-                              fontSize: healthSp(context, 16),
-                              fontFamily: _kFont,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          SizedBox(height: healthDp(context, 10)),
-                          Text(
                             '배송지명 (선택)',
                             style: TextStyle(
                               color: _kMuted,
@@ -1241,7 +1258,7 @@ class _AddressFormDialogState extends State<_AddressFormDialog>
                               fontWeight: FontWeight.w500,
                             ),
                           ),
-                          SizedBox(height: healthDp(context, 8)),
+                          SizedBox(height: healthDp(context, 5)),
                           Row(
                             children: [
                               _subjectChip(context, '집', _SubjectPreset.home),
@@ -1254,7 +1271,7 @@ class _AddressFormDialogState extends State<_AddressFormDialog>
                             ],
                           ),
                           if (_subjectPreset == _SubjectPreset.custom) ...[
-                            SizedBox(height: healthDp(context, 8)),
+                            SizedBox(height: healthDp(context, 10)),
                             _field(
                               context: context,
                               controller: _subjectController,
@@ -1262,22 +1279,22 @@ class _AddressFormDialogState extends State<_AddressFormDialog>
                               pulseKey: 'subject',
                             ),
                           ],
-                          SizedBox(height: healthDp(context, 16)),
+                          SizedBox(height: healthDp(context, 10)),
                           _requiredLabel(context, '받으시는 분'),
-                          SizedBox(height: healthDp(context, 8)),
+                          SizedBox(height: healthDp(context, 5)),
                           _field(
                             context: context,
                             controller: _nameController,
-                            hint: '수령인의 이름을 입력해 주세요.',
+                            hint: '수령인의 이름을 입력해주세요.',
                             pulseKey: 'name',
                           ),
-                          SizedBox(height: healthDp(context, 16)),
+                          SizedBox(height: healthDp(context, 10)),
                           _requiredLabel(context, '연락처'),
-                          SizedBox(height: healthDp(context, 8)),
+                          SizedBox(height: healthDp(context, 5)),
                           _field(
                             context: context,
                             controller: _phoneController,
-                            hint: "'-' 없이 기입해 주세요.",
+                            hint: "'-' 없이 기입해주세요.",
                             pulseKey: 'phone',
                             keyboardType: TextInputType.phone,
                             inputFormatters: [
@@ -1285,12 +1302,12 @@ class _AddressFormDialogState extends State<_AddressFormDialog>
                               LengthLimitingTextInputFormatter(11),
                             ],
                           ),
-                          SizedBox(height: healthDp(context, 16)),
+                          SizedBox(height: healthDp(context, 10)),
                           _requiredLabel(context, '배송지 주소'),
-                          SizedBox(height: healthDp(context, 8)),
+                          SizedBox(height: healthDp(context, 5)),
                           _addressSearchRow(context),
                           if (hasAddress) ...[
-                            SizedBox(height: healthDp(context, 8)),
+                            SizedBox(height: healthDp(context, 10)),
                             _field(
                               context: context,
                               controller: _addr2Controller,
@@ -1299,7 +1316,7 @@ class _AddressFormDialogState extends State<_AddressFormDialog>
                               textInputAction: TextInputAction.done,
                             ),
                           ],
-                          SizedBox(height: healthDp(context, 16)),
+                          SizedBox(height: healthDp(context, 10)),
                           _defaultCheckbox(context),
                         ],
                       );
