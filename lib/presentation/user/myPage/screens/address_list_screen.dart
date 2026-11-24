@@ -24,13 +24,13 @@ class AddressManagementScreen extends StatefulWidget {
 
 class _AddressManagementScreenState extends State<AddressManagementScreen> {
   static const double _confirmDialogWidth = 272;
-  static const int _collapsedAddressCount = 4;
+  static const int _pageSize = 4;
 
   UserModel? _currentUser;
   List<ShippingAddress> _addresses = [];
   bool _isLoadingAddresses = false;
   bool _loadFailed = false;
-  bool _showAllAddresses = false;
+  int _visibleCount = _pageSize;
 
   @override
   void initState() {
@@ -105,6 +105,11 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
     setState(() {
       _addresses = sorted;
       _isLoadingAddresses = loading;
+      if (_visibleCount < _pageSize) {
+        _visibleCount = _pageSize;
+      } else if (_visibleCount > sorted.length && sorted.isNotEmpty) {
+        _visibleCount = sorted.length;
+      }
     });
   }
 
@@ -159,6 +164,11 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
     if (result['success'] == true) {
       setState(() {
         _addresses = _addresses.where((a) => a.id != id).toList();
+        if (_visibleCount > _addresses.length) {
+          _visibleCount = _addresses.length < _pageSize
+              ? _pageSize
+              : _addresses.length;
+        }
       });
       AppToastOverlay.show(context, '배송지가 삭제됐어요.');
     } else {
@@ -172,7 +182,9 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
   Widget _buildMoreButton() {
     final radius = BorderRadius.circular(healthDp(context, 10));
     return InkWell(
-      onTap: () => setState(() => _showAllAddresses = true),
+      onTap: () => setState(() {
+        _visibleCount = (_visibleCount + _pageSize).clamp(0, _addresses.length);
+      }),
       borderRadius: radius,
       child: Container(
         width: double.infinity,
@@ -381,15 +393,11 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                           );
                         }
 
-                        final visibleAddresses = _showAllAddresses ||
-                                _addresses.length <= _collapsedAddressCount
+                        final visibleAddresses = _addresses.length <= _visibleCount
                             ? _addresses
-                            : _addresses
-                                .take(_collapsedAddressCount)
-                                .toList();
+                            : _addresses.take(_visibleCount).toList();
                         final showMoreButton =
-                            !_showAllAddresses &&
-                            _addresses.length > _collapsedAddressCount;
+                            _addresses.length > _visibleCount;
 
                         return SingleChildScrollView(
                           padding: contentPadding,
