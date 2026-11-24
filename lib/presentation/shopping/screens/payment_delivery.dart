@@ -21,7 +21,7 @@ extension _PaymentDelivery on _PaymentScreenState {
     final ad = _defaultAddress;
     _addressNameController.text = _safe(ad?['adSubject']);
     _receiverController.text = _safe(ad?['adName']);
-    _phoneController.text = _safe(ad?['adHp']);
+    _phoneController.text = _phoneDigits11(_safe(ad?['adHp']));
     _zipController.text =
         _formatPostalCodeDisplay(_shippingZipFromAddress(ad));
     _addressController.text = [
@@ -97,6 +97,12 @@ extension _PaymentDelivery on _PaymentScreenState {
 
   String _postalDigits(String raw) =>
       raw.replaceAll(RegExp(r'[^0-9]'), '');
+
+  String _phoneDigits11(String raw) {
+    final digits = raw.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.length <= 11) return digits;
+    return digits.substring(0, 11);
+  }
 
 
   /// 웹 주문서와 같이 `ad_zip1 + ad_zip2` 전체로 도서·산간 추가배송비를 조회한다.
@@ -245,7 +251,9 @@ extension _PaymentDelivery on _PaymentScreenState {
         child: Text(
           label,
           style: TextStyle(
-            color: selected ? _pink : const Color(0xFF898686),
+            color: selected
+                ? const Color(0xFF1A1A1A)
+                : const Color(0xFF898686),
             fontSize: healthSp(context, 12),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w500,
@@ -474,10 +482,10 @@ extension _PaymentDelivery on _PaymentScreenState {
             ],
           ),
           if (_showCustomAddressName) ...[
-            SizedBox(height: healthDp(context, 2)),
+            SizedBox(height: healthDp(context, 10)),
             _deliveryTextField(
               controller: _addressNameController,
-              hint: '배송지명을 입력해 주세요.',
+              hint: '예) 집, 회사 등 배송지명을 입력해 주세요',
             ),
           ],
           SizedBox(height: healthDp(context, 10)),
@@ -494,7 +502,10 @@ extension _PaymentDelivery on _PaymentScreenState {
             controller: _phoneController,
             hint: '‘-’없이 기입해주세요.',
             keyboardType: TextInputType.phone,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(11),
+            ],
           ),
           SizedBox(height: healthDp(context, 10)),
           _requiredLabel(context, '배송지 주소'),
