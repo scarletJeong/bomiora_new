@@ -977,6 +977,13 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
     }
   }
 
+  /// 날짜 칩 높이만 스케일을 조금 더 키움 (650 → 약 1.65배).
+  double _dateChipHeightDp(double base) {
+    final scale = healthTextScaleByWidth(MediaQuery.sizeOf(context).width);
+    final tall = 1.0 + (scale - 1.0) * 1.3; // 375→1.0, 650→1.65
+    return base * tall;
+  }
+
   Widget _dateChip({
     required DateTime date,
     required String weekday,
@@ -988,13 +995,13 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
       behavior: HitTestBehavior.opaque,
       onTap: () => _selectDate(date),
       child: Container(
-        height: healthDp(context, 54.17),
+        height: _dateChipHeightDp(54.17),
         alignment: Alignment.center,
         decoration: ShapeDecoration(
           color: isSelected ? const Color(0x0CFF5A8D) : Colors.white,
           shape: RoundedRectangleBorder(
             side: BorderSide(
-              width: healthDp(context, 0.5),
+              width: healthDp(context, 0.5).clamp(0.5, 1.0),
               color: isSelected
                   ? const Color(0xFFFF5A8D)
                   : const Color(0xFFD2D2D2),
