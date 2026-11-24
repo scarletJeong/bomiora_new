@@ -160,12 +160,6 @@ class PaymentProductCard extends StatelessWidget {
             ),
           ],
           SizedBox(height: healthDp(context, 10)),
-          Container(
-            width: double.infinity,
-            height: healthDp(context, 1),
-            color: _kDivider,
-          ),
-          SizedBox(height: healthDp(context, 10)),
         ],
         for (var i = 0; i < displayGroups.length; i++) ...[
           if (i > 0) ...[
@@ -180,7 +174,7 @@ class PaymentProductCard extends StatelessWidget {
           CartAddGroupCard(
             group: displayGroups[i],
             selectedItems: const {},
-            supplyInitiallyExpanded: true,
+            supplyInitiallyExpanded: false,
             supplyInteractive: false,
             showBundleTotal: false,
             reportImageFailure: true,
@@ -357,7 +351,7 @@ class PaymentGeneralProductCard extends StatelessWidget {
       decoration: ShapeDecoration(
         color: Colors.white,
         shape: RoundedRectangleBorder(
-          side: const BorderSide(width: 1, color: _kBorder),
+          side: const BorderSide(width: 1, color: Color(0x7FD2D2D2)),
           borderRadius: BorderRadius.circular(healthDp(context, 15)),
         ),
       ),

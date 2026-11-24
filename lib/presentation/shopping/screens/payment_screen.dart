@@ -130,7 +130,7 @@ const _figmaBrown = Color(0xFF898686);
 const _figmaDark = Color(0xFF1A1A1A);
 const int _minPayableAmount = 3000;
 const double _kDeliveryFieldHeight = 45;
-const Color _kDeliveryFieldFill = Color(0xFFF8FAFC);
+const Color _kDeliveryFieldFill = Colors.white;
 
 class _PaymentScreenState extends State<PaymentScreen> {
   final TextEditingController _pointController = TextEditingController();
@@ -364,8 +364,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
         }
         if (_phoneController.text.trim().isEmpty &&
             (user.phone ?? '').trim().isNotEmpty) {
-          _phoneController.text =
+          final digits =
               (user.phone ?? '').replaceAll(RegExp(r'[^0-9]'), '');
+          _phoneController.text =
+              digits.length > 11 ? digits.substring(0, 11) : digits;
         }
         _addressNameController.text = _addressLabelChip;
       }

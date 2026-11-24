@@ -11,7 +11,7 @@ extension _PaymentSections on _PaymentScreenState {
       decoration: ShapeDecoration(
         color: Colors.white,
         shape: RoundedRectangleBorder(
-          side: const BorderSide(width: 1, color: Color(0xFFD2D2D2)),
+          side: const BorderSide(width: 1, color: Color(0x7FD2D2D2)),
           borderRadius: BorderRadius.circular(healthDp(context, 15)),
         ),
       ),
