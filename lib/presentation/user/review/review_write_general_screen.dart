@@ -203,6 +203,9 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
       _draftImages.addAll(
         r.images.take(_maxImages).map((p) => _ReviewDraftImage(serverPath: p)),
       );
+    } else {
+      final existing = _existingAt(_productIndex);
+      if (existing != null) _applyExistingReview(existing);
     }
   }
 
@@ -813,6 +816,17 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
                               ),
                               SizedBox(height: healthDp(context, 10)),
                               _scoreCard(context),
+                              ],
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: healthDp(context, 20),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
                               SizedBox(height: healthDp(context, 24)),
                               _barSectionTitle(
                                 context,
@@ -824,6 +838,19 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
                               ),
                               SizedBox(height: healthDp(context, 10)),
                               _reviewInputBlock(context),
+                            ],
+                          ),
+                        ),
+                        Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: healthDp(context, 20),
+                          ),
+                          child: IgnorePointer(
+                            ignoring: _isCurrentReviewed,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
                               SizedBox(height: healthDp(context, 24)),
                               _barSectionTitle(
                                 context,
@@ -1334,18 +1361,80 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
 
   Widget _reviewInputBlock(BuildContext context) {
     final len = _reviewController.text.length;
+    final bodyStyle = TextStyle(
+      fontFamily: _kFont,
+      fontSize: healthSp(context, 12),
+      fontWeight: FontWeight.w300,
+      color: _kInk,
+      letterSpacing: healthSp(context, -0.60),
+      height: 1.67,
+    );
+    final counter = Align(
+      alignment: Alignment.centerRight,
+      child: Text(
+        '$len/500',
+        style: TextStyle(
+          fontFamily: _kFont,
+          color: _reviewController.text.trim().length >= 20
+              ? const Color(0xFF16A34A)
+              : _kMuted,
+          fontSize: healthSp(context, 10),
+          fontWeight: FontWeight.w300,
+          letterSpacing: healthSp(context, -0.50),
+          height: 1,
+        ),
+      ),
+    );
+    final boxPadding = EdgeInsets.fromLTRB(
+      healthDp(context, 14),
+      healthDp(context, 12),
+      healthDp(context, 14),
+      healthDp(context, 8),
+    );
+
+    if (_isCurrentReviewed) {
+      final written = _reviewController.text.trim();
+      return Container(
+        width: double.infinity,
+        padding: boxPadding,
+        decoration: ShapeDecoration(
+          color: Colors.white,
+          shape: RoundedRectangleBorder(
+            side: BorderSide(
+              width: healthDp(context, 1),
+              color: const Color(0xFFD2D2D2),
+            ),
+            borderRadius: BorderRadius.circular(healthDp(context, 7)),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SelectableText(
+              written.isEmpty ? '작성한 리뷰가 없습니다.' : _reviewController.text,
+              style: bodyStyle,
+            ),
+            SizedBox(height: healthDp(context, 8)),
+            counter,
+          ],
+        ),
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         HealthFocusOutlineBox(
-          height: healthDp(context, 102),
-          padding: EdgeInsets.all(healthDp(context, 14)),
+          height: healthDp(context, 128),
+          padding: boxPadding,
           borderRadius: healthDp(context, 7),
           fillColor: Colors.white,
           hasError: _reviewBodyError != null,
           builder: (focusNode) => Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(
+              SizedBox(
+                height: healthDp(context, 88),
                 child: TextFormField(
                   controller: _reviewController,
                   focusNode: focusNode,
@@ -1360,24 +1449,10 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
                       }
                     });
                   },
-                  style: TextStyle(
-                    fontFamily: _kFont,
-                    fontSize: healthSp(context, 12),
-                    fontWeight: FontWeight.w300,
-                    color: _kInk,
-                    letterSpacing: healthSp(context, -0.60),
-                    height: 1.67,
-                  ),
+                  style: bodyStyle,
                   decoration: InputDecoration(
                     hintText: '상품 리뷰를 작성해주세요. (최소 20자)',
-                    hintStyle: TextStyle(
-                      fontFamily: _kFont,
-                      color: _kMuted,
-                      fontSize: healthSp(context, 12),
-                      fontWeight: FontWeight.w300,
-                      letterSpacing: healthSp(context, -0.60),
-                      height: 1.67,
-                    ),
+                    hintStyle: bodyStyle.copyWith(color: _kMuted),
                     border: InputBorder.none,
                     counterText: '',
                     isDense: true,
@@ -1386,22 +1461,8 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
                   onFieldSubmitted: (_) => focusNode.unfocus(),
                 ),
               ),
-              Align(
-                alignment: Alignment.centerRight,
-                child: Text(
-                  '$len/500',
-                  style: TextStyle(
-                    fontFamily: _kFont,
-                    color: _reviewController.text.trim().length >= 20
-                        ? const Color(0xFF16A34A)
-                        : _kMuted,
-                    fontSize: healthSp(context, 10),
-                    fontWeight: FontWeight.w300,
-                    letterSpacing: healthSp(context, -0.50),
-                    height: 1,
-                  ),
-                ),
-              ),
+              SizedBox(height: healthDp(context, 6)),
+              counter,
             ],
           ),
         ),

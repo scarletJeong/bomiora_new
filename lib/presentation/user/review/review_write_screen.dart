@@ -1413,6 +1413,36 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
     bool isLast = false,
   }) {
     final len = controller.text.length;
+    final bodyStyle = TextStyle(
+      fontFamily: _kFont,
+      fontSize: healthSp(context, 12),
+      fontWeight: FontWeight.w500,
+      color: _kInk,
+      height: 1.67,
+      letterSpacing: -0.60,
+    );
+    final counter = Align(
+      alignment: Alignment.centerRight,
+      child: Text(
+        '$len/500',
+        style: TextStyle(
+          fontFamily: _kFont,
+          color: requiredField && controller.text.trim().length >= 20
+              ? const Color(0xFF16A34A)
+              : _kMuted,
+          fontSize: healthSp(context, 10),
+          fontWeight: FontWeight.w300,
+          letterSpacing: -0.50,
+          height: 1,
+        ),
+      ),
+    );
+    final boxPadding = EdgeInsets.fromLTRB(
+      healthDp(context, 14),
+      healthDp(context, 12),
+      healthDp(context, 14),
+      healthDp(context, 8),
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1425,14 +1455,45 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
           trailingGapBase: requiredField ? 4 : 5,
         ),
         SizedBox(height: healthDp(context, 10)),
+        if (_isCurrentReviewed)
+          Container(
+            width: double.infinity,
+            padding: boxPadding,
+            decoration: ShapeDecoration(
+              color: Colors.white,
+              shape: RoundedRectangleBorder(
+                side: BorderSide(
+                  width: healthDp(context, 1),
+                  color: const Color(0xFFD2D2D2),
+                ),
+                borderRadius: BorderRadius.circular(healthDp(context, 7)),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SelectableText(
+                  controller.text.trim().isEmpty
+                      ? '작성한 리뷰가 없습니다.'
+                      : controller.text,
+                  style: bodyStyle,
+                ),
+                SizedBox(height: healthDp(context, 8)),
+                counter,
+              ],
+            ),
+          )
+        else
         HealthFocusOutlineBox(
-          height: healthDp(context, 102),
-          padding: EdgeInsets.all(healthDp(context, 14)),
+          height: healthDp(context, 128),
+          padding: boxPadding,
           borderRadius: healthDp(context, 7),
           fillColor: Colors.white,
-          builder: (focusNode) => Stack(
+          builder: (focusNode) => Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Positioned.fill(
+              SizedBox(
+                height: healthDp(context, 88),
                 child: TextFormField(
                   controller: controller,
                   focusNode: focusNode,
@@ -1441,30 +1502,17 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
                   maxLines: null,
                   expands: true,
                   maxLength: 500,
-                  style: TextStyle(
-                    fontFamily: _kFont,
-                    fontSize: healthSp(context, 12),
-                    fontWeight: FontWeight.w500,
-                    color: _kInk,
-                    height: 1.67,
-                    letterSpacing: -0.60,
-                  ),
+                  style: bodyStyle,
                   decoration: InputDecoration(
                     hintText: hint,
-                    hintStyle: TextStyle(
-                      fontFamily: _kFont,
+                    hintStyle: bodyStyle.copyWith(
                       color: _kMuted,
-                      fontSize: healthSp(context, 12),
                       fontWeight: FontWeight.w300,
-                      height: 1.67,
-                      letterSpacing: -0.60,
                     ),
                     border: InputBorder.none,
                     counterText: '',
                     isDense: true,
-                    contentPadding: EdgeInsets.only(
-                      bottom: healthDp(context, 14),
-                    ),
+                    contentPadding: EdgeInsets.zero,
                   ),
                   validator: (value) {
                     final v = (value ?? '').trim();
@@ -1483,22 +1531,8 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
                   },
                 ),
               ),
-              Positioned(
-                right: 0,
-                bottom: 0,
-                child: Text(
-                  '$len/500',
-                  style: TextStyle(
-                    fontFamily: _kFont,
-                    color: requiredField && controller.text.trim().length >= 20
-                        ? const Color(0xFF16A34A)
-                        : _kMuted,
-                    fontSize: healthSp(context, 10),
-                    fontWeight: FontWeight.w300,
-                    letterSpacing: -0.50,
-                  ),
-                ),
-              ),
+              SizedBox(height: healthDp(context, 6)),
+              counter,
             ],
           ),
         ),
