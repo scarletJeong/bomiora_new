@@ -274,10 +274,12 @@ extension _PaymentDelivery on _PaymentScreenState {
   }) {
     final h = healthDp(context, _kDeliveryFieldHeight);
     final r = healthDp(context, 10);
+    final pad = healthDp(context, 10);
     final box = Container(
       width: double.infinity,
       height: h,
-      padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
+      padding: EdgeInsets.all(pad),
+      clipBehavior: Clip.antiAlias,
       alignment: Alignment.centerLeft,
       decoration: BoxDecoration(
         color: fillColor ?? _kDeliveryFieldFill,
@@ -315,17 +317,24 @@ extension _PaymentDelivery on _PaymentScreenState {
     TextInputType? keyboardType,
     List<TextInputFormatter>? inputFormatters,
   }) {
+    final fs = healthSp(context, 12);
     return _deliveryFieldBox(
       child: TextField(
         controller: controller,
         keyboardType: keyboardType,
         inputFormatters: inputFormatters,
         textAlignVertical: TextAlignVertical.center,
+        strutStyle: StrutStyle(
+          fontSize: fs,
+          height: 1,
+          forceStrutHeight: true,
+        ),
         style: TextStyle(
-          fontSize: healthSp(context, 12),
+          fontSize: fs,
           fontFamily: 'Gmarket Sans TTF',
           fontWeight: FontWeight.w500,
-          height: 1.2,
+          height: 1,
+          leadingDistribution: TextLeadingDistribution.even,
           color: const Color(0xFF1A1A1A),
         ),
         decoration: InputDecoration(
@@ -336,15 +345,17 @@ extension _PaymentDelivery on _PaymentScreenState {
           disabledBorder: InputBorder.none,
           errorBorder: InputBorder.none,
           focusedErrorBorder: InputBorder.none,
-          contentPadding: EdgeInsets.zero,
+          // Gmarket Sans 광학 보정 — 글자를 살짝 위로
+          contentPadding: EdgeInsets.only(bottom: healthDp(context, 2)),
           isCollapsed: true,
           hintText: hint,
           hintStyle: TextStyle(
             color: _muted,
-            fontSize: healthSp(context, 12),
+            fontSize: fs,
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w300,
-            height: 1.2,
+            height: 1,
+            leadingDistribution: TextLeadingDistribution.even,
           ),
         ),
       ),
@@ -516,6 +527,7 @@ extension _PaymentDelivery on _PaymentScreenState {
               Expanded(
                 child: _deliveryFieldBox(
                   onTap: _openAddressSearch,
+                  fillColor: const Color(0xFFF8FAFC),
                   child: Text(
                     addressDisplay.isEmpty ? '주소를 검색해 주세요' : addressDisplay,
                     maxLines: 1,
@@ -523,11 +535,14 @@ extension _PaymentDelivery on _PaymentScreenState {
                     style: TextStyle(
                       color: addressDisplay.isEmpty
                           ? _muted
-                          : const Color(0xFF1A1A1A),
+                          : Colors.black,
                       fontSize: healthSp(context, 12),
                       fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w300,
-                      height: 1.2,
+                      fontWeight: addressDisplay.isEmpty
+                          ? FontWeight.w300
+                          : FontWeight.w500,
+                      height: 1,
+                      leadingDistribution: TextLeadingDistribution.even,
                     ),
                   ),
                 ),

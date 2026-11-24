@@ -13,7 +13,6 @@ const _kInk = Color(0xFF1A1A1A);
 const _kInkAlt = Color(0xFF1A1A1A);
 const _kMuted2 = Color(0xFF898686);
 const _kBorder = Color(0x7FD2D2D2);
-const _kDivider = Color(0x26FF5A8D);
 
 /// 처방 장바구니 — 본상품 + 추가상품(supply_add) 묶음 카드
 class CartAddGroupCard extends StatelessWidget {
@@ -83,28 +82,23 @@ class CartAddGroupCard extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SizedBox(height: healthDp(context, cartLayout ? 16 : 12)),
-          Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: cartLayout ? 0 : pad,
-            ),
-            child: _SupplyAddBlock(
-              items: children,
-              expandWhenSelected: selectedItems.contains(group.parent.ctId),
-              initiallyExpanded: supplyInitiallyExpanded,
-              interactive: supplyInteractive,
-              prescriptionCartLayout: cartLayout,
-              reportImageFailure: reportImageFailure,
-              imageFailureCode: imageFailureCode,
-              imageFailureReason: imageFailureReason,
-              imageFallbackReason: imageFallbackReason,
-              amountLabel: cartLayout
-                  ? '+${PriceFormatter.format(addAmount)}원'
-                  : null,
-              onQuantityChanged: onChildQuantityChanged,
-              onDelete: onChildDelete,
-              onOpenDetail: onChildOpenDetail,
-            ),
+          SizedBox(height: healthDp(context, cartLayout ? 16 : 14)),
+          _SupplyAddBlock(
+            items: children,
+            expandWhenSelected: selectedItems.contains(group.parent.ctId),
+            initiallyExpanded: supplyInitiallyExpanded,
+            interactive: supplyInteractive,
+            prescriptionCartLayout: cartLayout,
+            reportImageFailure: reportImageFailure,
+            imageFailureCode: imageFailureCode,
+            imageFailureReason: imageFailureReason,
+            imageFallbackReason: imageFallbackReason,
+            amountLabel: cartLayout
+                ? '+${PriceFormatter.format(addAmount)}원'
+                : null,
+            onQuantityChanged: onChildQuantityChanged,
+            onDelete: onChildDelete,
+            onOpenDetail: onChildOpenDetail,
           ),
           if (showBundleTotal) ...[
             SizedBox(height: healthDp(context, cartLayout ? 14 : 12)),
@@ -293,16 +287,12 @@ class _SupplyAddBlock extends StatelessWidget {
       initiallyExpanded: initiallyExpanded,
       showSameReservationHint: false,
       amountLabel: prescriptionCartLayout ? amountLabel : null,
-      headerPadding: prescriptionCartLayout
-          ? EdgeInsets.all(healthDp(context, 12))
-          : null,
-      iconGapBase: prescriptionCartLayout ? 4 : 6,
-      chevronBase: 15,
-      chevronGapBase: prescriptionCartLayout ? 8 : 0,
+      headerPadding: EdgeInsets.all(healthDp(context, 12)),
+      iconGapBase: prescriptionCartLayout ? 4 : 4,
+      chevronBase: prescriptionCartLayout ? 15 : 11,
+      chevronGapBase: prescriptionCartLayout ? 8 : 3,
       children: [
         for (var i = 0; i < merged.length; i++) ...[
-          if (i > 0 && !prescriptionCartLayout)
-            const Divider(height: 1, thickness: 1, color: _kDivider),
           _SupplyAddRow(
             line: merged[i],
             canEdit: canEdit,
@@ -311,8 +301,7 @@ class _SupplyAddBlock extends StatelessWidget {
             imageFailureCode: imageFailureCode,
             imageFailureReason: imageFailureReason,
             imageFallbackReason: imageFallbackReason,
-            showBottomBorder:
-                prescriptionCartLayout && i < merged.length - 1,
+            showBottomBorder: i < merged.length - 1,
             onDecrease: !canEdit
                 ? null
                 : () {
@@ -518,8 +507,23 @@ class _SupplyAddRow extends StatelessWidget {
       );
     }
 
-    return Padding(
-      padding: EdgeInsets.all(healthDp(context, 8)),
+    final payThumb = healthDp(context, 48);
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(
+        horizontal: healthDp(context, 8),
+        vertical: healthDp(context, 10),
+      ),
+      decoration: showBottomBorder
+          ? BoxDecoration(
+              border: Border(
+                bottom: BorderSide(
+                  width: healthDp(context, 1.11),
+                  color: const Color(0x1EFF5A8D),
+                ),
+              ),
+            )
+          : null,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -527,7 +531,7 @@ class _SupplyAddRow extends StatelessWidget {
             onTap: onOpenDetail,
             child: CartItemThumbnail(
               item: item,
-              size: thumb,
+              size: payThumb,
               borderRadius: BorderRadius.circular(healthDp(context, 4)),
               reportImageFailure: reportImageFailure,
               imageFailureCode: imageFailureCode,
@@ -544,12 +548,11 @@ class _SupplyAddRow extends StatelessWidget {
                 Text(
                   item.itName,
                   style: TextStyle(
-                    color: _kInkAlt,
+                    color: const Color(0xFF1A1A1E),
                     fontSize: healthSp(context, 12),
                     fontFamily: _kGmarketSans,
                     fontWeight: FontWeight.w500,
-                    height: 1.5,
-                    letterSpacing: -0.84,
+                    letterSpacing: -0.48,
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -559,12 +562,11 @@ class _SupplyAddRow extends StatelessWidget {
                   Text(
                     option,
                     style: TextStyle(
-                      color: _kMuted2,
-                      fontSize: healthSp(context, 9),
+                      color: const Color(0xFF898383),
+                      fontSize: healthSp(context, 10),
                       fontFamily: _kGmarketSans,
                       fontWeight: FontWeight.w500,
-                      height: 1.63,
-                      letterSpacing: -0.45,
+                      letterSpacing: -0.80,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -583,7 +585,7 @@ class _SupplyAddRow extends StatelessWidget {
                       Text(
                         '수량: ${line.totalQty}',
                         style: TextStyle(
-                          color: _kInk,
+                          color: _kMuted2,
                           fontSize: healthSp(context, 11),
                           fontFamily: _kGmarketSans,
                           fontWeight: FontWeight.w500,
@@ -593,11 +595,10 @@ class _SupplyAddRow extends StatelessWidget {
                     Text(
                       '+${PriceFormatter.format(line.totalAmount)}원',
                       style: TextStyle(
-                        color: _kInk,
-                        fontSize: healthSp(context, 10),
+                        color: const Color(0xFF1A1A1E),
+                        fontSize: healthSp(context, 11),
                         fontFamily: _kGmarketSans,
                         fontWeight: FontWeight.w500,
-                        height: 1.95,
                       ),
                     ),
                   ],

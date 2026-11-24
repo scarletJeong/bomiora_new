@@ -14,9 +14,9 @@ const _kGmarketSans = 'Gmarket Sans TTF';
 const _kPink = Color(0xFFFF5A8D);
 const _kMuted = Color(0xFF898686);
 const _kInk = Color(0xFF1A1A1A);
-const _kOption = Color(0xFF898686);
+const _kInkAlt = Color(0xFF1A1A1E);
+const _kOption = Color(0xFF898383);
 const _kBorder = Color(0xFFD2D2D2);
-const _kDivider = Color(0xFFD2D2D2);
 
 /// 주문 상품 → 결제/완료 UI용 CartItem
 List<CartItem> cartItemsFromOrderItems(
@@ -96,7 +96,7 @@ class PaymentProductCard extends StatelessWidget {
               Text(
                 title,
                 style: TextStyle(
-                  color: _kInk,
+                  color: _kInkAlt,
                   fontSize: healthSp(context, 16),
                   fontFamily: _kGmarketSans,
                   fontWeight: FontWeight.w500,
@@ -120,13 +120,16 @@ class PaymentProductCard extends StatelessWidget {
             Container(
               width: double.infinity,
               padding: EdgeInsets.symmetric(
-                horizontal: healthDp(context, 14),
+                horizontal: healthDp(context, 10),
                 vertical: healthDp(context, 10),
               ),
               decoration: ShapeDecoration(
                 color: const Color(0x7FF1F1F1),
                 shape: RoundedRectangleBorder(
-                  side: const BorderSide(width: 0.5, color: Color(0xFFD2D2D2)),
+                  side: const BorderSide(
+                    width: 0.5,
+                    color: Color(0x33D2D2D2),
+                  ),
                   borderRadius: BorderRadius.circular(healthDp(context, 8)),
                 ),
               ),
@@ -147,7 +150,7 @@ class PaymentProductCard extends StatelessWidget {
                       reservationBanner,
                       style: TextStyle(
                         color: _kPink,
-                        fontSize: healthSp(context, 10),
+                        fontSize: healthSp(context, 12),
                         fontFamily: _kGmarketSans,
                         fontWeight: FontWeight.w500,
                       ),
@@ -159,22 +162,14 @@ class PaymentProductCard extends StatelessWidget {
               ),
             ),
           ],
-          SizedBox(height: healthDp(context, 10)),
+          SizedBox(height: healthDp(context, 14)),
         ],
         for (var i = 0; i < displayGroups.length; i++) ...[
-          if (i > 0) ...[
-            SizedBox(height: healthDp(context, 10)),
-            Container(
-              width: double.infinity,
-              height: 0.5,
-              color: _kBorder,
-            ),
-            SizedBox(height: healthDp(context, 10)),
-          ],
+          if (i > 0) SizedBox(height: healthDp(context, 14)),
           CartAddGroupCard(
             group: displayGroups[i],
             selectedItems: const {},
-            supplyInitiallyExpanded: false,
+            supplyInitiallyExpanded: true,
             supplyInteractive: false,
             showBundleTotal: false,
             reportImageFailure: true,
@@ -438,50 +433,47 @@ class _PaymentParentBlock extends StatelessWidget {
       fontSize: healthSp(context, 10),
       fontFamily: _kGmarketSans,
       fontWeight: FontWeight.w500,
-      letterSpacing: -0.90,
+      letterSpacing: -0.60,
     );
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              CartItemThumbnail(
-                item: item,
-                size: thumb,
-                borderRadius: BorderRadius.circular(healthDp(context, 4)),
-                reportImageFailure: true,
-              ),
-              SizedBox(width: healthDp(context, 10)),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    OrderItemTitleOptionBlock(
-                      title: item.itName,
-                      qtyOptionLine: qtyOptionLine,
-                      titleStyle: titleStyle,
-                      optionStyle: optionStyle,
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            CartItemThumbnail(
+              item: item,
+              size: thumb,
+              borderRadius: BorderRadius.circular(healthDp(context, 4)),
+              reportImageFailure: true,
+            ),
+            SizedBox(width: healthDp(context, 8)),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  OrderItemTitleOptionBlock(
+                    title: item.itName,
+                    qtyOptionLine: qtyOptionLine,
+                    titleStyle: titleStyle,
+                    optionStyle: optionStyle,
+                  ),
+                  SizedBox(height: healthDp(context, 5)),
+                  Text(
+                    '${PriceFormatter.format(item.lineAmount)}원',
+                    style: TextStyle(
+                      color: _kInkAlt,
+                      fontSize: healthSp(context, 12),
+                      fontFamily: _kGmarketSans,
+                      fontWeight: FontWeight.w500,
                     ),
-                    SizedBox(height: healthDp(context, 5)),
-                    Text(
-                      '${PriceFormatter.format(item.lineAmount)}원',
-                      style: TextStyle(
-                        color: _kInk,
-                        fontSize: healthSp(context, 14),
-                        fontFamily: _kGmarketSans,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
         if (footer != null) footer!,
       ],
