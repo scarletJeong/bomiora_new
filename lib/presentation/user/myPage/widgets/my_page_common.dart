@@ -69,7 +69,7 @@ Widget myPageLeadingBar(BuildContext context) => Container(
     );
 
 TextStyle myPageLineTitleStyle(BuildContext context) => TextStyle(
-      color: Colors.black,
+      color: const Color(0xFF1A1A1A),
       fontSize: healthSp(context, 16),
       fontWeight: FontWeight.w300,
       letterSpacing: -1.44,

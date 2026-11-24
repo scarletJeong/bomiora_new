@@ -204,7 +204,7 @@ class DeliveryDetailProductsSection extends StatelessWidget {
                   fit: BoxFit.cover,
                   preferHtmlElementOnWeb: false,
                   errorBuilder: (_, error, __) {
-                    _logDetailProductImage(
+                    logDetailProductImage(
                       reportImageFailure: reportImageFailure,
                       imageFailureCode: imageFailureCode,
                       imageFailureReason: imageFailureReason,
@@ -395,7 +395,7 @@ void logPaymentCompleteProductImageFailure({
   );
 }
 
-void _logDetailProductImage({
+void logDetailProductImage({
   required bool reportImageFailure,
   required String? imageFailureCode,
   required String? imageFailureReason,

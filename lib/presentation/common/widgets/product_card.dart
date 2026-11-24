@@ -87,7 +87,7 @@ class ProductCoverRatioImage extends StatelessWidget {
 class ProductCatalogCard extends StatelessWidget {
   static const Color _brandPink = Color(0xFFFF5A8D);
   static final Set<String> _loggedImageUrls = {};
-  static const Color _textDark = Color(0xFF1A1A1E);
+  static const Color _textDark = Color(0xFF1A1A1A);
   static const Color _categoryMuted = Color(0xFF898686);
   static const String _gmarket = 'Gmarket Sans TTF';
 
@@ -335,7 +335,7 @@ class ProductCatalogCard extends StatelessWidget {
       child: Icon(
         Icons.image_not_supported,
         size: healthDp(context, 40),
-        color: Colors.grey[400],
+        color: const Color(0xFF898686),
       ),
     );
   }

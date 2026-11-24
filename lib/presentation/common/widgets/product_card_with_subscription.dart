@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
+import '../../../core/logging/failure_log.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../data/models/product/product_model.dart';
+import '../../../data/services/auth_service.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import 'app_clickable.dart';
 import 'product_card.dart';
@@ -9,8 +13,9 @@ import 'product_card.dart';
 /// 설명 포함 상품 카드 (375 기준: 이미지 칸 150×170).
 /// 설명은 `it_basic` → `description` 순입니다.
 class ProductCardWithSubscription extends StatelessWidget {
+  static final Set<String> _loggedImageUrls = {};
   static const Color _brandPink = Color(0xFFFF5A8D);
-  static const Color _textDark = Color(0xFF1A1A1E);
+  static const Color _textDark = Color(0xFF1A1A1A);
   static const Color _descColor = Color(0xFF1A1A1A);
   static const Color _categoryMuted = Color(0xFF898686);
   static const String _gmarket = 'Gmarket Sans TTF';
@@ -225,7 +230,10 @@ class ProductCardWithSubscription extends StatelessWidget {
     final image = ProductCoverRatioImage(
       url: imageUrl,
       onSettled: onImageSettled,
-      errorBuilder: (_, __, ___) => _placeholder(context),
+      errorBuilder: (_, error, __) {
+        _logImageFailure(imageUrl, error);
+        return _placeholder(context);
+      },
       loadingBuilder: (context, child, progress) {
         if (progress == null) return child;
         return Center(
@@ -272,6 +280,22 @@ class ProductCardWithSubscription extends StatelessWidget {
     );
   }
 
+  void _logImageFailure(String url, Object error) {
+    if (!_loggedImageUrls.add(url)) return;
+    unawaited(
+      FailureLog.record(
+        code: 'home.product.image',
+        mbId: AuthService.currentUser?.id ?? '',
+        reason: '상품 사진을 불러오지 못했습니다.',
+        detail: {
+          'url': url,
+          'itId': product.id,
+          'error': error.toString(),
+        },
+      ),
+    );
+  }
+
   Widget _placeholder(BuildContext context) {
     return Container(
       width: double.infinity,
@@ -279,7 +303,7 @@ class ProductCardWithSubscription extends StatelessWidget {
       child: Icon(
         Icons.image_not_supported,
         size: healthDp(context, 40),
-        color: Colors.grey[400],
+        color: const Color(0xFF898686),
       ),
     );
   }

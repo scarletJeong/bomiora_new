@@ -187,7 +187,7 @@ class DeliveryDetailGeneralProductsSection extends StatelessWidget {
                   fit: BoxFit.cover,
                   preferHtmlElementOnWeb: false,
                   errorBuilder: (_, error, __) {
-                    _logDetailProductImage(
+                    logDetailProductImage(
                       reportImageFailure: reportImageFailure,
                       imageFailureCode: imageFailureCode,
                       imageFailureReason: imageFailureReason,
