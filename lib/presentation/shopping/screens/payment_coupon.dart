@@ -17,7 +17,11 @@ extension _PaymentCoupon on _PaymentScreenState {
   }
 
   void _syncCouponLists() {
-    if (_quotedFinalAmount != null) return;
+    if (_quotedFinalAmount != null) {
+      print('[coupon] sync skipped (quotedFinalAmount=$_quotedFinalAmount)');
+      _logCouponLists(tag: 'skip');
+      return;
+    }
     _applicableCoupons = _loadedCoupons.where(_isCouponApplicable).toList()
       ..sort((a, b) => a.no.compareTo(b.no));
     _selectedCoupons =
@@ -34,6 +38,55 @@ extension _PaymentCoupon on _PaymentScreenState {
     } else if (_usedPoint > _maxUsablePointHundreds) {
       _usedPoint = _maxUsablePointHundreds;
       _writePointField(_usedPoint);
+    }
+    _logCouponLists(tag: 'sync');
+  }
+
+  String _couponDebugLine(Coupon c) {
+    return 'no=${c.no} method=${c.method} subject="${c.subject}" '
+        'discount=${c.discountText} min=${c.minimum} max=${c.maximum} '
+        'price=${c.price} available=${c.isAvailable} used=${c.isUsed} '
+        'target="${c.target}"';
+  }
+
+  String _couponRejectReason(Coupon coupon) {
+    if (_selectedCoupons.any((selected) => selected.no == coupon.no)) {
+      return 'already-selected';
+    }
+    if (_isCouponMethodDisabled(coupon.method)) return 'method-disabled';
+    if (coupon.method == 1 &&
+        _selectedCoupons.where((c) => c.method == 1).length >= 2) {
+      return 'category-limit';
+    }
+    final next = _selectionAfterPicking(coupon);
+    if (!_serverAcceptsCouponTotals(next)) return 'over-order-amount';
+    final effective = _productCouponDiscountFor(next);
+    return 'ok(effectiveDiscount=$effective,final=${_finalAmountFor(next, 0)})';
+  }
+
+  void _logCouponLists({String tag = 'log'}) {
+    print(
+      '[coupon][$tag] owned=${_loadedCoupons.length} '
+      'applicable=${_applicableCoupons.length} '
+      'selected=${_selectedCoupons.length} '
+      'failed=$_couponLoadFailed '
+      'disabled=$_couponPointDisabled '
+      'purchase=$_purchaseAmount shipping=$_baseShipping '
+      'usedPoint=$_usedPoint minPay=$_minPayableAmount',
+    );
+    if (_loadedCoupons.isEmpty) {
+      print('[coupon][$tag] owned list empty');
+    }
+    for (final c in _loadedCoupons) {
+      print('[coupon][$tag][owned] ${_couponDebugLine(c)}');
+    }
+    for (final c in _applicableCoupons) {
+      final discount = _discountForCoupon(c);
+      final reason = _couponRejectReason(c);
+      print(
+        '[coupon][$tag][usable] ${_couponDebugLine(c)} '
+        'calcDiscount=$discount reject=$reason',
+      );
     }
   }
 
@@ -100,6 +153,7 @@ extension _PaymentCoupon on _PaymentScreenState {
   List<Map<String, dynamic>> _checkoutCouponPayload() {
     final product = <Map<String, dynamic>>[];
     final shipping = <Map<String, dynamic>>[];
+    final effectiveByNo = _effectiveProductDiscountByNo(_selectedCoupons);
     for (final coupon in _selectedCoupons) {
       final id = coupon.id.trim();
       if (id.isEmpty) continue;
@@ -107,7 +161,7 @@ extension _PaymentCoupon on _PaymentScreenState {
         'cp_id': id,
         'discount': coupon.method == 3
             ? _shippingDiscountFor(coupon)
-            : _discountForCoupon(coupon),
+            : (effectiveByNo[coupon.no] ?? 0),
       };
       if (coupon.method == 3) {
         shipping.add(row);
@@ -154,11 +208,50 @@ extension _PaymentCoupon on _PaymentScreenState {
     return discount < 0 ? 0 : discount;
   }
 
+  /// 최소 결제 3,000원을 남기도록 상품 쿠폰 할인액을 캡한 결과(쿠폰 no → 실할인).
+  Map<int, int> _effectiveProductDiscountByNo(List<Coupon> coupons) {
+    final productCoupons =
+        coupons.where((coupon) => coupon.method != 3).toList(growable: false);
+    final rawByNo = <int, int>{};
+    var rawTotal = 0;
+    for (final coupon in productCoupons) {
+      final discount = _discountForCoupon(coupon);
+      rawByNo[coupon.no] = discount;
+      rawTotal += discount;
+    }
+    if (rawTotal <= 0) return rawByNo;
+
+    final shippingDisc = _shippingCouponDiscountFor(coupons);
+    final maxTotal = _purchaseAmount +
+        _baseShipping +
+        _extraShipping -
+        shippingDisc -
+        _minPayableAmount;
+    final cap = maxTotal < 0 ? 0 : maxTotal;
+    if (rawTotal <= cap) return rawByNo;
+
+    final out = <int, int>{};
+    var assigned = 0;
+    for (var i = 0; i < productCoupons.length; i++) {
+      final coupon = productCoupons[i];
+      final raw = rawByNo[coupon.no] ?? 0;
+      if (i == productCoupons.length - 1) {
+        final rest = cap - assigned;
+        out[coupon.no] = rest < 0 ? 0 : (rest > raw ? raw : rest);
+      } else {
+        final scaled = ((raw * cap) / rawTotal).floor();
+        out[coupon.no] = scaled;
+        assigned += scaled;
+      }
+    }
+    return out;
+  }
+
   int _productCouponDiscountFor(List<Coupon> coupons) {
     if (_couponPointDisabled) return 0;
-    return coupons
-        .where((coupon) => coupon.method != 3)
-        .fold<int>(0, (sum, coupon) => sum + _discountForCoupon(coupon));
+    return _effectiveProductDiscountByNo(coupons)
+        .values
+        .fold<int>(0, (sum, discount) => sum + discount);
   }
 
   int _shippingCouponDiscountFor(List<Coupon> coupons) {
@@ -272,7 +365,8 @@ extension _PaymentCoupon on _PaymentScreenState {
         if (categoryCount >= 2) return false;
       }
       final next = _selectionAfterPicking(coupon);
-      return _keepsMinPayable(next) && _serverAcceptsCouponTotals(next);
+      // 상품 쿠폰은 최소결제 3천을 남기도록 할인이 캡되므로, 서버 한도만 검사
+      return _serverAcceptsCouponTotals(next);
     }).toList();
   }
 
@@ -287,19 +381,13 @@ extension _PaymentCoupon on _PaymentScreenState {
       AppToastOverlay.showAlert(context, '쿠폰 할인 금액이 주문 금액을 넘습니다.');
       return;
     }
-    if (!_keepsMinPayable(next)) {
-      AppToastOverlay.showAlert(
-        context,
-        '최종 결제금액은 ${PriceFormatter.format(_minPayableAmount)}원 이상이어야 합니다.',
-      );
-      return;
-    }
+    final maxPoint = (_maxUsablePointFor(next) ~/ 100) * 100;
 
     _setState(() {
       _clearAmountQuote();
       _selectedCoupons = next;
-      if (_usedPoint > _maxUsablePoint) {
-        _usedPoint = _maxUsablePoint;
+      if (_usedPoint > maxPoint) {
+        _usedPoint = maxPoint;
         _writePointField(_usedPoint);
       }
     });
@@ -308,15 +396,16 @@ extension _PaymentCoupon on _PaymentScreenState {
   Widget _couponDropdown(BuildContext context) {
     final candidates = _availableCouponsForUnifiedPicker();
     final lines = _uniqueCouponPickerLines(candidates);
-    if (lines.isEmpty) return const SizedBox.shrink();
+    final hasItems = lines.isNotEmpty;
 
     return DropdownBtn(
       buttonHeight: healthDp(context, 45),
-      enabled: true,
+      enabled: hasItems,
       items: lines,
       value: '',
-      emptyText: '쿠폰 선택 안함',
+      emptyText: hasItems ? '쿠폰 선택 안함' : '선택 가능한 쿠폰이 없습니다',
       emptyTextColor: _muted,
+      emptyFontWeight: FontWeight.w300,
       valueTextColor: const Color(0xFF1A1A1A),
       borderColor: _border,
       itemFontSizeBase: 12,

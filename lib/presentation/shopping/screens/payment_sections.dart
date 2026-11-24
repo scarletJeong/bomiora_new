@@ -77,10 +77,7 @@ extension _PaymentSections on _PaymentScreenState {
     final showPoint =
         !_couponPointDisabled && !_pointLoadFailed && _myPoint > 0;
     final showPointFailure = !_couponPointDisabled && _pointLoadFailed;
-    final selectedCouponNos = _selectedCoupons.map((coupon) => coupon.no).toSet();
-    final remainCouponCount = _applicableCoupons
-        .where((coupon) => !selectedCouponNos.contains(coupon.no))
-        .length;
+    final remainCouponCount = _availableCouponsForUnifiedPicker().length;
     final remainPoint = (_myPoint - _pointDiscount).clamp(0, _myPoint);
     final showCouponPoint =
         showCoupon || showPoint || showCouponFailure || showPointFailure;
@@ -551,7 +548,7 @@ extension _PaymentSections on _PaymentScreenState {
                                 ),
                               ),
                             ),
-                            SizedBox(width: healthDp(context, 4)),
+                            SizedBox(width: healthDp(context, 0)),
                             GestureDetector(
                               onTap: () {
                                 _expectedPointHintTimer?.cancel();
