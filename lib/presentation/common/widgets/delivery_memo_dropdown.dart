@@ -185,6 +185,7 @@ class _DeliveryMemoDropdownState extends State<DeliveryMemoDropdown> {
             value: dropdownValue,
             emptyText: DeliveryMemoDropdown.emptyText,
             emptyTextColor: DeliveryMemoDropdown._muted,
+            emptyFontWeight: FontWeight.w300,
             valueTextColor: DeliveryMemoDropdown._ink,
             borderColor: DeliveryMemoDropdown._border,
             itemFontSizeBase: 12,
