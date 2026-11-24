@@ -203,7 +203,7 @@ abstract final class AppAssets {
   static const String payCredit = '${_img}pay_credit.svg';  //신용카드
   static const String payCash = '${_img}pay_cash.svg';  //계좌이체
   static const String payVirtualAccount = '${_img}pay_virtual_account.svg';  // 가상계좌
-  static const String escrow = '${_img}escrow.svg';  // 에스크로  
+  static const String escrow = '${_img}escrow.png';  // 에스크로 (SVG 래퍼 → PNG)
 
   // 결제 완료 _ 진료예약 카드 아이콘
   static const String paymentCompleteReservationDateIcon = '${_img}payment_complete_reservation_date_icon.svg'; // 날짜 - 달력아이콘

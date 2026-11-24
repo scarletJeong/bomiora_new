@@ -443,7 +443,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
                             _buildCouponPointTotalSection(context),
                             SizedBox(height: healthDp(context, 20)),
                             _buildPaymentMethodHeaderSection(context),
-                            SizedBox(height: healthDp(context, 20)),
                           ],
                         ),
                       ),
