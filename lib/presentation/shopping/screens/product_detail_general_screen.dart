@@ -233,7 +233,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       unawaited(
         AppNetworkImage.precacheUrl(
           context,
-          ImageUrlHelper.toWebSafeImageUrl(url),
+          ImageUrlHelper.productPreviewThumbUrl(url),
           decodeWidthLogical: MediaQuery.sizeOf(context).width,
         ),
       );
@@ -522,7 +522,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       if (!mounted) return;
       if (more == null) {
         AppToastOverlay.showAlert(context, '리뷰를 더 불러오지 못했습니다.');
-        return; 
+        return;
       }
       _safeSetState(() {
         final merged = [...loaded, ...more.reviews];
@@ -651,7 +651,8 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
     final images = <String>[];
     // 상세 썸네일은 it_img10, it_img9만 본다.
     for (final key in const ['it_img10', 'it_img9']) {
-      final normalized = _itemThumbUrl(_product!.additionalInfo?[key]?.toString());
+      final normalized =
+          _itemThumbUrl(_product!.additionalInfo?[key]?.toString());
       if (normalized != null && !images.contains(normalized)) {
         images.add(normalized);
       }
@@ -692,7 +693,9 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
               body: Stack(
                 children: [
                   _isLoading
-                      ? const Center(child: CircularProgressIndicator(color: const Color(0xFFFF5A8D)))
+                      ? const Center(
+                          child: CircularProgressIndicator(
+                              color: const Color(0xFFFF5A8D)))
                       : _hasError
                           ? _buildErrorState()
                           : _product == null
@@ -937,7 +940,8 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
                   padding: EdgeInsets.only(top: dividerTop),
                   child: _buildTabDivider(context),
                 ),
-                buildTabItem(1, '서포터 리뷰${_reviewCountSuffix(supporterReviewCount)}'),
+                buildTabItem(
+                    1, '서포터 리뷰${_reviewCountSuffix(supporterReviewCount)}'),
                 Padding(
                   padding: EdgeInsets.only(top: dividerTop),
                   child: _buildTabDivider(context),
@@ -1211,7 +1215,8 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
                   loadingBuilder: (context, child, loadingProgress) {
                     if (loadingProgress == null) return child;
                     return const Center(
-                      child: CircularProgressIndicator(color: const Color(0xFFFF5A8D)),
+                      child: CircularProgressIndicator(
+                          color: const Color(0xFFFF5A8D)),
                     );
                   },
                 );

@@ -183,7 +183,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final result = await ContentService.getHomePreviewList();
     if (!mounted || result.failed || result.items.isEmpty) return;
 
-    final layout = HomeBigCardLayout.fromWidth(MediaQuery.sizeOf(context).width);
+    final layout =
+        HomeBigCardLayout.fromWidth(MediaQuery.sizeOf(context).width);
     final jobs = <Future<void>>[];
     for (final item in result.items.take(3)) {
       final url = ContentService.resolveThumbnailUrl(
@@ -291,7 +292,7 @@ class _HomeScreenState extends State<HomeScreen> {
       jobs.add(
         AppNetworkImage.precacheUrl(
           context,
-          ImageUrlHelper.toWebSafeImageUrl(normalized),
+          ImageUrlHelper.productPreviewThumbUrl(normalized),
           decodeWidthLogical: MediaQuery.sizeOf(context).width,
         ),
       );
@@ -394,7 +395,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
     try {
       final results = await Future.wait([
-        ProductRepository.getCategoriesWithProducts(productKind: 'prescription'),
+        ProductRepository.getCategoriesWithProducts(
+            productKind: 'prescription'),
         ProductRepository.getCategoriesWithProducts(productKind: 'general'),
       ]);
       if (!mounted || requestToken != _tabsRequestToken) return;
@@ -659,8 +661,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _productsByCategory.clear();
       _categoryProductFailed.clear();
       _bannersFuture = BannerService.fetchMobileBanners();
-      _newProductsFuture =
-          ProductRepository.getNewProducts(limit: _kNewLimit);
+      _newProductsFuture = ProductRepository.getNewProducts(limit: _kNewLimit);
       _imagesSettledNotified = false;
       _pendingImages = 0;
       _settledImages = 0;
@@ -679,25 +680,25 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return DrawerBarrierHost(
       builder: (allowDismiss) => Scaffold(
-      key: _scaffoldKey,
-      backgroundColor: Colors.white,
-      resizeToAvoidBottomInset: false,
-      extendBodyBehindAppBar: false,
-      drawerBarrierDismissible: allowDismiss,
-      drawerEnableOpenDragGesture: !kIsWeb,
-      appBar: HealthAppBar.logo(
-        onMenuPressed: () => _scaffoldKey.currentState?.openDrawer(),
-        actionsStyle: _currentIndex == 1
-            ? HealthAppBarActionsStyle.myPage
-            : HealthAppBarActionsStyle.home,
-      ),
-      drawer: AppBarMenuTapDrawer(
-        onHealthDashboardTap: () {
-          Navigator.pushNamed(context, '/health');
-        },
-      ),
-      body: _getCurrentPage(),
-      bottomNavigationBar: const FooterBar(),
+        key: _scaffoldKey,
+        backgroundColor: Colors.white,
+        resizeToAvoidBottomInset: false,
+        extendBodyBehindAppBar: false,
+        drawerBarrierDismissible: allowDismiss,
+        drawerEnableOpenDragGesture: !kIsWeb,
+        appBar: HealthAppBar.logo(
+          onMenuPressed: () => _scaffoldKey.currentState?.openDrawer(),
+          actionsStyle: _currentIndex == 1
+              ? HealthAppBarActionsStyle.myPage
+              : HealthAppBarActionsStyle.home,
+        ),
+        drawer: AppBarMenuTapDrawer(
+          onHealthDashboardTap: () {
+            Navigator.pushNamed(context, '/health');
+          },
+        ),
+        body: _getCurrentPage(),
+        bottomNavigationBar: const FooterBar(),
       ),
     );
   }
@@ -780,25 +781,25 @@ class _HomeScreenState extends State<HomeScreen> {
             onPressed: _retryNewProducts,
           )
         else
-        _horizontalProductRow(
-          height: cardH,
-          loading: _newLoading,
-          itemCount: _newProducts.length,
-          itemBuilder: (_, index) {
-            final product = _newProducts[index];
-            return SizedBox(
-              width: cardW,
-              height: cardH,
-              child: ProductMainCard(
-                product: product,
-                onTap: () => _openProduct(product, fallbackKind: 'general'),
-                onImageSettled: product.displayImageUrl.trim().isEmpty
-                    ? null
-                    : _onOneImageSettled,
-              ),
-            );
-          },
-        ),
+          _horizontalProductRow(
+            height: cardH,
+            loading: _newLoading,
+            itemCount: _newProducts.length,
+            itemBuilder: (_, index) {
+              final product = _newProducts[index];
+              return SizedBox(
+                width: cardW,
+                height: cardH,
+                child: ProductMainCard(
+                  product: product,
+                  onTap: () => _openProduct(product, fallbackKind: 'general'),
+                  onImageSettled: product.displayImageUrl.trim().isEmpty
+                      ? null
+                      : _onOneImageSettled,
+                ),
+              );
+            },
+          ),
       ],
     );
   }
@@ -832,21 +833,21 @@ class _HomeScreenState extends State<HomeScreen> {
             onPressed: _loadMdPick,
           )
         else
-        _horizontalProductRow(
-          height: cardH,
-          itemCount: _mdPickProducts.length,
-          itemBuilder: (_, index) {
-            final product = _mdPickProducts[index];
-            return SizedBox(
-              width: cardW,
-              height: cardH,
-              child: ProductCardWithSubscription(
-                product: product,
-                onTap: () => _openProduct(product),
-              ),
-            );
-          },
-        ),
+          _horizontalProductRow(
+            height: cardH,
+            itemCount: _mdPickProducts.length,
+            itemBuilder: (_, index) {
+              final product = _mdPickProducts[index];
+              return SizedBox(
+                width: cardW,
+                height: cardH,
+                child: ProductCardWithSubscription(
+                  product: product,
+                  onTap: () => _openProduct(product),
+                ),
+              );
+            },
+          ),
       ],
     );
   }
@@ -855,7 +856,9 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_tabsLoading) {
       return SizedBox(
         height: healthDp(context, 280),
-        child: const Center(child: CircularProgressIndicator(color: const Color(0xFFFF5A8D), strokeWidth: 2)),
+        child: const Center(
+            child: CircularProgressIndicator(
+                color: const Color(0xFFFF5A8D), strokeWidth: 2)),
       );
     }
     if (_categoryListFailed) {
@@ -1027,7 +1030,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildCategoryEmptyProducts(BuildContext context) {
-    final layout = HomeBigCardLayout.fromWidth(MediaQuery.sizeOf(context).width);
+    final layout =
+        HomeBigCardLayout.fromWidth(MediaQuery.sizeOf(context).width);
     final emptyH = layout.imageH + layout.columnGap + layout.titleFs * 1.25;
     return SizedBox(
       height: emptyH,
@@ -1063,14 +1067,17 @@ class _HomeScreenState extends State<HomeScreen> {
     required double cardW,
     required double cardH,
   }) {
-    final tabKey = _tabs.isEmpty ? '' : _cacheKeyForTab(_tabs[_selectedTabIndex]);
-    final productFailed = tabKey.isNotEmpty && _categoryProductFailed.contains(tabKey);
+    final tabKey =
+        _tabs.isEmpty ? '' : _cacheKeyForTab(_tabs[_selectedTabIndex]);
+    final productFailed =
+        tabKey.isNotEmpty && _categoryProductFailed.contains(tabKey);
     if (_categoryLoading && products.isEmpty) {
       return Center(
         child: SizedBox(
           width: healthDp(context, 20),
           height: healthDp(context, 20),
-          child: const CircularProgressIndicator(color: const Color(0xFFFF5A8D), strokeWidth: 2),
+          child: const CircularProgressIndicator(
+              color: const Color(0xFFFF5A8D), strokeWidth: 2),
         ),
       );
     }
@@ -1126,7 +1133,8 @@ class _HomeScreenState extends State<HomeScreen> {
           child: SizedBox(
             width: healthDp(context, 20),
             height: healthDp(context, 20),
-            child: const CircularProgressIndicator(color: const Color(0xFFFF5A8D), strokeWidth: 2),
+            child: const CircularProgressIndicator(
+                color: const Color(0xFFFF5A8D), strokeWidth: 2),
           ),
         ),
       );
@@ -1137,9 +1145,8 @@ class _HomeScreenState extends State<HomeScreen> {
       child: WebDragScrollConfiguration(
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
-          padding: padded
-              ? EdgeInsets.symmetric(horizontal: hPad)
-              : EdgeInsets.zero,
+          padding:
+              padded ? EdgeInsets.symmetric(horizontal: hPad) : EdgeInsets.zero,
           itemCount: itemCount,
           separatorBuilder: (_, __) => SizedBox(width: gap),
           itemBuilder: itemBuilder,

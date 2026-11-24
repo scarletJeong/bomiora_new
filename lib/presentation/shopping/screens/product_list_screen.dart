@@ -311,7 +311,8 @@ class _ProductListScreenState extends State<ProductListScreen> {
         child: SizedBox(
           width: healthDp(context, 36),
           height: healthDp(context, 36),
-          child: const CircularProgressIndicator(color: const Color(0xFFFF5A8D), strokeWidth: 2),
+          child: const CircularProgressIndicator(
+              color: const Color(0xFFFF5A8D), strokeWidth: 2),
         ),
       );
     }
@@ -322,95 +323,97 @@ class _ProductListScreenState extends State<ProductListScreen> {
       fit: StackFit.expand,
       children: [
         ScrollRevealTopOverlay(
-      controller: _scrollController,
-      revealAfterOffset: healthDp(context, 240.46),
-      barPadding: EdgeInsets.fromLTRB(
-        _pageHPad(context),
-        healthDp(context, 8),
-        _pageHPad(context),
-        healthDp(context, 8),
-      ),
-      topBar: _buildCategoryTabs(forSticky: true),
-      scrollChild: RefreshIndicator(
-        onRefresh: _loadProducts,
-        child: CustomScrollView(
           controller: _scrollController,
-          slivers: [
-            SliverToBoxAdapter(
-              child: ProductBannerSlider(
-                heightBase: 190.46,
-                productKind: widget.productKind,
-                categoryId: _activeCategoryId,
-                categoryIndex: _baseTabOrder
-                    .indexWhere((tab) => tab.id == _activeCategoryId),
-              ),
-            ),
-            SliverToBoxAdapter(
-              child: SizedBox(height: healthDp(context, 20)),
-            ),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: _pageHPad(context)),
-                child: _buildCategoryTabs(),
-              ),
-            ),
-            if (_products.isEmpty)
-              const SliverFillRemaining(
-                hasScrollBody: false,
-                child: SizedBox.shrink(),
-              )
-            else ...[
-              SliverPadding(
-                padding: EdgeInsets.fromLTRB(
-                  _pageHPad(context),
-                  healthDp(context, 10),
-                  _pageHPad(context),
-                  healthDp(context, 48),
-                ),
-                sliver: SliverGrid(
-                  key: ValueKey(_activeCategoryId),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    mainAxisExtent:
-                        ProductCatalogCard.preferredMainAxisExtent(context),
-                    crossAxisSpacing: healthDp(context, 15),
-                    mainAxisSpacing: healthDp(context, 20),
-                  ),
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      if (index == _products.length) {
-                        return Center(
-                          child: Padding(
-                            padding: EdgeInsets.all(healthDp(context, 16)),
-                            child: SizedBox(
-                              width: healthDp(context, 28),
-                              height: healthDp(context, 28),
-                              child: const CircularProgressIndicator(color: const Color(0xFFFF5A8D), 
-                                strokeWidth: 2,
-                              ),
-                            ),
-                          ),
-                        );
-                      }
-                      return _buildProductCard(_products[index]);
-                    },
-                    childCount: _products.length + (_isLoadingMore ? 1 : 0),
-                  ),
-                ),
-              ),
-              if (_moreLoadFailed)
+          revealAfterOffset: healthDp(context, 240.46),
+          barPadding: EdgeInsets.fromLTRB(
+            _pageHPad(context),
+            healthDp(context, 8),
+            _pageHPad(context),
+            healthDp(context, 8),
+          ),
+          topBar: _buildCategoryTabs(forSticky: true),
+          scrollChild: RefreshIndicator(
+            onRefresh: _loadProducts,
+            child: CustomScrollView(
+              controller: _scrollController,
+              slivers: [
                 SliverToBoxAdapter(
-                  child: LoadFailureNotice(
-                    message: '상품을 더 불러오지 못했습니다.',
-                    actionLabel: '새로고침',
-                    onRetry: _retryLoadMore,
+                  child: ProductBannerSlider(
+                    heightBase: 190.46,
+                    productKind: widget.productKind,
+                    categoryId: _activeCategoryId,
+                    categoryIndex: _baseTabOrder
+                        .indexWhere((tab) => tab.id == _activeCategoryId),
                   ),
                 ),
-              const SliverToBoxAdapter(child: AppFooter()),
-            ],
-          ],
-        ),
-      ),
+                SliverToBoxAdapter(
+                  child: SizedBox(height: healthDp(context, 20)),
+                ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding:
+                        EdgeInsets.symmetric(horizontal: _pageHPad(context)),
+                    child: _buildCategoryTabs(),
+                  ),
+                ),
+                if (_products.isEmpty)
+                  const SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: SizedBox.shrink(),
+                  )
+                else ...[
+                  SliverPadding(
+                    padding: EdgeInsets.fromLTRB(
+                      _pageHPad(context),
+                      healthDp(context, 10),
+                      _pageHPad(context),
+                      healthDp(context, 48),
+                    ),
+                    sliver: SliverGrid(
+                      key: ValueKey(_activeCategoryId),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        mainAxisExtent:
+                            ProductCatalogCard.preferredMainAxisExtent(context),
+                        crossAxisSpacing: healthDp(context, 15),
+                        mainAxisSpacing: healthDp(context, 20),
+                      ),
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          if (index == _products.length) {
+                            return Center(
+                              child: Padding(
+                                padding: EdgeInsets.all(healthDp(context, 16)),
+                                child: SizedBox(
+                                  width: healthDp(context, 28),
+                                  height: healthDp(context, 28),
+                                  child: const CircularProgressIndicator(
+                                    color: const Color(0xFFFF5A8D),
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                              ),
+                            );
+                          }
+                          return _buildProductCard(_products[index]);
+                        },
+                        childCount: _products.length + (_isLoadingMore ? 1 : 0),
+                      ),
+                    ),
+                  ),
+                  if (_moreLoadFailed)
+                    SliverToBoxAdapter(
+                      child: LoadFailureNotice(
+                        message: '상품을 더 불러오지 못했습니다.',
+                        actionLabel: '새로고침',
+                        onRetry: _retryLoadMore,
+                      ),
+                    ),
+                  const SliverToBoxAdapter(child: AppFooter()),
+                ],
+              ],
+            ),
+          ),
         ),
         if (showLoadError)
           PageCenteredEmptyOverlay(
@@ -590,7 +593,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
           unawaited(
             AppNetworkImage.precacheUrl(
               context,
-              ImageUrlHelper.toWebSafeImageUrl(detailImage),
+              ImageUrlHelper.productPreviewThumbUrl(detailImage),
               decodeWidthLogical: MediaQuery.sizeOf(context).width,
             ),
           );

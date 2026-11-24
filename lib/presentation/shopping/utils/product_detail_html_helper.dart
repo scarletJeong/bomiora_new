@@ -496,14 +496,17 @@ Widget buildProductCarouselImage({
   VoidCallback? onSettled,
   BoxFit fit = BoxFit.cover,
 }) {
+  final displayUrl = ImageUrlHelper.productPreviewThumbUrl(imageUrl);
   return SizedBox(
     width: width,
     height: height,
     child: ColoredBox(
       color: const Color(0xFFF8F8F8),
       child: ProgressiveNetworkImage(
-        previewUrl: ImageUrlHelper.productPreviewThumbUrl(imageUrl),
-        fullUrl: ImageUrlHelper.toWebSafeImageUrl(imageUrl),
+        // 상단 썸네일은 리사이즈본 하나만 받는다. 원본까지 동시에 요청하면
+        // 같은 사진을 두 번 내려받아 첫 표시와 다른 API 요청을 모두 늦춘다.
+        previewUrl: displayUrl,
+        fullUrl: displayUrl,
         width: width,
         height: height,
         fit: fit,

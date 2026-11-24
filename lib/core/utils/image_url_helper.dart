@@ -203,7 +203,8 @@ class ImageUrlHelper {
       return convertToLocalUrl('${imageBaseUrl}/$raw');
     }
     if (raw.startsWith('banner/')) {
-      return convertToLocalUrl('$_cafe24BannerImageBase${raw.substring('banner/'.length)}');
+      return convertToLocalUrl(
+          '$_cafe24BannerImageBase${raw.substring('banner/'.length)}');
     }
     return convertToLocalUrl('$_cafe24BannerImageBase$raw');
   }
@@ -386,7 +387,7 @@ class ImageUrlHelper {
       '/data/notice/',
     );
   }
- 
+
   /// bomiora.kr / mycafe24 → Cafe24 canonical 직링크
   static String _cafe24CanonicalUrl(String path) {
     final rewritten = _rewriteNoticeImagePath(path);
@@ -438,8 +439,7 @@ class ImageUrlHelper {
     final uri = Uri.tryParse(absolute);
     if (uri == null || uri.host.isEmpty) return absolute;
     if (!_hostNeedsCorsProxy(uri.host)) return absolute;
-    final optimizedOriginal =
-        uri.path.toLowerCase().contains('/data/item/');
+    final optimizedOriginal = uri.path.toLowerCase().contains('/data/item/');
     return _proxyImageUrl(
       absolute,
       optimizedOriginal: optimizedOriginal,
@@ -452,10 +452,12 @@ class ImageUrlHelper {
     return toWebSafeImageUrl(url);
   }
 
-  /// 상품 이미지는 원본 해상도 WebP 하나만 요청한다.
-  /// 별도 480px 요청은 원본보다 늦게 끝나는 경우가 있어 오히려 표시를 지연시킨다.
+  /// 상품 상세 상단용 이미지.
+  /// 실제 표시 영역(최대 650px)에 비해 큰 원본을 받지 않도록 1000px 리사이즈본
+  /// 하나만 사용한다. 고밀도 화면에서도 충분히 선명하면서 전송량을 크게 줄인다.
   static String productPreviewThumbUrl(String url) {
-    return kIsWeb ? toWebSafeImageUrl(url) : url;
+    if (!kIsWeb) return url;
+    return contentListThumbUrl(url, width: 1000, maxWidth: 1200);
   }
 
   /// 목록 썸네일. 원본이 수 MB여도 가로 [width]px jpeg로 받는다.

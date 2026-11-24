@@ -218,7 +218,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       unawaited(
         AppNetworkImage.precacheUrl(
           context,
-          ImageUrlHelper.toWebSafeImageUrl(url),
+          ImageUrlHelper.productPreviewThumbUrl(url),
           decodeWidthLogical: MediaQuery.sizeOf(context).width,
         ),
       );
@@ -476,7 +476,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       );
       if (!mounted) return;
       if (more == null) {
-        AppToastOverlay.showAlert(context, '리뷰를 더 불러오지 못했습니다.'); 
+        AppToastOverlay.showAlert(context, '리뷰를 더 불러오지 못했습니다.');
         return;
       }
       _safeSetState(() {
@@ -662,7 +662,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     final images = <String>[];
     // 상세 썸네일은 it_img10, it_img9만 본다.
     for (final key in const ['it_img10', 'it_img9']) {
-      final normalized = _itemThumbUrl(_product!.additionalInfo?[key]?.toString());
+      final normalized =
+          _itemThumbUrl(_product!.additionalInfo?[key]?.toString());
       if (normalized != null && !images.contains(normalized)) {
         images.add(normalized);
       }
@@ -697,7 +698,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
             body: Stack(
               children: [
                 _isLoading
-                    ? const Center(child: CircularProgressIndicator(color: const Color(0xFFFF5A8D)))
+                    ? const Center(
+                        child: CircularProgressIndicator(
+                            color: const Color(0xFFFF5A8D)))
                     : _hasError
                         ? _buildErrorState()
                         : _product == null
@@ -904,7 +907,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                   padding: EdgeInsets.only(top: dividerTop),
                   child: _buildTabDivider(context),
                 ),
-                buildTabItem(1, '서포터 리뷰${_reviewCountSuffix(supporterReviewCount)}'),
+                buildTabItem(
+                    1, '서포터 리뷰${_reviewCountSuffix(supporterReviewCount)}'),
                 Padding(
                   padding: EdgeInsets.only(top: dividerTop),
                   child: _buildTabDivider(context),
@@ -1234,76 +1238,77 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
           children: [
             WebDragScrollConfiguration(
               child: PageView.builder(
-              controller: _pageController,
-              physics: const PageScrollPhysics(),
-              itemCount: images.length,
-              onPageChanged: (index) {
-                _safeSetState(() {
-                  _currentImageIndex = index;
-                });
-              },
-              itemBuilder: (context, index) {
-                final imageUrl = images[index];
+                controller: _pageController,
+                physics: const PageScrollPhysics(),
+                itemCount: images.length,
+                onPageChanged: (index) {
+                  _safeSetState(() {
+                    _currentImageIndex = index;
+                  });
+                },
+                itemBuilder: (context, index) {
+                  final imageUrl = images[index];
 
-                return ColoredBox(
-                  color: const Color(0xFFF8F8F8),
-                  child: buildProductCarouselImage(
-                  imageUrl: imageUrl,
-                  width: slotWidth,
-                  height: imageHeight,
-                  fit: BoxFit.cover,
-                  onSettled: _onDetailImageSettled,
-                  errorBuilder: (context, error, stackTrace) {
-                    _logDetailImageFailure(imageUrl, error);
-                    return Container(
-                      color: Colors.grey[200],
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.image_not_supported,
-                            size: healthDp(context, 60),
-                            color: Colors.grey[400],
-                          ),
-                          SizedBox(height: healthDp(context, 8)),
-                          Text(
-                            '이미지 로드 실패',
-                            style: TextStyle(
-                              color: const Color(0xFF898686),
-                              fontSize: healthSp(context, 14),
-                            ),
-                          ),
-                          SizedBox(height: healthDp(context, 4)),
-                          Padding(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: healthDp(context, 16),
-                            ),
-                            child: Text(
-                              imageUrl.length > 50
-                                  ? '${imageUrl.substring(0, 50)}...'
-                                  : imageUrl,
-                              style: TextStyle(
-                                color: Colors.grey[500],
-                                fontSize: healthSp(context, 10),
+                  return ColoredBox(
+                    color: const Color(0xFFF8F8F8),
+                    child: buildProductCarouselImage(
+                      imageUrl: imageUrl,
+                      width: slotWidth,
+                      height: imageHeight,
+                      fit: BoxFit.cover,
+                      onSettled: _onDetailImageSettled,
+                      errorBuilder: (context, error, stackTrace) {
+                        _logDetailImageFailure(imageUrl, error);
+                        return Container(
+                          color: Colors.grey[200],
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.image_not_supported,
+                                size: healthDp(context, 60),
+                                color: Colors.grey[400],
                               ),
-                              textAlign: TextAlign.center,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                              SizedBox(height: healthDp(context, 8)),
+                              Text(
+                                '이미지 로드 실패',
+                                style: TextStyle(
+                                  color: const Color(0xFF898686),
+                                  fontSize: healthSp(context, 14),
+                                ),
+                              ),
+                              SizedBox(height: healthDp(context, 4)),
+                              Padding(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: healthDp(context, 16),
+                                ),
+                                child: Text(
+                                  imageUrl.length > 50
+                                      ? '${imageUrl.substring(0, 50)}...'
+                                      : imageUrl,
+                                  style: TextStyle(
+                                    color: Colors.grey[500],
+                                    fontSize: healthSp(context, 10),
+                                  ),
+                                  textAlign: TextAlign.center,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                    );
-                  },
-                  loadingBuilder: (context, child, loadingProgress) {
-                    if (loadingProgress == null) return child;
-                    return const Center(
-                      child: CircularProgressIndicator(color: const Color(0xFFFF5A8D)),
-                    );
-                  },
-                ),
-                );
-              },
+                        );
+                      },
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return const Center(
+                          child: CircularProgressIndicator(
+                              color: const Color(0xFFFF5A8D)),
+                        );
+                      },
+                    ),
+                  );
+                },
               ),
             ),
             // 이전/다음 버튼
