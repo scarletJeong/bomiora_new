@@ -165,7 +165,15 @@ class PaymentProductCard extends StatelessWidget {
           SizedBox(height: healthDp(context, 14)),
         ],
         for (var i = 0; i < displayGroups.length; i++) ...[
-          if (i > 0) SizedBox(height: healthDp(context, 14)),
+          if (i > 0) ...[
+            SizedBox(height: healthDp(context, 14)),
+            Container(
+              width: double.infinity,
+              height: 0.5,
+              color: _kBorder,
+            ),
+            SizedBox(height: healthDp(context, 14)),
+          ],
           CartAddGroupCard(
             group: displayGroups[i],
             selectedItems: const {},
@@ -426,14 +434,16 @@ class _PaymentParentBlock extends StatelessWidget {
       fontSize: healthSp(context, 14),
       fontFamily: _kGmarketSans,
       fontWeight: FontWeight.w500,
-      letterSpacing: -1.26,
+      letterSpacing: -0.26,
+      height: 1.2
     );
     final optionStyle = TextStyle(
       color: _kOption,
       fontSize: healthSp(context, 10),
       fontFamily: _kGmarketSans,
       fontWeight: FontWeight.w500,
-      letterSpacing: -0.60,
+      letterSpacing: -0.9,
+      height: 1.1
     );
 
     return Column(
