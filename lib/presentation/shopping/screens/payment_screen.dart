@@ -456,14 +456,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     onNotification: _handleBookingScrollNotification,
                     child: SingleChildScrollView(
                       padding: EdgeInsets.only(
-                        bottom: healthDp(context, 16),
+                        bottom: healthDp(context, 10),
                       ),
                       child: DefaultTextStyle.merge(
                         style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            SizedBox(height: healthDp(context, 20)),
                             _buildDeliverySection(context),
                             SizedBox(height: healthDp(context, 20)),
                             _buildOrderListSection(context),
@@ -506,7 +505,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
           healthDp(context, 20),
           healthDp(context, 10),
           healthDp(context, 20),
-          healthDp(context, 16),
+          healthDp(context, 10),
         ),
         decoration: BoxDecoration(
           color: Colors.white,
