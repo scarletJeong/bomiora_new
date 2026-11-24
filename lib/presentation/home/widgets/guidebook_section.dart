@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_assets.dart';
@@ -14,6 +16,8 @@ import '../../health/health_common/health_responsive_scale.dart';
 import 'btn_more.dart';
 import 'home_big_card.dart';
 import 'home_section_widgets.dart';
+
+final Set<String> _loggedGuidebookImageUrls = {};
 
 class GuidebookSection extends StatefulWidget {
   const GuidebookSection({super.key});
@@ -42,7 +46,9 @@ class _GuidebookSectionState extends State<GuidebookSection> {
         _failed = false;
       });
     }
-    final result = await ContentService.getHomePreviewList();
+    final result = await ContentService.getHomePreviewList(
+      forceRefresh: showLoading,
+    );
     if (!mounted || gen != _loadGen) return;
     if (result.failed) {
       setState(() {
@@ -274,9 +280,16 @@ class _GuidebookCard extends StatelessWidget {
                         height: m.imageH,
                         decodeWidthLogical: m.cardW,
                         decodeHeightLogical: m.imageH,
-                        errorBuilder: (_, __, ___) => const ColoredBox(
-                          color: Color(0xFFFFE9EA),
-                        ),
+                        errorBuilder: (_, error, __) {
+                          _logGuidebookImageFailure(
+                            url: thumb,
+                            contentId: item.id,
+                            error: error,
+                          );
+                          return const ColoredBox(
+                            color: Color(0xFFFFE9EA),
+                          );
+                        },
                       )
                     : const ColoredBox(color: Color(0xFFFFE9EA)),
               ),
@@ -303,4 +316,24 @@ class _GuidebookCard extends StatelessWidget {
       ),
     );
   }
+}
+
+void _logGuidebookImageFailure({
+  required String url,
+  required int? contentId,
+  required Object error,
+}) {
+  if (!_loggedGuidebookImageUrls.add(url)) return;
+  unawaited(
+    FailureLog.record(
+      code: 'home.content.image',
+      mbId: AuthService.currentUser?.id ?? '',
+      reason: '건강 컨텐츠 사진을 불러오지 못했습니다.',
+      detail: {
+        'url': url,
+        'contentId': contentId,
+        'error': error.toString(),
+      },
+    ),
+  );
 }

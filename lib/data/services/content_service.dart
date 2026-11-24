@@ -205,12 +205,22 @@ class ContentService {
   static Future<ListLoad<ContentPost>>? _homePreviewInflight;
   static ListLoad<ContentPost>? _homePreviewCache;
 
+  /// 홈을 다시 열 때 미리보기 목록을 다시 받게 한다.
+  static void clearHomePreviewCache() {
+    _homePreviewCache = null;
+  }
+
   /// 메인 「건강 컨텐츠」 3건. 스플래시와 홈이 같은 요청을 나눠 쓰지 않도록 묶는다.
-  static Future<ListLoad<ContentPost>> getHomePreviewList() {
+  static Future<ListLoad<ContentPost>> getHomePreviewList({
+    bool forceRefresh = false,
+  }) {
+    if (forceRefresh) {
+      _homePreviewCache = null;
+    }
     final cached = _homePreviewCache;
     if (cached != null) return Future.value(cached);
     final inflight = _homePreviewInflight;
-    if (inflight != null) return inflight;
+    if (!forceRefresh && inflight != null) return inflight;
     late final Future<ListLoad<ContentPost>> future;
     future = getContentList(page: 1, size: 3).then((result) {
       if (identical(_homePreviewInflight, future)) {

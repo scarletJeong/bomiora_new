@@ -637,6 +637,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   /// 스플래시가 넘겨 준 Future는 처음 한 번만 쓰고, 홈 버튼은 새로 받는다.
   void _reloadHome() {
+    ContentService.clearHomePreviewCache();
     _tabsRequestToken++;
     _productThumbWatch
       ..reset()
@@ -899,7 +900,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   Text(
                     '|',
                     style: TextStyle(
-                      color: const Color(0xFFC9C9C9),
+                      color: const Color(0xFFD2D2D2),
                       fontSize: tabFs * 0.62,
                       height: 1.0,
                       fontFamily: 'Gmarket Sans TTF',
