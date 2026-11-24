@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../core/logging/failure_log.dart';
 import '../../core/network/api_client.dart';
 import '../../core/utils/node_value_parser.dart';
@@ -28,6 +30,17 @@ class AddressService {
     final id = mbId.trim();
     _listCache.remove(id);
     _listCacheAt.remove(id);
+  }
+
+  /// 결제 화면에서 고른 배송지 초안 (재진입 복원용)
+  static String checkoutAddressDraftKey(String mbId) =>
+      'payment_checkout_address_${mbId.trim()}';
+
+  static Future<void> clearCheckoutAddressDraft(String mbId) async {
+    final id = mbId.trim();
+    if (id.isEmpty) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(checkoutAddressDraftKey(id));
   }
 
   static void removeFromCache(String mbId, int adId) {

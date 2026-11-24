@@ -91,7 +91,7 @@ extension _PaymentDelivery on _PaymentScreenState {
   }
 
   String get _checkoutAddressDraftKey =>
-      'payment_checkout_address_${_checkoutMbId.trim()}';
+      AddressService.checkoutAddressDraftKey(_checkoutMbId);
 
   String _addressIdentity(Map<String, dynamic>? ad) {
     final zip = _shippingZipFromAddress(ad);
@@ -140,10 +140,7 @@ extension _PaymentDelivery on _PaymentScreenState {
   }
 
   Future<void> _clearCheckoutAddressDraft() async {
-    final mbId = _checkoutMbId.trim();
-    if (mbId.isEmpty) return;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_checkoutAddressDraftKey);
+    await AddressService.clearCheckoutAddressDraft(_checkoutMbId);
   }
 
   Future<void> _offerPreviousCheckoutAddress() async {
@@ -458,7 +455,7 @@ extension _PaymentDelivery on _PaymentScreenState {
 
   Widget _buildDeliverySection(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: healthDp(context, 27)),
+      padding: EdgeInsets.symmetric(horizontal: healthDp(context, 20)),
       child: _addressLoadFailed
           ? _sectionCard(
               child: Text(

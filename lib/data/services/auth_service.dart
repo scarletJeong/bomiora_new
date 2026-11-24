@@ -166,6 +166,7 @@ class AuthService {
     try {
       if (userId.isNotEmpty) {
         await PrescriptionPurchaseHistoryService.clearCacheForUser(userId);
+        await AddressService.clearCheckoutAddressDraft(userId);
         PointService.invalidate(userId);
       }
     } catch (_) {}
