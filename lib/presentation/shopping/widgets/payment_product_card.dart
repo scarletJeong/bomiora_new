@@ -297,15 +297,29 @@ class PaymentGeneralProductCard extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (showHeader) ...[
-          Text(
-            '$title ($totalCount)',
-            style: TextStyle(
-              color: _kInk,
-              fontSize: healthSp(context, 16),
-              fontFamily: _kGmarketSans,
-              fontWeight: FontWeight.w500,
-              letterSpacing: -1.44,
-            ),
+          Row(
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  color: _kInk,
+                  fontSize: healthSp(context, 16),
+                  fontFamily: _kGmarketSans,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: -1.44,
+                ),
+              ),
+              SizedBox(width: healthDp(context, 10)),
+              Text(
+                '총 $totalCount개',
+                style: TextStyle(
+                  color: _kMuted,
+                  fontSize: healthSp(context, 12),
+                  fontFamily: _kGmarketSans,
+                  fontWeight: FontWeight.w300,
+                ),
+              ),
+            ],
           ),
           SizedBox(height: healthDp(context, 10)),
         ],
@@ -337,6 +351,7 @@ class PaymentGeneralProductCard extends StatelessWidget {
               fontSize: healthSp(context, 10),
               fontFamily: _kGmarketSans,
               fontWeight: FontWeight.w300,
+              letterSpacing: -0.4,
             ),
           ),
         ],
@@ -380,25 +395,17 @@ class _PaymentVendorSection extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
-          child: Row(
-            children: [
-              Flexible(
-                child: Text(
-                  vendorName.isEmpty ? '판매자' : vendorName,
-                  style: TextStyle(
-                    color: _kMuted,
-                    fontSize: healthSp(context, 12),
-                    fontFamily: _kGmarketSans,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
+        Text(
+          vendorName.isEmpty ? '판매자' : vendorName,
+          style: TextStyle(
+            color: _kMuted,
+            fontSize: healthSp(context, 12),
+            fontFamily: _kGmarketSans,
+            fontWeight: FontWeight.w500,
+            letterSpacing: -0.84,
           ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
         ),
         SizedBox(height: healthDp(context, 10)),
         for (var i = 0; i < items.length; i++) ...[
@@ -434,7 +441,7 @@ class _PaymentParentBlock extends StatelessWidget {
       fontSize: healthSp(context, 14),
       fontFamily: _kGmarketSans,
       fontWeight: FontWeight.w500,
-      letterSpacing: -0.26,
+      letterSpacing: -1.26,
       height: 1.2
     );
     final optionStyle = TextStyle(
@@ -443,7 +450,7 @@ class _PaymentParentBlock extends StatelessWidget {
       fontFamily: _kGmarketSans,
       fontWeight: FontWeight.w500,
       letterSpacing: -0.9,
-      height: 1.1
+      height: 1.0
     );
 
     return Column(
