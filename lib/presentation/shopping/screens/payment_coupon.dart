@@ -17,11 +17,7 @@ extension _PaymentCoupon on _PaymentScreenState {
   }
 
   void _syncCouponLists() {
-    if (_quotedFinalAmount != null) {
-      print('[coupon] sync skipped (quotedFinalAmount=$_quotedFinalAmount)');
-      _logCouponLists(tag: 'skip');
-      return;
-    }
+    if (_quotedFinalAmount != null) return;
     _applicableCoupons = _loadedCoupons.where(_isCouponApplicable).toList()
       ..sort((a, b) => a.no.compareTo(b.no));
     _selectedCoupons =
@@ -38,51 +34,6 @@ extension _PaymentCoupon on _PaymentScreenState {
     } else if (_usedPoint > _maxUsablePointHundreds) {
       _usedPoint = _maxUsablePointHundreds;
       _writePointField(_usedPoint);
-    }
-    _logCouponLists(tag: 'sync');
-  }
-
-  String _couponDebugLine(Coupon c) {
-    return 'no=${c.no} method=${c.method} subject="${c.subject}" '
-        'discount=${c.discountText} min=${c.minimum} max=${c.maximum} '
-        'price=${c.price} available=${c.isAvailable} used=${c.isUsed} '
-        'target="${c.target}"';
-  }
-
-  String _couponRejectReason(Coupon coupon) {
-    if (_selectedCoupons.any((selected) => selected.no == coupon.no)) {
-      return 'already-selected';
-    }
-    if (_isCouponMethodDisabled(coupon.method)) return 'method-disabled';
-    final next = _selectionAfterPicking(coupon);
-    if (!_serverAcceptsCouponTotals(next)) return 'over-order-amount';
-    final effective = _productCouponDiscountFor(next);
-    return 'ok(effectiveDiscount=$effective,final=${_finalAmountFor(next, 0)})';
-  }
-
-  void _logCouponLists({String tag = 'log'}) {
-    print(
-      '[coupon][$tag] owned=${_loadedCoupons.length} '
-      'applicable=${_applicableCoupons.length} '
-      'selected=${_selectedCoupons.length} '
-      'failed=$_couponLoadFailed '
-      'disabled=$_couponPointDisabled '
-      'purchase=$_purchaseAmount shipping=$_baseShipping '
-      'usedPoint=$_usedPoint minPay=$_minPayableAmount',
-    );
-    if (_loadedCoupons.isEmpty) {
-      print('[coupon][$tag] owned list empty');
-    }
-    for (final c in _loadedCoupons) {
-      print('[coupon][$tag][owned] ${_couponDebugLine(c)}');
-    }
-    for (final c in _applicableCoupons) {
-      final discount = _discountForCoupon(c);
-      final reason = _couponRejectReason(c);
-      print(
-        '[coupon][$tag][usable] ${_couponDebugLine(c)} '
-        'calcDiscount=$discount reject=$reason',
-      );
     }
   }
 
@@ -452,8 +403,9 @@ extension _PaymentCoupon on _PaymentScreenState {
       emptyFontWeight: FontWeight.w300,
       valueTextColor: const Color(0xFF1A1A1E),
       borderColor: _border,
+      // 한도 적용(모두 적용)일 때는 흰색, 후보 자체가 없을 때만 회색
       backgroundColor:
-          full || !hasItems ? const Color(0xFFF7F7F7) : Colors.white,
+          hasItems || full ? Colors.white : const Color(0xFFF7F7F7),
       dimWhenDisabled: false,
       itemFontSizeBase: 12,
       itemTextAlign: TextAlign.left,
@@ -494,9 +446,11 @@ extension _PaymentCoupon on _PaymentScreenState {
                     typeLabel,
                     style: TextStyle(
                       color: const Color(0xFFFF5C8F),
-                      fontSize: healthSp(context, 14),
+                      fontSize: healthSp(context, 12),
                       fontFamily: 'Gmarket Sans TTF',
                       fontWeight: FontWeight.w500,
+                      height: 1.0,
+                      letterSpacing: -0.6,
                     ),
                   ),
                 ),
@@ -526,7 +480,7 @@ extension _PaymentCoupon on _PaymentScreenState {
                 ),
               ],
             ),
-            SizedBox(height: healthDp(context, 6)),
+            SizedBox(height: healthDp(context, 0)),
             Text(
               line,
               style: TextStyle(
@@ -534,7 +488,8 @@ extension _PaymentCoupon on _PaymentScreenState {
                 fontSize: healthSp(context, 12),
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: FontWeight.w500,
-                height: 1.40,
+                height: 1.0,
+                letterSpacing: -0.6,
               ),
             ),
           ],
