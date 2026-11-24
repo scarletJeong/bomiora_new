@@ -86,7 +86,100 @@ extension _PaymentDelivery on _PaymentScreenState {
         _defaultAddress = result;
         _applyAddressMode(preserveDeliveryMemo: true);
       });
+      _persistCheckoutAddressDraft();
     }
+  }
+
+  String get _checkoutAddressDraftKey =>
+      'payment_checkout_address_${_checkoutMbId.trim()}';
+
+  String _addressIdentity(Map<String, dynamic>? ad) {
+    final zip = _shippingZipFromAddress(ad);
+    return [
+      _safe(ad?['adName']),
+      _phoneDigits11(_safe(ad?['adHp'])),
+      zip,
+      _safe(ad?['adAddr1']),
+      _safe(ad?['adAddr2']),
+      _safe(ad?['adAddr3']),
+    ].join('|');
+  }
+
+  Map<String, dynamic> _checkoutAddressDraft() {
+    final base = Map<String, dynamic>.from(_defaultAddress ?? {});
+    final zip = _splitZipForApi(_zipController.text.trim());
+    base['adSubject'] = _addressNameController.text.trim();
+    base['adName'] = _receiverController.text.trim();
+    base['adHp'] = _phoneController.text.trim();
+    base['adTel'] = _phoneController.text.trim();
+    base['adZip1'] = zip['zip1'] ?? '';
+    base['adZip2'] = zip['zip2'] ?? '';
+    base['adAddr1'] = _addressController.text.trim();
+    base['adAddr2'] = _detailAddressController.text.trim();
+    base['adAddr3'] = '';
+    base['adMemo'] = _deliveryRequestMemo;
+    return base;
+  }
+
+  bool _draftHasAddress(Map<String, dynamic> draft) {
+    return _safe(draft['adAddr1']).isNotEmpty ||
+        _shippingZipFromAddress(draft).isNotEmpty;
+  }
+
+  void _persistCheckoutAddressDraft() {
+    final mbId = _checkoutMbId.trim();
+    if (!_checkoutAddressReady || mbId.isEmpty) return;
+    final draft = _checkoutAddressDraft();
+    if (!_draftHasAddress(draft)) return;
+    try {
+      final raw = jsonEncode(draft);
+      SharedPreferences.getInstance().then((prefs) {
+        prefs.setString(_checkoutAddressDraftKey, raw);
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _clearCheckoutAddressDraft() async {
+    final mbId = _checkoutMbId.trim();
+    if (mbId.isEmpty) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_checkoutAddressDraftKey);
+  }
+
+  Future<void> _offerPreviousCheckoutAddress() async {
+    final mbId = _checkoutMbId.trim();
+    if (!mounted || mbId.isEmpty) return;
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_checkoutAddressDraftKey);
+    if (raw == null || raw.isEmpty) return;
+    Map<String, dynamic> saved;
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) return;
+      saved = Map<String, dynamic>.from(decoded);
+    } catch (_) {
+      return;
+    }
+    if (!_draftHasAddress(saved)) return;
+    final current = _checkoutAddressDraft();
+    if (_addressIdentity(saved) == _addressIdentity(current)) return;
+    if (!mounted) return;
+    final keep = await ConfirmDialog.show(
+      context,
+      title: '배송지',
+      message: '이전에 입력한 배송지를 유지할까요?',
+      cancelText: '아니오',
+      confirmText: '예',
+    );
+    if (!mounted) return;
+    if (!keep) {
+      await _clearCheckoutAddressDraft();
+      return;
+    }
+    _setState(() {
+      _defaultAddress = saved;
+      _applyAddressMode();
+    });
   }
 
 
@@ -307,6 +400,7 @@ extension _PaymentDelivery on _PaymentScreenState {
       },
       onChanged: (value) {
         _setState(() => _deliveryMemo = value);
+        _persistCheckoutAddressDraft();
       },
     );
   }

@@ -6,11 +6,13 @@ import 'package:flutter/foundation.dart'
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../health/health_common/widgets/health_app_bar.dart';
 import '../../common/widgets/dropdown_btn.dart';
 import '../../common/widgets/delivery_memo_dropdown.dart';
 import '../../common/widgets/app_alert_dialog.dart';
+import '../../common/widgets/confirm_dialog.dart';
 import '../../common/widgets/app_toast_overlay.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../core/utils/kcp_pay_session_store.dart';
@@ -199,6 +201,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   Map<String, dynamic>? _defaultAddress;
 
+  String _checkoutMbId = '';
+
+  /// 기본 배송지 적용·이전 배송지 확인이 끝난 뒤에만 초안을 저장한다.
+  bool _checkoutAddressReady = false;
+
 
   /// 기본 배송지 없을 때: 배송지명 칩 (집/회사/직접입력)
   String _addressLabelChip = '집';
@@ -224,6 +231,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
     // 진입 shippingCost는 임시값. 주소·장바구니 견적(_loadShippingQuote)이 정본이다.
     _baseShipping = widget.shippingCost < 0 ? 0 : widget.shippingCost;
     _pointController.addListener(_onPointChanged);
+    _addressNameController.addListener(_persistCheckoutAddressDraft);
+    _receiverController.addListener(_persistCheckoutAddressDraft);
+    _phoneController.addListener(_persistCheckoutAddressDraft);
+    _zipController.addListener(_persistCheckoutAddressDraft);
+    _addressController.addListener(_persistCheckoutAddressDraft);
+    _detailAddressController.addListener(_persistCheckoutAddressDraft);
     prefetchKcpPayScripts();
     _loadData();
   }
@@ -245,6 +258,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   @override
   void dispose() {
+    _addressNameController.removeListener(_persistCheckoutAddressDraft);
+    _receiverController.removeListener(_persistCheckoutAddressDraft);
+    _phoneController.removeListener(_persistCheckoutAddressDraft);
+    _zipController.removeListener(_persistCheckoutAddressDraft);
+    _addressController.removeListener(_persistCheckoutAddressDraft);
+    _detailAddressController.removeListener(_persistCheckoutAddressDraft);
+    _persistCheckoutAddressDraft();
     _expectedPointHintTimer?.cancel();
     _pointController.removeListener(_onPointChanged);
     _pointController.dispose();
@@ -275,6 +295,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
         return;
       }
       mbId = user.id;
+      _checkoutMbId = mbId;
 
       if (widget.prefetch != null) {
         await _applyPrefetch(user, widget.prefetch!);
@@ -386,6 +407,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
     if (canQuote && quote == null) {
       await _notifyShippingQuoteOnOpen();
     }
+    await _offerPreviousCheckoutAddress();
+    _checkoutAddressReady = true;
   }
 
   Future<void> _notifyShippingQuoteOnOpen() async {

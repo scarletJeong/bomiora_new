@@ -324,6 +324,7 @@ extension _PaymentCheckout on _PaymentScreenState {
           }
         }
 
+        await _clearCheckoutAddressDraft();
         if (!mounted) return;
         OrderService.invalidateOrderList();
         PointService.invalidate(user.id);
