@@ -707,7 +707,13 @@ extension _PaymentSections on _PaymentScreenState {
     final iconAsset = _paymentMethodIconAsset(index);
     final iconSz = healthDp(context, 24);
     return InkWell(
-      onTap: () => _setState(() => _paymentMethodIndex = index),
+      onTap: () {
+        if (_paymentMethodIndex == index) return;
+        _setState(() {
+          _paymentMethodIndex = index;
+          _useEscrow = false;
+        });
+      },
       borderRadius: BorderRadius.circular(healthDp(context, 12)),
       child: Container(
         constraints: BoxConstraints(minHeight: healthDp(context, 65)),
