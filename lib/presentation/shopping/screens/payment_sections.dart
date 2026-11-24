@@ -49,7 +49,7 @@ extension _PaymentSections on _PaymentScreenState {
     // 비대면: 예약시간 + 본품/추가상품 그룹 카드
     if (widget.showPrescriptionBookingProgress) {
       return Padding(
-        padding: EdgeInsets.symmetric(horizontal: healthDp(context, 27)),
+        padding: EdgeInsets.symmetric(horizontal: healthDp(context, 20)),
         child: _sectionCard(
           child: PaymentProductCard(
             cartItems: widget.cartItems,
@@ -62,7 +62,7 @@ extension _PaymentSections on _PaymentScreenState {
 
     // 일반상품: 업체별 묶음배송 카드 (CartGroupGeneralCard)
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: healthDp(context, 27)),
+      padding: EdgeInsets.symmetric(horizontal: healthDp(context, 20)),
       child: PaymentGeneralProductCard(cartItems: widget.cartItems),
     );
   }
@@ -82,15 +82,15 @@ extension _PaymentSections on _PaymentScreenState {
     final showCouponPoint =
         showCoupon || showPoint || showCouponFailure || showPointFailure;
 
-    // 쿠폰 카드 안쪽(14)과 맞춰 결제금액·수단은 약 41(≈35~)로 맞춤
-    final amountPad = healthDp(context, 41);
+    // 페이지 양옆 20 + 쿠폰 카드 안쪽 14 → 결제금액 정렬
+    final amountPad = healthDp(context, 34);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (showCouponPoint)
           Padding(
-            padding: EdgeInsets.symmetric(horizontal: healthDp(context, 27)),
+            padding: EdgeInsets.symmetric(horizontal: healthDp(context, 20)),
             child: _sectionCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -158,8 +158,17 @@ extension _PaymentSections on _PaymentScreenState {
                     ],
                   ],
                   if ((showCoupon || showCouponFailure) &&
-                      (showPoint || showPointFailure))
-                    SizedBox(height: healthDp(context, 20)),
+                      (showPoint || showPointFailure)) ...[
+                    // 선택 카드가 있으면 카드 bottom 10이 위 간격, 없으면 드롭다운과 10
+                    if (_selectedCoupons.isEmpty)
+                      SizedBox(height: healthDp(context, 10)),
+                    Container(
+                      width: double.infinity,
+                      height: 1,
+                      color: _border,
+                    ),
+                    SizedBox(height: healthDp(context, 10)),
+                  ],
                   if (showPointFailure)
                     Text(
                       '포인트를 불러오지 못했습니다.',
@@ -442,23 +451,25 @@ extension _PaymentSections on _PaymentScreenState {
                 '${PriceFormatter.format(_purchaseAmount)} 원',
               ),
               if (_couponDiscount > 0) ...[
-                SizedBox(height: healthDp(context, 20)),
+                SizedBox(height: healthDp(context, 10)),
                 _paymentAmountRow(
                   context,
                   '쿠폰할인',
                   '-${PriceFormatter.format(_couponDiscount)} 원',
+                  valueColor: _pink,
                 ),
               ],
               if (_pointDiscount > 0) ...[
-                SizedBox(height: healthDp(context, 20)),
+                SizedBox(height: healthDp(context, 10)),
                 _paymentAmountRow(
                   context,
-                  '포인트할인',
+                  '포인트 할인',
                   '-${PriceFormatter.format(_pointDiscount)} 원',
+                  valueColor: _pink,
                 ),
               ],
               if (_baseShipping + _extraShipping > 0) ...[
-                SizedBox(height: healthDp(context, 20)),
+                SizedBox(height: healthDp(context, 10)),
                 _paymentAmountRow(
                   context,
                   '배송비',
@@ -482,11 +493,12 @@ extension _PaymentSections on _PaymentScreenState {
                 ],
               ],
               if (_shippingCouponDiscount > 0) ...[
-                SizedBox(height: healthDp(context, 20)),
+                SizedBox(height: healthDp(context, 10)),
                 _paymentAmountRow(
                   context,
                   '배송비 쿠폰',
                   '-${PriceFormatter.format(_shippingCouponDiscount)} 원',
+                  valueColor: _pink,
                 ),
               ],
               SizedBox(height: healthDp(context, 20)),
@@ -623,7 +635,7 @@ extension _PaymentSections on _PaymentScreenState {
     final showEscrow = _paymentMethodIndex == 1 || _paymentMethodIndex == 2;
 
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: healthDp(context, 41)),
+      padding: EdgeInsets.symmetric(horizontal: healthDp(context, 34)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
