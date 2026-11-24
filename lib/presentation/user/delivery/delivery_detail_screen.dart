@@ -904,19 +904,20 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
       return;
     }
 
+    final current = _orderDetail!;
+    final previous = current;
+    setState(() => _orderDetail = current.asReceived());
+    AppToastOverlay.show(context, '수령 확인되었습니다.');
+
     final result = await OrderService.confirmPurchase(
-      odId: _orderDetail!.odId,
+      odId: current.odId,
       mbId: user.id,
     );
     if (!mounted) return;
     if (result['success'] == true) {
-      AppToastOverlay.show(
-        context,
-        '수령 확인되었습니다.',
-      );
-      // 목록 복귀 시 리로드되도록 결과 전달
       Navigator.pop(context, true);
     } else {
+      setState(() => _orderDetail = previous);
       final reason = result['message']?.toString().trim() ?? '';
       await FailureLog.record(
         code: 'order.receipt',

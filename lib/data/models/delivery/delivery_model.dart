@@ -378,6 +378,8 @@ class OrderListModel {
   }
 
   OrderListModel copyWith({
+    String? displayStatus,
+    String? odStatus,
     String? recipientName,
     String? recipientPhone,
     String? recipientAddress,
@@ -391,8 +393,8 @@ class OrderListModel {
       odId: odId,
       orderDate: orderDate,
       orderDateTime: orderDateTime,
-      displayStatus: displayStatus,
-      odStatus: odStatus,
+      displayStatus: displayStatus ?? this.displayStatus,
+      odStatus: odStatus ?? this.odStatus,
       totalPrice: totalPrice,
       deliveryFee: deliveryFee,
       odCartCount: odCartCount,
@@ -716,5 +718,51 @@ class OrderDetailModel {
       'reservationTime': reservationTime,
       'reservationEndTime': reservationEndTime,
     };
+  }
+
+  /// 수령 확인을 화면에 먼저 반영할 때 사용한다.
+  OrderDetailModel asReceived() {
+    return OrderDetailModel(
+      odId: odId,
+      orderDate: orderDate,
+      displayStatus: '배송완료',
+      odStatus: '완료',
+      recipientName: recipientName,
+      recipientPhone: recipientPhone,
+      recipientAddress: recipientAddress,
+      recipientAddressDetail: recipientAddressDetail,
+      deliveryMessage: deliveryMessage,
+      deliveryCompany: deliveryCompany,
+      trackingNumber: trackingNumber,
+      products: products,
+      productPrice: productPrice,
+      deliveryFee: deliveryFee,
+      discountAmount: discountAmount,
+      couponDiscount: couponDiscount,
+      sendCoupon: sendCoupon,
+      pointDiscount: pointDiscount,
+      totalPrice: totalPrice,
+      cancelPrice: cancelPrice,
+      cancelPriceMissing: cancelPriceMissing,
+      isPrescriptionOrder: isPrescriptionOrder,
+      isConsultationDone: isConsultationDone,
+      paymentMethod: paymentMethod,
+      paymentMethodDetail: paymentMethodDetail,
+      odTno: odTno,
+      odAppNo: odAppNo,
+      odBankAccount: odBankAccount,
+      odDepositName: odDepositName,
+      cardReceiptUrl: cardReceiptUrl,
+      ordererName: ordererName,
+      ordererPhone: ordererPhone,
+      ordererEmail: ordererEmail,
+      cancelReason: cancelReason,
+      cancelType: cancelType,
+      cancelDate: cancelDate,
+      cancelReasonLabel: cancelReasonLabel,
+      reservationDate: reservationDate,
+      reservationTime: reservationTime,
+      reservationEndTime: reservationEndTime,
+    );
   }
 }

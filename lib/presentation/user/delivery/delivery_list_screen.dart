@@ -741,6 +741,10 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
       await _goToCancelledOrder(result['odId']?.toString() ?? order.odId);
       return;
     }
+    if (result == true) {
+      _markOrderReceived(order.odId);
+      return;
+    }
     await _loadOrders(force: true);
   }
 
@@ -871,6 +875,9 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
       return;
     }
 
+    final previous = _markOrderReceived(odId);
+    AppToastOverlay.show(context, '수령 확인되었습니다.');
+
     final result = await OrderService.confirmPurchase(
       odId: odId,
       mbId: user.id,
@@ -879,12 +886,17 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
     if (!mounted) return;
 
     if (result['success'] == true) {
-      AppToastOverlay.show(
-        context,
-        '수령 확인되었습니다.',
-      );
-      await _loadOrders(force: true);
+      return;
     } else {
+      if (previous != null) {
+        setState(() {
+          _allOrders = [
+            for (final order in _allOrders)
+              order.odId == odId ? previous : order,
+          ];
+          _applyFilter();
+        });
+      }
       final reason = result['message']?.toString().trim() ?? '';
       await FailureLog.record(
         code: 'order.receipt',
@@ -922,6 +934,24 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
 
   Future<void> _trackDelivery(String odId) {
     return trackOrderDelivery(context, odId);
+  }
+
+  OrderListModel? _markOrderReceived(String odId) {
+    OrderListModel? previous;
+    final next = <OrderListModel>[];
+    for (final order in _allOrders) {
+      if (order.odId == odId) {
+        previous = order;
+        next.add(order.copyWith(displayStatus: '배송완료', odStatus: '완료'));
+      } else {
+        next.add(order);
+      }
+    }
+    setState(() {
+      _allOrders = next;
+      _applyFilter();
+    });
+    return previous;
   }
 
   bool _canWriteReview(OrderListModel order) {
