@@ -854,6 +854,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
                   _infoUnderlineRow(
                     '부작용',
                     _dash(profile.answer13Sideeffect),
+                    showUnderline: false,
                   ),
                 ],
               ),
