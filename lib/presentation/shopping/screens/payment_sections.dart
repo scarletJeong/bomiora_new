@@ -499,62 +499,87 @@ extension _PaymentSections on _PaymentScreenState {
                 color: _border,
               ),
               SizedBox(height: healthDp(context, 20)),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '총 결제비용',
-                        style: TextStyle(
-                          color: const Color(0xFF1A1A1E),
-                          fontSize: healthSp(context, 16),
-                          fontFamily: 'Gmarket Sans TTF',
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: -1.44,
-                        ),
-                      ),
-                      Text(
-                        '${PriceFormatter.format(_finalAmount)}원',
-                        style: TextStyle(
-                          color: _pink,
-                          fontSize: healthSp(context, 20),
-                          fontFamily: 'Gmarket Sans TTF',
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
+                  Text(
+                    '총 결제비용',
+                    style: TextStyle(
+                      color: const Color(0xFF1A1A1E),
+                      fontSize: healthSp(context, 16),
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -1.44,
+                    ),
                   ),
-                  SizedBox(height: healthDp(context, 6)),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          '배송비를 제외한 결제 금액의 1% 적립',
+                  SizedBox(width: healthDp(context, 8)),
+                  Flexible(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          '${PriceFormatter.format(_finalAmount)}원',
                           style: TextStyle(
-                            color: _muted,
-                            fontSize: healthSp(context, 10),
+                            color: _pink,
+                            fontSize: healthSp(context, 20),
                             fontFamily: 'Gmarket Sans TTF',
-                            fontWeight: FontWeight.w300,
-                            letterSpacing: -0.40,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
-                      ),
-                      SizedBox(width: healthDp(context, 8)),
-                      Text(
-                        '예상 적립 포인트 : ${PointService.formatPoint(_expectedPoint)} 점',
-                        style: TextStyle(
-                          color: _muted,
-                          fontSize: healthSp(context, 10),
-                          fontFamily: 'Gmarket Sans TTF',
-                          fontWeight: FontWeight.w300,
-                          letterSpacing: -0.40,
+                        SizedBox(height: healthDp(context, 0)),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Flexible(
+                              child: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 180),
+                                child: Text(
+                                  _showExpectedPointHint
+                                      ? '배송비를 제외한 결제 금액의 1% 적립'
+                                      : '예상 적립 포인트 : ${PointService.formatPoint(_expectedPoint)} 점',
+                                  key: ValueKey(_showExpectedPointHint),
+                                  textAlign: TextAlign.right,
+                                  style: TextStyle(
+                                    color: _muted,
+                                    fontSize: healthSp(context, 10),
+                                    fontFamily: 'Gmarket Sans TTF',
+                                    fontWeight: FontWeight.w300,
+                                    letterSpacing: -0.40,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: healthDp(context, 4)),
+                            GestureDetector(
+                              onTap: () {
+                                _expectedPointHintTimer?.cancel();
+                                _setState(() => _showExpectedPointHint = true);
+                                _expectedPointHintTimer = Timer(
+                                  const Duration(seconds: 2),
+                                  () {
+                                    if (!mounted) return;
+                                    _setState(
+                                      () => _showExpectedPointHint = false,
+                                    );
+                                  },
+                                );
+                              },
+                              behavior: HitTestBehavior.opaque,
+                              child: Padding(
+                                padding: EdgeInsets.all(healthDp(context, 2)),
+                                child: SvgPicture.asset(
+                                  AppAssets.guideIcon,
+                                  width: healthDp(context, 14),
+                                  height: healthDp(context, 14),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ],
               ),

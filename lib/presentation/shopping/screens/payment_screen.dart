@@ -164,6 +164,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   bool _useEscrow = false;
 
+  bool _showExpectedPointHint = false;
+  Timer? _expectedPointHintTimer;
+
   final ValueNotifier<double> _scrollProgress = ValueNotifier(0);
 
   int _paymentMethodIndex = 0; // 0 card, 1 bank transfer, 2 virtual account
@@ -242,6 +245,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   @override
   void dispose() {
+    _expectedPointHintTimer?.cancel();
     _pointController.removeListener(_onPointChanged);
     _pointController.dispose();
     _addressNameController.dispose();
