@@ -503,9 +503,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
       top: false,
       child: Container(
         padding: EdgeInsets.fromLTRB(
-          healthDp(context, 27),
+          healthDp(context, 20),
           healthDp(context, 10),
-          healthDp(context, 27),
+          healthDp(context, 20),
           healthDp(context, 16),
         ),
         decoration: BoxDecoration(
