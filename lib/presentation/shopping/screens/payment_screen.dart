@@ -379,6 +379,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
     final canQuote = widget.cartItems.any((item) => item.ctId > 0);
     final quote = await _loadShippingQuote(retryIfZero: true);
     if (!mounted) return;
+    // 배송비 sync와 별도로, 로드 직후에도 쿠폰 목록을 한 번 더 찍는다.
+    _syncCouponLists();
     _logPointUsageRates();
     setState(() => _loading = false);
     if (canQuote && quote == null) {

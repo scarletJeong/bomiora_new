@@ -54,10 +54,6 @@ extension _PaymentCoupon on _PaymentScreenState {
       return 'already-selected';
     }
     if (_isCouponMethodDisabled(coupon.method)) return 'method-disabled';
-    if (coupon.method == 1 &&
-        _selectedCoupons.where((c) => c.method == 1).length >= 2) {
-      return 'category-limit';
-    }
     final next = _selectionAfterPicking(coupon);
     if (!_serverAcceptsCouponTotals(next)) return 'over-order-amount';
     final effective = _productCouponDiscountFor(next);
@@ -328,11 +324,23 @@ extension _PaymentCoupon on _PaymentScreenState {
   }
 
 
+  /// 처방 다이어트/디톡스 카테고리만 서로 1장씩 동시 사용 가능.
+  static const _kDietCategoryId = '10';
+  static const _kDetoxCategoryId = '20';
+
+  String _categoryCouponKey(Coupon coupon) =>
+      coupon.target.trim().toLowerCase();
+
+  bool _isDietOrDetoxCategory(String target) {
+    final t = target.trim().toLowerCase();
+    return t == _kDietCategoryId || t == _kDetoxCategoryId;
+  }
+
   bool _isCouponMethodDisabled(int method) {
     if (_selectedCoupons.isEmpty) return false;
     if (method == 1) {
-      if (_selectedCoupons.any((coupon) => coupon.method != 1)) return true;
-      return _selectedCoupons.where((coupon) => coupon.method == 1).length >= 2;
+      // 상품/주문/배송비 쿠폰과 카테고리 쿠폰은 동시 사용 불가
+      return _selectedCoupons.any((coupon) => coupon.method != 1);
     }
     return true;
   }
@@ -341,10 +349,25 @@ extension _PaymentCoupon on _PaymentScreenState {
     final next = List<Coupon>.from(_selectedCoupons);
     final method = picked.method;
     if (method == 1) {
+      // 카테고리 외 쿠폰 제거
       next.removeWhere((coupon) => coupon.method != 1);
-      if (next.where((coupon) => coupon.method == 1).length < 2) {
-        next.add(picked);
+      final pickedKey = _categoryCouponKey(picked);
+      // 같은 카테고리는 1장만 — 기존 동일 target 교체
+      next.removeWhere(
+        (coupon) =>
+            coupon.method == 1 && _categoryCouponKey(coupon) == pickedKey,
+      );
+      if (_isDietOrDetoxCategory(picked.target)) {
+        // 다이어트·디톡스만 서로 다른 카테고리 1장씩 유지
+        next.removeWhere(
+          (coupon) =>
+              coupon.method == 1 && !_isDietOrDetoxCategory(coupon.target),
+        );
+      } else {
+        // 그 외 카테고리는 전체 1장만
+        next.removeWhere((coupon) => coupon.method == 1);
       }
+      next.add(picked);
     } else {
       next
         ..clear()
@@ -353,21 +376,38 @@ extension _PaymentCoupon on _PaymentScreenState {
     return next;
   }
 
+  /// 기존 선택 유지한 채 장수만 늘어나는 선택인지 (교체만 가능한 경우 false).
+  bool _isAdditiveCouponPick(Coupon picked) {
+    final next = _selectionAfterPicking(picked);
+    if (next.length != _selectedCoupons.length + 1) return false;
+    return _selectedCoupons.every(
+      (selected) => next.any((coupon) => coupon.no == selected.no),
+    );
+  }
+
   List<Coupon> _availableCouponsForUnifiedPicker() {
     return _applicableCoupons.where((coupon) {
       if (_selectedCoupons.any((selected) => selected.no == coupon.no)) {
         return false;
       }
       if (_isCouponMethodDisabled(coupon.method)) return false;
-      if (coupon.method == 1) {
-        final categoryCount =
-            _selectedCoupons.where((c) => c.method == 1).length;
-        if (categoryCount >= 2) return false;
-      }
       final next = _selectionAfterPicking(coupon);
       // 상품 쿠폰은 최소결제 3천을 남기도록 할인이 캡되므로, 서버 한도만 검사
       return _serverAcceptsCouponTotals(next);
     }).toList();
+  }
+
+  /// 규칙상 더 추가할 쿠폰이 없으면 true (교체만 가능한 상태 포함).
+  bool get _isCouponSelectionFull {
+    if (_selectedCoupons.isEmpty) return false;
+    return !_applicableCoupons.any((coupon) {
+      if (_selectedCoupons.any((selected) => selected.no == coupon.no)) {
+        return false;
+      }
+      if (_isCouponMethodDisabled(coupon.method)) return false;
+      if (!_isAdditiveCouponPick(coupon)) return false;
+      return _serverAcceptsCouponTotals(_selectionAfterPicking(coupon));
+    });
   }
 
   void _onUnifiedCouponChosen(String label) {
@@ -397,17 +437,24 @@ extension _PaymentCoupon on _PaymentScreenState {
     final candidates = _availableCouponsForUnifiedPicker();
     final lines = _uniqueCouponPickerLines(candidates);
     final hasItems = lines.isNotEmpty;
+    final full = _isCouponSelectionFull;
+    final emptyText = full
+        ? '쿠폰을 모두 적용했습니다'
+        : (hasItems ? '쿠폰을 선택해 주세요' : '적용할 쿠폰이 없어요');
 
     return DropdownBtn(
       buttonHeight: healthDp(context, 45),
       enabled: hasItems,
       items: lines,
       value: '',
-      emptyText: hasItems ? '쿠폰 선택 안함' : '선택 가능한 쿠폰이 없습니다',
+      emptyText: emptyText,
       emptyTextColor: _muted,
       emptyFontWeight: FontWeight.w300,
-      valueTextColor: const Color(0xFF1A1A1A),
+      valueTextColor: const Color(0xFF1A1A1E),
       borderColor: _border,
+      backgroundColor:
+          full || !hasItems ? const Color(0xFFF7F7F7) : Colors.white,
+      dimWhenDisabled: false,
       itemFontSizeBase: 12,
       itemTextAlign: TextAlign.left,
       onChanged: _onUnifiedCouponChosen,
@@ -423,60 +470,75 @@ extension _PaymentCoupon on _PaymentScreenState {
         ? safeSubject
         : (safeTarget.isNotEmpty ? safeTarget : '쿠폰명 없음');
     final line = safeDiscount.isNotEmpty ? '$name ($safeDiscount)' : name;
+    final closeSize = healthDp(context, 16);
 
     return Padding(
       padding: EdgeInsets.only(bottom: healthDp(context, 10)),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      child: Container(
+        width: double.infinity,
+        padding: EdgeInsets.all(healthDp(context, 12)),
+        clipBehavior: Clip.antiAlias,
+        decoration: ShapeDecoration(
+          color: const Color(0x07FF5A8D),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(healthDp(context, 10)),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
-                Text(
-                  typeLabel,
-                  style: TextStyle(
-                    color: _pink,
-                    fontSize: healthSp(context, 12),
-                    fontFamily: 'Gmarket Sans TTF',
-                    fontWeight: FontWeight.w500,
+                Expanded(
+                  child: Text(
+                    typeLabel,
+                    style: TextStyle(
+                      color: const Color(0xFFFF5C8F),
+                      fontSize: healthSp(context, 14),
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
-                Text(
-                  line,
-                  style: TextStyle(
-                    color: _figmaDark,
-                    fontSize: healthSp(context, 12),
-                    fontFamily: 'Gmarket Sans TTF',
-                    fontWeight: FontWeight.w300,
+                InkWell(
+                  onTap: () {
+                    _setState(() {
+                      _clearAmountQuote();
+                      _selectedCoupons.removeWhere((c) => c.no == coupon.no);
+                      if (_usedPoint > _maxUsablePointHundreds) {
+                        _usedPoint = _maxUsablePointHundreds;
+                        _writePointField(_usedPoint);
+                      }
+                    });
+                  },
+                  borderRadius: BorderRadius.circular(healthDp(context, 14)),
+                  child: SizedBox(
+                    width: healthDp(context, 28),
+                    height: healthDp(context, 28),
+                    child: Center(
+                      child: SvgPicture.asset(
+                        AppAssets.popupCloseIcon,
+                        width: closeSize,
+                        height: closeSize,
+                      ),
+                    ),
                   ),
                 ),
               ],
             ),
-          ),
-          InkWell(
-            onTap: () {
-              _setState(() {
-                _clearAmountQuote();
-                _selectedCoupons.removeWhere((c) => c.no == coupon.no);
-                if (_usedPoint > _maxUsablePointHundreds) {
-                  _usedPoint = _maxUsablePointHundreds;
-                  _writePointField(_usedPoint);
-                }
-              });
-            },
-            child: Text(
-              '삭제',
+            SizedBox(height: healthDp(context, 6)),
+            Text(
+              line,
               style: TextStyle(
-                color: _figmaBrown,
-                fontSize: healthSp(context, 10),
+                color: const Color(0xFF1A1A1E),
+                fontSize: healthSp(context, 12),
                 fontFamily: 'Gmarket Sans TTF',
-                fontWeight: FontWeight.w300,
-                decoration: TextDecoration.underline,
+                fontWeight: FontWeight.w500,
+                height: 1.40,
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
