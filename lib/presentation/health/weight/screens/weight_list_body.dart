@@ -165,17 +165,18 @@ extension _WeightListBody on _WeightListScreenState {
       String? imageUrl;
 
       if (kIsWeb) {
-        try {
-          imageUrl = await WeightRepository.uploadImage(image);
-        } catch (e) {
-          imageUrl = image.path;
-        }
+        imageUrl = await WeightRepository.uploadImage(image);
       } else {
         final File imageFile = File(image.path);
         imageUrl = await WeightRepository.uploadImage(imageFile);
       }
 
-      if (imageUrl == null || !mounted) return;
+      if (imageUrl == null || imageUrl.trim().isEmpty) {
+        if (mounted) {
+          AppToastOverlay.showAlert(context, '사진을 업로드하지 못했습니다.');
+        }
+        return;
+      }
 
       if (selectedRecord != null) {
         final updatedRecord = selectedRecord!.copyWith(
@@ -185,7 +186,12 @@ extension _WeightListBody on _WeightListScreenState {
               type == 'side' ? imageUrl : selectedRecord!.sideImagePath,
         );
 
-        await WeightRepository.updateWeightRecord(updatedRecord);
+        final saved = await WeightRepository.updateWeightRecord(updatedRecord);
+        if (!mounted) return;
+        if (!saved.success) {
+          AppToastOverlay.showAlert(context, '사진을 업로드하지 못했습니다.');
+          return;
+        }
         notifyHealthDataChanged(HealthRefreshDomain.weight);
         _loadData();
       } else {
@@ -202,7 +208,11 @@ extension _WeightListBody on _WeightListScreenState {
           ),
         );
       }
-    } catch (e) {}
+    } catch (e) {
+      if (mounted) {
+        AppToastOverlay.showAlert(context, '사진을 업로드하지 못했습니다.');
+      }
+    }
   }
 
   // 이미지 삭제
@@ -225,10 +235,20 @@ extension _WeightListBody on _WeightListScreenState {
           clearSideImage: imagePath == selectedRecord!.sideImagePath,
         );
 
-        await WeightRepository.updateWeightRecord(updatedRecord);
+        final saved = await WeightRepository.updateWeightRecord(updatedRecord);
+        if (!saved.success) {
+          if (mounted) {
+            AppToastOverlay.showAlert(context, '사진을 삭제하지 못했습니다.');
+          }
+          return;
+        }
         notifyHealthDataChanged(HealthRefreshDomain.weight);
         _loadData(); // 데이터 새로고침
       }
-    } catch (e) {}
+    } catch (e) {
+      if (mounted) {
+        AppToastOverlay.showAlert(context, '사진을 삭제하지 못했습니다.');
+      }
+    }
   }
 }

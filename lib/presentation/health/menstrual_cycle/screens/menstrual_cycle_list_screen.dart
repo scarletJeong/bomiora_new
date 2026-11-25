@@ -19,6 +19,7 @@ import '../../../../data/services/auth_service.dart';
 import '../../../../core/health/health_refresh_bus.dart';
 import '../../../../core/health/health_refresh_listener.dart';
 import '../../../../core/logging/failure_log.dart';
+import '../../../common/widgets/app_toast_overlay.dart';
 import '../../../common/widgets/login_required_dialog.dart';
 import '../../../common/widgets/load_failure_notice.dart';
 import 'menstrual_cycle_input_screen.dart';
@@ -180,7 +181,7 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen>
                   : _loadFailed
                       ? Center(
                           child: LoadFailureNotice(
-                            message: '기록을 불러오지 못했습니다',
+                            message: '기록을 불러오지 못했습니다.',
                             onRetry: _loadMenstrualCycleData,
                           ),
                         )
@@ -296,13 +297,13 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen>
               fontWeight: FontWeight.bold,
             ),
             onPressed: () async {
-              final recordForDate = await _getRecordForDate(selectedDate);
-              if (!mounted) return;
+              final loaded = await _getRecordForDate(selectedDate);
+              if (!mounted || loaded.failed) return;
               await Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) => MenstrualCycleInputScreen(
-                    existingRecord: recordForDate,
+                    existingRecord: loaded.record,
                   ),
                 ),
               );
@@ -657,13 +658,13 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen>
           const Spacer(),
           HealthListEditButton(
             onTap: () async {
-              final recordForDate = await _getRecordForDate(selectedDate);
-              if (!mounted) return;
+              final loaded = await _getRecordForDate(selectedDate);
+              if (!mounted || loaded.failed) return;
               await Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) => MenstrualCycleInputScreen(
-                    existingRecord: recordForDate,
+                    existingRecord: loaded.record,
                   ),
                 ),
               );
@@ -764,18 +765,30 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen>
   }
 
   // 선택한 날짜에 맞는 레코드 찾기
-  Future<MenstrualCycleRecord?> _getRecordForDate(DateTime selectedDate) async {
+  Future<({bool failed, MenstrualCycleRecord? record})> _getRecordForDate(
+    DateTime selectedDate,
+  ) async {
     try {
       final user = await AuthService.getUser();
-      if (user == null) return null;
+      if (user == null) return (failed: false, record: null);
 
-      // 모든 생리주기 레코드 가져오기
       final records =
           await MenstrualCycleRepository.getMenstrualCycleRecords(user.id);
 
-      return MenstrualCycleRecordSelector.pickForDay(records, selectedDate);
+      return (
+        failed: false,
+        record: MenstrualCycleRecordSelector.pickForDay(records, selectedDate),
+      );
     } catch (e) {
-      return _currentRecord;
+      await FailureLog.record(
+        code: 'health.menstrual.list',
+        mbId: AuthService.currentUser?.id ?? '',
+        reason: e.toString(),
+      );
+      if (mounted) {
+        AppToastOverlay.showAlert(context, '기록을 불러오지 못했습니다.');
+      }
+      return (failed: true, record: null);
     }
   }
 
@@ -787,6 +800,16 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen>
     } finally {
       _isAutoCreatingCycle = false;
     }
+  }
+
+  Future<void> _reportAutoCycleFailure(String reason) async {
+    await FailureLog.record(
+      code: 'health.menstrual.autocycle',
+      mbId: AuthService.currentUser?.id ?? '',
+      reason: reason,
+    );
+    if (!mounted) return;
+    AppToastOverlay.showAlert(context, '기록을 저장하지 못했습니다.');
   }
 
   // 생리주기 완료 시 자동으로 다음 생리주기 생성 (중복 row 방지)
@@ -830,8 +853,12 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen>
           if (saved.success) {
             HealthDashboardRepository.invalidate(user.id);
             notifyHealthDataChanged(HealthRefreshDomain.menstrual);
+          } else {
+            await _reportAutoCycleFailure('다음 생리 주기를 만들지 못했습니다.');
           }
-        } catch (e) {}
+        } catch (e) {
+          await _reportAutoCycleFailure(e.toString());
+        }
       }
     }
   }

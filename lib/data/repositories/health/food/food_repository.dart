@@ -457,8 +457,13 @@ class FoodRepository {
       ApiEndpoints.foodSearch(q, limit: limit, offset: offset),
     );
 
-    if (response.statusCode != 200) return [];
+    if (response.statusCode != 200) {
+      throw StateError('food search failed (${response.statusCode})');
+    }
     final body = _decodeResponseBody(response.body);
+    if (body is Map && body['success'] == false) {
+      throw StateError('food search failed');
+    }
     List<dynamic> list = [];
     if (body is List) {
       list = body;
@@ -536,27 +541,23 @@ class FoodRepository {
     int limit = 20,
     int offset = 0,
   }) async {
-    try {
-      final q = keyword.trim();
-      if (q.isEmpty) return [];
-      final key = _searchCacheKey(q, limit, offset);
-      final cached = peekSearch(q, limit: limit, offset: offset);
-      if (cached != null) return cached;
-      final pending = _searchInFlight[key];
-      if (pending != null) return pending;
+    final q = keyword.trim();
+    if (q.isEmpty) return [];
+    final key = _searchCacheKey(q, limit, offset);
+    final cached = peekSearch(q, limit: limit, offset: offset);
+    if (cached != null) return cached;
+    final pending = _searchInFlight[key];
+    if (pending != null) return pending;
 
-      final request = _fetchFoodSearch(q, limit: limit, offset: offset);
-      _searchInFlight[key] = request;
-      try {
-        final list = await request;
-        _searchCache[key] = list;
-        _searchCacheAt[key] = DateTime.now();
-        return List<FoodSearchItem>.from(list);
-      } finally {
-        _searchInFlight.remove(key);
-      }
-    } catch (e) {
-      return [];
+    final request = _fetchFoodSearch(q, limit: limit, offset: offset);
+    _searchInFlight[key] = request;
+    try {
+      final list = await request;
+      _searchCache[key] = list;
+      _searchCacheAt[key] = DateTime.now();
+      return List<FoodSearchItem>.from(list);
+    } finally {
+      _searchInFlight.remove(key);
     }
   }
 
@@ -565,22 +566,17 @@ class FoodRepository {
     int limit = 20,
     int offset = 0,
   }) async {
-    try {
-      final list =
-          await _fetchFoodSearchRaw(keyword, limit: limit, offset: offset);
+    final list =
+        await _fetchFoodSearchRaw(keyword, limit: limit, offset: offset);
 
-      // 클라이언트 측 정렬 (음식 코드 우선순위 반영)
-      list.sort((a, b) {
-        final pA = _foodCodePriority(a.foodCode);
-        final pB = _foodCodePriority(b.foodCode);
-        if (pA != pB) return pA.compareTo(pB);
-        return a.foodName.compareTo(b.foodName);
-      });
+    list.sort((a, b) {
+      final pA = _foodCodePriority(a.foodCode);
+      final pB = _foodCodePriority(b.foodCode);
+      if (pA != pB) return pA.compareTo(pB);
+      return a.foodName.compareTo(b.foodName);
+    });
 
-      return list;
-    } catch (e) {
-      return [];
-    }
+    return list;
   }
 
   /// 해당 날짜 식사 기록 목록 조회 (날짜별 아침/점심/저녁/간식)

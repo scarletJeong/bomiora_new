@@ -131,7 +131,7 @@ class HealthAppSyncRepository {
       if (decoded is! Map) {
         return const HealthAppSyncResult(
           success: false,
-          message: '건강 기록 저장 응답이 올바르지 않습니다.',
+          message: '건강 기록을 저장하지 못했습니다.',
         );
       }
       final map = Map<String, dynamic>.from(decoded);
@@ -142,16 +142,16 @@ class HealthAppSyncRepository {
           : null;
       return HealthAppSyncResult(
         success: ok,
-        message: (map['message'] ??
-                (ok ? '건강앱 연동 데이터가 저장되었습니다.' : '건강앱 연동 저장에 실패했습니다.'))
-            .toString(),
+        message: ok
+            ? (map['message'] ?? '건강앱 연동 데이터가 저장되었습니다.').toString()
+            : '건강 기록을 저장하지 못했습니다.',
         saved: saved is Map ? Map<String, dynamic>.from(saved) : null,
       );
     } catch (e) {
       debugPrint('[HealthAppSyncRepository.persistToday] $e');
       return const HealthAppSyncResult(
         success: false,
-        message: '건강 기록 저장 중 오류가 발생했습니다.',
+        message: '건강 기록을 저장하지 못했습니다.',
       );
     }
   }

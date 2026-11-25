@@ -13,12 +13,8 @@ abstract final class HealthInputComplete {
     AppToastOverlay.showAlert(context, requiredMessage);
   }
 
-  /// 저장 실패. 서버 문구가 없으면 [saveFailedMessage]를 쓴다.
+  /// 저장 실패. 서버 문구는 화면에 올리지 않는다.
   static void showSaveFailureToast(BuildContext context, String? serverMessage) {
-    final message = (serverMessage ?? '').trim();
-    AppToastOverlay.showAlert(
-      context,
-      message.isEmpty ? saveFailedMessage : message,
-    );
+    AppToastOverlay.showAlert(context, saveFailedMessage);
   }
 }

@@ -298,7 +298,7 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
     if (!success) {
       WeightRepository.restoreRecords(record.mbId, previous);
       AppToastOverlay.showAlertFromNavigator(
-        '삭제에 실패해서 이전 기록으로 되돌렸습니다.',
+        '기록을 삭제하지 못했습니다.',
       );
     }
     HealthDashboardRepository.invalidate(record.mbId);
@@ -890,33 +890,37 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
       String? imagePath;
 
       if (kIsWeb) {
-        try {
-          imagePath = await WeightRepository.uploadImage(image);
-        } catch (e) {
-          imagePath = image.path;
-        }
+        imagePath = await WeightRepository.uploadImage(image);
       } else {
         final File imageFile = File(image.path);
         imagePath = await WeightRepository.uploadImage(imageFile);
       }
 
-      if (imagePath != null) {
-        if (type == 'front' && _frontImagePath != null) {
-          await ImagePickerUtils.deleteImageFile(_frontImagePath);
-        } else if (type == 'side' && _sideImagePath != null) {
-          await ImagePickerUtils.deleteImageFile(_sideImagePath);
+      if (imagePath == null || imagePath.trim().isEmpty) {
+        if (mounted) {
+          AppToastOverlay.showAlert(context, '사진을 업로드하지 못했습니다.');
         }
-
-        if (!mounted) return;
-        setState(() {
-          if (type == 'front') {
-            _frontImagePath = imagePath;
-          } else {
-            _sideImagePath = imagePath;
-          }
-        });
+        return;
       }
-    } catch (e) {}
+      if (type == 'front' && _frontImagePath != null) {
+        await ImagePickerUtils.deleteImageFile(_frontImagePath);
+      } else if (type == 'side' && _sideImagePath != null) {
+        await ImagePickerUtils.deleteImageFile(_sideImagePath);
+      }
+
+      if (!mounted) return;
+      setState(() {
+        if (type == 'front') {
+          _frontImagePath = imagePath;
+        } else {
+          _sideImagePath = imagePath;
+        }
+      });
+    } catch (e) {
+      if (mounted) {
+        AppToastOverlay.showAlert(context, '사진을 업로드하지 못했습니다.');
+      }
+    }
   }
 
   // 이미지 삭제
@@ -941,7 +945,11 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
           }
         });
       }
-    } catch (e) {}
+    } catch (e) {
+      if (mounted) {
+        AppToastOverlay.showAlert(context, '사진을 삭제하지 못했습니다.');
+      }
+    }
   }
 
   Color _getBmiColor(double? bmi) {

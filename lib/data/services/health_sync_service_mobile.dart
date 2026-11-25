@@ -187,7 +187,7 @@ class HealthSyncService {
         supported: true,
         steps: null,
         heartRate: null,
-        message: '연동 중 오류가 발생했습니다: $e',
+        message: '건강 앱 연동에 실패했습니다.',
       );
     }
   }
@@ -273,7 +273,7 @@ class HealthSyncService {
         supported: true,
         steps: null,
         heartRate: null,
-        message: '데이터 조회 중 오류가 발생했습니다: $e',
+        message: '건강 앱 연동에 실패했습니다.',
       );
     }
   }

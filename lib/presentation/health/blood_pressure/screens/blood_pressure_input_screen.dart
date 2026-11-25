@@ -7,6 +7,7 @@ import '../../health_common/widgets/health_app_bar.dart';
 import '../../health_common/widgets/health_delete_popup.dart';
 import '../../health_common/widgets/health_date_selector.dart';
 import '../../health_common/widgets/health_focus_outline_box.dart';
+import '../../../common/widgets/app_toast_overlay.dart';
 import '../../../common/widgets/keyboard_aware_form_body.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/login_required_dialog.dart';
@@ -259,14 +260,18 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
         mbId: widget.record!.mbId,
       );
 
-      if (mounted) {
-        if (success) {
-          HealthDashboardRepository.invalidate(widget.record!.mbId);
-          notifyHealthDataChanged(HealthRefreshDomain.bloodPressure);
-          Navigator.pop(context, true); // 성공
-        }
+      if (!mounted) return;
+      if (success) {
+        HealthDashboardRepository.invalidate(widget.record!.mbId);
+        notifyHealthDataChanged(HealthRefreshDomain.bloodPressure);
+        Navigator.pop(context, true);
+        return;
       }
+      AppToastOverlay.showAlert(context, '기록을 삭제하지 못했습니다.');
     } catch (e) {
+      if (mounted) {
+        AppToastOverlay.showAlert(context, '기록을 삭제하지 못했습니다.');
+      }
     } finally {
       if (mounted) {
         setState(() => _isSaving = false);

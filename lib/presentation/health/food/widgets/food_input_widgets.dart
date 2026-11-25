@@ -58,6 +58,7 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
   bool _isLoading = false;
   bool _isLoadingMore = false;
   bool _hasMore = false;
+  bool _searchFailed = false;
   bool _isUploadingPhoto = false;
   String _currentKeyword = '';
   int _currentOffset = 0;
@@ -78,6 +79,7 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
         _currentKeyword = '';
         _currentOffset = 0;
         _hasMore = false;
+        _searchFailed = false;
         _isLoading = false;
       });
       return;
@@ -91,6 +93,7 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
         _currentKeyword = keyword;
         _currentOffset = preview.length;
         _hasMore = exact != null && preview.length == _pageSize;
+        _searchFailed = false;
         _isLoading = exact == null;
       });
       if (exact != null) return;
@@ -107,6 +110,7 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
         _currentKeyword = '';
         _currentOffset = 0;
         _hasMore = false;
+        _searchFailed = false;
         _isLoading = false;
       });
       return;
@@ -119,6 +123,7 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
         _currentKeyword = keyword;
         _currentOffset = exact.length;
         _hasMore = exact.length == _pageSize;
+        _searchFailed = false;
         _isLoading = false;
       });
       return;
@@ -130,6 +135,7 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
         _currentKeyword = keyword;
         _currentOffset = 0;
         _hasMore = false;
+        _searchFailed = false;
       });
     }
     try {
@@ -143,6 +149,7 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
         _results = list;
         _currentOffset = list.length;
         _hasMore = list.length == _pageSize;
+        _searchFailed = false;
         _isLoading = false;
       });
     } catch (_) {
@@ -151,6 +158,7 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
         _results = [];
         _currentOffset = 0;
         _hasMore = false;
+        _searchFailed = true;
         _isLoading = false;
       });
     }
@@ -177,6 +185,7 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
     } catch (_) {
       if (!mounted) return;
       setState(() => _isLoadingMore = false);
+      AppToastOverlay.showAlert(context, '검색에 실패했습니다');
     }
   }
 
@@ -650,6 +659,28 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
                 child: CircularProgressIndicator(
                   strokeWidth: healthDp(context, 2),
                   color: const Color(0xFFFF5A8D),
+                ),
+              ),
+            ),
+          ),
+        ] else if (_searchFailed &&
+            _searchController.text.trim().isNotEmpty) ...[
+          SizedBox(height: healthDp(context, 3)),
+          Container(
+            padding: EdgeInsets.symmetric(vertical: healthDp(context, 12)),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border.all(color: const Color(0xFFD2D2D2)),
+              borderRadius: BorderRadius.circular(healthDp(context, 10)),
+            ),
+            child: const Center(
+              child: Text(
+                '검색에 실패했습니다',
+                style: TextStyle(
+                  color: Color(0xFF898383),
+                  fontSize: 12,
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w300,
                 ),
               ),
             ),
