@@ -169,7 +169,9 @@ class HealthProfileFormSession extends ChangeNotifier {
 
   Future<void> load() async {
     if (prescriptionBooking != null) {
-      unawaited(ShopDefaultService.getReservationSettings());
+      unawaited(
+        ShopDefaultService.getReservationSettings(forceRefresh: true),
+      );
     }
     final user = await AuthService.getUser();
     if (_disposed) return;

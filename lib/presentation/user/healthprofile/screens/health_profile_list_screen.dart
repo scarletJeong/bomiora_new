@@ -79,7 +79,9 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
       _loadFailed = false;
     }
     if (_isPrescriptionBooking) {
-      unawaited(ShopDefaultService.getReservationSettings());
+      unawaited(
+        ShopDefaultService.getReservationSettings(forceRefresh: true),
+      );
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || _belowFoldReady) return;

@@ -61,6 +61,7 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
 
   ReservationSettingsModel? _settings;
   bool _isLoading = true;
+  bool _settingsFailed = false;
   bool _isSubmitting = false;
   UserModel? _currentUser;
   Map<String, dynamic>? _reservationData;
@@ -209,12 +210,44 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
   }
   
   Future<void> _loadSettings() async {
-    final settings = await ShopDefaultService.getReservationSettings();
+    final loaded = await ShopDefaultService.loadReservationSettings(
+      forceRefresh: true,
+    );
     if (!mounted) return;
+    if (loaded.failed) {
+      final user = await AuthService.getUser();
+      await FailureLog.record(
+        code: 'prescription.reservation.settings',
+        mbId: user?.id ?? '',
+        reason: loaded.reason.isEmpty
+            ? '예약 시간을 불러오지 못했습니다.'
+            : loaded.reason,
+      );
+      if (!mounted) return;
+      setState(() {
+        _settings = null;
+        _settingsFailed = true;
+        _isLoading = false;
+      });
+      return;
+    }
     setState(() {
-      _settings = settings;
+      _settings = loaded.settings;
+      _settingsFailed = false;
       _isLoading = false;
+      final selected = _selectedDate.value;
+      if (selected != null) {
+        _availableTimes = _generateTimeSlots(selected);
+      }
     });
+  }
+
+  void _retrySettings() {
+    setState(() {
+      _isLoading = true;
+      _settingsFailed = false;
+    });
+    _loadSettings();
   }
   
   List<String> _generateTimeSlots(DateTime date) {
@@ -1392,6 +1425,39 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
                         );
                       },
                     ),
+                    if (_settingsFailed)
+                      Padding(
+                        padding: EdgeInsets.only(top: healthDp(context, 30)),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '예약 시간을 불러오지 못했습니다.',
+                              style: TextStyle(
+                                color: const Color(0xFF898686),
+                                fontSize: healthSp(context, 14),
+                                fontFamily: 'Gmarket Sans TTF',
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            SizedBox(height: healthDp(context, 8)),
+                            GestureDetector(
+                              onTap: _retrySettings,
+                              child: Text(
+                                '다시 시도',
+                                style: TextStyle(
+                                  color: const Color(0xFFFF5A8D),
+                                  fontSize: healthSp(context, 14),
+                                  fontFamily: 'Gmarket Sans TTF',
+                                  fontWeight: FontWeight.w500,
+                                  decoration: TextDecoration.underline,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    else
                     ValueListenableBuilder<DateTime?>(
                       valueListenable: _selectedDate,
                       builder: (context, selectedDate, _) {

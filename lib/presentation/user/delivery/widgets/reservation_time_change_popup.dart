@@ -123,7 +123,7 @@ class _ReservationTimeChangePopupState
 
   Future<void> _loadSettings() async {
     final loaded = await ShopDefaultService.loadReservationSettings(
-      forceRefresh: widget.reportSaveFailure,
+      forceRefresh: true,
     );
     if (!mounted) return;
     if (loaded.failed) {
@@ -640,14 +640,38 @@ class _ReservationTimeChangePopupState
                                   ),
                                 )
                               else if (_settingsFailed)
-                                Text(
-                                  '예약 시간을 불러오지 못했습니다.',
-                                  style: TextStyle(
-                                    color: _kMuted,
-                                    fontSize: healthSp(context, 11),
-                                    fontFamily: _font,
-                                    fontWeight: FontWeight.w400,
-                                  ),
+                                Column(
+                                  children: [
+                                    Text(
+                                      '예약 시간을 불러오지 못했습니다.',
+                                      style: TextStyle(
+                                        color: _kMuted,
+                                        fontSize: healthSp(context, 11),
+                                        fontFamily: _font,
+                                        fontWeight: FontWeight.w400,
+                                      ),
+                                    ),
+                                    SizedBox(height: healthDp(context, 8)),
+                                    GestureDetector(
+                                      onTap: () {
+                                        setState(() {
+                                          _isLoading = true;
+                                          _settingsFailed = false;
+                                        });
+                                        _loadSettings();
+                                      },
+                                      child: Text(
+                                        '다시 시도',
+                                        style: TextStyle(
+                                          color: _kPink,
+                                          fontSize: healthSp(context, 11),
+                                          fontFamily: _font,
+                                          fontWeight: FontWeight.w500,
+                                          decoration: TextDecoration.underline,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 )
                               else if (times.isEmpty)
                                 Text(

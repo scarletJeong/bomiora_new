@@ -71,7 +71,7 @@ class ShopDefaultService {
 
       return null;
     } catch (e) {
-      return _cachedSettings;
+      return null;
     }
   }
 }
