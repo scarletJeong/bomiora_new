@@ -642,30 +642,35 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       return;
     }
 
+    final wasFavorite = _isFavorite;
+    _safeSetState(() {
+      _isFavorite = !wasFavorite;
+    });
+
     try {
-      final wasFavorite = _isFavorite;
-
-      // 즉시 UI 업데이트 (낙관적 업데이트)
-      _safeSetState(() {
-        _isFavorite = !_isFavorite;
-      });
-
-      // API 호출
-      if (wasFavorite) {
-        // 찜하기 해제
-        await WishService.removeFromWish(widget.productId);
-      } else {
-        // 찜하기 추가
-        await WishService.addToWish(
-          widget.productId,
-          wiItKind: 'general',
-        );
-      }
+      final result = wasFavorite
+          ? await WishService.removeFromWish(widget.productId)
+          : await WishService.addToWish(
+              widget.productId,
+              wiItKind: 'general',
+            );
+      if (result['success'] == true) return;
+      throw Exception(result['message']?.toString() ?? 'success=false');
     } catch (e) {
-      // 실패 시 원래 상태로 되돌리기
       _safeSetState(() {
-        _isFavorite = !_isFavorite;
+        _isFavorite = wasFavorite;
       });
+      if (!mounted) return;
+      AppToastOverlay.showAlert(
+        context,
+        wasFavorite ? '찜을 해제하지 못했습니다.' : '찜을 저장하지 못했습니다.',
+      );
+      await FailureLog.record(
+        code: wasFavorite ? 'wish.remove' : 'wish.add',
+        mbId: user.id,
+        reason: e.toString(),
+        detail: {'productId': widget.productId},
+      );
     }
   }
 
