@@ -82,6 +82,21 @@ class OrderService {
     }
   }
 
+  /// 입금이 확인되면 목록 캐시를 지우고 주문내역과 같은 크기로 다시 받는다.
+  static Future<void> refreshOrderListAfterDeposit(String mbId) {
+    final id = mbId.trim();
+    if (id.isEmpty) return Future.value();
+    invalidateOrderList(id);
+    return getOrderList(
+      mbId: id,
+      period: 0,
+      status: 'all',
+      page: 0,
+      size: 80,
+      forceRefresh: true,
+    );
+  }
+
   static dynamic _decodeBody(http.Response response) {
     return json.decode(response.body);
   }

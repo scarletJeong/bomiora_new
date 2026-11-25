@@ -49,6 +49,9 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
   OrderDetailModel? _order;
   String _deliveryMemo = '';
   bool _handlingBlockedBack = false;
+  Timer? _depositWatch;
+  Future<void>? _orderLoad;
+  static const Duration _depositPollInterval = Duration(seconds: 15);
 
   @override
   void initState() {
@@ -56,36 +59,71 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
     _loadOrder();
   }
 
-  Future<void> _loadOrder() async {
-    setState(() {
-      _loading = true;
-      _needsLogin = false;
-      _loadFailed = false;
+  @override
+  void dispose() {
+    _depositWatch?.cancel();
+    super.dispose();
+  }
+
+  void _syncDepositWatch(OrderDetailModel? order) {
+    final waiting = order != null && _isAwaitingDeposit(order);
+    if (!waiting) {
+      _depositWatch?.cancel();
+      _depositWatch = null;
+      return;
+    }
+    _depositWatch ??= Timer.periodic(_depositPollInterval, (_) {
+      if (!mounted) return;
+      unawaited(_loadOrder(silent: true));
     });
+  }
+
+  Future<void> _loadOrder({bool silent = false}) {
+    final pending = _orderLoad;
+    if (pending != null) return pending;
+    final run = _loadOrderBody(silent: silent);
+    _orderLoad = run;
+    return run.whenComplete(() {
+      if (identical(_orderLoad, run)) _orderLoad = null;
+    });
+  }
+
+  Future<void> _loadOrderBody({required bool silent}) async {
+    final wasWaiting = _order != null && _isAwaitingDeposit(_order!);
+    if (!silent) {
+      setState(() {
+        _loading = true;
+        _needsLogin = false;
+        _loadFailed = false;
+      });
+    }
 
     String mbId = '';
     try {
       final user = await AuthService.getUser();
       if (user == null || user.id.trim().isEmpty) {
-        if (!mounted) return;
+        if (!mounted || silent) return;
         setState(() {
           _order = null;
           _needsLogin = true;
           _loadFailed = false;
           _loading = false;
         });
+        _syncDepositWatch(null);
         return;
       }
       mbId = user.id;
 
       final orderId = widget.orderId.trim();
       if (orderId.isEmpty) {
-        await FailureLog.record(
-          code: 'payment.complete.load',
-          mbId: mbId,
-          reason: '주문번호가 없습니다.',
-        );
-        if (!mounted) return;
+        if (!silent) {
+          await FailureLog.record(
+            code: 'payment.complete.load',
+            mbId: mbId,
+            reason: '주문번호가 없습니다.',
+          );
+        }
+        if (!mounted || silent) return;
         setState(() {
           _order = null;
           _loadFailed = true;
@@ -100,13 +138,15 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
       );
 
       if (result['success'] != true || result['order'] is! OrderDetailModel) {
-        await FailureLog.record(
-          code: 'payment.complete.load',
-          mbId: mbId,
-          reason: (result['message'] ?? '주문 정보를 불러오지 못했습니다.').toString(),
-          detail: {'orderId': orderId},
-        );
-        if (!mounted) return;
+        if (!silent) {
+          await FailureLog.record(
+            code: 'payment.complete.load',
+            mbId: mbId,
+            reason: (result['message'] ?? '주문 정보를 불러오지 못했습니다.').toString(),
+            detail: {'orderId': orderId},
+          );
+        }
+        if (!mounted || silent) return;
         setState(() {
           _order = null;
           _loadFailed = true;
@@ -119,17 +159,26 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
       if (!mounted) return;
       setState(() {
         _order = order;
-        _deliveryMemo = (order.deliveryMessage ?? '').trim();
+        if (!silent) {
+          _deliveryMemo = (order.deliveryMessage ?? '').trim();
+        }
+        _loadFailed = false;
         _loading = false;
       });
+      if (wasWaiting && !_isAwaitingDeposit(order)) {
+        unawaited(delivery.OrderService.refreshOrderListAfterDeposit(mbId));
+      }
+      _syncDepositWatch(order);
     } catch (e) {
-      await FailureLog.record(
-        code: 'payment.complete.error',
-        mbId: mbId,
-        reason: e.toString(),
-        detail: {'orderId': widget.orderId},
-      );
-      if (!mounted) return;
+      if (!silent) {
+        await FailureLog.record(
+          code: 'payment.complete.error',
+          mbId: mbId,
+          reason: e.toString(),
+          detail: {'orderId': widget.orderId},
+        );
+      }
+      if (!mounted || silent) return;
       setState(() {
         _order = null;
         _loadFailed = true;
@@ -398,7 +447,10 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
     final awaiting = _isAwaitingDeposit(order);
     final hPad = healthDp(context, 27);
 
-    return SingleChildScrollView(
+    final scroll = SingleChildScrollView(
+      physics: awaiting
+          ? const AlwaysScrollableScrollPhysics()
+          : const ClampingScrollPhysics(),
       padding: EdgeInsets.only(bottom: healthDp(context, 20)),
       child: Center(
         child: ConstrainedBox(
@@ -434,6 +486,12 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
           ),
         ),
       ),
+    );
+    if (!awaiting) return scroll;
+    return RefreshIndicator(
+      color: _pink,
+      onRefresh: () => _loadOrder(silent: true),
+      child: scroll,
     );
   }
 

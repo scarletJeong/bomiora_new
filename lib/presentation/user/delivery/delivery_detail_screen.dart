@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -64,6 +65,9 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
   String _deliveryMemo = '';
   List<String> _reviewedItIds = const [];
   bool _reviewStatusKnown = false;
+  Timer? _depositWatch;
+  Future<void>? _detailLoad;
+  static const Duration _depositPollInterval = Duration(seconds: 15);
 
   static const Color _kInk = Color(0xFF1A1A1A);
 
@@ -85,16 +89,51 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
       _orderDetail = preview;
       _deliveryMemo = (preview.deliveryMessage ?? '').trim();
       _isLoading = false;
+      if (_isPaymentWaitingStage(preview)) {
+        _syncDepositWatch();
+      }
     }
     _loadOrderDetail();
   }
 
-  Future<void> _loadOrderDetail() async {
+  @override
+  void dispose() {
+    _depositWatch?.cancel();
+    super.dispose();
+  }
+
+  void _syncDepositWatch() {
+    final order = _orderDetail;
+    final waiting = order != null && _isPaymentWaitingStage(order);
+    if (!waiting) {
+      _depositWatch?.cancel();
+      _depositWatch = null;
+      return;
+    }
+    _depositWatch ??= Timer.periodic(_depositPollInterval, (_) {
+      if (!mounted) return;
+      unawaited(_loadOrderDetail(silent: true));
+    });
+  }
+
+  Future<void> _loadOrderDetail({bool silent = false}) {
+    final pending = _detailLoad;
+    if (pending != null) return pending;
+    final run = _loadOrderDetailBody(silent: silent);
+    _detailLoad = run;
+    return run.whenComplete(() {
+      if (identical(_detailLoad, run)) _detailLoad = null;
+    });
+  }
+
+  Future<void> _loadOrderDetailBody({required bool silent}) async {
     final odId = widget.orderNumber.trim();
     if (odId.isEmpty) return;
 
+    final wasWaiting =
+        _orderDetail != null && _isPaymentWaitingStage(_orderDetail!);
     final hasPreview = _orderDetail != null;
-    if (!hasPreview) {
+    if (!hasPreview && !silent) {
       setState(() {
         _isLoading = true;
         _requiresLogin = false;
@@ -104,11 +143,12 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
     try {
       final user = await AuthService.getUser();
       if (user == null) {
-        if (!mounted) return;
+        if (!mounted || silent) return;
         setState(() {
           _requiresLogin = true;
           _isLoading = false;
         });
+        _syncDepositWatch();
         return;
       }
 
@@ -123,9 +163,15 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
         setState(() {
           _requiresLogin = false;
           _orderDetail = order;
-          _deliveryMemo = (order.deliveryMessage ?? '').trim();
+          if (!silent) {
+            _deliveryMemo = (order.deliveryMessage ?? '').trim();
+          }
           _isLoading = false;
         });
+        if (wasWaiting && !_isPaymentWaitingStage(order)) {
+          unawaited(OrderService.refreshOrderListAfterDeposit(user.id));
+        }
+        _syncDepositWatch();
         if (_isCompletedStage(order)) {
           _loadReviewedItIds(user.id, order.odId);
         }
@@ -139,11 +185,13 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
         }
         return;
       }
+      if (silent) return;
       await _handleDetailLoadFailure(
         mbId: user.id,
         reason: result['message']?.toString() ?? '주문 상세 조회에 실패했습니다.',
       );
     } catch (e) {
+      if (silent) return;
       await _handleDetailLoadFailure(
         mbId: AuthService.currentUser?.id ?? '',
         reason: e.toString(),
@@ -168,6 +216,7 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
       _requiresLogin = false;
       _isLoading = false;
     });
+    _syncDepositWatch();
     if (hasPreview) {
       AppToastOverlay.showAlert(context, '주문 내역을 불러오지 못했습니다.');
     }
@@ -388,7 +437,10 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
 
     final gap = SizedBox(height: healthDp(context, 20));
 
-    return SingleChildScrollView(
+    final scroll = SingleChildScrollView(
+      physics: awaiting
+          ? const AlwaysScrollableScrollPhysics()
+          : const ClampingScrollPhysics(),
       child: Container(
         width: double.infinity,
         padding: EdgeInsets.only(
@@ -594,6 +646,12 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
             ],
           ),
         ),
+    );
+    if (!awaiting) return scroll;
+    return RefreshIndicator(
+      color: const Color(0xFFFF5A8D),
+      onRefresh: () => _loadOrderDetail(silent: true),
+      child: scroll,
     );
   }
 
