@@ -267,7 +267,10 @@ class _HomeScreenState extends State<HomeScreen> {
       _newFailed = false;
       _newProducts = const [];
     });
-    _newProductsFuture = ProductRepository.getNewProducts(limit: _kNewLimit);
+    _newProductsFuture = ProductRepository.getNewProducts(
+      limit: _kNewLimit,
+      forceRefresh: true,
+    );
     await _loadNewProducts();
   }
 
@@ -337,7 +340,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final homeReady = Future.wait<void>([
       if (banners != null) banners,
       if (products != null) products,
-    ]).then((_) {});
+    ]).then((_) {}, onError: (Object _, StackTrace __) {});
     homeReady.then((_) => CommunityPrefetch.afterHomeContent());
     await Future.any<void>([
       homeReady,
@@ -654,8 +657,11 @@ class _HomeScreenState extends State<HomeScreen> {
       _mdPickProducts = const [];
       _productsByCategory.clear();
       _categoryProductFailed.clear();
-      _bannersFuture = BannerService.fetchMobileBanners();
-      _newProductsFuture = ProductRepository.getNewProducts(limit: _kNewLimit);
+      _bannersFuture = BannerService.fetchMobileBanners(forceRefresh: true);
+      _newProductsFuture = ProductRepository.getNewProducts(
+        limit: _kNewLimit,
+        forceRefresh: true,
+      );
       _imagesSettledNotified = false;
       _pendingImages = 0;
       _settledImages = 0;

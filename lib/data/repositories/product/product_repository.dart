@@ -221,16 +221,27 @@ class ProductRepository {
   }
 
   /// 신상품 — API가 display section=new 순서를 그대로 준다. [limit]개
-  static Future<List<Product>> getNewProducts({int limit = 4}) async {
+  static Future<List<Product>> getNewProducts({
+    int limit = 4,
+    bool forceRefresh = false,
+  }) async {
     final cacheKey = 'new|$limit';
+    if (forceRefresh) {
+      _listCache.remove(cacheKey);
+    }
     final hit = _listCache[cacheKey];
-    if (hit != null && DateTime.now().isBefore(hit.expiresAt)) {
+    if (!forceRefresh &&
+        hit != null &&
+        DateTime.now().isBefore(hit.expiresAt)) {
       return hit.products;
     }
-    final pending = _listInFlight[cacheKey];
-    if (pending != null) return pending;
+    if (!forceRefresh) {
+      final pending = _listInFlight[cacheKey];
+      if (pending != null) return pending;
+    }
 
-    final Future<List<Product>> future = () async {
+    late final Future<List<Product>> future;
+    future = () async {
       try {
         final response = await ApiClient.get(
           '${ApiEndpoints.newProducts}?limit=$limit',
@@ -238,6 +249,9 @@ class ProductRepository {
 
         if (response.statusCode == 200) {
           final data = json.decode(response.body);
+          if (data is Map && data['success'] == false) {
+            throw StateError('신상품을 불러오지 못했습니다.');
+          }
           var list = _parseProductList(data);
 
           if (limit > 0 && list.length > limit) {
@@ -250,11 +264,11 @@ class ProductRepository {
           return list;
         }
 
-        return hit?.products ?? <Product>[];
-      } catch (e) {
-        return hit?.products ?? <Product>[];
+        throw StateError('신상품을 불러오지 못했습니다. (${response.statusCode})');
       } finally {
-        _listInFlight.remove(cacheKey);
+        if (identical(_listInFlight[cacheKey], future)) {
+          _listInFlight.remove(cacheKey);
+        }
       }
     }();
     _listInFlight[cacheKey] = future;
