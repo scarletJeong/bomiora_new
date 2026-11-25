@@ -46,6 +46,22 @@ class OrderService {
     return int.tryParse('$value'.trim()) ?? 0;
   }
 
+  /// 입금 전 주문이 들어 있으면 2분 캐시를 쓰지 않는다.
+  /// 입금 통보 뒤에는 다음 목록 조회가 바뀐 상태를 받는다.
+  static bool _listStillAwaitingDeposit(Map<String, dynamic> cached) {
+    final orders = cached['orders'];
+    if (orders is! List) return false;
+    for (final order in orders) {
+      if (order is! OrderListModel) continue;
+      if (order.awaitingDeposit == true ||
+          order.displayStatus == '결제대기중' ||
+          order.odStatus == '주문') {
+        return true;
+      }
+    }
+    return false;
+  }
+
   static void invalidateOrderList([String? mbId]) {
     _listEpoch++;
     if (mbId == null || mbId.trim().isEmpty) {
@@ -99,9 +115,12 @@ class OrderService {
         '${mbId.trim()}:$period:$status:$page:$size:${lite ? 'lite' : 'full'}:${countsOnly ? 'counts' : 'list'}';
     if (!forceRefresh) {
       final cachedAt = _listCacheAt[cacheKey];
+      final cached = _listCache[cacheKey];
       if (cachedAt != null &&
-          DateTime.now().difference(cachedAt) < _listCacheTtl) {
-        return Map<String, dynamic>.from(_listCache[cacheKey]!);
+          cached != null &&
+          DateTime.now().difference(cachedAt) < _listCacheTtl &&
+          !_listStillAwaitingDeposit(cached)) {
+        return Map<String, dynamic>.from(cached);
       }
       final pending = _listInFlight[cacheKey];
       if (pending != null) return pending;

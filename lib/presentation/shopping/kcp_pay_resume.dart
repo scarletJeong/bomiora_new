@@ -6,6 +6,8 @@ import '../../core/logging/failure_log.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_endpoints.dart';
 import '../../core/utils/kcp_pay_session_store.dart';
+import '../../data/services/auth_service.dart';
+import '../../data/services/delivery_service.dart';
 import '../common/widgets/app_alert_dialog.dart';
 import 'utils/cart_navigation.dart';
 
@@ -183,6 +185,12 @@ class KcpPayResume {
 
   static Future<void> _openComplete(BuildContext context, String orderId) async {
     await clearKcpPayToken();
+    try {
+      final user = await AuthService.getUser();
+      OrderService.invalidateOrderList(user?.id);
+    } catch (_) {
+      OrderService.invalidateOrderList();
+    }
     if (!context.mounted) return;
     Navigator.of(context).pushNamedAndRemoveUntil(
       '/payment-complete',
