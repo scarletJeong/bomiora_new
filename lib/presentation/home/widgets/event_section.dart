@@ -23,7 +23,16 @@ class EventSection extends StatefulWidget {
 class _EventSectionState extends State<EventSection> {
   late final Future<({List<EventModel> items, bool failed})> _future = _load();
 
+  /// 홈은 공간이 좁아 시작~종료 전체가 아니라 최대(종료) 기간만 `~ yyyy-MM-dd`로 표시.
   String _eventDateText(EventModel item) {
+    final end = DateDisplayFormatter.tryParseYmdFlexible(item.wr2);
+    if (end != null) {
+      return '~ ${DateDisplayFormatter.formatYmdDash(end)}';
+    }
+    final start = DateDisplayFormatter.tryParseYmdFlexible(item.wr1);
+    if (start != null) {
+      return '${DateDisplayFormatter.formatYmdDash(start)} ~';
+    }
     final created = DateDisplayFormatter.tryParseYmdFlexible(item.wrDatetime);
     if (created != null) {
       return DateDisplayFormatter.formatYmdDash(created);
