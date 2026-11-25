@@ -252,6 +252,9 @@ class ProductRepository {
           if (data is Map && data['success'] == false) {
             throw StateError('신상품을 불러오지 못했습니다.');
           }
+          if (data is! Map && data is! List) {
+            throw StateError('신상품을 불러오지 못했습니다.');
+          }
           var list = _parseProductList(data);
 
           if (limit > 0 && list.length > limit) {
@@ -279,24 +282,27 @@ class ProductRepository {
   static Future<List<Product>> getMdPickProducts({
     int limit = 4,
   }) async {
-    try {
-      final response = await ApiClient.get(
-        '${ApiEndpoints.mdPickProducts}?limit=$limit',
-      );
+    final response = await ApiClient.get(
+      '${ApiEndpoints.mdPickProducts}?limit=$limit',
+    );
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        var list = _parseProductList(data);
-        if (limit > 0 && list.length > limit) {
-          list = list.take(limit).toList();
-        }
-        return list;
-      }
-
-      return [];
-    } catch (e) {
-      return [];
+    if (response.statusCode != 200) {
+      throw StateError('상품을 불러오지 못했습니다. (${response.statusCode})');
     }
+
+    final data = json.decode(response.body);
+    if (data is Map && data['success'] == false) {
+      throw StateError('상품을 불러오지 못했습니다.');
+    }
+    if (data is! Map && data is! List) {
+      throw StateError('상품을 불러오지 못했습니다.');
+    }
+
+    var list = _parseProductList(data);
+    if (limit > 0 && list.length > limit) {
+      list = list.take(limit).toList();
+    }
+    return list;
   }
 
   /// 웹 get_categories_with_products — 판매 중 상품이 있는 1단계 카테고리
