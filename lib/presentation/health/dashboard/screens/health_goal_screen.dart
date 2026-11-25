@@ -451,8 +451,9 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
       children: [
         Text(
           '하루 걸음 수',
+          textScaler: TextScaler.noScaling,
           style: TextStyle(
-            color: Colors.black,
+            color: const Color(0xFF1A1A1A),
             fontSize: healthSp(context, 16),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w700,
