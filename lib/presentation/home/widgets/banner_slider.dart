@@ -256,7 +256,11 @@ class _BannerSliderState extends State<BannerSlider> {
     }
   }
 
-  Widget _buildFallbackPage(BuildContext context, double bannerH) {
+  Widget _buildNoticePage(
+    BuildContext context,
+    double bannerH,
+    String message,
+  ) {
     return ColoredBox(
       color: const Color(0xFFF6F6F6),
       child: SizedBox(
@@ -264,7 +268,7 @@ class _BannerSliderState extends State<BannerSlider> {
         height: bannerH,
         child: Center(
           child: Text(
-            '이미지가 로드되지 않았습니다',
+            message,
             textAlign: TextAlign.center,
             style: TextStyle(
               color: const Color(0xFF898686),
@@ -276,6 +280,10 @@ class _BannerSliderState extends State<BannerSlider> {
         ),
       ),
     );
+  }
+
+  Widget _buildFallbackPage(BuildContext context, double bannerH) {
+    return _buildNoticePage(context, bannerH, '이미지가 로드되지 않았습니다');
   }
 
   Widget _buildImagePage(
@@ -321,6 +329,26 @@ class _BannerSliderState extends State<BannerSlider> {
     return FutureBuilder<List<BannerModel>>(
       future: _bannersFuture,
       builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting &&
+            !snapshot.hasData) {
+          return Container(
+            height: bannerH,
+            width: double.infinity,
+            color: const Color(0xFFF6F6F6),
+          );
+        }
+
+        if (snapshot.hasError) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _notifyPrimarySettled();
+          });
+          return _buildNoticePage(
+            context,
+            bannerH,
+            '배너를 불러오지 못했습니다.',
+          );
+        }
+
         final banners = _visibleBanners(
           snapshot.data ?? const <BannerModel>[],
         );
@@ -377,7 +405,11 @@ class _BannerSliderState extends State<BannerSlider> {
                   itemCount: pageCount,
                   itemBuilder: (context, index) {
                     if (banners.isEmpty) {
-                      return _buildFallbackPage(context, bannerH);
+                      return _buildNoticePage(
+                        context,
+                        bannerH,
+                        '등록된 배너가 없습니다.',
+                      );
                     }
                     return _buildImagePage(
                       context,

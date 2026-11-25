@@ -19,19 +19,28 @@ class BannerService {
     required String placement,
     String? productKind,
     String platform = 'mobile',
+    bool forceRefresh = false,
   }) async {
     final kind = placement == 'list'
         ? _normalizeProductKind(productKind)
         : '';
     final cacheKey = '$platform|$placement|$kind';
+    if (forceRefresh) {
+      _cache.remove(cacheKey);
+    }
     final hit = _cache[cacheKey];
-    if (hit != null && DateTime.now().isBefore(hit.expiresAt)) {
+    if (!forceRefresh &&
+        hit != null &&
+        DateTime.now().isBefore(hit.expiresAt)) {
       return hit.banners;
     }
-    final pending = _inFlight[cacheKey];
-    if (pending != null) return pending;
+    if (!forceRefresh) {
+      final pending = _inFlight[cacheKey];
+      if (pending != null) return pending;
+    }
 
-    final future = () async {
+    late final Future<List<BannerModel>> future;
+    future = () async {
       try {
         final query = <String, String>{
           'platform': platform,
@@ -45,14 +54,19 @@ class BannerService {
           queryParameters: query,
         );
         final response = await ApiClient.get(uri.toString());
-        if (response.statusCode != 200) return const <BannerModel>[];
+        if (response.statusCode != 200) {
+          throw StateError('배너를 불러오지 못했습니다. (${response.statusCode})');
+        }
 
         final decoded = json.decode(response.body);
-        if (decoded is! Map<String, dynamic>) return const <BannerModel>[];
-        if (decoded['success'] != true) return const <BannerModel>[];
+        if (decoded is! Map<String, dynamic> || decoded['success'] != true) {
+          throw StateError('배너를 불러오지 못했습니다.');
+        }
 
         final raw = decoded['data'];
-        if (raw is! List) return const <BannerModel>[];
+        if (raw is! List) {
+          throw StateError('배너를 불러오지 못했습니다.');
+        }
 
         final banners = raw
             .whereType<Map<String, dynamic>>()
@@ -65,18 +79,20 @@ class BannerService {
           expiresAt: DateTime.now().add(_cacheTtl),
         );
         return banners;
-      } catch (_) {
-        return hit?.banners ?? const <BannerModel>[];
       } finally {
-        _inFlight.remove(cacheKey);
+        if (identical(_inFlight[cacheKey], future)) {
+          _inFlight.remove(cacheKey);
+        }
       }
     }();
     _inFlight[cacheKey] = future;
     return future;
   }
 
-  static Future<List<BannerModel>> fetchMobileBanners() {
-    return fetchBanners(placement: 'main');
+  static Future<List<BannerModel>> fetchMobileBanners({
+    bool forceRefresh = false,
+  }) {
+    return fetchBanners(placement: 'main', forceRefresh: forceRefresh);
   }
 
   static Future<List<BannerModel>> fetchListBanners({
