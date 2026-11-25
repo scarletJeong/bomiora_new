@@ -183,6 +183,7 @@ class _HealthConnectScreenState extends State<HealthConnectScreen> {
                   children: [
                     Text(
                       _guideText,
+                      textScaler: TextScaler.noScaling,
                       style: TextStyle(
                         color: Color(0xFF1A1A1A),
                         fontSize: healthSp(context, 14),
@@ -241,8 +242,9 @@ class _HealthConnectScreenState extends State<HealthConnectScreen> {
                       child: Text(
                         '건강 앱 연동은 모바일 앱에서만\n이용할 수 있습니다',
                         textAlign: TextAlign.center,
+                        textScaler: TextScaler.noScaling,
                         style: TextStyle(
-                          color: Color(0xFF1A1A1E),
+                          color: Color(0xFF1A1A1A),
                           fontSize: healthSp(context, 16),
                           fontFamily: 'Gmarket Sans TTF',
                           fontWeight: FontWeight.w500,
@@ -320,11 +322,13 @@ class _HealthConnectScreenState extends State<HealthConnectScreen> {
               children: [
                 Text(
                   '웹에서는 건강 앱과 직접 연동할 수 없습니다.',
+                  textScaler: TextScaler.noScaling,
                   style: infoStyle,
                 ),
                 SizedBox(height: healthDp(context, 6)),
                 Text(
                   '스마트폰에서 보미오라 앱을 설치한 뒤 연동해주세요.',
+                  textScaler: TextScaler.noScaling,
                   style: infoStyle,
                 ),
               ],
@@ -348,6 +352,7 @@ class _HealthConnectScreenState extends State<HealthConnectScreen> {
         ),
         child: Text(
           '앱스토어로 이동',
+          textScaler: TextScaler.noScaling,
           style: TextStyle(
             color: Color(0xFFFF5A8D),
             fontSize: healthSp(context, 16),
@@ -394,6 +399,7 @@ class _HealthConnectScreenState extends State<HealthConnectScreen> {
           _isSyncing
               ? '연동 중…'
               : (_isConnected ? '해제하기' : '연동하기'),
+          textScaler: TextScaler.noScaling,
           style: TextStyle(
             color: Colors.white,
             fontSize: healthSp(context, 16),
@@ -419,6 +425,7 @@ class _HealthConnectScreenState extends State<HealthConnectScreen> {
         Text(
           _isConnected ? '$_providerLabel · 연동됨' : _providerLabel,
           textAlign: TextAlign.center,
+          textScaler: TextScaler.noScaling,
           style: TextStyle(
             color: const Color(0xFF898686),
             fontSize: healthSp(context, 12),
@@ -445,6 +452,7 @@ class _HealthConnectScreenState extends State<HealthConnectScreen> {
       ),
       child: Text(
         message,
+        textScaler: TextScaler.noScaling,
         style: TextStyle(
           fontSize: healthSp(context, 12),
           color: const Color(0xFF898686),
@@ -480,10 +488,12 @@ class _HealthConnectScreenState extends State<HealthConnectScreen> {
         children: [
           Text(
             _savedToServer ? '오늘 기록에 저장됨' : '동기화 미리보기 (오늘)',
+            textScaler: TextScaler.noScaling,
             style: TextStyle(
               fontSize: healthSp(context, 13),
               fontFamily: 'Gmarket Sans TTF',
               fontWeight: FontWeight.w700,
+              color: Color(0xFF1A1A1A),
             ),
           ),
           const SizedBox(height: 10),
@@ -577,11 +587,12 @@ class _HealthConnectScreenState extends State<HealthConnectScreen> {
       padding: const EdgeInsets.only(top: 8, bottom: 4),
       child: Text(
         title,
+        textScaler: TextScaler.noScaling,
         style: TextStyle(
           fontSize: healthSp(context, 12),
           fontFamily: 'Gmarket Sans TTF',
           fontWeight: FontWeight.w700,
-          color: Color(0xFF333333),
+          color: Color(0xFF1A1A1A),
         ),
       ),
     );
@@ -592,6 +603,7 @@ class _HealthConnectScreenState extends State<HealthConnectScreen> {
       padding: const EdgeInsets.only(bottom: 2),
       child: Text(
         '$label: $value',
+        textScaler: TextScaler.noScaling,
         style: TextStyle(
           fontSize: healthSp(context, 12),
           color: Color(0xFF555555),
@@ -605,6 +617,7 @@ class _HealthConnectScreenState extends State<HealthConnectScreen> {
       padding: const EdgeInsets.only(bottom: 2),
       child: Text(
         text,
+        textScaler: TextScaler.noScaling,
         style: TextStyle(
           fontSize: healthSp(context, 11),
           color: Color(0xFF999999),
