@@ -14,14 +14,15 @@ class OrderService {
   static final Map<String, Future<Map<String, dynamic>>> _listInFlight = {};
   static int _listEpoch = 0;
 
-  /// 주문내역 화면과 동일한 목록 (캐시 공유)
-  static Future<Map<String, dynamic>> prefetchOrderList(String mbId) {
+  /// 마이페이지 주문 숫자. 목록 없이 상태별 건수만 받는다.
+  static Future<Map<String, dynamic>> getOrderStatusCounts(String mbId) {
     return getOrderList(
       mbId: mbId,
       period: 0,
       status: 'all',
       page: 0,
-      size: 80,
+      size: 1,
+      countsOnly: true,
     );
   }
 
@@ -91,9 +92,11 @@ class OrderService {
     int page = 0,
     int size = 10,
     bool lite = false,
+    bool countsOnly = false,
     bool forceRefresh = false,
   }) async {
-    final cacheKey = '${mbId.trim()}:$period:$status:$page:$size:${lite ? 'lite' : 'full'}';
+    final cacheKey =
+        '${mbId.trim()}:$period:$status:$page:$size:${lite ? 'lite' : 'full'}:${countsOnly ? 'counts' : 'list'}';
     if (!forceRefresh) {
       final cachedAt = _listCacheAt[cacheKey];
       if (cachedAt != null &&
@@ -112,6 +115,7 @@ class OrderService {
       page: page,
       size: size,
       lite: lite,
+      countsOnly: countsOnly,
     );
     if (!forceRefresh) {
       _listInFlight[cacheKey] = request;
@@ -137,12 +141,13 @@ class OrderService {
     required int page,
     required int size,
     bool lite = false,
+    bool countsOnly = false,
   }) async {
     try {
 
       // 쿼리 파라미터를 URL에 직접 추가
       final queryString =
-          'mbId=$mbId&mb_id=$mbId&period=$period&status=$status&page=$page&size=$size${lite ? '&lite=1' : ''}';
+          'mbId=$mbId&mb_id=$mbId&period=$period&status=$status&page=$page&size=$size${lite ? '&lite=1' : ''}${countsOnly ? '&countsOnly=1' : ''}';
       
       final response = await _getOrderListResponse(queryString);
 

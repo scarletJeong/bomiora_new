@@ -57,7 +57,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
     if (u == null) return;
     setState(() => _orderLoading = true);
     try {
-      final result = await OrderService.prefetchOrderList(u.id);
+      final result = await OrderService.getOrderStatusCounts(u.id);
       if (!mounted || _currentUser?.id != u.id) return;
       final ok = result['success'] == true;
       setState(() {
