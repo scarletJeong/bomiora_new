@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_html/flutter_html.dart';
 import '../../../../core/constants/app_assets.dart';
 import '../../../../core/logging/failure_log.dart';
 import '../../../../core/utils/date_formatter.dart';
+import '../../../../core/utils/image_url_helper.dart';
 import '../../../../data/models/event/event_model.dart';
 import '../../../../data/services/auth_service.dart';
+import '../../../../data/services/content_service.dart';
 import '../../../../data/services/event_service.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
 import '../../../common/navigation/board_list_navigation.dart';
@@ -133,8 +136,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       );
     }
 
-    final imageUrl = _event!.getImageUrl();
-    final plainText = _event!.getPlainText();
+    final event = _event!;
+    final linkImage = (event.wrLink1 ?? '').trim();
+    final imageUrl = linkImage.isEmpty ? null : event.getImageUrl();
     final prevEvent = _getPrevEvent();
     final nextEvent = _getNextEvent();
 
@@ -182,8 +186,10 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   borderRadius: BorderRadius.circular(healthDp(context, 10)),
                   child: AppNetworkImage(
                     url: imageUrl,
+                    width: double.infinity,
                     fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) => Container(
+                      width: double.infinity,
                       height: healthDp(context, 240),
                       color: const Color(0xFFF4F4F4),
                       alignment: Alignment.center,
@@ -196,18 +202,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   ),
                 ),
               if (imageUrl != null) SizedBox(height: healthDp(context, 24)),
-              if (plainText.isNotEmpty)
-                Text(
-                  plainText,
-                  style: TextStyle(
-                    color: const Color(0xFF1A1A1A),
-                    fontSize: healthSp(context, 14),
-                    fontFamily: _font,
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: healthSp(context, -0.56),
-                    height: 1.5,
-                  ),
-                ),
+              _buildEventBody(context, _bodyHtml(event)),
               SizedBox(height: healthDp(context, 30)),
               Text(
                 '이벤트 기간',
@@ -289,6 +284,127 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  /// 대표 이미지와 같은 본문 이미지는 한 번만 보여 준다.
+  String _bodyHtml(EventModel event) {
+    final hero = (event.wrLink1 ?? '').trim();
+    if (hero.isEmpty) return event.wrContent;
+    final heroPath = Uri.tryParse(hero)?.path ?? hero;
+    return event.wrContent.replaceAllMapped(
+      RegExp(r'<img\b[^>]*>', caseSensitive: false),
+      (match) {
+        final tag = match.group(0) ?? '';
+        final src = RegExp(
+          '''src\\s*=\\s*["']([^"']+)["']''',
+          caseSensitive: false,
+        ).firstMatch(tag)?.group(1)?.trim();
+        if (src == null || src.isEmpty) return tag;
+        final srcPath = Uri.tryParse(src)?.path ?? src;
+        if (src == hero || srcPath == heroPath || src.endsWith(heroPath)) {
+          return '';
+        }
+        return tag;
+      },
+    );
+  }
+
+  Widget _buildEventBody(BuildContext context, String rawHtml) {
+    final processed = ContentService.prepareContentHtmlForRender(rawHtml);
+    if (processed.trim().isEmpty) {
+      final plain = ContentService.normalizeHtmlToText(rawHtml);
+      if (plain.isEmpty) return const SizedBox.shrink();
+      return Text(
+        plain,
+        style: TextStyle(
+          color: const Color(0xFF1A1A1A),
+          fontSize: healthSp(context, 14),
+          fontFamily: _font,
+          fontWeight: FontWeight.w300,
+          height: 1.7,
+        ),
+      );
+    }
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxWidth = constraints.maxWidth.isFinite
+            ? constraints.maxWidth
+            : MediaQuery.sizeOf(context).width - healthDp(context, 40);
+        return Html(
+          data: processed,
+          extensions: [
+            TagExtension(
+              tagsToExtend: const {'img'},
+              builder: (extensionContext) {
+                final rawSrc = (extensionContext.attributes['src'] ?? '')
+                    .trim()
+                    .replaceAll('&amp;', '&');
+                if (rawSrc.isEmpty) return const SizedBox.shrink();
+                final url = ImageUrlHelper.toWebSafeImageUrl(rawSrc);
+                return Padding(
+                  padding: EdgeInsets.only(bottom: healthDp(context, 8)),
+                  child: AppNetworkImage(
+                    url: url,
+                    width: maxWidth,
+                    fit: BoxFit.fitWidth,
+                    alignment: Alignment.topCenter,
+                    decodeWidthLogical: maxWidth,
+                    errorBuilder: (_, __, ___) => Container(
+                      width: maxWidth,
+                      height: healthDp(context, 180),
+                      alignment: Alignment.center,
+                      color: const Color(0xFFF6F6F6),
+                      child: Icon(
+                        Icons.broken_image_outlined,
+                        color: const Color(0xFF898686),
+                        size: healthDp(context, 32),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+          style: {
+            'html': Style(
+              margin: Margins.zero,
+              padding: HtmlPaddings.zero,
+              whiteSpace: WhiteSpace.pre,
+            ),
+            'body': Style(
+              margin: Margins.zero,
+              padding: HtmlPaddings.zero,
+              fontFamily: _font,
+              fontSize: FontSize(healthSp(context, 14)),
+              fontWeight: FontWeight.w300,
+              lineHeight: const LineHeight(1.7),
+              textAlign: TextAlign.start,
+              color: const Color(0xFF1A1A1A),
+              whiteSpace: WhiteSpace.pre,
+            ),
+            'p': Style(
+              margin: Margins.only(bottom: healthDp(context, 8)),
+              padding: HtmlPaddings.zero,
+              whiteSpace: WhiteSpace.pre,
+            ),
+            'img': Style(
+              width: Width(maxWidth),
+              display: Display.block,
+              margin: Margins.symmetric(vertical: healthDp(context, 8)),
+            ),
+            'div': Style(
+              margin: Margins.zero,
+              padding: HtmlPaddings.zero,
+              whiteSpace: WhiteSpace.pre,
+            ),
+            'span': Style(
+              fontFamily: _font,
+              whiteSpace: WhiteSpace.pre,
+            ),
+          },
+        );
+      },
     );
   }
 
