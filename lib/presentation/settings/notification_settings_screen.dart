@@ -126,7 +126,16 @@ class _NotificationSettingsScreenState
       }
       try {
         await FCMService().syncTopicsFromSettings();
-      } catch (_) {}
+      } catch (e) {
+        if (!mounted) return;
+        AppToastOverlay.showAlert(context, '알림 수신 반영에 실패했습니다.');
+        final loggedIn = await AuthService.getUser();
+        await FailureLog.record(
+          code: 'notification.settings.topic',
+          mbId: loggedIn?.id ?? '',
+          reason: e.toString(),
+        );
+      }
     });
     return _saveChain;
   }

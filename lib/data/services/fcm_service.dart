@@ -75,23 +75,27 @@ class FCMService {
     await NotificationService.registerFcmToken(token);
   }
 
-  Future<void> syncTopicsFromSettings() => _syncTopicsFromSettings();
+  Future<void> syncTopicsFromSettings() => _applyTopicsFromSettings();
 
   Future<void> _syncTopicsFromSettings() async {
     try {
-      final settings = await NotificationService.loadSettings();
-      if (settings.orderAgree) {
-        await subscribeToTopic('orders');
-      } else {
-        await unsubscribeFromTopic('orders');
-      }
-      // 마케팅 토픽은 마케팅 수신 동의만으로 구독. 야간(app_push)은 발송 시각 제어용.
-      if (settings.marketingAgree) {
-        await subscribeToTopic('marketing');
-      } else {
-        await unsubscribeFromTopic('marketing');
-      }
+      await _applyTopicsFromSettings();
     } catch (_) {}
+  }
+
+  Future<void> _applyTopicsFromSettings() async {
+    final settings = await NotificationService.loadSettings();
+    if (settings.orderAgree) {
+      await _firebaseMessaging.subscribeToTopic('orders');
+    } else {
+      await _firebaseMessaging.unsubscribeFromTopic('orders');
+    }
+    // 마케팅 토픽은 마케팅 수신 동의만으로 구독. 야간(app_push)은 발송 시각 제어용.
+    if (settings.marketingAgree) {
+      await _firebaseMessaging.subscribeToTopic('marketing');
+    } else {
+      await _firebaseMessaging.unsubscribeFromTopic('marketing');
+    }
   }
 
   Future<String?> _getToken() async {
