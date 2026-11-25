@@ -441,7 +441,7 @@ Widget _buildRecordCard(
                 ),
                 HealthStatusLabel(
                   label: statusText,
-                  fontSize: healthSp(context, 10),
+                  fontSize: 10,
                   chipBorderRadius: healthDp(context, 16),
                   chipPadding: EdgeInsets.symmetric(
                     horizontal: healthDp(context, 8),

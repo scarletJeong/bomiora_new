@@ -963,6 +963,7 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
             padding: EdgeInsets.only(left: healthDp(context, 10)),
             child: Text(
               '최근 생리주기는 며칠인가요?',
+              textScaler: TextScaler.noScaling,
               style: TextStyle(
                 color: Colors.black,
                 fontSize: fontSize,
@@ -1049,6 +1050,7 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
         SizedBox(width: healthDp(context, 5)),
         Text(
           '일',
+          textScaler: TextScaler.noScaling,
           style: TextStyle(
             color: Colors.black,
             fontSize: fontSize,

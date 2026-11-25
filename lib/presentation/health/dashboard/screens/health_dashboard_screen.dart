@@ -794,6 +794,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
                   children: [
                     Text(
                       '안녕하세요',
+                      textScaler: TextScaler.noScaling,
                       style: TextStyle(
                         color: Colors.white,
                         fontFamily: 'Gmarket Sans TTF',
@@ -804,6 +805,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
                     ),
                     Text(
                       '${currentUser?.name ?? '-'}님 !',
+                      textScaler: TextScaler.noScaling,
                       style: TextStyle(
                         color: Colors.white,
                         fontFamily: 'Gmarket Sans TTF',
@@ -854,11 +856,15 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(999)),
                 ),
-                child: Text('목표설정 >',
-                    style: TextStyle(
-                        fontSize: healthSp(context, 10),
-                        fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w300)),
+                child: Text(
+                  '목표설정 >',
+                  textScaler: TextScaler.noScaling,
+                  style: TextStyle(
+                    fontSize: healthSp(context, 10),
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w300,
+                  ),
+                ),
               ),
               const SizedBox(width: 8),
               ElevatedButton(
@@ -882,11 +888,15 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
                 ).copyWith(
                   elevation: const WidgetStatePropertyAll(0),
                 ),
-                child: Text('연동하기 >',
-                    style: TextStyle(
-                        fontSize: healthSp(context, 10),
-                        fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w300)),
+                child: Text(
+                  '연동하기 >',
+                  textScaler: TextScaler.noScaling,
+                  style: TextStyle(
+                    fontSize: healthSp(context, 10),
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w300,
+                  ),
+                ),
               ),
             ],
           ),
@@ -998,6 +1008,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
                             ),
                             child: Text(
                               diff > 0 ? '+${diff}kg' : '${diff}kg',
+                              textScaler: TextScaler.noScaling,
                               style: TextStyle(
                                 color: Color(0xFFFF5A8D),
                                 fontFamily: 'Gmarket Sans TTF',
@@ -1035,6 +1046,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
                             ? '${leftLabelWeight.toInt()}kg'
                             : '${leftLabelWeight.toStringAsFixed(1)}kg')
                         : '--- kg',
+                    textScaler: TextScaler.noScaling,
                     style: TextStyle(
                       color: Colors.white,
                       fontFamily: 'Gmarket Sans TTF',
@@ -1044,6 +1056,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
                   ),
                   Text(
                     rightLabel,
+                    textScaler: TextScaler.noScaling,
                     style: TextStyle(
                       color: Colors.white,
                       fontFamily: 'Gmarket Sans TTF',
@@ -1137,6 +1150,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
           children: [
             Text(
               title,
+              textScaler: TextScaler.noScaling,
               style: TextStyle(
                 fontSize: healthSp(context, 14),
                 fontFamily: 'Gmarket Sans TTF',
@@ -1146,6 +1160,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen>
             ),
             Text(
               value,
+              textScaler: TextScaler.noScaling,
               style: TextStyle(
                 fontSize: healthSp(context, 10),
                 fontFamily: 'Gmarket Sans TTF',

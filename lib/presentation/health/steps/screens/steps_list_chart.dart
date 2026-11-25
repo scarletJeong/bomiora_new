@@ -93,7 +93,7 @@ extension _StepsListChart on _StepsTodayScreenState {
                           softWrap: false,
                           style: TextStyle(
                             color: const Color(0xFF1A1A1A),
-                            fontSize: healthSp(context, 20),
+                            fontSize: 20,
                             fontFamily: 'Gmarket Sans TTF',
                             fontWeight: FontWeight.w300,
                           ),

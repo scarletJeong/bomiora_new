@@ -1283,6 +1283,7 @@ class _MealPhotoThumbnail extends StatelessWidget {
                     color: const Color(0xB2FF5A8D),
                     child: Text(
                       '대표사진',
+                      textScaler: TextScaler.noScaling,
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: healthSp(context, 10),
