@@ -601,7 +601,7 @@ class _CartScreenState extends State<CartScreen> {
 
       if (!mounted) return;
       if (paid == true) {
-        await _loadCart(showCachedData: false);
+        await _loadCart(showCachedData: false, forceRefresh: true);
       }
     } catch (_) {
       if (mounted) {

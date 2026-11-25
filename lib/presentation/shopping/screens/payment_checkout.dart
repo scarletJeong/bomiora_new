@@ -327,6 +327,7 @@ extension _PaymentCheckout on _PaymentScreenState {
         await _clearCheckoutAddressDraft();
         if (!mounted) return;
         OrderService.invalidateOrderList(user.id);
+        CartService.invalidateCartCache();
         PointService.invalidate(user.id);
         try {
           final paidUser = await AuthService.getUser();

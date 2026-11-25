@@ -7,6 +7,7 @@ import '../../core/network/api_client.dart';
 import '../../core/network/api_endpoints.dart';
 import '../../core/utils/kcp_pay_session_store.dart';
 import '../../data/services/auth_service.dart';
+import '../../data/services/cart_service.dart';
 import '../../data/services/delivery_service.dart';
 import '../common/widgets/app_alert_dialog.dart';
 import 'utils/cart_navigation.dart';
@@ -188,8 +189,10 @@ class KcpPayResume {
     try {
       final user = await AuthService.getUser();
       OrderService.invalidateOrderList(user?.id);
+      CartService.invalidateCartCache();
     } catch (_) {
       OrderService.invalidateOrderList();
+      CartService.invalidateCartCache();
     }
     if (!context.mounted) return;
     Navigator.of(context).pushNamedAndRemoveUntil(

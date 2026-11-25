@@ -38,7 +38,7 @@ class _CartIntegrationScreenState extends State<CartIntegrationScreen> {
   }
 
   Future<void> _loadTabCounts() async {
-    final result = await CartService.getCart();
+    final result = await CartService.getCart(forceRefresh: true);
     if (!mounted || result['success'] != true) return;
     final items = CartService.parseCartItems(result['data']);
     final prescription = _lineCount(items, prescription: true);

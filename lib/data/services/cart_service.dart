@@ -58,7 +58,7 @@ class CartService {
     if (ctIds.isEmpty) return;
 
     try {
-      final cart = await getCart();
+      final cart = await getCart(forceRefresh: true);
       if (cart['success'] != true) return;
 
       final raw = cart['data'];
@@ -587,9 +587,31 @@ class CartService {
   static DateTime? _cartCacheAt;
   static Future<Map<String, dynamic>>? _cartInFlight;
   static String? _cartInFlightKey;
+  static int _cartFetchSerial = 0;
   static const Duration _cartCacheTtl = Duration(seconds: 90);
 
   static void invalidateCartCache() {
+    _cartCache = null;
+    _cartCacheKey = null;
+    _cartCacheAt = null;
+    _cartFetchSerial++;
+    _cartInFlight = null;
+    _cartInFlightKey = null;
+  }
+
+  static void _storeCartCache(
+    int serial,
+    String cacheKey,
+    Map<String, dynamic> result,
+  ) {
+    if (serial != _cartFetchSerial) return;
+    _cartCache = result;
+    _cartCacheKey = cacheKey;
+    _cartCacheAt = DateTime.now();
+  }
+
+  static void _dropCartCache(int serial) {
+    if (serial != _cartFetchSerial) return;
     _cartCache = null;
     _cartCacheKey = null;
     _cartCacheAt = null;
@@ -619,17 +641,27 @@ class CartService {
         return Map<String, dynamic>.from(_cartCache!);
       }
 
-      if (_cartInFlight != null && _cartInFlightKey == cacheKey) {
+      if (!forceRefresh &&
+          _cartInFlight != null &&
+          _cartInFlightKey == cacheKey) {
         final inflight = await _cartInFlight!;
         return Map<String, dynamic>.from(inflight);
       }
 
-      final request =
-          _fetchCart(user.id, ctStatus, forceRefresh: forceRefresh);
+      final serial = ++_cartFetchSerial;
+      final request = _fetchCart(
+        user.id,
+        ctStatus,
+        forceRefresh: forceRefresh,
+        serial: serial,
+      );
       _cartInFlight = request;
       _cartInFlightKey = cacheKey;
       try {
         return await request;
+      } catch (e) {
+        _dropCartCache(serial);
+        rethrow;
       } finally {
         if (identical(_cartInFlight, request)) {
           _cartInFlight = null;
@@ -649,7 +681,9 @@ class CartService {
     String mbId,
     String ctStatus, {
     bool forceRefresh = false,
+    required int serial,
   }) async {
+    final cacheKey = '$mbId|$ctStatus';
     final response = await ApiClient.get(
       '${ApiEndpoints.getCart}?mb_id=$mbId&ct_status=${Uri.encodeComponent(ctStatus)}${forceRefresh ? '&refresh=1' : ''}',
     );
@@ -657,6 +691,7 @@ class CartService {
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
       if (data is Map && data['success'] == false) {
+        _dropCartCache(serial);
         return {
           'success': false,
           'message': (data['message'] ?? data['error'] ?? '장바구니 조회에 실패했습니다.')
@@ -671,12 +706,11 @@ class CartService {
         'shipping_cost': data['shipping_cost'] ?? 0,
         'total_price': data['total_price'] ?? 0,
       };
-      _cartCache = result;
-      _cartCacheKey = '$mbId|$ctStatus';
-      _cartCacheAt = DateTime.now();
+      _storeCartCache(serial, cacheKey, result);
       return result;
     }
 
+    _dropCartCache(serial);
     return {
       'success': false,
       'message': '장바구니 조회에 실패했습니다.',

@@ -2097,7 +2097,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     final cartIds = CartService.cartIdsFromAddOptionsResult(result);
     if (cartIds.isEmpty) return const [];
 
-    final cartResult = await CartService.getCart();
+    final cartResult = await CartService.getCart(forceRefresh: true);
     if (cartResult['success'] != true) return const [];
     final rawItems = cartResult['data'];
     final allItems = (rawItems is List ? rawItems : [])
@@ -2178,7 +2178,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       );
       if (addedCtIds == null || addedCtIds.isEmpty || !mounted) return;
 
-      final cartResult = await CartService.getCart();
+      final cartResult = await CartService.getCart(forceRefresh: true);
       if (!mounted || cartResult['success'] != true) return;
 
       final rawItems = cartResult['data'];
@@ -2200,7 +2200,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       final cartIds = CartService.cartIdsFromAddOptionsResult(addResult);
       if (cartIds.isEmpty || !mounted) return;
 
-      final cartResult = await CartService.getCart();
+      final cartResult = await CartService.getCart(forceRefresh: true);
       if (!mounted || cartResult['success'] != true) return;
 
       final rawItems = cartResult['data'];

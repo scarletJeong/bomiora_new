@@ -1940,7 +1940,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
   }
 
   Future<Set<int>> _snapshotGeneralCartIds() async {
-    final cart = await CartService.getCart();
+    final cart = await CartService.getCart(forceRefresh: true);
     if (cart['success'] != true) return {};
     return _parseGeneralCartItems(cart).map((e) => e.ctId).toSet();
   }
@@ -1952,7 +1952,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
     Map<ProductOption, int>? selectedOptions,
     int? quantity,
   }) async {
-    final cart = await CartService.getCart();
+    final cart = await CartService.getCart(forceRefresh: true);
     if (cart['success'] != true || _product == null) return [];
 
     final all = _parseGeneralCartItems(cart);

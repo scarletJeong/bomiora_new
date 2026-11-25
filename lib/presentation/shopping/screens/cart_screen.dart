@@ -619,7 +619,7 @@ class _CartScreenState extends State<CartScreen> {
       );
 
       if (!mounted) return;
-      await _loadCart(showCachedData: false);
+      await _loadCart(showCachedData: false, forceRefresh: true);
     } finally {
       if (mounted) setState(() => _checkoutOpening = false);
     }
