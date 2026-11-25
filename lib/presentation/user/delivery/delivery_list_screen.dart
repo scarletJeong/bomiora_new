@@ -850,6 +850,9 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
       context,
       odId: order.odId,
       mbId: user.id,
+      orderDetail: order.paymentMethod != null && order.awaitingDeposit != null
+          ? OrderDetailModel.fromListPreview(order)
+          : null,
       reportCancelFailure: true,
       cancelFailureCode: 'order.cancel',
     );

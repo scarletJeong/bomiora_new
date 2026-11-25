@@ -199,6 +199,12 @@ class OrderListModel {
   final String? reservationEndTime;
   final String? odBankAccount;
 
+  /// 목록에 없으면 null. 있으면 취소 때 상세를 다시 받지 않는다.
+  final String? paymentMethod;
+
+  /// 가상계좌 입금 전. 목록에 없으면 null.
+  final bool? awaitingDeposit;
+
   OrderListModel({
     required this.odId,
     required this.orderDate,
@@ -223,6 +229,8 @@ class OrderListModel {
     this.reservationTime,
     this.reservationEndTime,
     this.odBankAccount,
+    this.paymentMethod,
+    this.awaitingDeposit,
   });
 
   factory OrderListModel.fromJson(Map<dynamic, dynamic> json) {
@@ -281,6 +289,13 @@ class OrderListModel {
             (NodeValueParser.asInt(normalized['is_consultation_done']) ?? 0) ==
                 1;
 
+    bool listFlag(dynamic value) {
+      if (value is bool) return value;
+      if (value is num) return value != 0;
+      final text = NodeValueParser.asString(value)?.toLowerCase() ?? '';
+      return text == 'true' || text == '1';
+    }
+
     return OrderListModel(
       odId: NodeValueParser.asString(normalized['odId']) ??
           '0', // String으로 변환 (int도 처리)
@@ -320,6 +335,12 @@ class OrderListModel {
       odBankAccount: NodeValueParser.asString(
         normalized['odBankAccount'] ?? normalized['od_bank_account'],
       ),
+      paymentMethod: normalized.containsKey('paymentMethod')
+          ? (NodeValueParser.asString(normalized['paymentMethod']) ?? '')
+          : null,
+      awaitingDeposit: normalized.containsKey('awaitingDeposit')
+          ? listFlag(normalized['awaitingDeposit'])
+          : null,
     );
   }
 
@@ -374,6 +395,8 @@ class OrderListModel {
       'reservationTime': reservationTime,
       'reservationEndTime': reservationEndTime,
       'odBankAccount': odBankAccount,
+      'paymentMethod': paymentMethod,
+      'awaitingDeposit': awaitingDeposit,
     };
   }
 
@@ -414,6 +437,8 @@ class OrderListModel {
       reservationTime: reservationTime ?? this.reservationTime,
       reservationEndTime: reservationEndTime ?? this.reservationEndTime,
       odBankAccount: odBankAccount ?? this.odBankAccount,
+      paymentMethod: paymentMethod,
+      awaitingDeposit: awaitingDeposit,
     );
   }
 }
@@ -550,7 +575,7 @@ class OrderDetailModel {
       totalPrice: order.totalPrice,
       isPrescriptionOrder: order.isPrescriptionOrder,
       isConsultationDone: order.isConsultationDone,
-      paymentMethod: '',
+      paymentMethod: order.paymentMethod ?? '',
       ordererName: '',
       ordererPhone: '',
       ordererEmail: '',
