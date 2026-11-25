@@ -15,7 +15,6 @@ import '../../../data/services/auth_service.dart';
 import '../../../data/services/community_prefetch.dart';
 import '../../../data/services/banner_service.dart';
 import '../../../data/services/content_service.dart';
-import '../../../data/services/coupon_service.dart';
 import '../../common/widgets/app_clickable.dart';
 import '../../common/widgets/app_footer.dart';
 import '../../common/widgets/app_network_image.dart';
@@ -348,14 +347,6 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() => _loadBelowFold = true);
     _loadMdPick();
     _refreshCategoryTabs();
-    _prefetchCoupons();
-  }
-
-  Future<void> _prefetchCoupons() async {
-    final user = await AuthService.getUser();
-    final mbId = user?.id.trim() ?? '';
-    if (mbId.isEmpty) return;
-    await CouponService.getCouponTabs(mbId);
   }
 
   Future<void> _loadMdPick() async {
