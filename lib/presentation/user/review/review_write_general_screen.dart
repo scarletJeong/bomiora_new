@@ -80,7 +80,11 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
   static const String _kFont = 'Gmarket Sans TTF';
 
   final _formKey = GlobalKey<FormState>();
+  final _listScrollController = ScrollController();
+  final _reviewSectionKey = GlobalKey();
   final _reviewController = TextEditingController();
+  final _reviewFocus = FocusNode();
+  final _reviewScroll = ScrollController();
 
   /// 0 = 만족도 미선택, 0.1~5(0.1 단위) = `total_is_score`
   double _score = 0;
@@ -179,6 +183,29 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
 
   ReviewModel? get _editReview => widget.initialReview;
 
+  void _keepReviewInputVisible() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (_reviewScroll.hasClients) {
+        final text = _reviewController;
+        final atEnd = !text.selection.isValid ||
+            text.selection.baseOffset >= text.text.length;
+        if (atEnd && _reviewScroll.position.maxScrollExtent > 0) {
+          _reviewScroll.jumpTo(_reviewScroll.position.maxScrollExtent);
+        }
+      }
+      final ctx = _reviewSectionKey.currentContext;
+      if (ctx == null || !ctx.mounted) return;
+      Scrollable.ensureVisible(
+        ctx,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOut,
+        alignment: 0.05,
+        alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
+      );
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -190,8 +217,15 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
           _reviewBodyError = null;
         }
       });
+      if (_reviewFocus.hasFocus) {
+        _keepReviewInputVisible();
+      }
     };
     _reviewController.addListener(_reviewTextListener);
+    _reviewFocus.addListener(() {
+      if (!mounted || !_reviewFocus.hasFocus) return;
+      _keepReviewInputVisible();
+    });
     _productIndex = _firstWritableIndex;
 
     final r = widget.initialReview;
@@ -212,7 +246,10 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
   @override
   void dispose() {
     _reviewController.removeListener(_reviewTextListener);
+    _listScrollController.dispose();
     _reviewController.dispose();
+    _reviewFocus.dispose();
+    _reviewScroll.dispose();
     super.dispose();
   }
 
@@ -388,30 +425,30 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
       shadows = null;
     } else {
       switch (kind) {
-      case 0: // 완료
-        bg = const Color(0xFFFFF0F5);
-        border = const Color(0xFFFFC5D8);
-        textColor = _kPink;
-        shadows = null;
-        break;
-      case 1: // 작성중
-        bg = _kPink;
-        border = _kPink;
-        textColor = Colors.white;
-        shadows = [
-          BoxShadow(
-            color: const Color(0x2DFF5A8D),
-            blurRadius: healthDp(context, 12),
-            offset: Offset(0, healthDp(context, 5)),
-          ),
-        ];
-        break;
-      default: // 대기
-        bg = Colors.white;
-        border = const Color(0xFFD8D5D5);
-        textColor = _kMuted;
-        shadows = null;
-        break;
+        case 0: // 완료
+          bg = const Color(0xFFFFF0F5);
+          border = const Color(0xFFFFC5D8);
+          textColor = _kPink;
+          shadows = null;
+          break;
+        case 1: // 작성중
+          bg = _kPink;
+          border = _kPink;
+          textColor = Colors.white;
+          shadows = [
+            BoxShadow(
+              color: const Color(0x2DFF5A8D),
+              blurRadius: healthDp(context, 12),
+              offset: Offset(0, healthDp(context, 5)),
+            ),
+          ];
+          break;
+        default: // 대기
+          bg = Colors.white;
+          border = const Color(0xFFD8D5D5);
+          textColor = _kMuted;
+          shadows = null;
+          break;
       }
     }
 
@@ -768,6 +805,7 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
           style: const TextStyle(fontFamily: _kFont, color: _kInk),
           child: MobileAppLayoutWrapper(
             backgroundColor: Colors.white,
+            resizeToAvoidBottomInset: true,
             appBar: HealthAppBar(
               title: widget._isEditMode ? '리뷰수정' : '리뷰쓰기',
               leadingIconSize: healthDp(context, 16),
@@ -788,8 +826,13 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
                     ),
                   Expanded(
                     child: ListView(
+                      controller: _listScrollController,
+                      keyboardDismissBehavior:
+                          ScrollViewKeyboardDismissBehavior.onDrag,
                       padding: EdgeInsets.only(
                         top: healthDp(context, 10),
+                        bottom: MediaQuery.viewInsetsOf(context).bottom +
+                            healthDp(context, 24),
                       ),
                       children: [
                         Padding(
@@ -802,20 +845,20 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
                               mainAxisSize: MainAxisSize.min,
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                              _barSectionTitle(context, '주문상품 정보'),
-                              SizedBox(height: healthDp(context, 10)),
-                              _productCard(context, item, edit),
-                              SizedBox(height: healthDp(context, 24)),
-                              _barSectionTitle(
-                                context,
-                                '상품 만족도',
-                                trailing: '(필수)',
-                                trailingColor: const Color(0xFFFF5A8D),
-                                trailingSize: 10,
-                                barGap: 6,
-                              ),
-                              SizedBox(height: healthDp(context, 10)),
-                              _scoreCard(context),
+                                _barSectionTitle(context, '주문상품 정보'),
+                                SizedBox(height: healthDp(context, 10)),
+                                _productCard(context, item, edit),
+                                SizedBox(height: healthDp(context, 24)),
+                                _barSectionTitle(
+                                  context,
+                                  '상품 만족도',
+                                  trailing: '(필수)',
+                                  trailingColor: const Color(0xFFFF5A8D),
+                                  trailingSize: 10,
+                                  barGap: 6,
+                                ),
+                                SizedBox(height: healthDp(context, 10)),
+                                _scoreCard(context),
                               ],
                             ),
                           ),
@@ -851,17 +894,17 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
                               mainAxisSize: MainAxisSize.min,
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                              SizedBox(height: healthDp(context, 24)),
-                              _barSectionTitle(
-                                context,
-                                '사진 업로드',
-                                trailing: '(선택)',
-                                trailingColor: _kMuted,
-                                trailingSize: 10,
-                                barGap: 6,
-                              ),
-                              SizedBox(height: healthDp(context, 10)),
-                              _imageSection(context),
+                                SizedBox(height: healthDp(context, 24)),
+                                _barSectionTitle(
+                                  context,
+                                  '사진 업로드',
+                                  trailing: '(선택)',
+                                  trailingColor: _kMuted,
+                                  trailingSize: 10,
+                                  barGap: 6,
+                                ),
+                                SizedBox(height: healthDp(context, 10)),
+                                _imageSection(context),
                               ],
                             ),
                           ),
@@ -960,7 +1003,8 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
                     width: healthDp(context, 0.5),
                   ),
                   padding: EdgeInsets.zero,
-                  minimumSize: Size(healthDp(context, 130), healthDp(context, 40)),
+                  minimumSize:
+                      Size(healthDp(context, 130), healthDp(context, 40)),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(healthDp(context, 10)),
                   ),
@@ -1003,7 +1047,8 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
                     padding: EdgeInsets.zero,
                     minimumSize: Size.fromHeight(healthDp(context, 40)),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(healthDp(context, 10)),
+                      borderRadius:
+                          BorderRadius.circular(healthDp(context, 10)),
                     ),
                   ),
                   child: _isLoading
@@ -1422,9 +1467,11 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
     }
 
     return Column(
+      key: _reviewSectionKey,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         HealthFocusOutlineBox(
+          focusNode: _reviewFocus,
           height: healthDp(context, 128),
           padding: boxPadding,
           borderRadius: healthDp(context, 7),
@@ -1438,16 +1485,22 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
                 child: TextFormField(
                   controller: _reviewController,
                   focusNode: focusNode,
+                  scrollController: _reviewScroll,
                   textInputAction: TextInputAction.done,
                   maxLines: null,
                   expands: true,
                   maxLength: 500,
+                  scrollPadding: EdgeInsets.only(
+                    bottom: MediaQuery.viewInsetsOf(context).bottom +
+                        healthDp(context, 120),
+                  ),
                   onChanged: (_) {
                     setState(() {
                       if (_reviewController.text.trim().length >= 20) {
                         _reviewBodyError = null;
                       }
                     });
+                    _keepReviewInputVisible();
                   },
                   style: bodyStyle,
                   decoration: InputDecoration(
@@ -1516,24 +1569,24 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
                         ),
                         if (!_isCurrentReviewed)
                           Positioned(
-                          right: healthDp(context, 2),
-                          top: healthDp(context, 2),
-                          child: InkWell(
-                            onTap: () =>
-                                setState(() => _draftImages.removeAt(e.key)),
-                            child: Container(
-                              decoration: const BoxDecoration(
-                                color: Colors.black54,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                Icons.close,
-                                size: healthDp(context, 16),
-                                color: Colors.white,
+                            right: healthDp(context, 2),
+                            top: healthDp(context, 2),
+                            child: InkWell(
+                              onTap: () =>
+                                  setState(() => _draftImages.removeAt(e.key)),
+                              child: Container(
+                                decoration: const BoxDecoration(
+                                  color: Colors.black54,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.close,
+                                  size: healthDp(context, 16),
+                                  color: Colors.white,
+                                ),
                               ),
                             ),
                           ),
-                        ),
                       ],
                     ),
                   );
