@@ -103,6 +103,9 @@ class OrderFlowDialogs {
                 ? message
                 : '환불계좌 저장에 실패했습니다',
           );
+          if (!context.mounted) return false;
+          AppToastOverlay.showAlert(context, '환불계좌를 저장하지 못했습니다.');
+          return false;
         }
       } catch (e) {
         await FailureLog.record(
@@ -110,6 +113,9 @@ class OrderFlowDialogs {
           mbId: mbId,
           reason: e.toString(),
         );
+        if (!context.mounted) return false;
+        AppToastOverlay.showAlert(context, '환불계좌를 저장하지 못했습니다.');
+        return false;
       }
     }
 
