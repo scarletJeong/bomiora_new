@@ -12,6 +12,9 @@ class ProductRepository {
   static const Duration _detailCacheTtl = Duration(minutes: 2);
   static final Map<String, Product> _detailCache = {};
   static final Map<String, Product> _previewCache = {};
+
+  /// 목록에서 이미 그린 썸네일 URL — 상세 첫 프레임에 그대로 재사용
+  static final Map<String, String> _imagePreviewById = {};
   static final Map<String, DateTime> _detailCacheAt = {};
   static final Map<String, Future<Product?>> _detailInFlight = {};
 
@@ -44,6 +47,7 @@ class ProductRepository {
   static List<Product> _rememberProductList(List<Product> products) {
     for (final product in products) {
       _previewCache[product.id] = product;
+      rememberImagePreview(product.id, product.displayImageUrl);
     }
     return products;
   }
@@ -55,7 +59,26 @@ class ProductRepository {
     final product = Product.fromJson(json);
     if (product.id.isNotEmpty) {
       _previewCache[product.id] = product;
+      rememberImagePreview(product.id, product.displayImageUrl);
     }
+  }
+
+  /// 목록/홈에서 보여 준 썸네일을 상세 진입 전에 저장한다.
+  static void rememberImagePreview(String productId, String? imageUrl) {
+    final id = productId.trim();
+    final url = (imageUrl ?? '').trim();
+    if (id.isEmpty || url.isEmpty) return;
+    _imagePreviewById[id] = url;
+  }
+
+  static String? getImagePreview(String productId) {
+    final id = productId.trim();
+    if (id.isEmpty) return null;
+    final remembered = _imagePreviewById[id]?.trim();
+    if (remembered != null && remembered.isNotEmpty) return remembered;
+    final product = getProductPreview(id);
+    final fallback = product?.displayImageUrl.trim() ?? '';
+    return fallback.isEmpty ? null : fallback;
   }
 
   // 카테고리별 상품 목록 가져오기
@@ -97,8 +120,8 @@ class ProductRepository {
     required int pageSize,
     required String cacheKey,
   }) async {
-    String endpoint =
-        ApiEndpoints.productListByCategory(categoryId, productKind: productKind);
+    String endpoint = ApiEndpoints.productListByCategory(categoryId,
+        productKind: productKind);
     endpoint += '&page=$page&pageSize=$pageSize';
 
     final token = await AuthService.getToken();
@@ -171,11 +194,12 @@ class ProductRepository {
   // 인기 상품 목록 가져오기
   static Future<List<Product>> getPopularProducts({int limit = 10}) async {
     try {
-      final response = await ApiClient.get('${ApiEndpoints.popularProducts}?limit=$limit');
-      
+      final response =
+          await ApiClient.get('${ApiEndpoints.popularProducts}?limit=$limit');
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        
+
         if (data is Map && data['success'] == true && data['data'] != null) {
           final List<dynamic> products = data['data'];
           return _rememberProductList(products
@@ -189,7 +213,7 @@ class ProductRepository {
               .toList());
         }
       }
-      
+
       return [];
     } catch (e) {
       return [];

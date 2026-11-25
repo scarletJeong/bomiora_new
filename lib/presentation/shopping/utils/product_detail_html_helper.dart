@@ -493,20 +493,30 @@ Widget buildProductCarouselImage({
   required Widget Function(BuildContext, Object, StackTrace?) errorBuilder,
   required Widget Function(BuildContext, Widget, ImageChunkEvent?)
       loadingBuilder,
+  String? instantPreviewUrl,
   VoidCallback? onSettled,
   BoxFit fit = BoxFit.cover,
 }) {
-  final displayUrl = ImageUrlHelper.productPreviewThumbUrl(imageUrl);
+  final preview = instantPreviewUrl?.trim() ?? '';
+  final detailUrl = ImageUrlHelper.productPreviewThumbUrl(imageUrl);
+  final previewSrc =
+      preview.isEmpty ? '' : ImageUrlHelper.browserImageSrc(preview);
+  final detailSrc = ImageUrlHelper.browserImageSrc(detailUrl);
+  // 목록에서 이미 그린 썸네일이면 그 주소를 즉시 사용(추가 다운로드 없음).
+  // 상세 it_img10이 다르면 목록 썸네일을 유지한 채 뒤에서만 교체한다.
+  final useListOnly = preview.isNotEmpty &&
+      (imageUrl.trim().isEmpty ||
+          imageUrl.trim() == preview ||
+          previewSrc == detailSrc);
   return SizedBox(
     width: width,
     height: height,
     child: ColoredBox(
       color: const Color(0xFFF8F8F8),
       child: ProgressiveNetworkImage(
-        // 상단 썸네일은 리사이즈본 하나만 받는다. 원본까지 동시에 요청하면
-        // 같은 사진을 두 번 내려받아 첫 표시와 다른 API 요청을 모두 늦춘다.
-        previewUrl: displayUrl,
-        fullUrl: displayUrl,
+        previewUrl:
+            useListOnly ? preview : (preview.isEmpty ? detailUrl : preview),
+        fullUrl: useListOnly ? preview : detailUrl,
         width: width,
         height: height,
         fit: fit,

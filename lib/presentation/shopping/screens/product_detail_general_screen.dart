@@ -68,6 +68,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
   bool _failureAlertOpen = false;
   bool _isFavorite = false;
   int _currentImageIndex = 0;
+  String? _instantPreviewImageUrl;
   late TabController _tabController;
   final ScrollController _detailScrollController = ScrollController();
   final ValueNotifier<bool> _detailExpanded = ValueNotifier(false);
@@ -132,6 +133,21 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
     if (cachedCounts != null) {
       _assignReviewCounts(cachedCounts);
     }
+    // 첫 프레임부터 목록 썸네일을 바로 붙인다 — 상세 API를 기다리지 않는다.
+    final preview = ProductRepository.getProductPreview(widget.productId);
+    final remembered =
+        ProductRepository.getImagePreview(widget.productId)?.trim() ?? '';
+    if (remembered.isNotEmpty) {
+      _instantPreviewImageUrl = ImageUrlHelper.productGridThumbUrl(remembered);
+    } else {
+      final fromPreview = preview?.displayImageUrl.trim() ?? '';
+      if (fromPreview.isNotEmpty) {
+        _instantPreviewImageUrl =
+            ImageUrlHelper.productGridThumbUrl(fromPreview);
+      }
+    }
+    _product = preview;
+    _isLoading = preview == null;
     _loadReviews();
     _loadProductDetail();
     _loadAuthUser();
@@ -181,9 +197,18 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
   Future<void> _loadProductDetail() async {
     final serial = ++_detailLoadSerial;
     final preview = ProductRepository.getProductPreview(widget.productId);
+    final remembered =
+        ProductRepository.getImagePreview(widget.productId)?.trim() ?? '';
+    final previewImage = remembered.isNotEmpty
+        ? remembered
+        : (preview?.displayImageUrl.trim() ?? '');
+    if (previewImage.isNotEmpty) {
+      _instantPreviewImageUrl ??=
+          ImageUrlHelper.productGridThumbUrl(previewImage);
+    }
     _safeSetState(() {
-      _product = preview;
-      _isLoading = preview == null;
+      _product = preview ?? _product;
+      _isLoading = _product == null;
       _hasError = false;
     });
 
@@ -194,6 +219,11 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       if (product == null) {
         await _failProductDetail(serial, '상품을 찾지 못했습니다.');
         return;
+      }
+      final fallbackImage = product.displayImageUrl.trim();
+      if (_instantPreviewImageUrl == null && fallbackImage.isNotEmpty) {
+        _instantPreviewImageUrl =
+            ImageUrlHelper.productGridThumbUrl(fallbackImage);
       }
       _precacheFirstDetailImage(product);
       _safeSetState(() {
@@ -641,20 +671,31 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
 
   String? _itemThumbUrl(String? raw) {
     if (raw == null || raw.trim().isEmpty) return null;
-    final normalized = ImageUrlHelper.normalizeThumbnailUrl(raw, _product!.id);
+    final normalized =
+        ImageUrlHelper.normalizeThumbnailUrl(raw, widget.productId);
     if (!ImageUrlHelper.isShopItemImage(raw, normalized)) return null;
     return normalized;
   }
 
   List<String> _getProductImages() {
-    if (_product == null) return [];
     final images = <String>[];
-    // 상세 썸네일은 it_img10, it_img9만 본다.
-    for (final key in const ['it_img10', 'it_img9']) {
-      final normalized =
-          _itemThumbUrl(_product!.additionalInfo?[key]?.toString());
-      if (normalized != null && !images.contains(normalized)) {
-        images.add(normalized);
+    final preview = _instantPreviewImageUrl?.trim() ?? '';
+    // 상세 API 전에도 목록 썸네일을 먼저 그린다.
+    if (preview.isNotEmpty) {
+      images.add(preview);
+    }
+    final product = _product;
+    if (product != null) {
+      for (final key in const ['it_img10', 'it_img9']) {
+        final normalized =
+            _itemThumbUrl(product.additionalInfo?[key]?.toString());
+        if (normalized != null && !images.contains(normalized)) {
+          if (images.isNotEmpty && images.first == preview) {
+            images[0] = normalized;
+          } else {
+            images.add(normalized);
+          }
+        }
       }
     }
     return images;
@@ -692,16 +733,10 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
               backgroundColor: Colors.white,
               body: Stack(
                 children: [
-                  _isLoading
-                      ? const Center(
-                          child: CircularProgressIndicator(
-                              color: const Color(0xFFFF5A8D)))
-                      : _hasError
-                          ? _buildErrorState()
-                          : _product == null
-                              ? _buildErrorState()
-                              : _buildProductDetail(),
-                  if (!_isLoading && (_hasError || _product != null))
+                  _buildDetailBody(),
+                  if (_hasError ||
+                      _product != null ||
+                      (_instantPreviewImageUrl?.isNotEmpty ?? false))
                     _buildFloatingTransparentAppBar(),
                 ],
               ),
@@ -749,6 +784,52 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
         'categoryName': categoryName,
         'productKind': 'general',
       },
+    );
+  }
+
+  Widget _buildDetailBody() {
+    final hasInstantImage = _instantPreviewImageUrl?.isNotEmpty ?? false;
+    if (_product != null) {
+      return _buildProductDetail();
+    }
+    if (hasInstantImage) {
+      return _buildImageFirstShell();
+    }
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(color: Color(0xFFFF5A8D)),
+      );
+    }
+    return _buildErrorState();
+  }
+
+  /// 상세 API 응답 전에 목록 썸네일만 먼저 보여 체감 대기를 줄인다.
+  Widget _buildImageFirstShell() {
+    return CustomScrollView(
+      controller: _detailScrollController,
+      primary: false,
+      slivers: [
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              healthDp(context, 20),
+              healthDp(context, 88),
+              healthDp(context, 20),
+              healthDp(context, 20),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildImageCarousel(_getProductImages()),
+                SizedBox(height: healthDp(context, 24)),
+                const Center(
+                  child: CircularProgressIndicator(color: Color(0xFFFF5A8D)),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -1166,6 +1247,8 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
 
                 return buildProductCarouselImage(
                   imageUrl: imageUrl,
+                  instantPreviewUrl:
+                      index == 0 ? _instantPreviewImageUrl : null,
                   width: slotWidth,
                   height: imageHeight,
                   fit: BoxFit.cover,

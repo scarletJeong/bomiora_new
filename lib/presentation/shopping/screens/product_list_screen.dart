@@ -585,15 +585,14 @@ class _ProductListScreenState extends State<ProductListScreen> {
       key: ValueKey(product.id),
       product: product,
       onTap: () {
-        final raw =
-            product.additionalInfo?['it_img10']?.toString().trim() ?? '';
-        final detailImage =
-            ImageUrlHelper.normalizeThumbnailUrl(raw, product.id);
-        if (detailImage != null && detailImage.isNotEmpty) {
+        final listThumb =
+            ImageUrlHelper.productGridThumbUrl(product.displayImageUrl);
+        ProductRepository.rememberImagePreview(product.id, listThumb);
+        if (listThumb.isNotEmpty) {
           unawaited(
             AppNetworkImage.precacheUrl(
               context,
-              ImageUrlHelper.productPreviewThumbUrl(detailImage),
+              listThumb,
               decodeWidthLogical: MediaQuery.sizeOf(context).width,
             ),
           );

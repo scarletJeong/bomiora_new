@@ -601,6 +601,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _openProduct(Product product, {String? fallbackKind}) {
+    final listThumb =
+        ImageUrlHelper.productGridThumbUrl(product.displayImageUrl);
+    ProductRepository.rememberImagePreview(product.id, listThumb);
     final kind =
         (product.productKind ?? fallbackKind ?? 'general').trim().toLowerCase();
     final route = kind == 'prescription'
