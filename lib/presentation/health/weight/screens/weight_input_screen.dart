@@ -523,11 +523,13 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
           builder: (context, constraints) {
             final gap = healthDp(context, 10);
             final side = (constraints.maxWidth - gap) / 2;
+            // 폭 650에서는 정사각형이 약 277까지 커진다. 높이는 250에서 멈춘다.
+            final boxHeight = side < 250 ? side : 250.0;
             return Row(
               children: [
                 SizedBox(
                   width: side,
-                  height: side,
+                  height: boxHeight,
                   child: PhotoSourceAnchor(
                     canOpen: _canAddBodyPhoto,
                     onImageSelected: (image) => _applyPickedImage('front', image),
@@ -537,7 +539,7 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
                 SizedBox(width: gap),
                 SizedBox(
                   width: side,
-                  height: side,
+                  height: boxHeight,
                   child: PhotoSourceAnchor(
                     canOpen: _canAddBodyPhoto,
                     onImageSelected: (image) => _applyPickedImage('side', image),
