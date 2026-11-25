@@ -78,21 +78,6 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
         _loadFailed = false;
         _loading = false;
       });
-      if (prev == null && next == null) {
-        final listResult = await AnnouncementService.getAnnouncements(
-          page: 1,
-          size: 80,
-        );
-        if (!mounted) return;
-        final adjacent = _adjacentFromList(
-          widget.announcementId,
-          (listResult['items'] as List<AnnouncementModel>?) ?? const [],
-        );
-        setState(() {
-          _prev = adjacent.$1;
-          _next = adjacent.$2;
-        });
-      }
     } else {
       final reason =
           result['message']?.toString() ?? '공지사항을 불러오지 못했습니다.';
@@ -402,21 +387,6 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
         .replaceAll(r'\n', '\n')
         .replaceAll(RegExp(r'[ \t]+\n'), '\n')
         .trim();
-  }
-
-  (Map<String, dynamic>?, Map<String, dynamic>?) _adjacentFromList(
-    int id,
-    List<AnnouncementModel> items,
-  ) {
-    final index = items.indexWhere((e) => e.id == id);
-    if (index < 0) return (null, null);
-    final prev = index > 0
-        ? {'id': items[index - 1].id, 'title': items[index - 1].title}
-        : null;
-    final next = index < items.length - 1
-        ? {'id': items[index + 1].id, 'title': items[index + 1].title}
-        : null;
-    return (prev, next);
   }
 
   int? _adjacentId(Map<String, dynamic>? raw) {
