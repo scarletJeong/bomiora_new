@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
+import 'failure_log_remote.dart';
 import 'failure_log_store.dart';
 
 /// 화면 공통 실패 로그.
@@ -33,6 +35,16 @@ class FailureLog {
       await appendFailureLogLine(line);
     } catch (e) {
       debugPrint('[FailureLog] write failed: $e');
+    }
+    if (!failureLogSkipsServer(code)) {
+      unawaited(sendFailureLogToServer(
+        code: code,
+        mbId: mbId,
+        reason: reason,
+        occurredAt: entry['at'] as String,
+        device: device,
+        detail: detail,
+      ));
     }
   }
 }

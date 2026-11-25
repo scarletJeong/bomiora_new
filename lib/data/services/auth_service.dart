@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../models/user/user_model.dart';
 import '../../core/logging/failure_log.dart';
+import '../../core/logging/failure_log_member.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_endpoints.dart';
 import '../../core/utils/node_value_parser.dart';
@@ -34,6 +35,11 @@ class AuthService {
   static final ValueNotifier<int> sessionTick = ValueNotifier<int>(0);
 
   static UserModel? get currentUser => _memoryUser;
+
+  static void _rememberUser(UserModel? user) {
+    _memoryUser = user;
+    FailureLogMember.sync(user?.id, user?.phone);
+  }
 
   static void _bumpSessionTick() {
     sessionTick.value++;
@@ -72,7 +78,7 @@ class AuthService {
   }) async {
     final prefs = await SharedPreferences.getInstance();
 
-    _memoryUser = user;
+    _rememberUser(user);
     final userJsonStr = json.encode(user.toJson());
 
     await prefs.setString(_userKey, userJsonStr);
@@ -111,7 +117,7 @@ class AuthService {
   static Future<UserModel?> getUser() async {
     final prefs = await SharedPreferences.getInstance();
     if (!_hasActiveSessionFlag(prefs)) {
-      _memoryUser = null;
+      _rememberUser(null);
       return null;
     }
     if (_memoryUser != null) return _memoryUser;
@@ -124,7 +130,7 @@ class AuthService {
             ? Map<String, dynamic>.from(userData)
             : <String, dynamic>{};
         final user = UserModel.fromJson(raw);
-        _memoryUser = user;
+        _rememberUser(user);
         if (raw.containsKey('password')) {
           await prefs.setString(_userKey, json.encode(user.toJson()));
         }
@@ -148,7 +154,7 @@ class AuthService {
     final userId = (_memoryUser?.id ?? '').trim();
     _sessionEpoch++;
     final epoch = _sessionEpoch;
-    _memoryUser = null;
+    _rememberUser(null);
 
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -159,7 +165,7 @@ class AuthService {
     } catch (_) {}
 
     if (_sessionEpoch == epoch) {
-      _memoryUser = null;
+      _rememberUser(null);
     }
     _bumpSessionTick();
 
@@ -232,10 +238,10 @@ class AuthService {
   static Future<void> updateUser(UserModel user) async {
     final prefs = await SharedPreferences.getInstance();
     if (!_hasActiveSessionFlag(prefs)) {
-      _memoryUser = null;
+      _rememberUser(null);
       return;
     }
-    _memoryUser = user;
+    _rememberUser(user);
     await prefs.setString(_userKey, json.encode(user.toJson()));
   }
 

@@ -14,6 +14,7 @@ import 'presentation/auth/screens/find_account_result_screen.dart';
 import 'presentation/auth/screens/find_password_reset_screen.dart';
 import 'core/navigation/app_action_gate.dart';
 import 'core/navigation/app_navigator_key.dart';
+import 'core/logging/failure_log_route_tracker.dart';
 import 'presentation/auth/widgets/kcp_cert.dart';
 import 'presentation/auth/screens/signup_screen.dart';
 import 'presentation/auth/screens/signup_done_screen.dart';
@@ -211,7 +212,11 @@ class _BomioraAppState extends State<BomioraApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       navigatorKey: appNavigatorKey,
-      navigatorObservers: [_singlePagePushObserver, appRouteObserver],
+      navigatorObservers: [
+        _singlePagePushObserver,
+        appRouteObserver,
+        FailureLogRouteTracker(),
+      ],
       title: '보미오라',
       builder: (context, child) {
         final media = MediaQuery.of(context);
