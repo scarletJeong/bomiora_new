@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../../../data/models/cart/cart_item_model.dart';
-import '../../../data/services/cart_service.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../health/health_common/widgets/health_app_bar.dart';
-import '../widgets/cart_add_group_card.dart';
 import 'cart_general_screen.dart' as cart_general;
 import 'cart_screen.dart' as cart_prescription;
 
@@ -34,26 +31,6 @@ class _CartIntegrationScreenState extends State<CartIntegrationScreen> {
   void initState() {
     super.initState();
     _selectedTabIndex = widget.initialTabIndex == 1 ? 1 : 0;
-    _loadTabCounts();
-  }
-
-  Future<void> _loadTabCounts() async {
-    final result = await CartService.getCart(forceRefresh: true);
-    if (!mounted || result['success'] != true) return;
-    final items = CartService.parseCartItems(result['data']);
-    final prescription = _lineCount(items, prescription: true);
-    final general = _lineCount(items, prescription: false);
-    if (!mounted) return;
-    if (_prescriptionCount == prescription && _generalCount == general) return;
-    setState(() {
-      _prescriptionCount ??= prescription;
-      _generalCount ??= general;
-    });
-  }
-
-  int _lineCount(List<CartItem> items, {required bool prescription}) {
-    return cartGroupsForTab(items, prescriptionTab: prescription)
-        .fold<int>(0, (sum, group) => sum + group.allItems.length);
   }
 
   void _setPrescriptionCount(int count) {
