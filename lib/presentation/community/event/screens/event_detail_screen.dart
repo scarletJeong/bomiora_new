@@ -231,6 +231,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         ),
         ArticleAdjacentNavOverlay(
           controller: _scrollController,
+          verticalPaddingBase: 12,
           previous: prevEvent == null
               ? null
               : ArticleAdjacentItem(

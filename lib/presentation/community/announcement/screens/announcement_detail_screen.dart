@@ -15,6 +15,7 @@ import '../../../health/health_common/widgets/health_app_bar.dart';
 import '../../../common/navigation/board_list_navigation.dart';
 import '../../../common/widgets/app_clickable.dart';
 import '../../../common/widgets/app_network_image.dart';
+import '../../../common/widgets/article_adjacent_nav.dart';
 import '../../../common/widgets/centered_empty_state.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
@@ -178,33 +179,23 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
                 ),
               ),
               SizedBox(height: healthDp(context, 30)),
-              Container(height: healthDp(context, 1), color: _kBorder),
-              if (hasPrev) ...[
-                SizedBox(height: healthDp(context, 10)),
-                _buildAdjacentRow(
-                  context,
-                  label: '이전글',
-                  title: prevTitle,
-                  isPrev: true,
-                  gap: 5,
-                  onTap: () => _moveToAdjacent(prevId),
+              if (hasPrev || hasNext)
+                ArticleAdjacentNav(
+                  horizontalPaddingBase: 0,
+                  verticalPaddingBase: 12,
+                  previous: hasPrev
+                      ? ArticleAdjacentItem(
+                          title: prevTitle,
+                          onTap: () => _moveToAdjacent(prevId),
+                        )
+                      : null,
+                  next: hasNext
+                      ? ArticleAdjacentItem(
+                          title: nextTitle,
+                          onTap: () => _moveToAdjacent(nextId),
+                        )
+                      : null,
                 ),
-              ],
-              if (hasNext) ...[
-                SizedBox(height: healthDp(context, 10)),
-                _buildAdjacentRow(
-                  context,
-                  label: '다음글',
-                  title: nextTitle,
-                  isPrev: false,
-                  gap: 10,
-                  onTap: () => _moveToAdjacent(nextId),
-                ),
-              ],
-              if (hasPrev || hasNext) ...[
-                SizedBox(height: healthDp(context, 10)),
-                Container(height: healthDp(context, 1), color: _kBorder),
-              ],
             ],
           ),
         ),
@@ -244,52 +235,6 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildAdjacentRow(
-    BuildContext context, {
-    required String label,
-    required String title,
-    required bool isPrev,
-    required double gap,
-    required VoidCallback onTap,
-  }) {
-    return AppClickable(
-      onTap: onTap,
-      child: Row(
-        children: [
-          Icon(
-            isPrev ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-            size: healthDp(context, 16),
-            color: _kMuted,
-          ),
-          Text(
-            label,
-            style: TextStyle(
-              color: _kMuted,
-              fontSize: healthSp(context, 14),
-              fontFamily: 'Gmarket Sans TTF',
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          SizedBox(width: healthDp(context, gap)),
-          Expanded(
-            child: Text(
-              title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: _kText,
-                fontSize: healthSp(context, 14),
-                fontFamily: 'Gmarket Sans TTF',
-                fontWeight: FontWeight.w500,
-                letterSpacing: healthSp(context, -1.26),
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 
