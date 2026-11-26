@@ -1973,6 +1973,7 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
       }
 
       int? createdId;
+      String? lastSuccessMessage;
       for (var i = 0; i < _targetProducts.length; i++) {
         if (_isReviewedIndex(i)) continue;
         late final double s1, s2, s3, s4;
@@ -2045,6 +2046,11 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
         final createdReview = created is ReviewModel ? created : null;
         final message = (result['message'] as String?)?.trim();
         if (result['success'] == true || _isAlreadyWrittenMessage(message)) {
+          if (result['success'] == true &&
+              message != null &&
+              message.isNotEmpty) {
+            lastSuccessMessage = message;
+          }
           _rememberSubmitted(item.itId, createdReview);
           if (createdReview?.isId != null) createdId = createdReview!.isId;
           continue;
@@ -2062,7 +2068,12 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
       }
 
       if (!mounted) return;
-      AppToastOverlay.show(context, '리뷰가 작성되었습니다.');
+      AppToastOverlay.show(
+        context,
+        (lastSuccessMessage != null && lastSuccessMessage.isNotEmpty)
+            ? lastSuccessMessage
+            : '리뷰가 작성되었습니다.',
+      );
       openMyReviewsAfterWrite(context, focusIsId: createdId);
     } catch (e) {
       await FailureLog.record(
