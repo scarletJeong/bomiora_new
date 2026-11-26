@@ -278,6 +278,10 @@ class AuthService {
       final merged = Map<String, dynamic>.from(local.toJson())
         ..addAll(
             NodeValueParser.normalizeMap(Map<String, dynamic>.from(userRaw)));
+      final nickDays = NodeValueParser.asInt(decoded['nickModifyDays']);
+      if (nickDays != null) {
+        merged['nickModifyDays'] = nickDays;
+      }
       final refreshed = UserModel.fromJson(merged);
       if (_sessionEpoch != epoch) return null;
       await updateUser(refreshed);
@@ -294,11 +298,15 @@ class AuthService {
   }
 
   /// 프로필 수정
+  ///
+  /// 이름 변경은 KCP 본인인증 후에만 가능 — [fromKcp] + [mbDupinfo] 필요.
   static Future<Map<String, dynamic>> updateProfile({
     required String mbId,
     String? name,
     String? nickname,
     String? phone,
+    String? mbDupinfo,
+    bool fromKcp = false,
   }) async {
     try {
       final requestData = {
@@ -306,6 +314,9 @@ class AuthService {
         if (name != null) 'name': name,
         if (nickname != null) 'nickname': nickname,
         if (phone != null) 'phone': phone,
+        if (fromKcp) 'fromKcp': true,
+        if (mbDupinfo != null && mbDupinfo.trim().isNotEmpty)
+          'mbDupinfo': mbDupinfo.trim(),
       };
 
       final response = await http.put(

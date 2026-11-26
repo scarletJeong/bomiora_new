@@ -7,6 +7,8 @@ class UserModel {
   final String? nickname; // 닉네임 추가
   /// 닉네임 마지막 변경일 (`mb_nick_date`, YYYY-MM-DD 등)
   final String? nicknameChangedAt;
+  /// 닉네임 변경 제한 일수 (`cf_nick_modify`). null이면 서버 값을 아직 모름.
+  final int? nickModifyDays;
   final String? phone;
   final String? profileImage; // 프로필 이미지 경로/URL
   /// 회원 생년월일(가능한 포맷: YYYYMMDD / yyyy-MM-dd 등)
@@ -22,6 +24,7 @@ class UserModel {
     required this.name,
     this.nickname,
     this.nicknameChangedAt,
+    this.nickModifyDays,
     this.phone,
     this.profileImage,
     this.birthDate,
@@ -73,6 +76,9 @@ class UserModel {
         NodeValueParser.asInt(normalized['mbLevel']) ??
         NodeValueParser.asInt(normalized['mb_level']) ??
         0;
+    final nickModifyDays =
+        NodeValueParser.asInt(normalized['nickModifyDays']) ??
+        NodeValueParser.asInt(normalized['cf_nick_modify']);
     
     return UserModel(
       id: id,
@@ -80,6 +86,7 @@ class UserModel {
       name: name,
       nickname: nickname,
       nicknameChangedAt: nicknameChangedAt,
+      nickModifyDays: nickModifyDays,
       phone: phone,
       profileImage: profileImage,
       birthDate: birthDate,
@@ -95,6 +102,7 @@ class UserModel {
       'name': name,
       if (nickname != null) 'nickname': nickname,
       if (nicknameChangedAt != null) 'nicknameChangedAt': nicknameChangedAt,
+      if (nickModifyDays != null) 'nickModifyDays': nickModifyDays,
       'phone': phone,
       if (profileImage != null) 'profileImage': profileImage,
       if (birthDate != null) 'birthDate': birthDate,
@@ -110,6 +118,7 @@ class UserModel {
     String? name,
     String? nickname,
     String? nicknameChangedAt,
+    int? nickModifyDays,
     String? phone,
     String? profileImage,
     String? birthDate,
@@ -122,6 +131,7 @@ class UserModel {
       name: name ?? this.name,
       nickname: nickname ?? this.nickname,
       nicknameChangedAt: nicknameChangedAt ?? this.nicknameChangedAt,
+      nickModifyDays: nickModifyDays ?? this.nickModifyDays,
       phone: phone ?? this.phone,
       profileImage: profileImage ?? this.profileImage,
       birthDate: birthDate ?? this.birthDate,

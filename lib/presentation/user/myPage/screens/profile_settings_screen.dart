@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import '../../../auth/widgets/kcp_cert.dart';
 import '../../../common/widgets/app_toast_overlay.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
@@ -27,6 +28,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   bool _profileReady = false;
 
   // 회원정보 입력 컨트롤러
+  final TextEditingController _nameController = TextEditingController();
   final TextEditingController _nicknameController = TextEditingController();
   final TextEditingController _phone1Controller = TextEditingController();
   final TextEditingController _phone2Controller = TextEditingController();
@@ -45,6 +47,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   bool _obscureNewPassword = true;
   bool _obscureConfirmPassword = true;
   bool _contactOtpVerifiedSuccess = false;
+  bool _nameKcpBusy = false;
+  String? _pendingNameDupinfo;
 
   static const String _contactOtpPurpose = 'profile_phone';
   static final List<TextInputFormatter> _digitsOnlyFormatters = [
@@ -57,10 +61,13 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   ];
   String _originalPhoneDigits = '';
   String _originalNickname = '';
+  String _originalName = '';
 
   /// 인증번호 확인에 성공한 연락처 숫자. 이 번호가 입력란과 같으면 저장할 수 있습니다.
   String? _otpVerifiedDigits;
-  static const int _nicknameChangeIntervalMonths = 6;
+  /// 서버 `cf_nick_modify` 일수. 세션 응답 전·실패 시 웹 설치 기본값 60.
+  static const int _defaultNickModifyDays = 60;
+  int _nickModifyDays = _defaultNickModifyDays;
   String? _contactOtpToken;
   bool _contactPhoneVerified = true;
   bool _contactOtpSending = false;
@@ -75,6 +82,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
 
   @override
   void dispose() {
+    _nameController.dispose();
     _nicknameController.dispose();
     _phone1Controller.dispose();
     _phone2Controller.dispose();
@@ -90,7 +98,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   }
 
   Future<void> _loadCurrentUser() async {
-    final user = await AuthService.getUser();
+    var user = await AuthService.getUser();
     if (!mounted) return;
     if (user == null) {
       setState(() {
@@ -100,10 +108,20 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
       return;
     }
 
+    final refreshed = await AuthService.refreshUserFromServer();
+    if (!mounted) return;
+    user = refreshed ?? user;
+
     final phone = (user.phone ?? '').replaceAll(RegExp(r'[^0-9]'), '');
+    final days = user.nickModifyDays;
     setState(() {
       _profileReady = true;
       _currentUser = user;
+      _nickModifyDays =
+          (days != null && days >= 0) ? days : _defaultNickModifyDays;
+      _originalName = user.name.trim();
+      _nameController.text = _originalName;
+      _pendingNameDupinfo = null;
       _originalNickname = user.nickname ?? '';
       _nicknameController.text = _originalNickname;
 
@@ -172,13 +190,15 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   }
 
   DateTime? get _nextNicknameChangeDate {
+    if (_nickModifyDays <= 0) return null;
     final last = _parseNicknameChangedAt(_currentUser?.nicknameChangedAt);
     if (last == null) return null;
-    return DateTime(
-        last.year, last.month + _nicknameChangeIntervalMonths, last.day);
+    return DateTime(last.year, last.month, last.day)
+        .add(Duration(days: _nickModifyDays));
   }
 
   bool _canChangeNicknameNow() {
+    if (_nickModifyDays <= 0) return true;
     final next = _nextNicknameChangeDate;
     if (next == null) return true;
     final today = DateTime.now();
@@ -186,6 +206,9 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     final nextDate = DateTime(next.year, next.month, next.day);
     return !todayDate.isBefore(nextDate);
   }
+
+  String get _nicknameLimitMessage =>
+      '닉네임은 $_nickModifyDays일에 1번만 변경할 수 있습니다.';
 
   bool get _nicknameChanged =>
       _nicknameController.text.trim() != _originalNickname.trim();
@@ -195,6 +218,12 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
 
   bool get _nicknameReady =>
       _nicknameChanged && _nicknameController.text.trim().isNotEmpty;
+
+  bool get _nameReady {
+    final next = _nameController.text.trim();
+    if (next.isEmpty || next == _originalName) return false;
+    return (_pendingNameDupinfo ?? '').trim().isNotEmpty;
+  }
 
   /// 인증번호 확인이 끝난 현재 연락처면 저장할 수 있습니다.
   bool get _phoneReady {
@@ -215,9 +244,91 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         isValidAppPassword(pw);
   }
 
-  /// 닉네임, 인증된 연락처, 비밀번호 중 하나라도 저장 가능하면 저장 버튼을 켭니다.
+  /// 이름(본인인증), 닉네임, 인증된 연락처, 비밀번호 중 하나라도 저장 가능하면 저장 버튼을 켭니다.
   bool get _hasProfileChanges =>
-      _nicknameReady || _phoneReady || _passwordReady;
+      _nameReady || _nicknameReady || _phoneReady || _passwordReady;
+
+  String _formatBirthDisplay(String? raw) {
+    final digits = (raw ?? '').replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.length < 8) return '';
+    return '${digits.substring(0, 4)}.${digits.substring(4, 6)}.${digits.substring(6, 8)}';
+  }
+
+  String? _readCertString(Map<String, dynamic> source, List<String> keys) {
+    for (final key in keys) {
+      final v = source[key];
+      if (v == null) continue;
+      final s = v.toString().trim();
+      if (s.isNotEmpty) return s;
+    }
+    return null;
+  }
+
+  Future<void> _openNameKcpCert() async {
+    if (_nameKcpBusy || _currentUser == null) return;
+    setState(() => _nameKcpBusy = true);
+    try {
+      final cert = await Navigator.push<Map<String, dynamic>?>(
+        context,
+        PageRouteBuilder<Map<String, dynamic>?>(
+          opaque: false,
+          barrierDismissible: false,
+          barrierColor: const Color(0x991A1A1A),
+          transitionDuration: Duration.zero,
+          reverseTransitionDuration: Duration.zero,
+          pageBuilder: (context, animation, secondaryAnimation) {
+            return const KcpCertWebViewScreen(
+              flow: 'profile',
+              popResultToParent: true,
+            );
+          },
+        ),
+      );
+      if (!mounted) return;
+      if (cert == null) return;
+      if (cert['popupBlocked'] == true) {
+        AppToastOverlay.showAlert(
+          context,
+          '팝업이 차단되어 본인인증을 진행할 수 없습니다.',
+        );
+        return;
+      }
+      if (cert['duplicate'] == true) {
+        AppToastOverlay.showAlert(
+          context,
+          '이미 다른 계정에 등록된 본인인증 정보입니다.',
+        );
+        return;
+      }
+      if (cert['cert_completed'] != true) return;
+
+      final name = _readCertString(cert, [
+            'name',
+            'user_name',
+            'mem_name',
+            'userName',
+          ]) ??
+          '';
+      final dup = _readCertString(cert, [
+            'mb_dupinfo',
+            'mbDupinfo',
+            'di',
+            'dupinfo',
+          ]) ??
+          '';
+      if (name.isEmpty || dup.isEmpty) {
+        AppToastOverlay.showAlert(context, '본인인증 정보를 확인하지 못했습니다.');
+        return;
+      }
+      setState(() {
+        _nameController.text = name;
+        _pendingNameDupinfo = dup;
+      });
+      AppToastOverlay.show(context, '본인인증 이름이 반영되었습니다. 저장해 주세요.');
+    } finally {
+      if (mounted) setState(() => _nameKcpBusy = false);
+    }
+  }
 
   void _onFormChanged() {
     if (mounted) setState(() {});
@@ -291,7 +402,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   }
 
   void _showNicknameChangeLimitToast() {
-    AppToastOverlay.show(context, '닉네임은 6개월에 1번만 변경 가능합니다.');
+    AppToastOverlay.show(context, _nicknameLimitMessage);
   }
 
   void _showSaveFailure(Object? message, String fallback) {
@@ -498,17 +609,19 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
 
     var profileSaved = false;
     try {
-      if (_nicknameReady || _phoneReady) {
+      if (_nameReady || _nicknameReady || _phoneReady) {
         final phone = _phoneReady
             ? (_otpVerifiedDigits ?? _digitsOnly(_enteredPhoneDigits))
             : _originalPhoneDigits;
         final result = await AuthService.updateProfile(
           mbId: _currentUser!.id,
-          name: _currentUser!.name,
+          name: _nameReady ? _nameController.text.trim() : _originalName,
           nickname: _nicknameController.text
               .trim()
               .replaceAll(RegExp(r'[^a-zA-Z0-9ㄱ-ㅎㅏ-ㅣ가-힣]'), ''),
           phone: phone,
+          fromKcp: _nameReady,
+          mbDupinfo: _nameReady ? _pendingNameDupinfo : null,
         );
 
         if (!mounted) return;
@@ -522,6 +635,10 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
             _showSaveFailure(result['message'], '프로필 수정에 실패했습니다.');
           }
           return;
+        }
+        if (_nameReady) {
+          _originalName = _nameController.text.trim();
+          _pendingNameDupinfo = null;
         }
         profileSaved = true;
       }
@@ -789,9 +906,116 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _ProfileHeader(
-          name: '${_currentUser!.name} 님',
+          name: '${(_nameController.text.trim().isNotEmpty ? _nameController.text.trim() : _currentUser!.name)} 님',
           email: _currentUser!.email,
         ),
+        SizedBox(height: healthDp(context, 16)),
+        Text(
+          '이름',
+          style: TextStyle(
+            color: const Color(0xFF1A1A1A),
+            fontSize: healthSp(context, 16),
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        SizedBox(height: healthDp(context, 5)),
+        Row(
+          children: [
+            Expanded(
+              child: _InputBox(
+                padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
+                child: TextField(
+                  controller: _nameController,
+                  readOnly: true,
+                  decoration: InputDecoration(
+                    border: InputBorder.none,
+                    isCollapsed: true,
+                    contentPadding: EdgeInsets.zero,
+                    hintText: '본인인증으로 이름을 확인해 주세요',
+                    hintStyle: _inputHintStyle(context),
+                  ),
+                  style: TextStyle(
+                    color: const Color(0xFF1A1A1A),
+                    fontSize: healthSp(context, 16),
+                    fontWeight: FontWeight.w500,
+                    height: 1,
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(width: healthDp(context, 8)),
+            SizedBox(
+              height: healthDp(context, 40),
+              child: ElevatedButton(
+                onPressed: _nameKcpBusy ? null : _openNameKcpCert,
+                style: MyPageButtonStyles.pinkElevated(
+                  padding:
+                      EdgeInsets.symmetric(horizontal: healthDp(context, 14)),
+                ).copyWith(
+                  minimumSize: WidgetStatePropertyAll(
+                    Size(0, healthDp(context, 40)),
+                  ),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  shape: WidgetStatePropertyAll(
+                    RoundedRectangleBorder(
+                      borderRadius:
+                          BorderRadius.circular(healthDp(context, 10)),
+                    ),
+                  ),
+                ),
+                child: Text(
+                  _nameKcpBusy ? '인증 중…' : '본인인증',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: healthSp(context, 14),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: healthDp(context, 4)),
+        Text(
+          _nameReady
+              ? '*본인인증 이름이 반영되었습니다. 저장하면 적용됩니다.'
+              : '*이름은 본인인증으로만 변경할 수 있습니다.',
+          style: _hintWarningStyle(
+            context,
+            color: _nameReady
+                ? const Color(0xFFFF5A8D)
+                : const Color(0xFF898686),
+          ),
+        ),
+        if (_formatBirthDisplay(_currentUser!.birthDate).isNotEmpty) ...[
+          SizedBox(height: healthDp(context, 16)),
+          Text(
+            '생년월일',
+            style: TextStyle(
+              color: const Color(0xFF1A1A1A),
+              fontSize: healthSp(context, 16),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          SizedBox(height: healthDp(context, 5)),
+          _InputBox(
+            padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
+            child: Text(
+              _formatBirthDisplay(_currentUser!.birthDate),
+              style: TextStyle(
+                color: const Color(0xFF898686),
+                fontSize: healthSp(context, 16),
+                fontWeight: FontWeight.w500,
+                height: 1,
+              ),
+            ),
+          ),
+          SizedBox(height: healthDp(context, 4)),
+          Text(
+            '*생년월일은 수정할 수 없습니다.',
+            style: _hintWarningStyle(context),
+          ),
+        ],
         SizedBox(height: healthDp(context, 16)),
         Text(
           '닉네임',
@@ -837,7 +1061,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         if (!_canChangeNicknameNow() && _nextNicknameChangeDate != null) ...[
           SizedBox(height: healthDp(context, 4)),
           Text(
-            '*닉네임은 6개월에 1번 변경할 수 있습니다. \n(다음 변경: ${_formatYmdDot(_nextNicknameChangeDate!)})',
+            '*닉네임은 $_nickModifyDays일에 1번 변경할 수 있습니다. \n(다음 변경: ${_formatYmdDot(_nextNicknameChangeDate!)})',
             style: _hintWarningStyle(context),
           ),
         ],
