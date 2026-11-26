@@ -1103,7 +1103,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     );
   }
 
-  Widget _koreanMedicineBadge() {
+  bool _iconOn(dynamic raw) {
+    if (raw == true) return true;
+    if (raw is num) return raw == 1;
+    final s = raw?.toString().trim().toLowerCase();
+    return s == '1' || s == 'true';
+  }
+
+  Widget _productIconBadge(String label) {
     return Container(
       padding: EdgeInsets.all(healthDp(context, 5)),
       decoration: BoxDecoration(
@@ -1114,7 +1121,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
         ),
       ),
       child: Text(
-        '한의약품',
+        label,
         style: TextStyle(
           fontSize: healthSp(context, 12),
           fontWeight: FontWeight.w300,
@@ -1123,6 +1130,24 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
           height: 1.0,
         ),
       ),
+    );
+  }
+
+  Widget _productIconBadges() {
+    final info = _product?.additionalInfo;
+    final showMedicine = _iconOn(info?['it_icon1']);
+    final showTodayDelivery = _iconOn(info?['it_icon2']);
+    if (!showMedicine && !showTodayDelivery) {
+      return const SizedBox.shrink();
+    }
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (showMedicine) _productIconBadge('한의약품'),
+        if (showMedicine && showTodayDelivery)
+          SizedBox(width: healthDp(context, 4)),
+        if (showTodayDelivery) _productIconBadge('오늘의 배송'),
+      ],
     );
   }
 
@@ -1642,7 +1667,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                     ),
                   ),
                   SizedBox(width: healthDp(context, 8)),
-                  _koreanMedicineBadge(),
+                  _productIconBadges(),
                 ],
               ),
             ),

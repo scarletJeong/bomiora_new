@@ -92,8 +92,8 @@ class ProductInfoSpecHelper {
     final specs = <Map<String, String>>[];
     if (info == null) return specs;
 
-    // 중량/용량 → 처방단위 → 복용방법 → 패키지구성 → 제조사 → 원산지 → 브랜드
-    // → 적립포인트 → 배송비결제
+    // 중량/용량 → 처방단위 → 복용방법 → 패키지구성 → 제조사 → 원산지 → 브랜드 → 모델
+    // → 적립포인트 → 배송비
     _add(specs, '중량/용량', info['it_weight']);
     _add(specs, '처방단위', info['it_prescription']);
     _add(specs, '복용방법', info['it_takeway']);
@@ -101,6 +101,7 @@ class ProductInfoSpecHelper {
     _add(specs, '제조사', info['it_maker']);
     _add(specs, '원산지', info['it_origin']);
     _add(specs, '브랜드', info['it_brand']);
+    _add(specs, '모델', info['it_model']);
 
     if (!isInfluencerProduct) {
       final pointText = PointHelper.calculatePointText(
