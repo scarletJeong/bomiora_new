@@ -163,7 +163,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
     }
   }
 
-  Future<void> _loadProducts() async {
+  Future<void> _loadProducts({bool forceRefresh = false}) async {
     final requestToken = ++_productsRequestToken;
     final categoryId = _activeCategoryId;
     setState(() {
@@ -178,6 +178,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
         productKind: widget.productKind,
         page: 1,
         pageSize: _pageSize,
+        forceRefresh: forceRefresh,
       );
 
       if (!mounted || requestToken != _productsRequestToken) return;
@@ -235,10 +236,10 @@ class _ProductListScreenState extends State<ProductListScreen> {
 
   void _retryLoadMore() {
     setState(() => _moreLoadFailed = false);
-    _loadMoreProducts();
+    _loadMoreProducts(forceRefresh: true);
   }
 
-  Future<void> _loadMoreProducts() async {
+  Future<void> _loadMoreProducts({bool forceRefresh = false}) async {
     if (_isLoadingMore || !_hasMore) return;
 
     final requestToken = _productsRequestToken;
@@ -254,6 +255,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
         productKind: widget.productKind,
         page: nextPage,
         pageSize: _pageSize,
+        forceRefresh: forceRefresh,
       );
 
       if (!mounted ||
@@ -333,7 +335,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
           ),
           topBar: _buildCategoryTabs(forSticky: true),
           scrollChild: RefreshIndicator(
-            onRefresh: _loadProducts,
+            onRefresh: () => _loadProducts(forceRefresh: true),
             child: CustomScrollView(
               controller: _scrollController,
               slivers: [
@@ -420,7 +422,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
             child: LoadFailureNotice(
               message: '상품이 없습니다.',
               actionLabel: '새로고침',
-              onRetry: _loadProducts,
+              onRetry: () => _loadProducts(forceRefresh: true),
             ),
           ),
         if (showEmpty)

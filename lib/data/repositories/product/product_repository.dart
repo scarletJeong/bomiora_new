@@ -9,6 +9,7 @@ class ProductRepository {
   static const Duration _listCacheTtl = Duration(minutes: 3);
   static final Map<String, _ProductListCacheEntry> _listCache = {};
   static final Map<String, Future<List<Product>>> _listInFlight = {};
+  static final Map<String, int> _listFetchSerial = {};
   static const Duration _detailCacheTtl = Duration(minutes: 2);
   static final Map<String, Product> _detailCache = {};
   static final Map<String, Product> _previewCache = {};
@@ -87,21 +88,32 @@ class ProductRepository {
     String? productKind,
     int page = 1,
     int pageSize = 20,
+    bool forceRefresh = false,
   }) async {
     final cacheKey = '$categoryId|${productKind ?? ''}|$page|$pageSize';
+    if (forceRefresh) {
+      _listCache.remove(cacheKey);
+    }
     final hit = _listCache[cacheKey];
-    if (hit != null && DateTime.now().isBefore(hit.expiresAt)) {
+    if (!forceRefresh &&
+        hit != null &&
+        DateTime.now().isBefore(hit.expiresAt)) {
       return hit.products;
     }
-    final pending = _listInFlight[cacheKey];
-    if (pending != null) return pending;
+    if (!forceRefresh) {
+      final pending = _listInFlight[cacheKey];
+      if (pending != null) return pending;
+    }
 
+    final serial = (_listFetchSerial[cacheKey] ?? 0) + 1;
+    _listFetchSerial[cacheKey] = serial;
     final request = _fetchProductsByCategory(
       categoryId: categoryId,
       productKind: productKind,
       page: page,
       pageSize: pageSize,
       cacheKey: cacheKey,
+      serial: serial,
     );
     _listInFlight[cacheKey] = request;
     try {
@@ -119,6 +131,7 @@ class ProductRepository {
     required int page,
     required int pageSize,
     required String cacheKey,
+    required int serial,
   }) async {
     String endpoint = ApiEndpoints.productListByCategory(categoryId,
         productKind: productKind);
@@ -136,10 +149,12 @@ class ProductRepository {
     }
     final data = json.decode(response.body);
     final products = _parseProductList(data);
-    _listCache[cacheKey] = _ProductListCacheEntry(
-      products: products,
-      expiresAt: DateTime.now().add(_listCacheTtl),
-    );
+    if (serial == _listFetchSerial[cacheKey]) {
+      _listCache[cacheKey] = _ProductListCacheEntry(
+        products: products,
+        expiresAt: DateTime.now().add(_listCacheTtl),
+      );
+    }
     return products;
   }
 
