@@ -106,6 +106,10 @@ extension _PaymentCheckout on _PaymentScreenState {
       );
       return false;
     }
+    if (_pointSettings.hopeDateUse && _hopeDate == null) {
+      AppToastOverlay.showAlert(context, '희망배송일을 선택하여 주십시오.');
+      return false;
+    }
     return true;
   }
 
@@ -193,6 +197,8 @@ extension _PaymentCheckout on _PaymentScreenState {
               'hp': user.phone ?? _phoneController.text.trim(),
             },
             'od_memo': _deliveryRequestMemo,
+            if (_pointSettings.hopeDateUse && _hopeDateLabel.isNotEmpty)
+              'od_hope_date': _hopeDateLabel,
             'receiver': {
               'name': _receiverController.text.trim(),
               'tel': _phoneController.text.trim(),

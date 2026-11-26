@@ -169,6 +169,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   bool _useEscrow = false;
 
+  /// 희망배송일 (de_hope_date_use 일 때만 사용, yyyy-MM-dd로 전송)
+  DateTime? _hopeDate;
+
   bool _showExpectedPointHint = false;
   Timer? _expectedPointHintTimer;
 

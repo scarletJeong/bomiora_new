@@ -203,6 +203,99 @@ extension _PaymentDelivery on _PaymentScreenState {
   /// 배송요청사항 드롭다운 선택값 → 주문 `od_memo`
   String get _deliveryRequestMemo => _deliveryMemo.trim();
 
+  DateTime get _hopeDateMin {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    return today.add(Duration(days: _pointSettings.hopeDateAfter));
+  }
+
+  DateTime get _hopeDateMax =>
+      _hopeDateMin.add(const Duration(days: 6));
+
+  String get _hopeDateLabel {
+    final d = _hopeDate;
+    if (d == null) return '';
+    final y = d.year.toString().padLeft(4, '0');
+    final m = d.month.toString().padLeft(2, '0');
+    final day = d.day.toString().padLeft(2, '0');
+    return '$y-$m-$day';
+  }
+
+  Future<void> _pickHopeDate() async {
+    if (!_pointSettings.hopeDateUse) return;
+    final min = _hopeDateMin;
+    final max = _hopeDateMax;
+    var initial = _hopeDate ?? min;
+    if (initial.isBefore(min)) initial = min;
+    if (initial.isAfter(max)) initial = max;
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: min,
+      lastDate: max,
+      helpText: '희망배송일',
+      cancelText: '취소',
+      confirmText: '선택',
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: _pink,
+              onPrimary: Colors.white,
+              onSurface: _figmaDark,
+            ),
+          ),
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
+    );
+    if (!mounted || picked == null) return;
+    _setState(() {
+      _hopeDate = DateTime(picked.year, picked.month, picked.day);
+    });
+  }
+
+  Widget _buildHopeDateField(BuildContext context) {
+    if (!_pointSettings.hopeDateUse) return const SizedBox.shrink();
+    final label = _hopeDateLabel;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(height: healthDp(context, 10)),
+        _requiredLabel(context, '희망배송일'),
+        SizedBox(height: healthDp(context, 2)),
+        _deliveryFieldBox(
+          onTap: _pickHopeDate,
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  label.isEmpty ? '날짜를 선택해 주세요' : '$label 이후로 배송 바랍니다.',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: label.isEmpty ? _muted : Colors.black,
+                    fontSize: healthSp(context, 12),
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight:
+                        label.isEmpty ? FontWeight.w300 : FontWeight.w500,
+                    height: 1,
+                    leadingDistribution: TextLeadingDistribution.even,
+                  ),
+                ),
+              ),
+              Icon(
+                Icons.calendar_today_outlined,
+                size: healthDp(context, 16),
+                color: _muted,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   String _safe(dynamic value) => (value ?? '').toString().trim();
 
   String _postalDigits(String raw) =>
@@ -547,6 +640,7 @@ extension _PaymentDelivery on _PaymentScreenState {
           ],
           SizedBox(height: healthDp(context, 10)),
           _buildDeliveryMemoDropdown(),
+          _buildHopeDateField(context),
           SizedBox(height: healthDp(context, 5)),
           Align(
             alignment: Alignment.centerRight,
@@ -698,6 +792,7 @@ extension _PaymentDelivery on _PaymentScreenState {
           ],
           SizedBox(height: healthDp(context, 10)),
           _buildDeliveryMemoDropdown(),
+          _buildHopeDateField(context),
           SizedBox(height: healthDp(context, 10)),
           Align(
             alignment: Alignment.centerRight,

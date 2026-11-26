@@ -14,6 +14,10 @@ class PointSettings {
   final bool escrowUse;
   /// 신용카드 무이자할부 (de_card_noint_use)
   final bool cardNointUse;
+  /// 희망배송일 사용 (de_hope_date_use)
+  final bool hopeDateUse;
+  /// 희망배송일 시작 오프셋 일수 (de_hope_date_after) — 오늘+N ~ 오늘+N+6
+  final int hopeDateAfter;
 
   const PointSettings({
     required this.usePoint,
@@ -24,6 +28,8 @@ class PointSettings {
     required this.settlePointUnit,
     this.escrowUse = false,
     this.cardNointUse = false,
+    this.hopeDateUse = false,
+    this.hopeDateAfter = 3,
   });
 
   /// 결제·주문 상세 예상 적립 표시 여부
@@ -38,6 +44,8 @@ class PointSettings {
     settlePointUnit: 100,
     escrowUse: false,
     cardNointUse: false,
+    hopeDateUse: false,
+    hopeDateAfter: 3,
   );
 }
 
@@ -119,6 +127,8 @@ class AppConfigService {
         settlePointUnit: unit,
         escrowUse: asBool(data['de_escrow_use'], fallback: false),
         cardNointUse: asBool(data['de_card_noint_use'], fallback: false),
+        hopeDateUse: asBool(data['de_hope_date_use'], fallback: false),
+        hopeDateAfter: asInt(data['de_hope_date_after'], 3).clamp(0, 365),
       );
     } catch (_) {
       return PointSettings.defaults;
