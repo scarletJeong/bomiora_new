@@ -242,13 +242,16 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
     }
 
     final serverMessage = (result.message ?? '').trim();
-    final toast = serverMessage.isEmpty ? '목표 저장에 실패했습니다.' : serverMessage;
     final logReason = (result.logDetail ?? '').trim();
-    AppToastOverlay.showAlert(context, toast);
+    HealthInputComplete.showSaveFailureToast(context, serverMessage);
     await FailureLog.record(
       code: 'health_goal.save',
       mbId: mbId,
-      reason: logReason.isEmpty ? toast : logReason,
+      reason: logReason.isEmpty
+          ? (serverMessage.isEmpty
+              ? HealthInputComplete.saveFailedMessage
+              : serverMessage)
+          : logReason,
     );
   }
 
