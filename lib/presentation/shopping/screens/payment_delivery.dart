@@ -67,9 +67,29 @@ extension _PaymentDelivery on _PaymentScreenState {
     _setState(() {
       _baseShipping = quote.baseShipping < 0 ? 0 : quote.baseShipping;
       _extraShipping = quote.extraShipping < 0 ? 0 : quote.extraShipping;
+      _collectShipping = quote.collectItems;
+      _choiceShipping = quote.choiceItems;
       _syncCouponLists();
     });
     return quote;
+  }
+
+  Future<void> _chooseSendCost(ShippingPayItem item, int sendCost) async {
+    if (_updatingSendCost || item.ctIds.isEmpty || item.sendCost == sendCost) return;
+    _setState(() => _updatingSendCost = true);
+    final ok = await CartService.updateSendCost(
+      ctIds: item.ctIds,
+      sendCost: sendCost,
+    );
+    if (!mounted) return;
+    if (!ok) {
+      _setState(() => _updatingSendCost = false);
+      AppToastOverlay.showAlert(context, '배송비 결제 방식을 바꾸지 못했습니다');
+      return;
+    }
+    await _fetchShippingQuote();
+    if (!mounted) return;
+    _setState(() => _updatingSendCost = false);
   }
 
   Future<void> _openDeliveryAddressChangePopup() async {

@@ -57,12 +57,18 @@ class ProductInfoSpecHelper {
   /// (API `shippingFeeLabel` 우선, 없으면 클라이언트 폴백)
   static String shippingFeeLabel(Map<String, dynamic>? info) {
     if (info == null) return '';
-    final fromApi = plainText(info['shippingFeeLabel']);
-    if (fromApi.isNotEmpty) return fromApi;
-
     final type = _toInt(info['it_sc_type']);
     final minimum = _toInt(info['it_sc_minimum']);
     final price = _toInt(info['it_sc_price']);
+    if (type == 4) {
+      final qty = _toInt(info['it_sc_qty']);
+      final unit = qty > 0 ? qty : 1;
+      if (price > 0) return '$unit개마다 ${_formatWon(price)}';
+      return '수량별 배송비';
+    }
+
+    final fromApi = plainText(info['shippingFeeLabel']);
+    if (fromApi.isNotEmpty) return fromApi;
 
     if (type == 1) return '무료배송';
     if (type == 3) return '유료배송';

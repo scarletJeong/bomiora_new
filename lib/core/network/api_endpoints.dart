@@ -53,6 +53,7 @@ class ApiEndpoints {
   static const String addToCart = '/api/cart/add';
   static const String getCart = '/api/cart';
   static const String getCartShippingCost = '/api/cart/shipping-cost';
+  static const String updateCartSendCost = '/api/cart/send-cost';
   static const String cartCheckoutValidate = '/api/cart/checkout-validate';
   static const String getCartRecommend = '/api/cart/recommend';
   static const String updateCartItem = '/api/cart/update';

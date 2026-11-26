@@ -492,6 +492,7 @@ extension _PaymentSections on _PaymentScreenState {
                   ),
                 ],
               ],
+              ..._shippingPayGuide(context),
               if (_shippingCouponDiscount > 0) ...[
                 SizedBox(height: healthDp(context, 10)),
                 _paymentAmountRow(
@@ -596,6 +597,75 @@ extension _PaymentSections on _PaymentScreenState {
           ),
         ),
       ],
+    );
+  }
+
+  List<Widget> _shippingPayGuide(BuildContext context) {
+    if (_collectShipping.isEmpty && _choiceShipping.isEmpty) return const [];
+    final noteStyle = TextStyle(
+      color: _muted,
+      fontSize: healthSp(context, 10),
+      fontFamily: 'Gmarket Sans TTF',
+      fontWeight: FontWeight.w300,
+      height: 1.4,
+      letterSpacing: -0.40,
+    );
+    final widgets = <Widget>[SizedBox(height: healthDp(context, 8))];
+    for (final item in _collectShipping) {
+      final name = item.name.isEmpty ? '상품' : item.name;
+      widgets.add(Text(
+        '$name 배송비 ${PriceFormatter.format(item.fee)}원은 수령 후 지불입니다',
+        style: noteStyle,
+      ));
+      widgets.add(SizedBox(height: healthDp(context, 6)));
+    }
+    for (final item in _choiceShipping) {
+      final name = item.name.isEmpty ? '상품' : item.name;
+      widgets.add(Text('$name 배송비 결제', style: noteStyle));
+      widgets.add(SizedBox(height: healthDp(context, 4)));
+      widgets.add(Row(
+        children: [
+          _sendCostOption(context, item, 0, '주문시 결제'),
+          SizedBox(width: healthDp(context, 12)),
+          _sendCostOption(context, item, 1, '수령후 지불'),
+        ],
+      ));
+      widgets.add(SizedBox(height: healthDp(context, 6)));
+    }
+    return widgets;
+  }
+
+  Widget _sendCostOption(
+    BuildContext context,
+    ShippingPayItem item,
+    int value,
+    String label,
+  ) {
+    final selected = item.sendCost == value;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: _updatingSendCost ? null : () => _chooseSendCost(item, value),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            selected ? Icons.radio_button_checked : Icons.radio_button_off,
+            size: healthDp(context, 14),
+            color: selected ? _pink : _muted,
+          ),
+          SizedBox(width: healthDp(context, 4)),
+          Text(
+            label,
+            style: TextStyle(
+              color: selected ? _pink : _muted,
+              fontSize: healthSp(context, 11),
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w500,
+              letterSpacing: -0.40,
+            ),
+          ),
+        ],
+      ),
     );
   }
 

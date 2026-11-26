@@ -182,6 +182,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   int _extraShipping = 0;
 
+  List<ShippingPayItem> _collectShipping = const [];
+
+  List<ShippingPayItem> _choiceShipping = const [];
+
+  bool _updatingSendCost = false;
+
   int? _quotedPurchaseAmount;
 
   int? _quotedProductCoupon;

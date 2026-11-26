@@ -726,6 +726,32 @@ class CartService {
     return quote?.baseShipping ?? 0;
   }
 
+  /// 사용자선택 상품의 배송비 결제 방식. 0 주문시 결제, 1 수령후 지불.
+  static Future<bool> updateSendCost({
+    required List<int> ctIds,
+    required int sendCost,
+  }) async {
+    final ids = ctIds.where((id) => id > 0).toList();
+    if (ids.isEmpty) return false;
+    try {
+      final user = await AuthService.getUser();
+      if (user == null) return false;
+      final response = await ApiClient.post(
+        ApiEndpoints.updateCartSendCost,
+        {
+          'mb_id': user.id,
+          'ct_ids': ids,
+          'ct_send_cost': sendCost == 1 ? 1 : 0,
+        },
+      );
+      if (response.statusCode != 200) return false;
+      final body = json.decode(response.body);
+      return body is Map && body['success'] == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// 기본 배송비와 우편번호 추가 배송비를 따로 받는다.
   static Future<CartShippingQuote?> getShippingQuote({
     required List<int> ctIds,
@@ -796,6 +822,8 @@ class CartService {
         baseShipping: base < 0 ? 0 : base,
         extraShipping: extra < 0 ? 0 : extra,
         pointRate: rate > 0 ? rate : 1,
+        collectItems: ShippingPayItem.listFrom(data['collect_shipping']),
+        choiceItems: ShippingPayItem.listFrom(data['choice_shipping']),
       );
     } catch (e) {
       await FailureLog.record(
@@ -1140,10 +1168,58 @@ class CartShippingQuote {
   final int baseShipping;
   final int extraShipping;
   final double pointRate;
+  final List<ShippingPayItem> collectItems;
+  final List<ShippingPayItem> choiceItems;
 
   const CartShippingQuote({
     required this.baseShipping,
     required this.extraShipping,
     required this.pointRate,
+    this.collectItems = const [],
+    this.choiceItems = const [],
   });
+}
+
+class ShippingPayItem {
+  final String name;
+  final int fee;
+  final List<int> ctIds;
+  final int sendCost;
+
+  const ShippingPayItem({
+    required this.name,
+    required this.fee,
+    required this.ctIds,
+    this.sendCost = 0,
+  });
+
+  static List<ShippingPayItem> listFrom(dynamic raw) {
+    if (raw is! List) return const [];
+    return raw.map(ShippingPayItem.fromJson).whereType<ShippingPayItem>().toList();
+  }
+
+  static ShippingPayItem? fromJson(dynamic raw) {
+    if (raw is! Map) return null;
+    final map = Map<String, dynamic>.from(raw);
+    int asInt(dynamic value) {
+      if (value is int) return value;
+      if (value is num) return value.toInt();
+      return int.tryParse('$value'.replaceAll(',', '').trim()) ?? 0;
+    }
+
+    final ids = <int>[];
+    final rawIds = map['ct_ids'];
+    if (rawIds is List) {
+      for (final id in rawIds) {
+        final parsed = asInt(id);
+        if (parsed > 0) ids.add(parsed);
+      }
+    }
+    return ShippingPayItem(
+      name: '${map['name'] ?? ''}'.trim(),
+      fee: asInt(map['fee']),
+      ctIds: ids,
+      sendCost: asInt(map['ct_send_cost']) == 1 ? 1 : 0,
+    );
+  }
 }
