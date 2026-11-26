@@ -43,16 +43,23 @@ class ArticleAdjacentNav extends StatelessWidget {
   bool get hasItems => previous != null || next != null;
 
   /// 하단 오버레이가 본문·목록 버튼을 가리지 않도록 비워 둘 높이.
+  /// 있는 행만 세어 높이를 잡는다(빈 칸 고정 없음).
   static double reservedHeight(
     BuildContext context, {
     required bool hasPrevious,
     required bool hasNext,
+    double verticalPaddingBase = 12,
+    double iconBase = 20,
+    double labelFontBase = 14,
   }) {
     var rows = 0;
     if (hasPrevious) rows++;
     if (hasNext) rows++;
     if (rows == 0) return 0;
-    final rowH = healthDp(context, 12) * 2 + healthDp(context, 22);
+    final pad = healthDp(context, verticalPaddingBase) * 2;
+    final icon = healthDp(context, iconBase);
+    final text = healthSp(context, labelFontBase) * 1.2;
+    final rowH = pad + (icon > text ? icon : text);
     final borders = healthDp(context, 1) * (rows + 1);
     return rowH * rows + borders;
   }
@@ -61,13 +68,15 @@ class ArticleAdjacentNav extends StatelessWidget {
   Widget build(BuildContext context) {
     if (!hasItems) return const SizedBox.shrink();
 
+    final line = healthDp(context, 1);
+
     return ColoredBox(
       color: Colors.white,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (previous != null) ...[
-            Container(height: healthDp(context, 1), color: _kBorder),
+            Container(height: line, color: _kBorder),
             _buildRow(
               context,
               label: '이전글',
@@ -76,7 +85,7 @@ class ArticleAdjacentNav extends StatelessWidget {
             ),
           ],
           if (next != null) ...[
-            Container(height: healthDp(context, 1), color: _kBorder),
+            Container(height: line, color: _kBorder),
             _buildRow(
               context,
               label: '다음글',
@@ -84,8 +93,7 @@ class ArticleAdjacentNav extends StatelessWidget {
               isPrev: false,
             ),
           ],
-          if (showBottomBorder)
-            Container(height: healthDp(context, 1), color: _kBorder),
+          if (showBottomBorder) Container(height: line, color: _kBorder),
         ],
       ),
     );
