@@ -208,6 +208,26 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
       case 'login':
         Navigator.pushNamed(context, '/my_page');
         break;
+      case 'health':
+        Navigator.pushNamed(context, '/health');
+        break;
+      case 'event':
+        final eventId = int.tryParse(linkId);
+        if (eventId != null && eventId > 0) {
+          Navigator.pushNamed(context, '/event/$eventId');
+        } else {
+          Navigator.pushNamed(context, '/event');
+        }
+        break;
+      case 'announcement':
+      case 'notice':
+        final announcementId = int.tryParse(linkId);
+        if (announcementId != null && announcementId > 0) {
+          Navigator.pushNamed(context, '/announcement/$announcementId');
+        } else {
+          Navigator.pushNamed(context, '/announcement');
+        }
+        break;
       default:
         break;
     }
