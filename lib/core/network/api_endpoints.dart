@@ -177,6 +177,7 @@ class ApiEndpoints {
   }) =>
       '/api/user/point/history?mb_id=$userId&size=$size&offset=$offset';
   static const String config = '/api/config';
+  static const String companyInfo = '/api/shop/company-info';
 
   // 쿠폰 관련
   static String userCoupons(String userId) => '/api/user/coupons?mb_id=$userId';

@@ -2,12 +2,40 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/constants/app_assets.dart';
+import '../../../data/models/shop_default/company_info_model.dart';
+import '../../../data/services/shop_default_service.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../settings/policy/screens/privacy_policy_screen.dart';
 import '../../settings/policy/screens/terms_of_service_screen.dart';
 
-class AppFooter extends StatelessWidget {
+class AppFooter extends StatefulWidget {
   const AppFooter({super.key});
+
+  @override
+  State<AppFooter> createState() => _AppFooterState();
+}
+
+class _AppFooterState extends State<AppFooter> {
+  CompanyInfo? _company;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCompany();
+  }
+
+  Future<void> _loadCompany() async {
+    final info = await ShopDefaultService.getCompanyInfo();
+    if (!mounted || info == null) return;
+    setState(() => _company = info);
+  }
+
+  /// 조회가 끝나기 전이나 값이 비어 있으면 기존 문구를 유지한다.
+  String _companyText(String? remote, String fallback) {
+    final value = remote?.trim() ?? '';
+    if (_company == null || value.isEmpty) return fallback;
+    return value;
+  }
 
   static const _bg = Color(0xFFF7F7F7);
   static const _text = Color(0xFF898686);
@@ -105,13 +133,13 @@ class AppFooter extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _pair(context, '상호명', '주식회사 보미오라'),
+                _pair(context, '상호명', _companyText(_company?.companyName, '주식회사 보미오라')),
                 SizedBox(height: healthDp(context, 5.77)),
-                _pair(context, '대표이사', '정대진'),
+                _pair(context, '대표이사', _companyText(_company?.ownerName, '정대진')),
                 SizedBox(height: healthDp(context, 5.77)),
-                _pair(context, '사업자번호', '356-87-02862'),
+                _pair(context, '사업자번호', _companyText(_company?.businessNumber, '356-87-02862')),
                 SizedBox(height: healthDp(context, 5.77)),
-                _pair(context, '통신판매업신고', '제2023-서울강남-02582호'),
+                _pair(context, '통신판매업신고', _companyText(_company?.mailOrderNumber, '제2023-서울강남-02582호')),
                 SizedBox(height: healthDp(context, 5.77)),
                 _pair(context, '건강기능식품판매업신고', '제2023-0138695호'),
                 SizedBox(height: healthDp(context, 5.77)),
@@ -120,11 +148,16 @@ class AppFooter extends StatelessWidget {
                   runSpacing: healthDp(context, 4),
                   crossAxisAlignment: WrapCrossAlignment.start,
                   children: [
-                    _pair(context, '고객센터', '02-546-1031', expand: false),
+                    _pair(
+                      context,
+                      '고객센터',
+                      _companyText(_company?.phone, '02-546-1031'),
+                      expand: false,
+                    ),
                     _pair(
                       context,
                       '팩스',
-                      '02-547-1031',
+                      _companyText(_company?.fax, '02-547-1031'),
                       labelStyle: faxLabelStyle,
                       valueStyle: infoStyle,
                       expand: false,
@@ -132,9 +165,13 @@ class AppFooter extends StatelessWidget {
                   ],
                 ),
                 SizedBox(height: healthDp(context, 5.77)),
-                _pair(context, '이메일', 'official@bomiora.kr'),
+                _pair(context, '이메일', _companyText(_company?.email, 'official@bomiora.kr')),
                 SizedBox(height: healthDp(context, 5.77)),
-                _pair(context, '주소', '서울 강남구 봉은사로 109, 6층(논현동)'),
+                _pair(
+                  context,
+                  '주소',
+                  _companyText(_company?.address, '서울 강남구 봉은사로 109, 6층(논현동)'),
+                ),
               ],
             ),
           ),

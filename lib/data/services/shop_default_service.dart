@@ -1,8 +1,54 @@
 import 'dart:convert';
+import '../models/shop_default/company_info_model.dart';
 import '../models/shop_default/reservation_settings_model.dart';
 import '../../core/network/api_client.dart';
+import '../../core/network/api_endpoints.dart';
 
 class ShopDefaultService {
+  static CompanyInfo? _cachedCompanyInfo;
+  static DateTime? _companyCachedAt;
+  static Future<CompanyInfo?>? _companyInFlight;
+  static const Duration _companyCacheTtl = Duration(minutes: 5);
+
+  static Future<CompanyInfo?> getCompanyInfo({bool forceRefresh = false}) async {
+    if (!forceRefresh &&
+        _cachedCompanyInfo != null &&
+        _companyCachedAt != null &&
+        DateTime.now().difference(_companyCachedAt!) < _companyCacheTtl) {
+      return _cachedCompanyInfo;
+    }
+    if (!forceRefresh && _companyInFlight != null) {
+      return _companyInFlight;
+    }
+
+    final request = _fetchCompanyInfo();
+    _companyInFlight = request;
+    try {
+      return await request;
+    } finally {
+      if (identical(_companyInFlight, request)) _companyInFlight = null;
+    }
+  }
+
+  static Future<CompanyInfo?> _fetchCompanyInfo() async {
+    try {
+      final response = await ApiClient.get(ApiEndpoints.companyInfo);
+      if (response.statusCode != 200) return _cachedCompanyInfo;
+      final body = json.decode(response.body);
+      if (body is! Map || body['success'] != true || body['data'] is! Map) {
+        return _cachedCompanyInfo;
+      }
+      final info = CompanyInfo.fromJson(
+        Map<String, dynamic>.from(body['data'] as Map),
+      );
+      _cachedCompanyInfo = info;
+      _companyCachedAt = DateTime.now();
+      return info;
+    } catch (_) {
+      return _cachedCompanyInfo;
+    }
+  }
+
   static ReservationSettingsModel? _cachedSettings;
   static DateTime? _cachedAt;
   static Future<ReservationSettingsModel?>? _inFlight;
