@@ -18,6 +18,7 @@ import '../../home/screens/home_screen.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../widgets/app_network_image.dart';
 import '../widgets/mobile_layout_wrapper.dart';
+import '../../shopping/widgets/product_main/product_main_sections.dart';
 
 /// 앱 시작·로그인 후 홈 진입 시 표시하는 스플래시.
 /// 메인 배너·신상품 이미지가 화면에 준비된 뒤에만 스플래시를 닫는다.
@@ -233,6 +234,11 @@ class _SplashScreenState extends State<SplashScreen> {
 
     if (jobs.isNotEmpty) {
       await Future.wait(jobs);
+    }
+
+    // 보미오라 소개 히어로는 홈 진입 후 백그라운드에서 미리 준비
+    if (mounted) {
+      unawaited(ProductMainQuoteSection.precacheHero(context));
     }
   }
 

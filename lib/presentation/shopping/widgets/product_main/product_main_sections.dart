@@ -141,6 +141,21 @@ class ProductMainQuoteSection extends StatelessWidget {
   const ProductMainQuoteSection({super.key});
   static const _blendBg = Color(0xFFF2ECEA);
 
+  /// 히어로 JPG를 화면 표시 폭에 맞춰 미리 디코드.
+  static Future<void> precacheHero(BuildContext context) async {
+    if (!context.mounted) return;
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    final logicalW = MediaQuery.sizeOf(context).width;
+    final cacheW = (logicalW * dpr).round().clamp(1, 1400);
+    final provider = ResizeImage(
+      const AssetImage(AppAssets.productMain),
+      width: cacheW,
+    );
+    try {
+      await precacheImage(provider, context);
+    } catch (_) {}
+  }
+
   @override
   Widget build(BuildContext context) {
     final extend = MediaQuery.paddingOf(context).top + kToolbarHeight;
@@ -224,12 +239,21 @@ class _ProductMainQuoteStackState extends State<_ProductMainQuoteStack> {
     }
   }
 
+  ImageProvider _heroProvider(double width) {
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    final cacheW = (width * dpr).round().clamp(1, 1400);
+    return ResizeImage(
+      const AssetImage(AppAssets.productMain),
+      width: cacheW,
+    );
+  }
+
   void _listenHeroImage() {
     if (!mounted) return;
     final w = widget.width;
     if (!w.isFinite || w <= 0) return;
 
-    const provider = AssetImage(AppAssets.productMain);
+    final provider = _heroProvider(w);
     final config = createLocalImageConfiguration(
       context,
       size: Size(w, 1),
@@ -445,7 +469,9 @@ class _ProductMainQuoteStackState extends State<_ProductMainQuoteStack> {
     final imageTop = _heroImageTop(context);
     final textTop = _heroTextTop(context);
     final hPad = healthDp(context, 20);
-    final fallbackHeroH = w * 3454 / 2661;
+    final fallbackHeroH = w * 1817 / 1400;
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    final cacheW = (w * dpr).round().clamp(1, 1400);
 
     return Stack(
       clipBehavior: Clip.none,
@@ -465,7 +491,9 @@ class _ProductMainQuoteStackState extends State<_ProductMainQuoteStack> {
                   width: w,
                   fit: BoxFit.fitWidth,
                   alignment: Alignment.topCenter,
-                  filterQuality: FilterQuality.high,
+                  filterQuality: FilterQuality.medium,
+                  gaplessPlayback: true,
+                  cacheWidth: cacheW,
                   errorBuilder: (_, error, __) => SizedBox(
                     width: w,
                     height: fallbackHeroH,
