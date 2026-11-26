@@ -23,11 +23,13 @@ import '../../../core/logging/failure_log.dart';
 import '../../common/widgets/centered_empty_state.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_endpoints.dart';
+import '../../../core/utils/point_helper.dart';
 import '../../../core/utils/price_formatter.dart';
 import '../../../data/models/cart/cart_item_model.dart';
 import '../../../data/models/coupon/coupon_model.dart';
 import '../../../data/models/user/user_model.dart';
 import '../../../data/services/address_service.dart';
+import '../../../data/services/app_config_service.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/cart_service.dart';
 import '../../../data/services/coupon_service.dart';
@@ -175,6 +177,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
   int _paymentMethodIndex = 0; // 0 card, 1 bank transfer, 2 virtual account
 
   int _myPoint = 0;
+
+  PointSettings _pointSettings = PointSettings.defaults;
 
   int _usedPoint = 0;
 
@@ -382,10 +386,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
     required List<Coupon> coupons,
   }) async {
     if (!mounted) return;
+    final pointSettings = await AppConfigService.pointSettings();
+    if (!mounted) return;
     setState(() {
       _addressLoadFailed = addressFailed;
       _couponLoadFailed = couponFailed;
       _pointLoadFailed = pointFailed;
+      _pointSettings = pointSettings;
       _defaultAddress = addressFailed ? null : address;
       _myPoint = pointFailed ? 0 : point;
       _loadedCoupons = coupons;

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../../core/utils/date_formatter.dart';
 import '../../../../../core/utils/price_formatter.dart';
 import '../../../../../data/models/delivery/delivery_model.dart';
+import '../../../../../data/services/app_config_service.dart';
 import '../../../../health/health_common/health_responsive_scale.dart';
 import 'delivery_detail_deposit_card.dart';
 import 'delivery_detail_section_style.dart';
@@ -31,11 +32,19 @@ class DeliveryDetailPaymentSection extends StatefulWidget {
 class _DeliveryDetailPaymentSectionState
     extends State<DeliveryDetailPaymentSection> {
   late bool _expanded;
+  PointSettings _pointSettings = PointSettings.defaults;
 
   @override
   void initState() {
     super.initState();
     _expanded = widget.initiallyExpanded;
+    _loadPointSettings();
+  }
+
+  Future<void> _loadPointSettings() async {
+    final settings = await AppConfigService.pointSettings();
+    if (!mounted) return;
+    setState(() => _pointSettings = settings);
   }
 
   bool get _isVirtual => widget.order.paymentMethod.contains('가상');
@@ -59,10 +68,18 @@ class _DeliveryDetailPaymentSectionState
   }
 
   int get _expectedPoint {
+    if (!_pointSettings.showExpectedEarn) return 0;
+    final itemPoints = widget.order.items.fold<int>(
+      0,
+      (sum, item) => sum + (item.ctPoint > 0 ? item.ctPoint : 0),
+    );
+    if (itemPoints > 0) return itemPoints;
     final shippingNet = widget.order.deliveryFee - widget.order.sendCoupon;
     final base = widget.order.totalPrice - shippingNet;
     if (base <= 0) return 0;
-    return (base * 0.01).floor();
+    final rate = _pointSettings.pointRate;
+    if (rate <= 0) return 0;
+    return (base * rate / 100).floor();
   }
 
   /// `2026.01.01 10:16:00` (초 포함, 콜론 뒤 공백 없음)
@@ -292,7 +309,7 @@ class _DeliveryDetailPaymentSectionState
                     ),
                   ],
                 ),
-                if (_expectedPoint > 0) ...[
+                if (_pointSettings.showExpectedEarn && _expectedPoint > 0) ...[
                   SizedBox(height: healthDp(context, 2)),
                   Align(
                     alignment: Alignment.centerRight,

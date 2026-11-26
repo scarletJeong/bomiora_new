@@ -74,8 +74,11 @@ extension _PaymentSections on _PaymentScreenState {
         !_couponLoadFailed &&
         _applicableCoupons.isNotEmpty;
     final showCouponFailure = !_couponPointDisabled && _couponLoadFailed;
-    final showPoint =
-        !_couponPointDisabled && !_pointLoadFailed && _myPoint > 0;
+    final showPoint = !_couponPointDisabled &&
+        !_pointLoadFailed &&
+        _pointSettings.usePoint &&
+        _myPoint >= _pointMinToUse &&
+        _myPoint > 0;
     final showPointFailure = !_couponPointDisabled && _pointLoadFailed;
     final remainCouponCount = _availableCouponsForUnifiedPicker().length;
     final remainPoint = (_myPoint - _pointDiscount).clamp(0, _myPoint);
@@ -233,7 +236,7 @@ extension _PaymentSections on _PaymentScreenState {
                     SizedBox(height: healthDp(context, 10)),
                     Builder(
                       builder: (context) {
-                        final maxPoint = _maxUsablePointHundreds;
+                        final maxPoint = _maxUsablePointSnapped;
                         final hasPoint = _usedPoint > 0;
                         final usedAll =
                             hasPoint && maxPoint > 0 && _usedPoint >= maxPoint;
@@ -538,56 +541,58 @@ extension _PaymentSections on _PaymentScreenState {
                             fontWeight: FontWeight.w700,
                           ),
                         ),
-                        SizedBox(height: healthDp(context, 0)),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Flexible(
-                              child: AnimatedSwitcher(
-                                duration: const Duration(milliseconds: 180),
-                                child: Text(
-                                  _showExpectedPointHint
-                                      ? '배송비를 제외한 결제 금액의 1% 적립'
-                                      : '예상 적립 포인트 : ${PointService.formatPoint(_expectedPoint)} 점',
-                                  key: ValueKey(_showExpectedPointHint),
-                                  textAlign: TextAlign.right,
-                                  style: TextStyle(
-                                    color: _muted,
-                                    fontSize: healthSp(context, 10),
-                                    fontFamily: 'Gmarket Sans TTF',
-                                    fontWeight: FontWeight.w300,
-                                    letterSpacing: -0.40,
+                        if (_pointSettings.showExpectedEarn) ...[
+                          SizedBox(height: healthDp(context, 0)),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Flexible(
+                                child: AnimatedSwitcher(
+                                  duration: const Duration(milliseconds: 180),
+                                  child: Text(
+                                    _showExpectedPointHint
+                                        ? '배송비를 제외한 결제 금액 기준, 상품별 적립'
+                                        : '예상 적립 포인트 : ${PointService.formatPoint(_expectedPoint)} 점',
+                                    key: ValueKey(_showExpectedPointHint),
+                                    textAlign: TextAlign.right,
+                                    style: TextStyle(
+                                      color: _muted,
+                                      fontSize: healthSp(context, 10),
+                                      fontFamily: 'Gmarket Sans TTF',
+                                      fontWeight: FontWeight.w300,
+                                      letterSpacing: -0.40,
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                            SizedBox(width: healthDp(context, 0)),
-                            GestureDetector(
-                              onTap: () {
-                                _expectedPointHintTimer?.cancel();
-                                _setState(() => _showExpectedPointHint = true);
-                                _expectedPointHintTimer = Timer(
-                                  const Duration(seconds: 2),
-                                  () {
-                                    if (!mounted) return;
-                                    _setState(
-                                      () => _showExpectedPointHint = false,
-                                    );
-                                  },
-                                );
-                              },
-                              behavior: HitTestBehavior.opaque,
-                              child: Padding(
-                                padding: EdgeInsets.all(healthDp(context, 2)),
-                                child: SvgPicture.asset(
-                                  AppAssets.guideIcon,
-                                  width: healthDp(context, 14),
-                                  height: healthDp(context, 14),
+                              SizedBox(width: healthDp(context, 0)),
+                              GestureDetector(
+                                onTap: () {
+                                  _expectedPointHintTimer?.cancel();
+                                  _setState(() => _showExpectedPointHint = true);
+                                  _expectedPointHintTimer = Timer(
+                                    const Duration(seconds: 2),
+                                    () {
+                                      if (!mounted) return;
+                                      _setState(
+                                        () => _showExpectedPointHint = false,
+                                      );
+                                    },
+                                  );
+                                },
+                                behavior: HitTestBehavior.opaque,
+                                child: Padding(
+                                  padding: EdgeInsets.all(healthDp(context, 2)),
+                                  child: SvgPicture.asset(
+                                    AppAssets.guideIcon,
+                                    width: healthDp(context, 14),
+                                    height: healthDp(context, 14),
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
+                            ],
+                          ),
+                        ],
                       ],
                     ),
                   ),

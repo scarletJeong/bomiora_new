@@ -50,6 +50,14 @@ class CartItem {
   final String ctMbInf;
   // 포인트 사용 가능 비율 (0~100)
   final int pointUsageRate;
+  /// 장바구니 적립 점수(수량 반영 저장값일 수 있음)
+  final int ctPoint;
+  /// 상품 적립 설정값
+  final int itPoint;
+  /// 0 설정금액, 1 판매가%, 2 구매가%
+  final int itPointType;
+  /// 추가옵션 적립 점수
+  final int itSupplyPoint;
   /// 결제 대상 선택 여부 (`bomiora_shop_cart.ct_select`)
   final bool ctSelect;
   /// 품절·판매중지 여부 (서버 `is_available`)
@@ -87,6 +95,10 @@ class CartItem {
     this.caId3,
     this.ctMbInf = '',
     this.pointUsageRate = 10,
+    this.ctPoint = 0,
+    this.itPoint = 0,
+    this.itPointType = 0,
+    this.itSupplyPoint = 0,
     this.ctSelect = false,
     this.isAvailable = true,
     this.unavailableReason,
@@ -309,6 +321,14 @@ class CartItem {
             normalized['it_point_usage_rate'],
         normalizedCtKind,
       ),
+      ctPoint: _parseInt(normalized['ct_point'] ?? normalized['ctPoint'] ?? 0),
+      itPoint: _parseInt(normalized['it_point'] ?? normalized['itPoint'] ?? 0),
+      itPointType: _parseInt(
+        normalized['it_point_type'] ?? normalized['itPointType'] ?? 0,
+      ),
+      itSupplyPoint: _parseInt(
+        normalized['it_supply_point'] ?? normalized['itSupplyPoint'] ?? 0,
+      ),
       ctSelect: _parseCtSelect(normalized['ct_select'] ?? normalized['ctSelect']),
       isAvailable: _parseIsAvailable(
         normalized['is_available'] ?? normalized['isAvailable'],
@@ -407,6 +427,10 @@ class CartItem {
       'ca_id3': caId3,
       'ct_mb_inf': ctMbInf,
       'point_usage_rate': pointUsageRate,
+      'ct_point': ctPoint,
+      'it_point': itPoint,
+      'it_point_type': itPointType,
+      'it_supply_point': itSupplyPoint,
       'ct_select': ctSelect ? 1 : 0,
     };
   }

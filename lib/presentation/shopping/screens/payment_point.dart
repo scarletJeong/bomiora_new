@@ -1,6 +1,31 @@
 part of 'payment_screen.dart';
 
 extension _PaymentPoint on _PaymentScreenState {
+  int get _pointUnit {
+    final unit = _pointSettings.settlePointUnit;
+    return unit > 0 ? unit : 100;
+  }
+
+  int get _pointMaxPerOrder {
+    final max = _pointSettings.settleMaxPoint;
+    return max > 0 ? max : 50000;
+  }
+
+  int get _pointMinToUse =>
+      _pointSettings.settleMinPoint < 0 ? 0 : _pointSettings.settleMinPoint;
+
+  bool get _canUsePointByMin =>
+      !_couponPointDisabled &&
+      _pointSettings.usePoint &&
+      _myPoint >= _pointMinToUse;
+
+  int _snapPointDown(int value) {
+    final unit = _pointUnit;
+    if (unit <= 1) return value < 0 ? 0 : value;
+    if (value < unit) return value < 0 ? 0 : value;
+    return (value ~/ unit) * unit;
+  }
+
   int _pointEligibleBaseAmountFor(List<Coupon> coupons) {
     final base = _nonInfluencerAmount - _productCouponDiscountFor(coupons);
     return base < 0 ? 0 : base;
@@ -45,13 +70,12 @@ extension _PaymentPoint on _PaymentScreenState {
       _maxPointByMinimumPayableFor(_selectedCoupons);
 
   int _maxUsablePointFor(List<Coupon> coupons) {
-    if (_couponPointDisabled) return 0;
-    const maxPerOrder = 50000;
+    if (_couponPointDisabled || !_canUsePointByMin) return 0;
     final candidates = [
       _myPoint,
       _maxPointByRateFor(coupons),
       _maxPointByMinimumPayableFor(coupons),
-      maxPerOrder,
+      _pointMaxPerOrder,
     ];
     final v = candidates.reduce((a, b) => a < b ? a : b);
     return v < 0 ? 0 : v;
@@ -59,12 +83,12 @@ extension _PaymentPoint on _PaymentScreenState {
 
   int get _maxUsablePoint => _maxUsablePointFor(_selectedCoupons);
 
-  int get _maxUsablePointHundreds => (_maxUsablePoint ~/ 100) * 100;
+  int get _maxUsablePointSnapped => _snapPointDown(_maxUsablePoint);
 
   int _pointDiscountFor(List<Coupon> coupons, int usedPoint) {
-    final maxHundreds = (_maxUsablePointFor(coupons) ~/ 100) * 100;
-    final capped = usedPoint > maxHundreds ? maxHundreds : usedPoint;
-    return (capped ~/ 100) * 100;
+    final maxSnapped = _snapPointDown(_maxUsablePointFor(coupons));
+    final capped = usedPoint > maxSnapped ? maxSnapped : usedPoint;
+    return _snapPointDown(capped);
   }
 
   int get _pointDiscount {
@@ -106,7 +130,57 @@ extension _PaymentPoint on _PaymentScreenState {
     return raw > cap ? cap : raw;
   }
 
-  int get _expectedPoint => (_rewardBase * 0.01).floor();
+  int _itemBaseEarn(CartItem item) {
+    if (_isInfluencerCartItem(item)) return 0;
+    return PointHelper.itemLinePoint(
+      pointType: item.itPointType,
+      point: item.itPoint,
+      price: item.ctPrice,
+      qty: item.ctQty,
+      optionPrice: item.ioPrice ?? 0,
+      ioType: item.ioType,
+      supplyPoint: item.itSupplyPoint,
+    );
+  }
+
+  /// 웹 updateBonusPoint처럼 상품별 적립을 실결제 비중으로 나눈 합.
+  int get _expectedPoint {
+    if (!_pointSettings.showExpectedEarn) return 0;
+    final goodsPayment = _rewardBase;
+    if (goodsPayment <= 0) return 0;
+
+    final bases = <({int price, int point})>[];
+    var sumBasePrice = 0;
+    for (final item in widget.cartItems) {
+      final price = item.lineAmount;
+      final point = _itemBaseEarn(item);
+      if (price <= 0 || point <= 0) continue;
+      bases.add((price: price, point: point));
+      sumBasePrice += price;
+    }
+    if (sumBasePrice <= 0 || bases.isEmpty) return 0;
+
+    final cappedPayment =
+        goodsPayment > sumBasePrice ? sumBasePrice : goodsPayment;
+    var allocTotal = 0;
+    var last = bases.length - 1;
+    var bonus = 0;
+    for (var i = 0; i < bases.length; i++) {
+      final price = bases[i].price;
+      final point = bases[i].point;
+      final itemPayment = i == last
+          ? cappedPayment - allocTotal
+          : (price * cappedPayment / sumBasePrice).floor();
+      if (i != last) allocTotal += itemPayment;
+      var pay = itemPayment;
+      if (pay < 0) pay = 0;
+      if (pay > price) pay = price;
+      var itemPoint = (point * (pay / price)).floor();
+      if (itemPoint > point) itemPoint = point;
+      bonus += itemPoint;
+    }
+    return bonus < 0 ? 0 : bonus;
+  }
 
   String _pointFieldText(int value) =>
       value <= 0 ? '' : PointService.formatPoint(value);
@@ -129,9 +203,9 @@ extension _PaymentPoint on _PaymentScreenState {
     final raw = _pointController.text.replaceAll(RegExp(r'[^0-9]'), '');
     final value = int.tryParse(raw) ?? 0;
     final capped =
-        value > _maxUsablePointHundreds ? _maxUsablePointHundreds : value;
-    // 1224 입력 → 1200 처럼 100점 단위로 자동 절삭 (단, 0~99는 그대로 입력 유지)
-    final safe = capped >= 100 ? (capped ~/ 100) * 100 : capped;
+        value > _maxUsablePointSnapped ? _maxUsablePointSnapped : value;
+    final unit = _pointUnit;
+    final safe = capped >= unit ? _snapPointDown(capped) : capped;
     final formatted = _pointFieldText(safe);
 
     if (_pointController.text != formatted) {
@@ -186,7 +260,8 @@ extension _PaymentPoint on _PaymentScreenState {
     debugPrint(
       '[point-rate] base=$eligibleBase nonInf=$nonInf '
       'byRate=$_maxPointByRate minPay=$_maxPointByMinimumPayable '
-      'mine=$_myPoint usable=$_maxUsablePoint',
+      'mine=$_myPoint usable=$_maxUsablePoint '
+      'min=$_pointMinToUse max=$_pointMaxPerOrder unit=$_pointUnit',
     );
     for (final item in widget.cartItems) {
       debugPrint(

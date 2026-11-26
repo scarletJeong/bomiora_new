@@ -31,8 +31,8 @@ extension _PaymentCoupon on _PaymentScreenState {
     if (_couponPointDisabled) {
       _usedPoint = 0;
       _pointController.clear();
-    } else if (_usedPoint > _maxUsablePointHundreds) {
-      _usedPoint = _maxUsablePointHundreds;
+    } else if (_usedPoint > _maxUsablePointSnapped) {
+      _usedPoint = _maxUsablePointSnapped;
       _writePointField(_usedPoint);
     }
   }
@@ -372,7 +372,7 @@ extension _PaymentCoupon on _PaymentScreenState {
       AppToastOverlay.showAlert(context, '쿠폰 할인 금액이 주문 금액을 넘습니다.');
       return;
     }
-    final maxPoint = (_maxUsablePointFor(next) ~/ 100) * 100;
+    final maxPoint = _snapPointDown(_maxUsablePointFor(next));
 
     _setState(() {
       _clearAmountQuote();
@@ -459,8 +459,8 @@ extension _PaymentCoupon on _PaymentScreenState {
                     _setState(() {
                       _clearAmountQuote();
                       _selectedCoupons.removeWhere((c) => c.no == coupon.no);
-                      if (_usedPoint > _maxUsablePointHundreds) {
-                        _usedPoint = _maxUsablePointHundreds;
+                      if (_usedPoint > _maxUsablePointSnapped) {
+                        _usedPoint = _maxUsablePointSnapped;
                         _writePointField(_usedPoint);
                       }
                     });

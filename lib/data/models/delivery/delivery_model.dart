@@ -49,6 +49,8 @@ class OrderItem {
   /// 추가상품이면 부모 상품 it_id, 본품이면 null/빈값
   final String? parent;
   final int ioType;
+  /// 장바구니 적립 점수(웹은 개당, 앱 저장은 줄 합일 수 있음)
+  final int ctPoint;
 
   OrderItem({
     required this.ctId,
@@ -67,6 +69,7 @@ class OrderItem {
     this.ctKind,
     this.parent,
     this.ioType = 0,
+    this.ctPoint = 0,
   });
 
   String get displayOptionText => ProductOption.visibleLabel(
@@ -145,6 +148,9 @@ class OrderItem {
       ioType: NodeValueParser.asInt(
               normalized['ioType'] ?? normalized['io_type']) ??
           0,
+      ctPoint: NodeValueParser.asInt(
+              normalized['ctPoint'] ?? normalized['ct_point']) ??
+          0,
     );
   }
 
@@ -167,6 +173,7 @@ class OrderItem {
       'parent': parent,
       'parent_it_id': parent,
       'ioType': ioType,
+      'ctPoint': ctPoint,
     };
   }
 }
