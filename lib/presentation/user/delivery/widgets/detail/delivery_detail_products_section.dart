@@ -151,6 +151,7 @@ class DeliveryDetailProductsSection extends StatelessWidget {
       ctKind: item.ctKind,
       parent: item.parentItId,
       ioType: item.ioType,
+      ctPoint: item.ctPoint,
     );
   }
 
