@@ -21,9 +21,6 @@ import 'recent_search_service.dart';
 import 'recent_view_service.dart';
 import 'wish_service.dart';
 import 'address_service.dart';
-import 'notification_service.dart';
-import 'health_profile_service.dart';
-import '../repositories/health/dashboard/health_dashboard_repository.dart';
 
 class AuthService {
   static const String _userKey = 'user_data';
@@ -33,6 +30,7 @@ class AuthService {
   static UserModel? _memoryUser;
   static int _sessionEpoch = 0;
   static final ValueNotifier<int> sessionTick = ValueNotifier<int>(0);
+  static Future<void>? _memberPrefetchInFlight;
 
   static UserModel? get currentUser => _memoryUser;
 
@@ -45,26 +43,36 @@ class AuthService {
     sessionTick.value++;
   }
 
-  /// 찜·배송지·문진표를 로그인/스플래시에서 미리 받아 화면 진입 시 네트워크를 건너뛴다.
+  /// 쇼핑에서 자주 쓰는 찜·배송지만 로그인/스플래시에서 미리 받는다.
+  /// 알림설정·문진·건강 대시보드는 해당 화면 진입 시 짧은 캐시로 받는다.
   static void prefetchMemberLists([String? mbId]) {
     unawaited(_prefetchMemberLists(mbId));
   }
 
   static Future<void> _prefetchMemberLists(String? mbId) async {
+    final pending = _memberPrefetchInFlight;
+    if (pending != null) {
+      await pending;
+      return;
+    }
+    final run = () async {
+      try {
+        final id = (mbId ?? _memoryUser?.id ?? '').trim();
+        if (id.isEmpty) return;
+        await Future.wait<void>([
+          WishService.getWishList(),
+          AddressService.getAddressList(id),
+        ]);
+      } catch (_) {}
+    }();
+    _memberPrefetchInFlight = run;
     try {
-      var id = (mbId ?? _memoryUser?.id ?? '').trim();
-      if (id.isEmpty) return;
-      await Future.wait<void>([
-        WishService.getWishList(),
-        AddressService.getAddressList(id),
-        NotificationService.loadSettings(),
-        HealthProfileService.getHealthProfile(id).then((_) {}),
-        HealthDashboardRepository.fetchDashboard(
-          mbId: id,
-          date: DateTime.now(),
-        ).then((_) {}),
-      ]);
-    } catch (_) {}
+      await run;
+    } finally {
+      if (identical(_memberPrefetchInFlight, run)) {
+        _memberPrefetchInFlight = null;
+      }
+    }
   }
 
   static bool _hasActiveSessionFlag(SharedPreferences prefs) =>

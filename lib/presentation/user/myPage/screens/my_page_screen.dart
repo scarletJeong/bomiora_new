@@ -192,7 +192,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
       _couponFailed = false;
       _pointFailed = false;
     });
-    AuthService.prefetchMemberLists(user.id);
+    // 마이페이지는 주문·쿠폰·포인트 숫자만. 찜·배송지 prefetch는 로그인/스플래시에 둔다.
     await Future.wait([
       _loadMyPageStats(),
       _refreshCurrentUserInBackground(),
