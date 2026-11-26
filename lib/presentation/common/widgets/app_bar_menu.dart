@@ -284,9 +284,9 @@ class _AppBarMenuState extends State<AppBarMenu> {
     final barH = healthAppBarTotalHeight(context);
     final padH = healthDp(context, 20);
     final padV = healthDp(context, 18);
-    final iconSz = healthDp(context, 20);
-    final menuIconW = healthDp(context, 16);
-    final menuIconH = healthDp(context, 12);
+    final iconSz = healthDp(context, 22);
+    final menuIconW = healthDp(context, 18);
+    final menuIconH = healthDp(context, 14);
     final actionGap = healthDp(context, 8);
     final logoW = healthDp(context, 94.09);
     final logoH = healthDp(context, 20);
@@ -321,7 +321,7 @@ class _AppBarMenuState extends State<AppBarMenu> {
             SizedBox(width: actionGap),
             actionBox(
               asset: AppAssets.appbarSettingsIcon,
-              drawSize: healthDp(context, 15.08),
+              drawSize: healthDp(context, 17),
               onPressed: () {
                 Navigator.of(context).push<void>(
                   MaterialPageRoute<void>(
