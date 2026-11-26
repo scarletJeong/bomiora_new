@@ -380,7 +380,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
                 ArticleAdjacentNavOverlay(
                   controller: _scrollController,
                   horizontalPaddingBase: 20,
-                  verticalPaddingBase: 20,
+                  verticalPaddingBase: 12,
                   iconBase: 16,
                   labelFontBase: 13,
                   labelTitleGapBase: 4,
@@ -437,7 +437,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
       width: double.infinity,
       padding: EdgeInsets.symmetric(
         horizontal: healthDp(context, 20),
-        vertical: healthDp(context, 10),
+        vertical: healthDp(context, 6),
       ),
       decoration: ShapeDecoration(
         color: Colors.white,
@@ -499,8 +499,8 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
             behavior: HitTestBehavior.opaque,
             child: Container(
               padding: EdgeInsets.symmetric(
-                horizontal: healthDp(context, 20),
-                vertical: healthDp(context, 12),
+                horizontal: healthDp(context, 15),
+                vertical: healthDp(context, 7),
               ),
               decoration: BoxDecoration(
                 color: _pink,
@@ -509,7 +509,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
               child: Text(
                 '목록',
                 style: TextStyle(
-                  fontSize: healthSp(context, 15),
+                  fontSize: healthSp(context, 13),
                   color: Colors.white,
                   fontFamily: 'Gmarket Sans TTF',
                   fontWeight: FontWeight.w500,
