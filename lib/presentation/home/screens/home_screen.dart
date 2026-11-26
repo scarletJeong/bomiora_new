@@ -12,7 +12,6 @@ import '../../../data/models/product/product_model.dart';
 import '../../../core/logging/failure_log.dart';
 import '../../../data/repositories/product/product_repository.dart';
 import '../../../data/services/auth_service.dart';
-import '../../../data/services/community_prefetch.dart';
 import '../../../data/services/banner_service.dart';
 import '../../../data/services/content_service.dart';
 import '../../common/widgets/app_clickable.dart';
@@ -341,7 +340,6 @@ class _HomeScreenState extends State<HomeScreen> {
       if (banners != null) banners,
       if (products != null) products,
     ]).then((_) {}, onError: (Object _, StackTrace __) {});
-    homeReady.then((_) => CommunityPrefetch.afterHomeContent());
     await Future.any<void>([
       homeReady,
       Future<void>.delayed(const Duration(milliseconds: 400)),

@@ -3,8 +3,7 @@ import 'dart:async';
 import 'announcement_service.dart';
 import 'event_service.dart';
 
-/// 홈 배너·신상품이 끝난 뒤 공지/진행중 이벤트를 미리 받아 둔다.
-/// 스플래시·홈에서 같이 호출해도 in-flight를 공유해 네트워크는 한 번만 탄다.
+/// 스플래시에서 배너·신상품이 끝난 뒤 공지/진행중 이벤트를 미리 받아 둔다.
 class CommunityPrefetch {
   static Future<void>? _inFlight;
 
