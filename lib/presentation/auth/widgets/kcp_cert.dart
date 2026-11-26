@@ -1129,7 +1129,8 @@ class _KcpCertWebViewScreenState extends State<KcpCertWebViewScreen> {
               debugPrint('[KCP] _pollKcpResult: dup 체크 전 unmounted');
               return;
             }
-            if (dup['exists'] == true) {
+            // 프로필 이름 변경은 이미 가입된 본인 인증이므로 중복 차단을 하지 않는다.
+            if (dup['exists'] == true && widget.flow != 'profile') {
               debugPrint('[KCP] _pollKcpResult: 중복 가입 분기 → overlay duplicate');
               if (!mounted) return;
               _popKcpCertOverlay(<String, dynamic>{'duplicate': true});
