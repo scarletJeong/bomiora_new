@@ -249,7 +249,7 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
   }
 
   bool _showReviewWrite(OrderDetailModel order) {
-    if (!_reviewStatusKnown) return true;
+    if (!_reviewStatusKnown) return false;
     return pendingReviewProducts(order, _reviewedItIds).isNotEmpty;
   }
 
@@ -259,6 +259,9 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
     String cause,
   ) async {
     const message = '리뷰 정보를 불러오지 못했습니다.';
+    if (mounted) {
+      setState(() => _reviewStatusKnown = false);
+    }
     await FailureLog.record(
       code: 'order.review',
       mbId: mbId,
@@ -790,7 +793,7 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
               onTap: _writeReviewFromDetail,
           style: DeliveryDetailProductActionStyle.primary,
         ));
-      } else {
+      } else if (_reviewStatusKnown) {
         actions.add((
           label: '다시 담기',
           onTap: _reAddPrescriptionToCart,
