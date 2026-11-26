@@ -4,15 +4,30 @@ import 'announcement_service.dart';
 import 'event_service.dart';
 
 /// 홈 배너·신상품이 끝난 뒤 공지/진행중 이벤트를 미리 받아 둔다.
+/// 스플래시·홈에서 같이 호출해도 in-flight를 공유해 네트워크는 한 번만 탄다.
 class CommunityPrefetch {
+  static Future<void>? _inFlight;
+
   static void afterHomeContent() {
-    unawaited(_run());
+    unawaited(ensurePrefetched());
+  }
+
+  static Future<void> ensurePrefetched() {
+    final pending = _inFlight;
+    if (pending != null) return pending;
+
+    final run = _run();
+    _inFlight = run;
+    return run.whenComplete(() {
+      if (identical(_inFlight, run)) _inFlight = null;
+    });
   }
 
   static Future<void> _run() async {
     try {
       await Future.wait([
-        AnnouncementService.getAnnouncements(page: 1, size: 6),
+        // 홈 NoticeSection과 동일 키(page:1, size:3)
+        AnnouncementService.getAnnouncements(page: 1, size: 3),
         EventService.getActiveEvents(),
       ]);
     } catch (_) {}
