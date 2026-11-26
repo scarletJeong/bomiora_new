@@ -354,42 +354,29 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (item.isNotice) ...[
-                  Padding(
-                    padding: EdgeInsets.only(
-                      right: healthDp(context, 4),
-                      top: healthDp(context, 2),
-                    ),
-                    child: Icon(
-                      Icons.push_pin_rounded,
-                      size: healthDp(context, 14),
-                      color: _kPink,
-                    ),
-                  ),
-                ],
-                Expanded(
-                  child: Text(
-                    title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: _kText,
-                      fontSize: healthSp(context, 14),
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w500,
-                      letterSpacing: healthSp(context, -1.26),
-                    ),
-                  ),
-                ),
-              ],
+            Text(
+              title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: _kText,
+                fontSize: healthSp(context, 14),
+                fontFamily: 'Gmarket Sans TTF',
+                fontWeight: FontWeight.w500,
+                letterSpacing: healthSp(context, -1.26),
+              ),
             ),
             SizedBox(height: healthDp(context, 10)),
             Row(
-              spacing: healthDp(context, 10),
               children: [
+                if (item.isNotice) ...[
+                  Icon(
+                    Icons.push_pin_rounded,
+                    size: healthDp(context, 14),
+                    color: _kPink,
+                  ),
+                  SizedBox(width: healthDp(context, 6)),
+                ],
                 Text(
                   date,
                   style: TextStyle(
@@ -400,6 +387,7 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
                     height: 1.65,
                   ),
                 ),
+                SizedBox(width: healthDp(context, 10)),
                 Text(
                   '조회 : ${_formatCount(item.viewCount)}',
                   style: TextStyle(

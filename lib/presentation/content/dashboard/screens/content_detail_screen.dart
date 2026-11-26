@@ -500,16 +500,18 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
             child: Container(
               padding: EdgeInsets.symmetric(
                 horizontal: healthDp(context, 15),
-                vertical: healthDp(context, 7),
+                vertical: healthDp(context, 6),
               ),
-              decoration: BoxDecoration(
+              decoration: ShapeDecoration(
                 color: _pink,
-                borderRadius: BorderRadius.circular(healthDp(context, 8)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(healthDp(context, 4)),
+                ),
               ),
               child: Text(
                 '목록',
                 style: TextStyle(
-                  fontSize: healthSp(context, 13),
+                  fontSize: healthSp(context, 14),
                   color: Colors.white,
                   fontFamily: 'Gmarket Sans TTF',
                   fontWeight: FontWeight.w500,
@@ -545,14 +547,16 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
 
   /// 이전글/다음글이 본문 위에 겹치므로, 그 높이만큼 더 스크롤되게 한다.
   double _articleScrollBottomPadding(BuildContext context) {
-    var rows = 0;
-    if (_hasPreviousArticle) rows++;
-    if (_hasNextArticle) rows++;
     final base = healthDp(context, 40);
-    if (rows == 0) return base;
-    final rowH = healthDp(context, 20) * 2 + healthDp(context, 16);
-    final borders = healthDp(context, 1) * (rows + 1);
-    return base + rowH * rows + borders;
+    final nav = ArticleAdjacentNav.reservedHeight(
+      context,
+      hasPrevious: _hasPreviousArticle,
+      hasNext: _hasNextArticle,
+      verticalPaddingBase: 12,
+      iconBase: 16,
+      labelFontBase: 13,
+    );
+    return base + nav;
   }
 
   void _openContent(int targetId) {

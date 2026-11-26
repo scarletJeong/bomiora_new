@@ -10,6 +10,7 @@ import '../../../../data/services/content_service.dart';
 import '../../../../data/services/event_service.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
 import '../../../common/navigation/board_list_navigation.dart';
+import '../../../common/widgets/app_clickable.dart';
 import '../../../common/widgets/app_network_image.dart';
 import '../../../common/widgets/article_adjacent_nav.dart';
 import '../../../common/widgets/centered_empty_state.dart';
@@ -251,14 +252,13 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         Padding(
           padding: EdgeInsets.fromLTRB(
             healthDp(context, 20),
-            healthDp(context, 5),
+            0,
             healthDp(context, 20),
-            healthDp(context, 5),
+            healthDp(context, 20),
           ),
           child: Align(
             alignment: Alignment.centerRight,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(healthDp(context, 4)),
+            child: AppClickable(
               onTap: () => popToBoardList(context, '/event'),
               child: Container(
                 padding: EdgeInsets.symmetric(

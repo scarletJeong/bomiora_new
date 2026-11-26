@@ -179,26 +179,30 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
                 ),
               ),
               SizedBox(height: healthDp(context, 30)),
-              if (hasPrev || hasNext)
-                ArticleAdjacentNav(
-                  horizontalPaddingBase: 0,
-                  verticalPaddingBase: 12,
-                  previous: hasPrev
-                      ? ArticleAdjacentItem(
-                          title: prevTitle,
-                          onTap: () => _moveToAdjacent(prevId),
-                        )
-                      : null,
-                  next: hasNext
-                      ? ArticleAdjacentItem(
-                          title: nextTitle,
-                          onTap: () => _moveToAdjacent(nextId),
-                        )
-                      : null,
-                ),
             ],
           ),
         ),
+        // 목록 바로 위. 한 줄만 있어도 빈 칸 없이 줄이 따라붙는다.
+        if (hasPrev || hasNext)
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: healthDp(context, 20)),
+            child: ArticleAdjacentNav(
+              horizontalPaddingBase: 0,
+              verticalPaddingBase: 12,
+              previous: hasPrev
+                  ? ArticleAdjacentItem(
+                      title: prevTitle,
+                      onTap: () => _moveToAdjacent(prevId),
+                    )
+                  : null,
+              next: hasNext
+                  ? ArticleAdjacentItem(
+                      title: nextTitle,
+                      onTap: () => _moveToAdjacent(nextId),
+                    )
+                  : null,
+            ),
+          ),
         Padding(
           padding: EdgeInsets.fromLTRB(
             healthDp(context, 20),
