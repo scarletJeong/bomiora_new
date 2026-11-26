@@ -21,6 +21,7 @@ import 'recent_search_service.dart';
 import 'recent_view_service.dart';
 import 'wish_service.dart';
 import 'address_service.dart';
+import 'notification_service.dart';
 
 class AuthService {
   static const String _userKey = 'user_data';
