@@ -216,7 +216,11 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
   static String _normText(String value) =>
       value.replaceAll(RegExp(r'\s+'), '').trim();
 
-  Future<void> _loadData({int? preferSelectId, bool matchOrder = true}) async {
+  Future<void> _loadData({
+    int? preferSelectId,
+    bool matchOrder = true,
+    bool forceRefresh = false,
+  }) async {
     final user = await AuthService.getUser();
     if (user == null) {
       if (!mounted) return;
@@ -229,7 +233,10 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
       return;
     }
 
-    final loaded = await AddressService.loadAddresses(user.id);
+    final loaded = await AddressService.loadAddresses(
+      user.id,
+      forceRefresh: forceRefresh,
+    );
     if (!mounted) return;
     if (!loaded.ok) {
       final keepList = _addresses.isNotEmpty;
@@ -912,19 +919,54 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
               ? const Center(child: CircularProgressIndicator(color: const Color(0xFFFF5A8D)))
               : _addresses.isEmpty
                   ? Center(
-                      child: Text(
-                        _needsLogin
-                            ? '로그인이 필요합니다.'
-                            : _listFailed
-                                ? '배송지를 불러오지 못했습니다.'
-                                : '등록된 배송지가 없습니다.',
-                        style: TextStyle(
-                          color: _kMuted,
-                          fontSize: healthSp(context, 12),
-                          fontFamily: _kFont,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
+                      child: _listFailed
+                          ? Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  '배송지를 불러오지 못했습니다.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: _kMuted,
+                                    fontSize: healthSp(context, 12),
+                                    fontFamily: _kFont,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                SizedBox(height: healthDp(context, 8)),
+                                GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      _isLoading = true;
+                                      _listFailed = false;
+                                    });
+                                    _loadData(forceRefresh: true);
+                                  },
+                                  child: Text(
+                                    '다시 시도',
+                                    style: TextStyle(
+                                      color: _kPink,
+                                      fontSize: healthSp(context, 12),
+                                      fontFamily: _kFont,
+                                      fontWeight: FontWeight.w500,
+                                      decoration: TextDecoration.underline,
+                                      decorationColor: _kPink,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            )
+                          : Text(
+                              _needsLogin
+                                  ? '로그인이 필요합니다.'
+                                  : '등록된 배송지가 없습니다.',
+                              style: TextStyle(
+                                color: _kMuted,
+                                fontSize: healthSp(context, 12),
+                                fontFamily: _kFont,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
                     )
                   : ListView.separated(
                       padding: EdgeInsets.fromLTRB(

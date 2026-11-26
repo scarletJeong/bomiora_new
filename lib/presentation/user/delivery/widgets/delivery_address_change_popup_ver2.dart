@@ -48,6 +48,7 @@ class DeliveryAddressChangePopup extends StatefulWidget {
 class _DeliveryAddressChangePopupState
     extends State<DeliveryAddressChangePopup> {
   bool _isLoading = true;
+  bool _listFailed = false;
   bool _isSubmitting = false;
   List<Map<String, dynamic>> _addresses = [];
   int? _selectedAddressId;
@@ -65,7 +66,7 @@ class _DeliveryAddressChangePopupState
     _loadData();
   }
 
-  Future<void> _loadData({int? preferSelectId}) async {
+  Future<void> _loadData({int? preferSelectId, bool forceRefresh = false}) async {
     final user = await AuthService.getUser();
     if (user == null) {
       if (!mounted) return;
@@ -73,10 +74,25 @@ class _DeliveryAddressChangePopupState
       return;
     }
 
-    final addresses = await AddressService.getAddressList(user.id);
+    final loaded = await AddressService.loadAddresses(
+      user.id,
+      forceRefresh: forceRefresh,
+    );
     if (!mounted) return;
+    if (!loaded.ok) {
+      final keepList = _addresses.isNotEmpty;
+      setState(() {
+        _isLoading = false;
+        _listFailed = !keepList;
+      });
+      if (keepList) {
+        AppToastOverlay.showAlert(context, '배송지를 불러오지 못했습니다.');
+      }
+      return;
+    }
 
-    _addresses = addresses;
+    _listFailed = false;
+    _addresses = loaded.items;
     if (_addresses.isEmpty) {
       _selectedAddressId = null;
     } else if (preferSelectId != null &&
@@ -589,6 +605,47 @@ class _DeliveryAddressChangePopupState
                             child: CircularProgressIndicator(
                               color: Color(0xFFFF5A8D),
                             ),
+                          ),
+                        )
+                      else if (_listFailed)
+                        Padding(
+                          padding: EdgeInsets.symmetric(
+                            vertical: healthDp(context, 24),
+                          ),
+                          child: Column(
+                            children: [
+                              Text(
+                                '배송지를 불러오지 못했습니다.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: _kMuted,
+                                  fontSize: healthSp(context, 12),
+                                  fontFamily: _kFont,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              SizedBox(height: healthDp(context, 8)),
+                              GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    _isLoading = true;
+                                    _listFailed = false;
+                                  });
+                                  _loadData(forceRefresh: true);
+                                },
+                                child: Text(
+                                  '다시 시도',
+                                  style: TextStyle(
+                                    color: _kPink,
+                                    fontSize: healthSp(context, 12),
+                                    fontFamily: _kFont,
+                                    fontWeight: FontWeight.w500,
+                                    decoration: TextDecoration.underline,
+                                    decorationColor: _kPink,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         )
                       else if (_addresses.isEmpty)
