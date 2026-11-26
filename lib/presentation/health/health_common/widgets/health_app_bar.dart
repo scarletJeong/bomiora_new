@@ -92,8 +92,8 @@ class HealthAppBar extends StatelessWidget
 
   Widget _buildBackBar(BuildContext context) {
     final barH = healthBackAppBarTotalHeight(context);
-    // SVG 원본은 16. 화면별 24 지정보다 작게 그리되, 패널 너비 스케일은 유지한다.
-    final maxIcon = healthDp(context, 16).clamp(0.0, barH);
+    // SVG 원본은 16. 살짝 키운 18 기준으로 그리되, 패널 너비 스케일은 유지한다.
+    final maxIcon = healthDp(context, 18).clamp(0.0, barH);
     final iconSize = (leadingIconSize ?? maxIcon).clamp(0.0, maxIcon);
     final leadingSlot = healthDp(context, 40);
     final titleGap = healthDp(context, 4);
@@ -224,7 +224,7 @@ Widget healthAppBarAction({
       icon: Icon(
         icon,
         color: iconColor,
-        size: healthDp(context, 24).clamp(0.0, barH),
+        size: healthDp(context, 26).clamp(0.0, barH),
       ),
     ),
   );

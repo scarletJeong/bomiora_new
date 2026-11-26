@@ -288,8 +288,8 @@ class _AppBarMenuState extends State<AppBarMenu> {
     final menuIconW = healthDp(context, 18);
     final menuIconH = healthDp(context, 14);
     final actionGap = healthDp(context, 8);
-    final logoW = healthDp(context, 94.09);
-    final logoH = healthDp(context, 20);
+    final logoW = healthDp(context, 103.5);
+    final logoH = healthDp(context, 22);
 
     final isMyPage = widget.actionsStyle == AppBarMenuActionsStyle.myPage;
 
