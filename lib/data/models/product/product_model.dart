@@ -3,6 +3,85 @@ import 'dart:convert';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../core/utils/node_value_parser.dart';
 
+/// 상품 기관인증 (웹 `it_certification1~10` + agency{n}.png)
+class ProductCertification {
+  final int id;
+  final String label;
+  final String imageUrl;
+
+  const ProductCertification({
+    required this.id,
+    required this.label,
+    required this.imageUrl,
+  });
+
+  static const Map<int, String> _fallbackLabels = {
+    1: 'HGMP 인증',
+    2: '기관2',
+    3: '기관3',
+    4: '기관4',
+    5: '기관5',
+    6: '기관6',
+    7: '기관7',
+    8: '기관8',
+    9: '기관9',
+    10: '기관10',
+  };
+
+  static String agencyImageUrl(int id) =>
+      'https://bomiora.net/img/detail/agency$id.png';
+
+  factory ProductCertification.fromJson(Map<String, dynamic> json) {
+    final id = NodeValueParser.asInt(json['id']) ??
+        NodeValueParser.asInt(json['index']) ??
+        0;
+    final label = NodeValueParser.asString(json['label'])?.trim() ??
+        _fallbackLabels[id] ??
+        '기관$id';
+    final imageUrl = NodeValueParser.asString(json['imageUrl'])?.trim() ??
+        NodeValueParser.asString(json['image_url'])?.trim() ??
+        agencyImageUrl(id);
+    return ProductCertification(id: id, label: label, imageUrl: imageUrl);
+  }
+
+  /// API `certifications` 배열 또는 `it_certification1~10` 플래그에서 켠 항목만.
+  static List<ProductCertification> listFromProductMap(
+    Map<String, dynamic>? info,
+  ) {
+    if (info == null || info.isEmpty) return const [];
+    final rawList = info['certifications'];
+    if (rawList is List && rawList.isNotEmpty) {
+      final out = <ProductCertification>[];
+      for (final e in rawList) {
+        if (e is Map) {
+          final c = ProductCertification.fromJson(
+            Map<String, dynamic>.from(e),
+          );
+          if (c.id >= 1 && c.id <= 10) out.add(c);
+        }
+      }
+      if (out.isNotEmpty) return out;
+    }
+    final out = <ProductCertification>[];
+    for (var i = 1; i <= 10; i++) {
+      final raw = info['it_certification$i'] ?? info['itCertification$i'];
+      final on = raw == true ||
+          raw == 1 ||
+          raw == '1' ||
+          (raw is num && raw.toInt() == 1);
+      if (!on) continue;
+      out.add(
+        ProductCertification(
+          id: i,
+          label: _fallbackLabels[i] ?? '기관$i',
+          imageUrl: agencyImageUrl(i),
+        ),
+      );
+    }
+    return out;
+  }
+}
+
 class Product {
   final String id;
   final String name;
@@ -26,6 +105,10 @@ class Product {
   final String? depOption2Label;
   /// 연결상품 it_id 목록 (it_supply_items)
   final List<String> supplyItemIds;
+
+  /// 켠 기관인증만 (없으면 빈 목록 → 상세에서 칸 숨김)
+  List<ProductCertification> get certifications =>
+      ProductCertification.listFromProductMap(additionalInfo);
 
   /// 품절·판매중지·재고 없음이면 상세로 들어가지 않는다.
   bool get isPurchasable {

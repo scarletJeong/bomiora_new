@@ -1,10 +1,7 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 
-import '../../../core/constants/app_assets.dart';
+import '../../../data/models/product/product_model.dart';
+import '../../common/widgets/app_network_image.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import 'recommend_product.dart';
 
@@ -198,6 +195,7 @@ class ProductTailInfoSection extends StatelessWidget {
   final String? deliveryText;
   final String? prescriptionProcessText;
   final String? changeContentText;
+  final List<ProductCertification> certifications;
   final bool framed;
 
   const ProductTailInfoSection({
@@ -210,14 +208,16 @@ class ProductTailInfoSection extends StatelessWidget {
     this.deliveryText,
     this.prescriptionProcessText,
     this.changeContentText,
+    this.certifications = const [],
     this.framed = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final hasCerts = showCertification && certifications.isNotEmpty;
     final sections = <Widget>[
       _buildDeliverySection(),
-      if (showCertification) _buildCertificationSection(),
+      if (hasCerts) _buildCertificationSection(),
       if (showWarning) _buildWarningSection(context),
       if (showPrescriptionProcess) _buildPrescriptionProcessSection(),
       _buildExchangeRefundSection(),
@@ -260,6 +260,7 @@ class ProductTailInfoSection extends StatelessWidget {
     return _CertificationSection(
       initialExpanded: initialExpanded,
       framed: framed,
+      certifications: certifications,
     );
   }
 
@@ -604,14 +605,16 @@ Widget _buildNoticeList(
   );
 }
 
-/// 기관인증 섹션 (아이콘 1장 표시)
+/// 기관인증 섹션 — 켠 항목의 그림만 표시
 class _CertificationSection extends StatefulWidget {
   final bool initialExpanded;
   final bool framed;
+  final List<ProductCertification> certifications;
 
   const _CertificationSection({
     this.initialExpanded = false,
     this.framed = false,
+    required this.certifications,
   });
 
   @override
@@ -620,7 +623,6 @@ class _CertificationSection extends StatefulWidget {
 
 class _CertificationSectionState extends State<_CertificationSection> {
   late bool _isExpanded;
-  Future<Uint8List?>? _embeddedPngFuture;
 
   @override
   void initState() {
@@ -628,18 +630,9 @@ class _CertificationSectionState extends State<_CertificationSection> {
     _isExpanded = widget.initialExpanded;
   }
 
-  Future<Uint8List?> _loadEmbeddedPngFromSvgAsset() async {
-    final svg = await rootBundle.loadString(AppAssets.productDetailCertification);
-    final match = RegExp(r'data:image/png;base64,([A-Za-z0-9+/=]+)')
-        .firstMatch(svg);
-    if (match == null) return null;
-    final b64 = match.group(1);
-    if (b64 == null || b64.isEmpty) return null;
-    return base64Decode(b64);
-  }
-
   @override
   Widget build(BuildContext context) {
+    final items = widget.certifications;
     return _tailExpandableSectionShell(
       context: context,
       isExpanded: _isExpanded,
@@ -657,53 +650,66 @@ class _CertificationSectionState extends State<_CertificationSection> {
         child: ColoredBox(
           color: Colors.white,
           child: Padding(
-            padding: EdgeInsets.only(left: healthDp(context, _kTailSectionContentIndent)),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final w = constraints.maxWidth.isFinite
-                    ? constraints.maxWidth
-                    : MediaQuery.sizeOf(context).width -
-                        _tailHorizontalPad(context, framed: widget.framed) * 2;
-                const certAspect = 670 / 252;
-                final cap = healthDp(context, 150);
-                final targetW = widget.framed
-                    ? (w < cap ? w : cap)
-                    : (w * 0.20).clamp(70.0, 160.0);
-                final h = widget.framed
-                    ? targetW / certAspect
-                    : (targetW * 0.55).clamp(35.0, 80.0);
-
-                _embeddedPngFuture ??= _loadEmbeddedPngFromSvgAsset();
-
-                return Align(
-                  alignment: Alignment.centerLeft,
-                  child: SizedBox(
-                    width: targetW,
-                    height: h,
-                    child: FutureBuilder<Uint8List?>(
-                      future: _embeddedPngFuture,
-                      builder: (context, snapshot) {
-                        final bytes = snapshot.data;
-                        if (bytes != null && bytes.isNotEmpty) {
-                          return Image.memory(
-                            bytes,
-                            fit: BoxFit.contain,
-                            filterQuality: FilterQuality.medium,
-                            gaplessPlayback: true,
-                          );
-                        }
-                        return SvgPicture.asset(
-                          AppAssets.productDetailCertification,
-                          fit: BoxFit.contain,
-                        );
-                      },
-                    ),
-                  ),
-                );
-              },
+            padding: EdgeInsets.only(
+              left: healthDp(context, _kTailSectionContentIndent),
+              right: healthDp(context, 4),
+              bottom: healthDp(context, 4),
+            ),
+            child: Wrap(
+              spacing: healthDp(context, 12),
+              runSpacing: healthDp(context, 12),
+              children: [
+                for (final c in items) _certBadge(context, c),
+              ],
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _certBadge(BuildContext context, ProductCertification c) {
+    final side = healthDp(context, widget.framed ? 72 : 64);
+    return SizedBox(
+      width: side + healthDp(context, 8),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: side,
+            height: side,
+            child: AppNetworkImage(
+              url: c.imageUrl,
+              fit: BoxFit.contain,
+              width: side,
+              height: side,
+              decodeWidthLogical: side,
+              decodeHeightLogical: side,
+              errorBuilder: (_, __, ___) => ColoredBox(
+                color: const Color(0xFFF3F3F3),
+                child: Icon(
+                  Icons.verified_outlined,
+                  size: healthDp(context, 28),
+                  color: const Color(0xFF898686),
+                ),
+              ),
+            ),
+          ),
+          SizedBox(height: healthDp(context, 6)),
+          Text(
+            c.label,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: const Color(0xFF1A1A1A),
+              fontSize: healthSp(context, 11),
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w300,
+              height: 1.2,
+            ),
+          ),
+        ],
       ),
     );
   }

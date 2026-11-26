@@ -1143,6 +1143,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                 _product?.additionalInfo?['it_shipping_process']?.toString(),
             changeContentText:
                 _product?.additionalInfo?['it_change_content']?.toString(),
+            certifications: _product?.certifications ?? const [],
           ),
           _buildRecommendedSection(),
         ],

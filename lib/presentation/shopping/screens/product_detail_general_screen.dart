@@ -1056,13 +1056,13 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       mainAxisSize: MainAxisSize.min,
       children: [
         ProductTailInfoSection(
-          showCertification: false,
           showWarning: false,
           showPrescriptionProcess: false,
           deliveryText:
               _product?.additionalInfo?['it_baesong_content']?.toString(),
           changeContentText:
               _product?.additionalInfo?['it_change_content']?.toString(),
+          certifications: _product?.certifications ?? const [],
         ),
         _buildRecommendedSection(),
         SizedBox(height: healthDp(context, 20)),
