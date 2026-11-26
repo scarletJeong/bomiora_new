@@ -170,7 +170,7 @@ extension _PaymentCheckout on _PaymentScreenState {
             'cart_ids': cartIds,
             'payment_method': _paymentMethodLabel,
             'pay_method': _kcpPayMethodBits,
-            'escrow_use': _useEscrow,
+            'escrow_use': _pointSettings.escrowUse && _useEscrow,
             'shipping_cost': baseShipping + extraShipping,
             'base_shipping_cost': baseShipping,
             'extra_shipping_cost': extraShipping,

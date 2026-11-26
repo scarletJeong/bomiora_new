@@ -10,6 +10,10 @@ class PointSettings {
   final int settleMinPoint;
   final int settleMaxPoint;
   final int settlePointUnit;
+  /// 에스크로 사용 (de_escrow_use)
+  final bool escrowUse;
+  /// 신용카드 무이자할부 (de_card_noint_use)
+  final bool cardNointUse;
 
   const PointSettings({
     required this.usePoint,
@@ -18,6 +22,8 @@ class PointSettings {
     required this.settleMinPoint,
     required this.settleMaxPoint,
     required this.settlePointUnit,
+    this.escrowUse = false,
+    this.cardNointUse = false,
   });
 
   /// 결제·주문 상세 예상 적립 표시 여부
@@ -30,6 +36,8 @@ class PointSettings {
     settleMinPoint: 0,
     settleMaxPoint: 50000,
     settlePointUnit: 100,
+    escrowUse: false,
+    cardNointUse: false,
   );
 }
 
@@ -109,6 +117,8 @@ class AppConfigService {
         settleMinPoint: asInt(data['de_settle_min_point'], 0).clamp(0, 1 << 30),
         settleMaxPoint: maxRaw > 0 ? maxRaw : 50000,
         settlePointUnit: unit,
+        escrowUse: asBool(data['de_escrow_use'], fallback: false),
+        cardNointUse: asBool(data['de_card_noint_use'], fallback: false),
       );
     } catch (_) {
       return PointSettings.defaults;

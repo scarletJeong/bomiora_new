@@ -707,7 +707,10 @@ extension _PaymentSections on _PaymentScreenState {
   }
 
   Widget _buildPaymentMethodHeaderSection(BuildContext context) {
-    final showEscrow = _paymentMethodIndex == 1 || _paymentMethodIndex == 2;
+    final showEscrow = _pointSettings.escrowUse &&
+        (_paymentMethodIndex == 1 || _paymentMethodIndex == 2);
+    final showCardNoint =
+        _pointSettings.cardNointUse && _paymentMethodIndex == 0;
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: healthDp(context, 34)),
@@ -744,17 +747,19 @@ extension _PaymentSections on _PaymentScreenState {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(
-                  '※ 할부 결제는 일반카드 결제만 가능합니다.',
-                  style: TextStyle(
-                    color: _muted,
-                    fontSize: healthSp(context, 10),
-                    fontFamily: 'Gmarket Sans TTF',
-                    fontWeight: FontWeight.w300,
-                    letterSpacing: -0.40,
+                if (showCardNoint) ...[
+                  Text(
+                    '※ 무이자할부는 일반카드 결제에 적용됩니다.',
+                    style: TextStyle(
+                      color: _muted,
+                      fontSize: healthSp(context, 10),
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w300,
+                      letterSpacing: -0.40,
+                    ),
                   ),
-                ),
-                SizedBox(height: healthDp(context, 5)),
+                  SizedBox(height: healthDp(context, 5)),
+                ],
                 Text(
                   '※ 최소 결제금액은 3,000원 입니다.',
                   style: TextStyle(
@@ -795,7 +800,9 @@ extension _PaymentSections on _PaymentScreenState {
         if (_paymentMethodIndex == index) return;
         _setState(() {
           _paymentMethodIndex = index;
-          _useEscrow = false;
+          if (!_pointSettings.escrowUse || (index != 1 && index != 2)) {
+            _useEscrow = false;
+          }
         });
       },
       borderRadius: BorderRadius.circular(healthDp(context, 12)),
