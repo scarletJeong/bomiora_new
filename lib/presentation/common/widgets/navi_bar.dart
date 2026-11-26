@@ -171,6 +171,7 @@ class FooterBar extends StatelessWidget {
             iconAsset: AppAssets.naviIcon1,
             iconWidthBase: 16,
             iconHeightBase: 17.27,
+            nudgeXBase: -10,
             onTap: () {
               HomeRefresh.request();
               _go(context, '/home');
@@ -182,7 +183,7 @@ class FooterBar extends StatelessWidget {
             iconAsset: AppAssets.naviIcon2,
             iconWidthBase: 18,
             iconHeightBase: 14.22,
-            nudgeXBase: -6,
+            nudgeXBase: -16,
             onTap: () => _go(context, '/health'),
           ),
           _item(
