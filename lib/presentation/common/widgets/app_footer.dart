@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/constants/app_assets.dart';
 import '../../../data/models/shop_default/company_info_model.dart';
@@ -30,11 +31,35 @@ class _AppFooterState extends State<AppFooter> {
     setState(() => _company = info);
   }
 
+  static const _customerCenterFallback = '02-546-1031';
+
   /// 조회가 끝나기 전이나 값이 비어 있으면 기존 문구를 유지한다.
   String _companyText(String? remote, String fallback) {
     final value = remote?.trim() ?? '';
     if (_company == null || value.isEmpty) return fallback;
     return value;
+  }
+
+  String _dialNumber(String phone) {
+    final buffer = StringBuffer();
+    for (final char in phone.trim().split('')) {
+      final isDigit = char.codeUnitAt(0) >= 48 && char.codeUnitAt(0) <= 57;
+      if (char == '+' && buffer.isEmpty) {
+        buffer.write(char);
+      } else if (isDigit) {
+        buffer.write(char);
+      }
+    }
+    return buffer.toString();
+  }
+
+  Future<void> _callCustomerCenter(String phone) async {
+    final dial = _dialNumber(phone);
+    if (dial.isEmpty) return;
+    final uri = Uri(scheme: 'tel', path: dial);
+    try {
+      await launchUrl(uri);
+    } catch (_) {}
   }
 
   static const _bg = Color(0xFFF7F7F7);
@@ -60,10 +85,11 @@ class _AppFooterState extends State<AppFooter> {
     TextStyle? valueStyle,
     double gapBase = 11.54,
     bool expand = true,
+    VoidCallback? onTap,
   }) {
     final style = _rowStyle(context);
     final valueText = Text(value, style: valueStyle ?? style);
-    return Row(
+    final row = Row(
       mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -71,6 +97,15 @@ class _AppFooterState extends State<AppFooter> {
         SizedBox(width: healthDp(context, gapBase)),
         if (expand) Expanded(child: valueText) else valueText,
       ],
+    );
+    if (onTap == null) return row;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: row,
+      ),
     );
   }
 
@@ -151,8 +186,11 @@ class _AppFooterState extends State<AppFooter> {
                     _pair(
                       context,
                       '고객센터',
-                      _companyText(_company?.phone, '02-546-1031'),
+                      _companyText(_company?.phone, _customerCenterFallback),
                       expand: false,
+                      onTap: () => _callCustomerCenter(
+                        _companyText(_company?.phone, _customerCenterFallback),
+                      ),
                     ),
                     _pair(
                       context,
