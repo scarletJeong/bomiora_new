@@ -71,7 +71,7 @@ class PaymentPrefetchData {
       final results = await Future.wait([
         AddressService.loadAddresses(id),
         CouponService.loadPaymentCoupons(id),
-        PointService.getUserPoint(id),
+        PointService.getUserPoint(id, forceRefresh: true),
       ]);
       final addressLoad = results[0] as AddressListLoad;
       final coupons = results[1] as List<Coupon>?;
@@ -155,6 +155,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
   bool _deliveryMemoCustomSelected = false;
 
   bool _loading = true;
+  bool _appliedCheckoutPrefetch = false;
   bool _checkoutLoadFailed = false;
   bool _addressLoadFailed = false;
   bool _couponLoadFailed = false;
@@ -297,7 +298,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
       mbId = user.id;
       _checkoutMbId = mbId;
 
-      if (widget.prefetch != null) {
+      if (widget.prefetch != null && !_appliedCheckoutPrefetch) {
+        _appliedCheckoutPrefetch = true;
         await _applyPrefetch(user, widget.prefetch!);
         return;
       }
@@ -305,7 +307,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       final results = await Future.wait([
         AddressService.loadAddresses(user.id),
         CouponService.loadPaymentCoupons(user.id),
-        PointService.getUserPoint(user.id),
+        PointService.getUserPoint(user.id, forceRefresh: true),
       ]);
 
       final addressLoad = results[0] as AddressListLoad;
