@@ -113,6 +113,16 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _categoryLoading = false;
   Future<void> _dietLeadReady = Future<void>.value();
 
+  /// 카테고리 탭 전환 → 썸네일 표시 측정
+  final Stopwatch _categoryTabWatch = Stopwatch();
+  int _categoryTabToken = 0;
+  String _categoryTabLabel = '';
+  String _categoryTabKey = '';
+  int _categoryPendingImages = 0;
+  int _categorySettledImages = 0;
+  bool _categoryFirstImageLogged = false;
+  bool _categoryAllImagesLogged = false;
+
   @override
   void initState() {
     super.initState();
@@ -408,6 +418,7 @@ class _HomeScreenState extends State<HomeScreen> {
       });
 
       if (tabs.isNotEmpty) {
+        _beginCategoryTabTiming(tabs[_selectedTabIndex]);
         _prefetchCategoryProducts(tabs);
         _loadProductsForCurrentTab();
       }
@@ -548,7 +559,74 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     setState(() => _selectedTabIndex = index);
     if (_categoryListFailed) return;
+    _beginCategoryTabTiming(_tabs[index]);
     _loadProductsForCurrentTab();
+  }
+
+  void _beginCategoryTabTiming(ProductCategoryItem tab) {
+    final token = ++_categoryTabToken;
+    _categoryTabLabel = tab.label;
+    _categoryTabKey = _cacheKeyForTab(tab);
+    _categoryPendingImages = 0;
+    _categorySettledImages = 0;
+    _categoryFirstImageLogged = false;
+    _categoryAllImagesLogged = false;
+    _categoryTabWatch
+      ..reset()
+      ..start();
+    debugPrint(
+      '[카테고리탭] 선택 "$_categoryTabLabel" ($_categoryTabKey) #$token',
+    );
+  }
+
+  void _logCategoryTabDataReady({
+    required List<Product> products,
+    required bool fromCache,
+  }) {
+    final visible = products.take(_kCategoryMaxDisplay).toList();
+    final withImage =
+        visible.where((p) => p.displayImageUrl.trim().isNotEmpty).toList();
+    _categoryPendingImages = withImage.length;
+    _categorySettledImages = 0;
+    _categoryFirstImageLogged = false;
+    _categoryAllImagesLogged = false;
+    debugPrint(
+      '[카테고리탭] 상품 데이터 '
+      '${_categoryTabWatch.elapsedMilliseconds}ms '
+      '"$_categoryTabLabel" '
+      '${fromCache ? 'cache' : 'network'} '
+      'visible=${visible.length} withImage=${withImage.length}',
+    );
+    if (_categoryPendingImages == 0) {
+      _logCategoryTabImagesDone(empty: true);
+    }
+  }
+
+  void _onCategoryImageSettled(int tabToken) {
+    if (tabToken == 0 || tabToken != _categoryTabToken) return;
+    if (!_categoryFirstImageLogged) {
+      _categoryFirstImageLogged = true;
+      debugPrint(
+        '[카테고리탭] 첫 이미지 표시 '
+        '${_categoryTabWatch.elapsedMilliseconds}ms '
+        '"$_categoryTabLabel"',
+      );
+    }
+    _categorySettledImages += 1;
+    if (_categorySettledImages >= _categoryPendingImages) {
+      _logCategoryTabImagesDone();
+    }
+  }
+
+  void _logCategoryTabImagesDone({bool empty = false}) {
+    if (_categoryAllImagesLogged) return;
+    _categoryAllImagesLogged = true;
+    debugPrint(
+      '[카테고리탭] ${empty ? '이미지 없음' : '이미지 전부 표시'} '
+      '${_categoryTabWatch.elapsedMilliseconds}ms '
+      '"$_categoryTabLabel" '
+      'settled=$_categorySettledImages/$_categoryPendingImages',
+    );
   }
 
   Future<void> _loadProductsForCurrentTab() async {
@@ -556,7 +634,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final tab = _tabs[_selectedTabIndex];
     final cacheKey = _cacheKeyForTab(tab);
-    if (_productsByCategory.containsKey(cacheKey)) return;
+    final tabToken = _categoryTabToken;
+    final cached = _productsByCategory[cacheKey];
+    if (cached != null) {
+      _logCategoryTabDataReady(products: cached, fromCache: true);
+      return;
+    }
 
     setState(() {
       _categoryLoading = true;
@@ -575,12 +658,22 @@ class _HomeScreenState extends State<HomeScreen> {
         _productsByCategory[cacheKey] = products;
         _categoryLoading = false;
       });
+      if (tabToken == _categoryTabToken) {
+        _logCategoryTabDataReady(products: products, fromCache: false);
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _categoryLoading = false;
         _categoryProductFailed.add(cacheKey);
       });
+      if (tabToken == _categoryTabToken) {
+        debugPrint(
+          '[카테고리탭] 상품 실패 '
+          '${_categoryTabWatch.elapsedMilliseconds}ms '
+          '"$_categoryTabLabel" $e',
+        );
+      }
       await _logHomeFailure(
         'home.category.products',
         e,
@@ -1090,6 +1183,7 @@ class _HomeScreenState extends State<HomeScreen> {
       return _buildCategoryEmptyProducts(context);
     }
 
+    final tabToken = _categoryTabToken;
     return _horizontalProductRow(
       height: cardH,
       itemCount: displayProducts.length,
@@ -1102,6 +1196,9 @@ class _HomeScreenState extends State<HomeScreen> {
           child: ProductCardWithSubscription(
             product: product,
             showMoreOverlay: showMore,
+            onImageSettled: product.displayImageUrl.trim().isEmpty
+                ? null
+                : () => _onCategoryImageSettled(tabToken),
             onTap: showMore
                 ? _openCategoryProductList
                 : () => _openProduct(
