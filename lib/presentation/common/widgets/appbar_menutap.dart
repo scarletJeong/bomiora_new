@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -11,6 +13,7 @@ import '../../../data/services/prescription_purchase_history_service.dart';
 import '../../../data/services/recent_view_service.dart';
 import '../../../data/repositories/product/product_category_catalog.dart';
 import '../../shopping/utils/get_product.dart';
+import '../../shopping/widgets/product_main/product_main_sections.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../home/home_refresh.dart';
 import 'app_toast_overlay.dart';
@@ -86,6 +89,7 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
         _loadShopCategories(forceRefresh: true);
         _refreshUser();
         _loadRecentProducts(forceRefresh: true);
+        unawaited(ProductMainQuoteSection.precacheHero(context));
       }
       _sawDrawerOpen = open;
     });
@@ -427,7 +431,10 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                 title: '보미오라소개',
                 titleStyle: _mainMenuTitleStyle(context),
                 titlePadding: _mainMenuTitlePadding(context),
-                onTap: () => _popAndPushNamed(context, '/bomiora-introduce'),
+                onTap: () {
+                  unawaited(ProductMainQuoteSection.precacheHero(context));
+                  _popAndPushNamed(context, '/bomiora-introduce');
+                },
               ),
               SizedBox(height: healthDp(context, 10)),
               Theme(
