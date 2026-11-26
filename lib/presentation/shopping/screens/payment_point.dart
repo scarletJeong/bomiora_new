@@ -132,15 +132,26 @@ extension _PaymentPoint on _PaymentScreenState {
 
   int _itemBaseEarn(CartItem item) {
     if (_isInfluencerCartItem(item)) return 0;
-    return PointHelper.itemLinePoint(
+    // 추가옵션(io_type>0): it_supply_point × 수량. 없으면 저장된 ct_point.
+    if (item.ioType > 0) {
+      if (item.itSupplyPoint > 0) {
+        final qty = item.ctQty < 1 ? 1 : item.ctQty;
+        return item.itSupplyPoint * qty;
+      }
+      if (item.ctPoint > 0) return item.ctPoint;
+      return 0;
+    }
+    final computed = PointHelper.itemLinePoint(
       pointType: item.itPointType,
       point: item.itPoint,
       price: item.ctPrice,
       qty: item.ctQty,
       optionPrice: item.ioPrice ?? 0,
-      ioType: item.ioType,
+      ioType: 0,
       supplyPoint: item.itSupplyPoint,
     );
+    if (computed > 0) return computed;
+    return item.ctPoint > 0 ? item.ctPoint : 0;
   }
 
   /// 웹 updateBonusPoint처럼 상품별 적립을 실결제 비중으로 나눈 합.
