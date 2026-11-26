@@ -354,17 +354,37 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              title,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: _kText,
-                fontSize: healthSp(context, 14),
-                fontFamily: 'Gmarket Sans TTF',
-                fontWeight: FontWeight.w500,
-                letterSpacing: healthSp(context, -1.26),
-              ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (item.isNotice) ...[
+                  Padding(
+                    padding: EdgeInsets.only(
+                      right: healthDp(context, 4),
+                      top: healthDp(context, 2),
+                    ),
+                    child: Icon(
+                      Icons.push_pin_rounded,
+                      size: healthDp(context, 14),
+                      color: _kPink,
+                    ),
+                  ),
+                ],
+                Expanded(
+                  child: Text(
+                    title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: _kText,
+                      fontSize: healthSp(context, 14),
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: healthSp(context, -1.26),
+                    ),
+                  ),
+                ),
+              ],
             ),
             SizedBox(height: healthDp(context, 10)),
             Row(
