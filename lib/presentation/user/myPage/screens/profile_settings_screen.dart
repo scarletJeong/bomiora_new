@@ -110,19 +110,19 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
 
     final refreshed = await AuthService.refreshUserFromServer();
     if (!mounted) return;
-    user = refreshed ?? user;
+    final currentUser = refreshed ?? user;
 
-    final phone = (user.phone ?? '').replaceAll(RegExp(r'[^0-9]'), '');
-    final days = user.nickModifyDays;
+    final phone = (currentUser.phone ?? '').replaceAll(RegExp(r'[^0-9]'), '');
+    final days = currentUser.nickModifyDays;
     setState(() {
       _profileReady = true;
-      _currentUser = user;
+      _currentUser = currentUser;
       _nickModifyDays =
           (days != null && days >= 0) ? days : _defaultNickModifyDays;
-      _originalName = user.name.trim();
+      _originalName = currentUser.name.trim();
       _nameController.text = _originalName;
       _pendingNameDupinfo = null;
-      _originalNickname = user.nickname ?? '';
+      _originalNickname = currentUser.nickname ?? '';
       _nicknameController.text = _originalNickname;
 
       if (phone.length >= 10) {

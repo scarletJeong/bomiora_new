@@ -216,9 +216,9 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
   int get _mainQtyTotal =>
       _mainLines.fold<int>(0, (sum, l) => sum + l.quantity);
 
-  int get _buyMinQty => widget.product.buyMinQty;
+  int get _buyMinQty => widget.product?.buyMinQty ?? 1;
 
-  int? get _buyMaxCap => widget.product.purchaseMaxQty;
+  int? get _buyMaxCap => widget.product?.purchaseMaxQty;
 
   bool get _withinBuyMax {
     final max = _buyMaxCap;

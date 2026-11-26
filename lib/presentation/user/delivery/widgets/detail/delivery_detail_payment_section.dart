@@ -69,7 +69,7 @@ class _DeliveryDetailPaymentSectionState
 
   int get _expectedPoint {
     if (!_pointSettings.showExpectedEarn) return 0;
-    final itemPoints = widget.order.items.fold<int>(
+    final itemPoints = widget.order.products.fold<int>(
       0,
       (sum, item) => sum + (item.ctPoint > 0 ? item.ctPoint : 0),
     );
