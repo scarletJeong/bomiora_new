@@ -139,6 +139,7 @@ Future<void> showGeneralQuantityBottomup({
   required Future<void> Function(int quantity) onAddToCart,
   required Future<void> Function(int quantity) onBuyNow,
   int? maxQuantity,
+  int minQuantity = 1,
 }) async {
   final contentW = MobileLayoutWrapper.contentWidthOf(context);
 
@@ -168,6 +169,7 @@ Future<void> showGeneralQuantityBottomup({
               onAddToCart: onAddToCart,
               onBuyNow: onBuyNow,
               maxQuantity: maxQuantity,
+              minQuantity: minQuantity < 1 ? 1 : minQuantity,
             ),
           ),
         ),

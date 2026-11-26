@@ -213,7 +213,23 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
 
   bool get _hasMainSelection => _mainLines.isNotEmpty;
 
-  bool get _canCheckout => _hasMainSelection;
+  int get _mainQtyTotal =>
+      _mainLines.fold<int>(0, (sum, l) => sum + l.quantity);
+
+  int get _buyMinQty => widget.product.buyMinQty;
+
+  int? get _buyMaxCap => widget.product.purchaseMaxQty;
+
+  bool get _withinBuyMax {
+    final max = _buyMaxCap;
+    if (max == null) return true;
+    return _mainQtyTotal <= max;
+  }
+
+  bool get _meetsBuyMin => _mainQtyTotal >= _buyMinQty;
+
+  bool get _canCheckout =>
+      _hasMainSelection && _meetsBuyMin && _withinBuyMax;
 
   bool get _showSupplyProductPicker => _supplyProducts.length > 1;
 
@@ -641,10 +657,20 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
     _addOption(option);
   }
 
+  bool _mainQtyWouldFit(int nextMainTotal) {
+    final max = _buyMaxCap;
+    if (max != null && nextMainTotal > max) return false;
+    return true;
+  }
+
   void _addOption(ProductOption option) {
     if (option.stock <= 0) return;
     final current = _quantityOf(option);
     if (!_withinStock(option, current + 1)) return;
+    if ((option.isMain || option.ioType == 0) &&
+        !_mainQtyWouldFit(_mainQtyTotal + 1)) {
+      return;
+    }
 
     setState(() {
       if (option.isMain || option.ioType == 0) {
@@ -742,6 +768,8 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
       return;
     }
     if (!_withinStock(line.option, quantity)) return;
+    final others = _mainQtyTotal - line.quantity;
+    if (!_mainQtyWouldFit(others + quantity)) return;
     setState(() {
       line.quantity = quantity;
     });
@@ -2144,6 +2172,7 @@ class GeneralQuantityBottomSheet extends StatefulWidget {
   final Future<void> Function(int quantity) onAddToCart;
   final Future<void> Function(int quantity) onBuyNow;
   final int? maxQuantity;
+  final int minQuantity;
 
   const GeneralQuantityBottomSheet({
     super.key,
@@ -2155,6 +2184,7 @@ class GeneralQuantityBottomSheet extends StatefulWidget {
     required this.onAddToCart,
     required this.onBuyNow,
     this.maxQuantity,
+    this.minQuantity = 1,
   });
 
   @override
@@ -2163,13 +2193,16 @@ class GeneralQuantityBottomSheet extends StatefulWidget {
 }
 
 class _GeneralQuantityBottomSheetState extends State<GeneralQuantityBottomSheet> {
-  int _quantity = 1;
+  late int _quantity;
   late bool _isFavorite;
 
   @override
   void initState() {
     super.initState();
     _isFavorite = widget.isFavorite;
+    final min = widget.minQuantity < 1 ? 1 : widget.minQuantity;
+    final max = widget.maxQuantity;
+    _quantity = (max != null && min > max) ? max : min;
   }
 
   int get _totalPrice => widget.unitPrice * _quantity;
@@ -2237,7 +2270,7 @@ class _GeneralQuantityBottomSheetState extends State<GeneralQuantityBottomSheet>
                     QuantityStepper(
                       quantity: _quantity,
                       numberColor: const Color(0xFF1A1A1A),
-                      onDecrease: _quantity > 1
+                      onDecrease: _quantity > widget.minQuantity
                           ? () => setState(() => _quantity--)
                           : null,
                       onIncrease: widget.maxQuantity == null ||

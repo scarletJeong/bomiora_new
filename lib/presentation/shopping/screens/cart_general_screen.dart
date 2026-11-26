@@ -346,10 +346,35 @@ class _CartScreenState extends State<CartScreen> {
       itPoint: old.itPoint,
       itPointType: old.itPointType,
       itSupplyPoint: old.itSupplyPoint,
+      buyMinQty: old.buyMinQty,
+      buyMaxQty: old.buyMaxQty,
+      isTelInquiry: old.isTelInquiry,
+      productStockQty: old.productStockQty,
       ctSelect: old.ctSelect,
       isAvailable: old.isAvailable,
       unavailableReason: old.unavailableReason,
     );
+  }
+
+  int _cartQtyFloor(CartItem item) {
+    if (item.ioType != 0) return 1;
+    return item.buyMinQty > 0 ? item.buyMinQty : 1;
+  }
+
+  int? _cartQtyCeil(CartItem item) {
+    if (item.ioType != 0) {
+      final stock = item.productStockQty;
+      if (stock != null && stock < 99999) return stock;
+      return null;
+    }
+    final maxBuy = item.buyMaxQty;
+    final stock = item.productStockQty;
+    final stockCap = (stock != null && stock < 99999) ? stock : null;
+    if (maxBuy > 0 && stockCap != null) {
+      return maxBuy < stockCap ? maxBuy : stockCap;
+    }
+    if (maxBuy > 0) return maxBuy;
+    return stockCap;
   }
 
   Future<void> _updateQuantity(int ctId, int newQuantity) async {
@@ -362,18 +387,27 @@ class _CartScreenState extends State<CartScreen> {
     final index = cartItems.indexWhere((item) => item.ctId == ctId);
     if (index < 0) return;
     final previous = cartItems[index];
-    if (previous.ctQty == newQuantity) return;
+    if (previous.isTelInquiry) {
+      AppToastOverlay.showAlert(context, '전화문의 상품입니다. 고객센터로 문의해 주세요.');
+      return;
+    }
+    final floor = _cartQtyFloor(previous);
+    final ceil = _cartQtyCeil(previous);
+    var qty = newQuantity;
+    if (qty < floor) qty = floor;
+    if (ceil != null && qty > ceil) qty = ceil;
+    if (previous.ctQty == qty) return;
 
     final epoch = (_qtyEpochById[ctId] ?? 0) + 1;
     _qtyEpochById[ctId] = epoch;
     setState(() {
-      cartItems[index] = _itemWithQuantity(previous, newQuantity);
+      cartItems[index] = _itemWithQuantity(previous, qty);
       totalPrice = cartItems.fold<int>(0, (sum, item) => sum + item.lineAmount);
     });
 
     final resultFuture = CartService.updateCartQuantity(
       ctId: ctId,
-      quantity: newQuantity,
+      quantity: qty,
     );
     _pendingQtyUpdate = resultFuture.then((_) {});
     final result = await resultFuture;
