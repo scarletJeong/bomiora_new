@@ -58,6 +58,10 @@ class CartItem {
   final int itPointType;
   /// 추가옵션 적립 점수
   final int itSupplyPoint;
+  final int buyMinQty;
+  final int buyMaxQty;
+  final bool isTelInquiry;
+  final int? productStockQty;
   /// 결제 대상 선택 여부 (`bomiora_shop_cart.ct_select`)
   final bool ctSelect;
   /// 품절·판매중지 여부 (서버 `is_available`)
@@ -99,6 +103,10 @@ class CartItem {
     this.itPoint = 0,
     this.itPointType = 0,
     this.itSupplyPoint = 0,
+    this.buyMinQty = 1,
+    this.buyMaxQty = 0,
+    this.isTelInquiry = false,
+    this.productStockQty,
     this.ctSelect = false,
     this.isAvailable = true,
     this.unavailableReason,
@@ -329,6 +337,26 @@ class CartItem {
       itSupplyPoint: _parseInt(
         normalized['it_supply_point'] ?? normalized['itSupplyPoint'] ?? 0,
       ),
+      buyMinQty: () {
+        final n = _parseInt(
+          normalized['it_buy_min_qty'] ?? normalized['itBuyMinQty'] ?? 0,
+        );
+        return n > 0 ? n : 1;
+      }(),
+      buyMaxQty: _parseInt(
+        normalized['it_buy_max_qty'] ?? normalized['itBuyMaxQty'] ?? 0,
+      ),
+      isTelInquiry: () {
+        final raw = normalized['it_tel_inq'] ?? normalized['itTelInq'];
+        if (raw == true) return true;
+        if (raw is num) return raw == 1;
+        final s = raw?.toString().trim().toLowerCase();
+        return s == '1' || s == 'true';
+      }(),
+      productStockQty: normalized['it_stock_qty'] != null ||
+              normalized['itStockQty'] != null
+          ? _parseInt(normalized['it_stock_qty'] ?? normalized['itStockQty'])
+          : null,
       ctSelect: _parseCtSelect(normalized['ct_select'] ?? normalized['ctSelect']),
       isAvailable: _parseIsAvailable(
         normalized['is_available'] ?? normalized['isAvailable'],
@@ -431,6 +459,10 @@ class CartItem {
       'it_point': itPoint,
       'it_point_type': itPointType,
       'it_supply_point': itSupplyPoint,
+      'it_buy_min_qty': buyMinQty,
+      'it_buy_max_qty': buyMaxQty,
+      'it_tel_inq': isTelInquiry ? 1 : 0,
+      'it_stock_qty': productStockQty,
       'ct_select': ctSelect ? 1 : 0,
     };
   }

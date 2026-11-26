@@ -1,6 +1,7 @@
 import 'dart:convert';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_endpoints.dart';
+import '../../../core/utils/node_value_parser.dart';
 import '../../../presentation/shopping/utils/get_product.dart';
 import '../../models/product/product_model.dart';
 import '../../services/auth_service.dart';
@@ -391,6 +392,46 @@ class ProductRepository {
       if (text.contains('카테고리 목록')) rethrow;
       throw Exception('카테고리 목록 조회 실패 ($productKind): $e');
     }
+  }
+
+  /// 로그인 회원 휴대폰으로 재입고 SMS 신청
+  /// 성공 시 message, 실패 시 Exception(message)
+  static Future<String> requestStockSms({
+    required String productId,
+    required String mbId,
+  }) async {
+    final itId = productId.trim();
+    final memberId = mbId.trim();
+    if (itId.isEmpty) {
+      throw Exception('상품정보가 존재하지 않습니다.');
+    }
+    if (memberId.isEmpty) {
+      throw Exception('로그인 후 이용할 수 있습니다.');
+    }
+
+    final response = await ApiClient.post(ApiEndpoints.productStockSms, {
+      'it_id': itId,
+      'mb_id': memberId,
+    });
+    final body = response.body.isNotEmpty ? json.decode(response.body) : null;
+    final message = body is Map
+        ? (NodeValueParser.asString(body['message'])?.trim() ?? '')
+        : '';
+
+    if (response.statusCode >= 200 &&
+        response.statusCode < 300 &&
+        body is Map &&
+        body['success'] == true) {
+      return message.isNotEmpty
+          ? message
+          : '재입고SMS 알림 요청 등록이 완료됐습니다.';
+    }
+
+    throw Exception(
+      message.isNotEmpty
+          ? message
+          : '재입고SMS 신청에 실패했습니다. (${response.statusCode})',
+    );
   }
 }
 

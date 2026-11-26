@@ -40,6 +40,8 @@ class ApiEndpoints {
   static String categoriesWithProducts(String productKind) =>
       '/api/products/categories-with-products?it_kind=${Uri.encodeComponent(productKind)}';
   static const String productDetail = '/api/products/detail';
+  /// 재입고 SMS 신청
+  static const String productStockSms = '/api/products/stock-sms';
   static String productListByCategory(String categoryId,
       {String? productKind}) {
     String endpoint = '/api/products/list?ca_id=$categoryId';

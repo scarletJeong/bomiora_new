@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_assets.dart';
 import '../../../core/logging/failure_log.dart';
 import '../../common/widgets/app_alert_dialog.dart';
@@ -17,6 +18,7 @@ import '../../../core/utils/inf_code_tracker.dart';
 import '../../../data/services/point_service.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/app_config_service.dart';
+import '../../../data/services/shop_default_service.dart';
 import '../../../data/services/wish_service.dart';
 import '../../../data/services/recent_view_service.dart';
 import '../../../data/services/cart_service.dart';
@@ -42,6 +44,7 @@ import '../utils/product_info_spec_helper.dart';
 import 'payment_screen.dart';
 import 'product_review_general_screen.dart';
 import '../../common/widgets/login_required_dialog.dart';
+import '../../common/widgets/confirm_dialog.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 
 const _kGmarketSans = 'Gmarket Sans TTF';
@@ -1712,8 +1715,47 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
     );
   }
 
+  Future<void> _callTelInquiry() async {
+    var phone = '02-546-1031';
+    try {
+      final info = await ShopDefaultService.getCompanyInfo();
+      final remote = (info?.phone ?? '').trim();
+      if (remote.isNotEmpty) phone = remote;
+    } catch (_) {}
+    final dial = phone.startsWith('+')
+        ? '+${phone.replaceAll(RegExp(r'[^0-9]'), '')}'
+        : phone.replaceAll(RegExp(r'[^0-9]'), '');
+    if (dial.isEmpty) {
+      if (!mounted) return;
+      AppToastOverlay.showAlert(context, '고객센터 전화번호를 확인할 수 없습니다.');
+      return;
+    }
+    try {
+      await launchUrl(Uri(scheme: 'tel', path: dial));
+    } catch (_) {
+      if (!mounted) return;
+      AppToastOverlay.showAlert(context, '전화 연결을 열지 못했습니다. $phone');
+    }
+  }
+
   Widget _buildBottomActionBar() {
-    final canBuy = _product?.isPurchasable ?? true;
+    final telInquiry = _product?.isTelInquiry ?? false;
+    final canBuy = _product?.isOrderable ?? true;
+    final canStockSms = _product?.canRequestStockSms ?? false;
+    final primaryEnabled = telInquiry || canBuy || canStockSms;
+    final primaryLabel = telInquiry
+        ? '전화문의'
+        : (canBuy
+            ? '구매하기'
+            : (canStockSms ? '재입고 알림' : '판매 불가'));
+    VoidCallback? primaryAction;
+    if (telInquiry) {
+      primaryAction = _callTelInquiry;
+    } else if (canBuy) {
+      primaryAction = _showOptionSelectionDialog;
+    } else if (canStockSms) {
+      primaryAction = _requestStockSms;
+    }
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -1752,7 +1794,9 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
                         ? const Color(0xFFFF5A8D)
                         : Colors.grey[600],
                   ),
-                  onPressed: canBuy ? () => _toggleFavorite() : null,
+                  onPressed: (_product?.isPurchasable ?? true)
+                      ? () => _toggleFavorite()
+                      : null,
                 ),
               ),
               SizedBox(width: healthDp(context, 10)),
@@ -1760,9 +1804,9 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
                 child: SizedBox(
                   height: healthDp(context, 40),
                   child: ElevatedButton(
-                    onPressed: canBuy ? _showOptionSelectionDialog : null,
+                    onPressed: primaryAction,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: canBuy
+                      backgroundColor: primaryEnabled
                           ? const Color(0xFFFF5A8D)
                           : const Color(0xFFD2D2D2),
                       disabledBackgroundColor: const Color(0xFFD2D2D2),
@@ -1775,7 +1819,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
                       ),
                     ),
                     child: Text(
-                      canBuy ? '구매하기' : '판매 불가',
+                      primaryLabel,
                       style: TextStyle(
                         fontSize: healthSp(context, 16),
                         fontWeight: FontWeight.w500,
@@ -1792,11 +1836,67 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
     );
   }
 
+  Future<void> _requestStockSms() async {
+    final product = _product;
+    if (product == null || !product.canRequestStockSms) return;
+
+    final user = await AuthService.getUser();
+    if (user == null || user.id.isEmpty) {
+      if (!mounted) return;
+      await showLoginRequiredDialog(
+        context,
+        message: '로그인 후 재입고 알림을 신청할 수 있습니다.',
+      );
+      return;
+    }
+
+    final phone = (user.phone ?? '').trim();
+    if (phone.isEmpty) {
+      if (!mounted) return;
+      await AppAlertDialog.show(
+        context,
+        title: '휴대폰번호 없음',
+        message: '등록된 휴대폰번호가 없습니다.\n회원정보에서 번호를 등록해 주세요.',
+      );
+      return;
+    }
+
+    if (!mounted) return;
+    final confirmed = await ConfirmDialog.show(
+      context,
+      title: '재입고 알림',
+      message: '등록된 휴대폰으로\n재입고SMS 알림을 신청할까요?',
+      confirmText: '신청',
+    );
+    if (!confirmed || !mounted) return;
+
+    try {
+      final message = await ProductRepository.requestStockSms(
+        productId: product.id,
+        mbId: user.id,
+      );
+      if (!mounted) return;
+      await AppAlertDialog.show(
+        context,
+        title: '신청 완료',
+        message: message,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      final text = e.toString().replaceFirst(RegExp(r'^Exception:\s*'), '');
+      await AppAlertDialog.show(
+        context,
+        title: '신청 안내',
+        message: text.isNotEmpty ? text : '재입고SMS 신청에 실패했습니다.',
+      );
+    }
+  }
+
   /// 옵션 선택 바텀 시트 표시
   Future<void> _showOptionSelectionDialog() async {
-    if (_product == null || !_product!.isPurchasable) return;
+    if (_product == null || !_product!.isOrderable) return;
     await _optionsLoad;
-    if (!mounted || _product == null || !_product!.isPurchasable) return;
+    if (!mounted || _product == null || !_product!.isOrderable) return;
     if (_optionsLoadFailed) {
       AppToastOverlay.showAlert(context, '옵션을 불러오지 못했습니다.');
       return;
@@ -2170,8 +2270,8 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
   Future<void> _showGeneralQuantityBottomSheet() async {
     if (_product == null) return;
 
-    final stock = _product!.stock;
-    final maxQuantity = stock != null && stock < 99999 ? stock : null;
+    final maxQuantity = _product!.purchaseMaxQty;
+    final minQuantity = _product!.buyMinQty;
 
     await showGeneralQuantityBottomup(
       context: context,
@@ -2206,6 +2306,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
         await _buySelectedGeneralProductNow(quantity: quantity);
       },
       maxQuantity: maxQuantity,
+      minQuantity: minQuantity,
     );
   }
 }

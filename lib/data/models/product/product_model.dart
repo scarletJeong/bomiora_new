@@ -128,6 +128,71 @@ class Product {
     return true;
   }
 
+  bool get isTelInquiry {
+    final info = additionalInfo;
+    final raw = info?['it_tel_inq'] ?? info?['itTelInq'];
+    if (raw == true) return true;
+    if (raw is num) return raw == 1;
+    final s = raw?.toString().trim().toLowerCase();
+    return s == '1' || s == 'true';
+  }
+
+  /// 바로구매·장바구니 가능 (전화문의 제외)
+  bool get isOrderable => isPurchasable && !isTelInquiry;
+
+  int get buyMinQty {
+    final info = additionalInfo;
+    final raw = info?['it_buy_min_qty'] ?? info?['itBuyMinQty'];
+    final n = raw is int
+        ? raw
+        : raw is num
+            ? raw.toInt()
+            : int.tryParse('${raw ?? ''}'.trim()) ?? 0;
+    return n > 0 ? n : 1;
+  }
+
+  /// 0이면 상한 없음(재고만)
+  int get buyMaxQty {
+    final info = additionalInfo;
+    final raw = info?['it_buy_max_qty'] ?? info?['itBuyMaxQty'];
+    final n = raw is int
+        ? raw
+        : raw is num
+            ? raw.toInt()
+            : int.tryParse('${raw ?? ''}'.trim()) ?? 0;
+    return n > 0 ? n : 0;
+  }
+
+  /// 스테퍼 상한. 재고가 더 작으면 재고.
+  int? get purchaseMaxQty {
+    final maxBuy = buyMaxQty;
+    final qty = stock;
+    final stockCap = (qty != null && qty < 99999) ? qty : null;
+    if (maxBuy > 0 && stockCap != null) {
+      return maxBuy < stockCap ? maxBuy : stockCap;
+    }
+    if (maxBuy > 0) return maxBuy;
+    return stockCap;
+  }
+
+  /// 웹과 동일: 품절(`it_soldout`) + 재입고SMS 허용(`it_stock_sms`)일 때만 신청 가능
+  bool get canRequestStockSms {
+    final info = additionalInfo;
+    String? text(dynamic value) {
+      if (value == null) return null;
+      final s = value.toString().trim();
+      return s.isEmpty ? null : s;
+    }
+
+    final soldout = text(info?['it_soldout'] ?? info?['soldout']);
+    if (soldout != '1' && soldout != 'true') return false;
+    final sms = info?['it_stock_sms'] ?? info?['stock_sms'] ?? info?['itStockSms'];
+    return sms == true ||
+        sms == 1 ||
+        sms == '1' ||
+        (sms is num && sms.toInt() == 1);
+  }
+
   Product({
     required this.id,
     required this.name,
