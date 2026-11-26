@@ -837,6 +837,14 @@ class _LoginScreenState extends State<LoginScreen> {
     Map<String, dynamic>? prefill,
   }) async {
     final p = prefill != null ? NodeValueParser.normalizeMap(prefill) : null;
+    String? firstText(String? primary, Object? fallback) {
+      final left = primary?.trim();
+      if (left != null && left.isNotEmpty) return left;
+      final right = fallback?.toString().trim();
+      if (right != null && right.isNotEmpty) return right;
+      return null;
+    }
+
     final safeProvider = provider.trim().toLowerCase();
     await Navigator.pushNamed(
       context,
@@ -844,12 +852,12 @@ class _LoginScreenState extends State<LoginScreen> {
       arguments: {
         'provider': provider,
         'identifier': identifier,
-        'email': email ?? p?['email']?.toString(),
-        'nickname': nickname ?? p?['nickname']?.toString(),
-        'name': name ?? p?['name']?.toString(),
-        'gender': gender ?? p?['gender']?.toString(),
-        'birthday': birthday ?? p?['birthday']?.toString(),
-        'profileImageUrl': profileImageUrl ?? p?['profileImageUrl']?.toString(),
+        'email': firstText(email, p?['email']),
+        'nickname': firstText(nickname, p?['nickname']),
+        'name': firstText(name, p?['name']),
+        'gender': firstText(gender, p?['gender']),
+        'birthday': firstText(birthday, p?['birthday']),
+        'profileImageUrl': firstText(profileImageUrl, p?['profileImageUrl']),
         'identityToken': identityToken,
         'authorizationCode': authorizationCode,
       },
