@@ -800,25 +800,24 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
   Widget _prescriptionPhotoRow(ReviewModel r) {
     final urls = _reviewAttachImageUrls(r);
     if (urls.isEmpty) return const SizedBox.shrink();
-    final shown = urls.take(3).toList();
     final side = healthDp(context, 96);
     return SizedBox(
       height: side,
-      child: Row(
-        children: [
-          for (var i = 0; i < shown.length; i++) ...[
-            if (i > 0) SizedBox(width: healthDp(context, 8)),
-            _squareReviewPhoto(
-              url: shown[i],
-              side: side,
-              onTap: () => ReviewPhotoViewer.open(
-                context,
-                urls: shown,
-                initialIndex: i,
-              ),
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: urls.length,
+        separatorBuilder: (_, __) => SizedBox(width: healthDp(context, 8)),
+        itemBuilder: (context, index) {
+          return _squareReviewPhoto(
+            url: urls[index],
+            side: side,
+            onTap: () => ReviewPhotoViewer.open(
+              context,
+              urls: urls,
+              initialIndex: index,
             ),
-          ],
-        ],
+          );
+        },
       ),
     );
   }
