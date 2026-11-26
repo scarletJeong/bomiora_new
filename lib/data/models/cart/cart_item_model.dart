@@ -48,6 +48,8 @@ class CartItem {
   final String? caId3;
   // 인플루언서 상품 구분값 (빈값이면 일반 상품)
   final String ctMbInf;
+  /// 상품 쿠폰적용안함 (`it_nocoupon` = 1)
+  final bool itNocoupon;
   // 포인트 사용 가능 비율 (0~100)
   final int pointUsageRate;
   /// 장바구니 적립 점수(수량 반영 저장값일 수 있음)
@@ -98,6 +100,7 @@ class CartItem {
     this.caId2,
     this.caId3,
     this.ctMbInf = '',
+    this.itNocoupon = false,
     this.pointUsageRate = 10,
     this.ctPoint = 0,
     this.itPoint = 0,
@@ -323,6 +326,15 @@ class CartItem {
       ctMbInf: NodeValueParser.asString(
               normalized['ct_mb_inf'] ?? normalized['ctMbInf']) ??
           '',
+      itNocoupon: () {
+        final raw = normalized['it_nocoupon'] ??
+            normalized['itNocoupon'] ??
+            normalized['product_it_nocoupon'];
+        if (raw == true) return true;
+        if (raw is num) return raw.toInt() == 1;
+        final s = raw?.toString().trim().toLowerCase();
+        return s == '1' || s == 'true';
+      }(),
       pointUsageRate: _parsePointUsageRate(
         normalized['point_usage_rate'] ??
             normalized['pointUsageRate'] ??
@@ -454,6 +466,7 @@ class CartItem {
       'ca_id2': caId2,
       'ca_id3': caId3,
       'ct_mb_inf': ctMbInf,
+      'it_nocoupon': itNocoupon ? 1 : 0,
       'point_usage_rate': pointUsageRate,
       'ct_point': ctPoint,
       'it_point': itPoint,

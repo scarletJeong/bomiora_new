@@ -619,6 +619,16 @@ class Product {
         'additionalInfo': additionalInfo,
       });
 
+  /// 상품 쿠폰적용안함 (`it_nocoupon` = 1)
+  bool get isNoCoupon {
+    final info = additionalInfo;
+    final raw = info?['it_nocoupon'] ?? info?['itNocoupon'] ?? info?['nocoupon'];
+    return raw == true ||
+        raw == 1 ||
+        raw == '1' ||
+        (raw is num && raw.toInt() == 1);
+  }
+
   /// 목록/카드용 이미지 URL (환경별 경로 정규화)
   String get displayImageUrl => ImageUrlHelper.getImageUrl(imageUrl);
 

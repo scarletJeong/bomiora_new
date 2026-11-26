@@ -15,7 +15,7 @@ extension _PaymentPoint on _PaymentScreenState {
       _pointSettings.settleMinPoint < 0 ? 0 : _pointSettings.settleMinPoint;
 
   bool get _canUsePointByMin =>
-      !_couponPointDisabled &&
+      !_pointDisabled &&
       _pointSettings.usePoint &&
       _myPoint >= _pointMinToUse;
 
@@ -70,7 +70,7 @@ extension _PaymentPoint on _PaymentScreenState {
       _maxPointByMinimumPayableFor(_selectedCoupons);
 
   int _maxUsablePointFor(List<Coupon> coupons) {
-    if (_couponPointDisabled || !_canUsePointByMin) return 0;
+    if (_pointDisabled || !_canUsePointByMin) return 0;
     final candidates = [
       _myPoint,
       _maxPointByRateFor(coupons),

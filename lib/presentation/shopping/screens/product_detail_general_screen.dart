@@ -1074,7 +1074,8 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
   }
 
   Widget _buildSupportReviewTabContent() {
-    final hideCoupon = _product?.isInfluencerProduct == true;
+    final hideCoupon = _product?.isInfluencerProduct == true ||
+        _product?.isNoCoupon == true;
     return GeneralReviewTabPanel(
       reviews: _supporterReviews,
       isLoading: _isLoadingReviews,

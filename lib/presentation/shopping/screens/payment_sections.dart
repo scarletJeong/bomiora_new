@@ -70,16 +70,16 @@ extension _PaymentSections on _PaymentScreenState {
 
   /// 쿠폰/포인트 + 결제금액 내역 + 총 결제비용
   Widget _buildCouponPointTotalSection(BuildContext context) { 
-    final showCoupon = !_couponPointDisabled &&
+    final showCoupon = !_couponDisabled &&
         !_couponLoadFailed &&
         _applicableCoupons.isNotEmpty;
-    final showCouponFailure = !_couponPointDisabled && _couponLoadFailed;
-    final showPoint = !_couponPointDisabled &&
+    final showCouponFailure = !_couponDisabled && _couponLoadFailed;
+    final showPoint = !_pointDisabled &&
         !_pointLoadFailed &&
         _pointSettings.usePoint &&
         _myPoint >= _pointMinToUse &&
         _myPoint > 0;
-    final showPointFailure = !_couponPointDisabled && _pointLoadFailed;
+    final showPointFailure = !_pointDisabled && _pointLoadFailed;
     final remainCouponCount = _availableCouponsForUnifiedPicker().length;
     final remainPoint = (_myPoint - _pointDiscount).clamp(0, _myPoint);
     final showCouponPoint =

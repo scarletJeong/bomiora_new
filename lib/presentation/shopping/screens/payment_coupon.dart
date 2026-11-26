@@ -3,8 +3,8 @@ part of 'payment_screen.dart';
 extension _PaymentCoupon on _PaymentScreenState {
   bool _isCouponApplicable(Coupon coupon) {
     if (!coupon.isAvailable) return false;
-    // 인플루언서 상품만 있으면 상품·카테고리·주문·배송비 쿠폰 전부 불가
-    if (_couponPointDisabled) return false;
+    // 인플루언서·쿠폰적용안함만 있으면 상품·카테고리·주문·배송비 쿠폰 전부 불가
+    if (_couponDisabled) return false;
     if (coupon.method == 3) {
       if (_baseShipping <= 0) return false;
       if (_shippingCouponGoodsAmount < coupon.minimum) return false;
@@ -28,7 +28,7 @@ extension _PaymentCoupon on _PaymentScreenState {
             !_serverAcceptsCouponTotals(_selectedCoupons))) {
       _selectedCoupons.removeLast();
     }
-    if (_couponPointDisabled) {
+    if (_pointDisabled) {
       _usedPoint = 0;
       _pointController.clear();
     } else if (_usedPoint > _maxUsablePointSnapped) {
@@ -44,9 +44,9 @@ extension _PaymentCoupon on _PaymentScreenState {
   }
 
 
-  /// 배송비 쿠폰 최소 금액. 일반·처방 상품 중 인플루언서가 아닌 라인 금액 합.
+  /// 배송비 쿠폰 최소 금액. 일반·처방 중 쿠폰 가능 라인 금액 합.
   int get _shippingCouponGoodsAmount => widget.cartItems.fold<int>(0, (sum, item) {
-        if (_isInfluencerCartItem(item)) return sum;
+        if (_isCouponBlockedCartItem(item)) return sum;
         final kind = item.ctKind.toLowerCase();
         if (kind.isNotEmpty && kind != 'general' && kind != 'prescription') {
           return sum;
@@ -56,26 +56,52 @@ extension _PaymentCoupon on _PaymentScreenState {
 
   bool _isInfluencerCartItem(CartItem item) => item.ctMbInf.trim().isNotEmpty;
 
+  bool _isNoCouponCartItem(CartItem item) => item.itNocoupon;
 
-  /// 인플루언서 제외 상품 금액(쿠폰·포인트 기준). 라인 결제액 합.
+  /// 쿠폰 대상에서 제외: 인플루언서 + 쿠폰적용안함
+  bool _isCouponBlockedCartItem(CartItem item) =>
+      _isInfluencerCartItem(item) || _isNoCouponCartItem(item);
+
+  /// 인플루언서 제외 상품 금액(포인트 기준). 라인 결제액 합.
   int get _nonInfluencerAmount => widget.cartItems
       .where((item) => !_isInfluencerCartItem(item))
       .fold<int>(0, (sum, item) => sum + item.lineAmount);
 
+  /// 쿠폰 적용 가능 상품 금액(인플루언서·it_nocoupon 제외).
+  int get _couponEligibleAmount => widget.cartItems
+      .where((item) => !_isCouponBlockedCartItem(item))
+      .fold<int>(0, (sum, item) => sum + item.lineAmount);
+
   bool get _hasInfluencerItems => widget.cartItems.any(_isInfluencerCartItem);
+
+  bool get _hasNoCouponItems => widget.cartItems.any(_isNoCouponCartItem);
 
   bool get _isInfluencerOnly =>
       widget.cartItems.isNotEmpty &&
       widget.cartItems.every(_isInfluencerCartItem);
 
-  bool get _couponPointDisabled => _nonInfluencerAmount <= 0;
+  bool get _couponDisabled => _couponEligibleAmount <= 0;
+
+  bool get _pointDisabled => _nonInfluencerAmount <= 0;
+
+  /// 하위 호환: 쿠폰·포인트 둘 다 막힐 때(기존 인플루언서 전용 장바구니)
+  bool get _couponPointDisabled => _couponDisabled && _pointDisabled;
 
   String get _couponPointNotice {
     if (_isInfluencerOnly) {
       return '인플루언서 상품에는 쿠폰(배송비 포함)과 포인트를 쓸 수 없습니다.';
     }
+    if (_couponDisabled && _hasNoCouponItems && !_hasInfluencerItems) {
+      return '쿠폰적용안함 상품에는 쿠폰을 쓸 수 없습니다.';
+    }
+    if (_hasInfluencerItems && _hasNoCouponItems) {
+      return '인플루언서·쿠폰적용안함 상품에는 쿠폰이 적용되지 않습니다.';
+    }
     if (_hasInfluencerItems) {
       return '인플루언서 상품에는 쿠폰/포인트가 적용되지 않습니다.';
+    }
+    if (_hasNoCouponItems) {
+      return '쿠폰적용안함 상품에는 쿠폰이 적용되지 않습니다.';
     }
     return '';
   }
@@ -92,7 +118,7 @@ extension _PaymentCoupon on _PaymentScreenState {
         product += _discountForCoupon(coupon);
       }
     }
-    if (product > _nonInfluencerAmount) return false;
+    if (product > _couponEligibleAmount) return false;
     if (shipping > _baseShipping) return false;
     return true;
   }
@@ -140,7 +166,7 @@ extension _PaymentCoupon on _PaymentScreenState {
 
   /// 배송비 쿠폰은 기본 배송비만 기준으로 깎고, 상품 쿠폰 한도와 더하지 않는다.
   int _shippingDiscountFor(Coupon coupon) {
-    if (_couponPointDisabled) return 0;
+    if (_couponDisabled) return 0;
     final base = _baseShipping;
     if (base <= 0 || _shippingCouponGoodsAmount < coupon.minimum) return 0;
     var discount = coupon.price;
@@ -195,14 +221,14 @@ extension _PaymentCoupon on _PaymentScreenState {
   }
 
   int _productCouponDiscountFor(List<Coupon> coupons) {
-    if (_couponPointDisabled) return 0;
+    if (_couponDisabled) return 0;
     return _effectiveProductDiscountByNo(coupons)
         .values
         .fold<int>(0, (sum, discount) => sum + discount);
   }
 
   int _shippingCouponDiscountFor(List<Coupon> coupons) {
-    if (_couponPointDisabled) return 0;
+    if (_couponDisabled) return 0;
     final raw = coupons
         .where((coupon) => coupon.method == 3)
         .fold<int>(0, (sum, coupon) => sum + _shippingDiscountFor(coupon));
@@ -224,24 +250,24 @@ extension _PaymentCoupon on _PaymentScreenState {
   int get _couponDiscount => _productCouponDiscount;
 
   int _baseAmountForCoupon(Coupon coupon) {
-    bool isEligibleItem(CartItem item) => !_isInfluencerCartItem(item);
+    bool isEligibleItem(CartItem item) => !_isCouponBlockedCartItem(item);
 
     switch (coupon.method) {
       case 0:
-        if (coupon.target.trim().isEmpty) return _nonInfluencerAmount;
+        if (coupon.target.trim().isEmpty) return _couponEligibleAmount;
         return widget.cartItems
             .where((item) =>
                 isEligibleItem(item) && item.itId == coupon.target.trim())
             .fold<int>(0, (sum, item) => sum + item.lineAmount);
       case 1:
-        if (coupon.target.trim().isEmpty) return _nonInfluencerAmount;
+        if (coupon.target.trim().isEmpty) return _couponEligibleAmount;
         return widget.cartItems
             .where((item) =>
                 isEligibleItem(item) &&
                 item.matchesCategoryTarget(coupon.target))
             .fold<int>(0, (sum, item) => sum + item.lineAmount);
       case 2:
-        return _nonInfluencerAmount;
+        return _couponEligibleAmount;
       case 3:
         return _baseShipping;
       default:
