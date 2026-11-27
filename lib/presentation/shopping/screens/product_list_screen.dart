@@ -140,6 +140,24 @@ class _ProductListScreenState extends State<ProductListScreen> {
     } else {
       await productsFuture;
     }
+    if (mounted && _baseTabOrder.isNotEmpty) {
+      unawaited(_prefetchListBanners());
+    }
+  }
+
+  /// 다른 카테고리 배너 API·이미지를 미리 받아 탭 전환을 빠르게 한다.
+  Future<void> _prefetchListBanners() async {
+    if (!mounted || _baseTabOrder.isEmpty) return;
+    final bannerW = MediaQuery.sizeOf(context).width;
+    final bannerH = healthDp(context, 190.46);
+    await prefetchProductListBanners(
+      context,
+      productKind: widget.productKind,
+      categoryIds: _baseTabOrder.map((tab) => tab.id),
+      preferCategoryId: _activeCategoryId,
+      bannerWidth: bannerW,
+      bannerHeight: bannerH,
+    );
   }
 
   @override

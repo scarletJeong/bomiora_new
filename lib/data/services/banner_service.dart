@@ -6,7 +6,12 @@ import '../models/home/banner_model.dart';
 
 /// `bm_banner` 슬라이드 배너 API (`GET /api/main/banners`)
 class BannerService {
-  static const Duration _cacheTtl = Duration(seconds: 60);
+  /// 홈 메인 배너 메모리 캐시
+  static const Duration _mainCacheTtl = Duration(seconds: 60);
+
+  /// 목록 배너는 카테고리 전환이 잦아 더 길게 유지
+  static const Duration _listCacheTtl = Duration(minutes: 10);
+
   static final Map<String, _BannerCacheEntry> _cache = {};
   static final Map<String, Future<List<BannerModel>>> _inFlight = {};
 
@@ -14,6 +19,13 @@ class BannerService {
     final kind = (productKind ?? '').trim().toLowerCase();
     return kind == 'general' ? 'general' : 'prescription';
   }
+
+  static String normalizeCaId(String? categoryId) {
+    return (categoryId ?? '').trim().replaceAll(RegExp(r'[^0-9a-zA-Z]'), '');
+  }
+
+  static Duration _ttlFor(String placement) =>
+      placement == 'list' ? _listCacheTtl : _mainCacheTtl;
 
   static Future<List<BannerModel>> fetchBanners({
     required String placement,
@@ -25,9 +37,7 @@ class BannerService {
     final kind = placement == 'list'
         ? _normalizeProductKind(productKind)
         : '';
-    final caId = placement == 'list'
-        ? (categoryId ?? '').trim().replaceAll(RegExp(r'[^0-9a-zA-Z]'), '')
-        : '';
+    final caId = placement == 'list' ? normalizeCaId(categoryId) : '';
     final cacheKey = '$platform|$placement|$kind|$caId';
     if (forceRefresh) {
       _cache.remove(cacheKey);
@@ -76,14 +86,14 @@ class BannerService {
         }
 
         final banners = raw
-            .whereType<Map<String, dynamic>>()
-            .map(BannerModel.fromJson)
+            .whereType<Map>()
+            .map((row) => BannerModel.fromJson(Map<String, dynamic>.from(row)))
             .where((b) => b.imageUrl.trim().isNotEmpty)
             .toList();
 
         _cache[cacheKey] = _BannerCacheEntry(
           banners: banners,
-          expiresAt: DateTime.now().add(_cacheTtl),
+          expiresAt: DateTime.now().add(_ttlFor(placement)),
         );
         return banners;
       } finally {

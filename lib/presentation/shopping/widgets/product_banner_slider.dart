@@ -56,6 +56,76 @@ Color resolveProductListBannerColor({
   return kProductListBannerRainbow[i % kProductListBannerRainbow.length];
 }
 
+final Set<String> _listBannerImagePrecacheInFlight = {};
+
+/// 목록 배너 이미지를 [AppNetworkImage]와 같은 키로 캐시한다.
+Future<void> precacheProductListBannerImages(
+  BuildContext context,
+  List<BannerModel> banners, {
+  required double bannerWidth,
+  required double bannerHeight,
+  int maxCount = 3,
+}) async {
+  if (!context.mounted || banners.isEmpty) return;
+  final jobs = <Future<void>>[];
+  for (final banner in banners.take(maxCount)) {
+    final url = ImageUrlHelper.resolveBannerImageUrl(banner.imageUrl);
+    if (url.isEmpty) continue;
+    final key = '$url|${bannerWidth.round()}x${bannerHeight.round()}';
+    if (!_listBannerImagePrecacheInFlight.add(key)) continue;
+    jobs.add(
+      AppNetworkImage.precacheUrl(
+        context,
+        url,
+        width: bannerWidth,
+        height: bannerHeight,
+        decodeWidthLogical: bannerWidth,
+        decodeHeightLogical: bannerHeight,
+      ).whenComplete(() => _listBannerImagePrecacheInFlight.remove(key)),
+    );
+  }
+  if (jobs.isEmpty) return;
+  await Future.wait(jobs);
+}
+
+/// 다른 카테고리 배너 API·이미지를 미리 받아 둔다.
+Future<void> prefetchProductListBanners(
+  BuildContext context, {
+  required String? productKind,
+  required Iterable<String> categoryIds,
+  required double bannerWidth,
+  required double bannerHeight,
+  String? preferCategoryId,
+}) async {
+  if (!context.mounted) return;
+  final ids = <String>[];
+  final prefer = BannerService.normalizeCaId(preferCategoryId);
+  if (prefer.isNotEmpty) ids.add(prefer);
+  for (final raw in categoryIds) {
+    final id = BannerService.normalizeCaId(raw);
+    if (id.isEmpty || ids.contains(id)) continue;
+    ids.add(id);
+  }
+  for (final caId in ids) {
+    if (!context.mounted) return;
+    try {
+      final banners = await BannerService.fetchListBanners(
+        productKind: productKind,
+        categoryId: caId,
+      );
+      if (!context.mounted) return;
+      await precacheProductListBannerImages(
+        context,
+        banners,
+        bannerWidth: bannerWidth,
+        bannerHeight: bannerHeight,
+      );
+    } catch (_) {
+      // 프리패치 실패는 화면을 막지 않는다.
+    }
+  }
+}
+
 /// 상품 목록 상단 배너 — `placement=list` 이미지를 홈 배너와 같이 표시.
 class ProductBannerSlider extends StatefulWidget {
   /// 375 기준 배너 높이 — [healthDp]로 스케일.
@@ -143,6 +213,58 @@ class _ProductBannerSliderState extends State<ProductBannerSlider> {
     super.dispose();
   }
 
+  Future<void> _applyBanners(
+    int token,
+    List<BannerModel> banners, {
+    required bool fromError,
+  }) async {
+    if (!mounted || token != _bannerListenToken) return;
+    final visible = fromError ? _displayedBanners : _visibleBanners(banners);
+    if (!fromError && visible.isEmpty) {
+      unawaited(
+        _logBanner(
+          banners.isEmpty
+              ? '배너 목록이 비어 있습니다.'
+              : '이미지 주소가 있는 배너가 없습니다.',
+          {'received': banners.length},
+        ),
+      );
+    }
+
+    // 새 이미지는 캐시에 넣은 뒤 화면을 바꿔, 탭 전환 시 깜빡임을 줄인다.
+    if (!fromError && visible.isNotEmpty && mounted) {
+      final bannerW = MediaQuery.sizeOf(context).width;
+      final bannerH = healthDp(context, widget.heightBase);
+      await precacheProductListBannerImages(
+        context,
+        visible,
+        bannerWidth: bannerW,
+        bannerHeight: bannerH,
+      );
+    }
+    if (!mounted || token != _bannerListenToken) return;
+
+    setState(() {
+      if (!fromError) {
+        _displayedBanners = visible;
+        _loadFailed = false;
+      } else {
+        _loadFailed = _displayedBanners.isEmpty;
+      }
+      _hasLoadedOnce = true;
+      _isLoading = false;
+      if (_currentIndex >= _displayedBanners.length) {
+        _currentIndex = 0;
+      }
+    });
+    if (_pageController.hasClients && _currentIndex == 0) {
+      _pageController.jumpToPage(0);
+    }
+    _syncAutoSlide(
+      _displayedBanners.isEmpty ? 1 : _displayedBanners.length,
+    );
+  }
+
   void _listenBanners(Future<List<BannerModel>> future) {
     final token = ++_bannerListenToken;
     // 이미 보여 주는 배너가 있으면 로딩 중에도 단색으로 바꾸지 않는다.
@@ -151,46 +273,15 @@ class _ProductBannerSliderState extends State<ProductBannerSlider> {
       _loadFailed = false;
     }
     future.then((banners) {
-      if (!mounted || token != _bannerListenToken) return;
-      final visible = _visibleBanners(banners);
-      if (visible.isEmpty) {
-        unawaited(
-          _logBanner(
-            banners.isEmpty
-                ? '배너 목록이 비어 있습니다.'
-                : '이미지 주소가 있는 배너가 없습니다.',
-            {'received': banners.length},
-          ),
-        );
-      }
-      setState(() {
-        _displayedBanners = visible;
-        _hasLoadedOnce = true;
-        _loadFailed = false;
-        _isLoading = false;
-        if (_currentIndex >= visible.length) {
-          _currentIndex = 0;
-        }
-      });
-      if (_pageController.hasClients && _currentIndex == 0) {
-        _pageController.jumpToPage(0);
-      }
-      _syncAutoSlide(visible.isEmpty ? 1 : visible.length);
+      unawaited(_applyBanners(token, banners, fromError: false));
     }, onError: (Object error, StackTrace _) {
-      if (!mounted || token != _bannerListenToken) return;
       unawaited(
         _logBanner(
           '배너 목록을 불러오지 못했습니다.',
           {'error': error.toString()},
         ),
       );
-      setState(() {
-        _hasLoadedOnce = true;
-        _loadFailed = true;
-        _isLoading = false;
-        // 전환 실패 시에도 이전 이미지를 유지한다.
-      });
-      _syncAutoSlide(_displayedBanners.isEmpty ? 1 : _displayedBanners.length);
+      unawaited(_applyBanners(token, const [], fromError: true));
     });
   }
 
