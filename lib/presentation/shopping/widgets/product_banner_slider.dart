@@ -97,6 +97,12 @@ class _ProductBannerSliderState extends State<ProductBannerSlider> {
   late Future<List<BannerModel>> _bannersFuture;
   final Set<String> _loggedImageUrls = {};
 
+  /// 화면에 유지 중인 배너. 카테고리 전환 중에도 이전 이미지를 유지해 단색 깜빡임을 막는다.
+  List<BannerModel> _displayedBanners = const [];
+  bool _hasLoadedOnce = false;
+  bool _loadFailed = false;
+  bool _isLoading = true;
+
   @override
   void initState() {
     super.initState();
@@ -139,6 +145,11 @@ class _ProductBannerSliderState extends State<ProductBannerSlider> {
 
   void _listenBanners(Future<List<BannerModel>> future) {
     final token = ++_bannerListenToken;
+    // 이미 보여 주는 배너가 있으면 로딩 중에도 단색으로 바꾸지 않는다.
+    if (_displayedBanners.isEmpty) {
+      _isLoading = true;
+      _loadFailed = false;
+    }
     future.then((banners) {
       if (!mounted || token != _bannerListenToken) return;
       final visible = _visibleBanners(banners);
@@ -152,6 +163,18 @@ class _ProductBannerSliderState extends State<ProductBannerSlider> {
           ),
         );
       }
+      setState(() {
+        _displayedBanners = visible;
+        _hasLoadedOnce = true;
+        _loadFailed = false;
+        _isLoading = false;
+        if (_currentIndex >= visible.length) {
+          _currentIndex = 0;
+        }
+      });
+      if (_pageController.hasClients && _currentIndex == 0) {
+        _pageController.jumpToPage(0);
+      }
       _syncAutoSlide(visible.isEmpty ? 1 : visible.length);
     }, onError: (Object error, StackTrace _) {
       if (!mounted || token != _bannerListenToken) return;
@@ -161,7 +184,13 @@ class _ProductBannerSliderState extends State<ProductBannerSlider> {
           {'error': error.toString()},
         ),
       );
-      _syncAutoSlide(1);
+      setState(() {
+        _hasLoadedOnce = true;
+        _loadFailed = true;
+        _isLoading = false;
+        // 전환 실패 시에도 이전 이미지를 유지한다.
+      });
+      _syncAutoSlide(_displayedBanners.isEmpty ? 1 : _displayedBanners.length);
     });
   }
 
@@ -394,108 +423,101 @@ class _ProductBannerSliderState extends State<ProductBannerSlider> {
     final dotSize = healthDp(context, 8);
     final dotMarginH = healthDp(context, 4);
 
-    return FutureBuilder<List<BannerModel>>(
-      future: _bannersFuture,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting &&
-            !snapshot.hasData) {
-          return _buildColorPlaceholder(bannerH);
-        }
+    // 첫 로딩만 중립 회색. 탭 전환 중에는 이전 배너를 유지한다.
+    if (_isLoading && _displayedBanners.isEmpty) {
+      return Container(
+        height: bannerH,
+        width: double.infinity,
+        color: const Color(0xFFF6F6F6),
+      );
+    }
 
-        if (snapshot.hasError) {
-          return _buildNoticePage(
-            context,
-            bannerH,
-            '배너를 불러오지 못했습니다.',
-          );
-        }
+    if (_loadFailed && _displayedBanners.isEmpty) {
+      return _buildNoticePage(
+        context,
+        bannerH,
+        '배너를 불러오지 못했습니다.',
+      );
+    }
 
-        final banners = _visibleBanners(
-          snapshot.data ?? const <BannerModel>[],
-        );
-        if (banners.isEmpty) {
-          return _buildColorPlaceholder(bannerH);
-        }
+    final banners = _displayedBanners;
+    if (_hasLoadedOnce && banners.isEmpty) {
+      return _buildColorPlaceholder(bannerH);
+    }
+    if (banners.isEmpty) {
+      return Container(
+        height: bannerH,
+        width: double.infinity,
+        color: const Color(0xFFF6F6F6),
+      );
+    }
 
-        final pageCount = banners.length;
-        if (_currentIndex >= pageCount) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (!mounted) return;
-            setState(() => _currentIndex = 0);
-            if (_pageController.hasClients) {
-              _pageController.jumpToPage(0);
-            }
-          });
-        }
+    final pageCount = banners.length;
+    final hasMultiple = pageCount > 1;
 
-        final hasMultiple = pageCount > 1;
-
-        return SizedBox(
-          height: bannerH,
-          width: double.infinity,
-          child: Stack(
-            children: [
-              ScrollConfiguration(
-                behavior: ScrollConfiguration.of(context).copyWith(
-                  dragDevices: const {
-                    PointerDeviceKind.touch,
-                    PointerDeviceKind.mouse,
-                    PointerDeviceKind.trackpad,
-                    PointerDeviceKind.stylus,
-                    PointerDeviceKind.unknown,
-                  },
-                ),
-                child: PageView.builder(
-                  controller: _pageController,
-                  physics: hasMultiple
-                      ? null
-                      : const NeverScrollableScrollPhysics(),
-                  onPageChanged: (index) {
-                    setState(() => _currentIndex = index);
-                  },
-                  itemCount: pageCount,
-                  itemBuilder: (context, index) {
-                    return _buildImagePage(
-                      context,
-                      banners[index],
-                      bannerH,
-                    );
-                  },
-                ),
-              ),
-              if (hasMultiple)
-                Positioned(
-                  bottom: indicatorBottom,
-                  left: 0,
-                  right: 0,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(pageCount, (index) {
-                      return GestureDetector(
-                        onTap: () => _pageController.animateToPage(
-                          index,
-                          duration: const Duration(milliseconds: 300),
-                          curve: Curves.easeInOut,
-                        ),
-                        child: Container(
-                          width: dotSize,
-                          height: dotSize,
-                          margin: EdgeInsets.symmetric(horizontal: dotMarginH),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: _currentIndex == index
-                                ? Colors.white
-                                : Colors.white.withValues(alpha: 0.4),
-                          ),
-                        ),
-                      );
-                    }),
-                  ),
-                ),
-            ],
+    return SizedBox(
+      height: bannerH,
+      width: double.infinity,
+      child: Stack(
+        children: [
+          ScrollConfiguration(
+            behavior: ScrollConfiguration.of(context).copyWith(
+              dragDevices: const {
+                PointerDeviceKind.touch,
+                PointerDeviceKind.mouse,
+                PointerDeviceKind.trackpad,
+                PointerDeviceKind.stylus,
+                PointerDeviceKind.unknown,
+              },
+            ),
+            child: PageView.builder(
+              controller: _pageController,
+              physics:
+                  hasMultiple ? null : const NeverScrollableScrollPhysics(),
+              onPageChanged: (index) {
+                setState(() => _currentIndex = index);
+              },
+              itemCount: pageCount,
+              itemBuilder: (context, index) {
+                return _buildImagePage(
+                  context,
+                  banners[index],
+                  bannerH,
+                );
+              },
+            ),
           ),
-        );
-      },
+          if (hasMultiple)
+            Positioned(
+              bottom: indicatorBottom,
+              left: 0,
+              right: 0,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(pageCount, (index) {
+                  return GestureDetector(
+                    onTap: () => _pageController.animateToPage(
+                      index,
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeInOut,
+                    ),
+                    child: Container(
+                      width: dotSize,
+                      height: dotSize,
+                      margin: EdgeInsets.symmetric(horizontal: dotMarginH),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: _currentIndex == index
+                            ? Colors.white
+                            : Colors.white.withValues(alpha: 0.4),
+                      ),
+                    ),
+                  );
+                }),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

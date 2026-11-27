@@ -75,7 +75,6 @@ class _ProductListScreenState extends State<ProductListScreen> {
   bool _tabsReady = false;
   int _tabsRequestToken = 0;
   int _productsRequestToken = 0;
-  int _bannerRefreshSerial = 0;
   Future<List<BannerModel>>? _bannersFuture;
 
   static const String _gmarket = 'Gmarket Sans TTF';
@@ -99,7 +98,6 @@ class _ProductListScreenState extends State<ProductListScreen> {
   }
 
   void _reloadListBanners({bool forceRefresh = false}) {
-    _bannerRefreshSerial += 1;
     _bannersFuture = BannerService.fetchListBanners(
       productKind: widget.productKind,
       categoryId: _activeCategoryId,
@@ -362,7 +360,6 @@ class _ProductListScreenState extends State<ProductListScreen> {
               slivers: [
                 SliverToBoxAdapter(
                   child: ProductBannerSlider(
-                    key: ValueKey('list-banner-$_bannerRefreshSerial'),
                     heightBase: 190.46,
                     productKind: widget.productKind,
                     categoryId: _activeCategoryId,
