@@ -4,9 +4,11 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/app_assets.dart';
 import '../../../core/logging/failure_log.dart';
 import '../../../core/utils/image_url_helper.dart';
+import '../../../data/models/home/banner_model.dart';
 import '../../../data/repositories/product/product_category_catalog.dart';
 import '../../../data/repositories/product/product_repository.dart';
 import '../../../data/services/auth_service.dart';
+import '../../../data/services/banner_service.dart';
 import '../../../data/models/product/product_model.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/app_network_image.dart';
@@ -73,6 +75,8 @@ class _ProductListScreenState extends State<ProductListScreen> {
   bool _tabsReady = false;
   int _tabsRequestToken = 0;
   int _productsRequestToken = 0;
+  int _bannerRefreshSerial = 0;
+  Future<List<BannerModel>>? _bannersFuture;
 
   static const String _gmarket = 'Gmarket Sans TTF';
   static const Color _tabPink = Color(0xFFFF5A8D);
@@ -85,9 +89,22 @@ class _ProductListScreenState extends State<ProductListScreen> {
     super.initState();
 
     _activeCategoryId = widget.categoryId;
+    _bannersFuture = BannerService.fetchListBanners(
+      productKind: widget.productKind,
+      categoryId: _activeCategoryId,
+    );
 
     _initTabsAndLoad();
     _scrollController.addListener(_onScroll);
+  }
+
+  void _reloadListBanners({bool forceRefresh = false}) {
+    _bannerRefreshSerial += 1;
+    _bannersFuture = BannerService.fetchListBanners(
+      productKind: widget.productKind,
+      categoryId: _activeCategoryId,
+      forceRefresh: forceRefresh,
+    );
   }
 
   Future<void> _initTabsAndLoad() async {
@@ -116,6 +133,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
         !_baseTabOrder.any((tab) => tab.id == _activeCategoryId);
     if (categoryChanged) {
       _activeCategoryId = _baseTabOrder.first.id;
+      _reloadListBanners();
     }
 
     if (mounted) setState(() => _tabsReady = true);
@@ -166,6 +184,9 @@ class _ProductListScreenState extends State<ProductListScreen> {
   Future<void> _loadProducts({bool forceRefresh = false}) async {
     final requestToken = ++_productsRequestToken;
     final categoryId = _activeCategoryId;
+    if (forceRefresh) {
+      _reloadListBanners(forceRefresh: true);
+    }
     setState(() {
       _isLoading = true;
       _hasError = false;
@@ -341,11 +362,13 @@ class _ProductListScreenState extends State<ProductListScreen> {
               slivers: [
                 SliverToBoxAdapter(
                   child: ProductBannerSlider(
+                    key: ValueKey('list-banner-$_bannerRefreshSerial'),
                     heightBase: 190.46,
                     productKind: widget.productKind,
                     categoryId: _activeCategoryId,
                     categoryIndex: _baseTabOrder
                         .indexWhere((tab) => tab.id == _activeCategoryId),
+                    bannersFuture: _bannersFuture,
                   ),
                 ),
                 SliverToBoxAdapter(
@@ -563,6 +586,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
 
     setState(() {
       _activeCategoryId = tab.id;
+      _reloadListBanners();
 
       _products = [];
       _currentPage = 1;

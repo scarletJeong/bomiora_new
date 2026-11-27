@@ -18,13 +18,17 @@ class BannerService {
   static Future<List<BannerModel>> fetchBanners({
     required String placement,
     String? productKind,
+    String? categoryId,
     String platform = 'mobile',
     bool forceRefresh = false,
   }) async {
     final kind = placement == 'list'
         ? _normalizeProductKind(productKind)
         : '';
-    final cacheKey = '$platform|$placement|$kind';
+    final caId = placement == 'list'
+        ? (categoryId ?? '').trim().replaceAll(RegExp(r'[^0-9a-zA-Z]'), '')
+        : '';
+    final cacheKey = '$platform|$placement|$kind|$caId';
     if (forceRefresh) {
       _cache.remove(cacheKey);
     }
@@ -48,6 +52,9 @@ class BannerService {
         };
         if (placement == 'list') {
           query['target_kind'] = kind;
+          if (caId.isNotEmpty) {
+            query['ca_id'] = caId;
+          }
         }
 
         final uri = Uri.parse(ApiEndpoints.mainBanners).replace(
@@ -97,8 +104,15 @@ class BannerService {
 
   static Future<List<BannerModel>> fetchListBanners({
     String? productKind,
+    String? categoryId,
+    bool forceRefresh = false,
   }) {
-    return fetchBanners(placement: 'list', productKind: productKind);
+    return fetchBanners(
+      placement: 'list',
+      productKind: productKind,
+      categoryId: categoryId,
+      forceRefresh: forceRefresh,
+    );
   }
 }
 
